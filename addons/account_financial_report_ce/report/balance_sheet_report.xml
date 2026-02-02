@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+    
+    Balance Sheet Report Template (FR-001)
+    Implements GAAP/IFRS compliant balance sheet with:
+    - Assets, Liabilities, Equity sections
+    - Comparative period columns
+    - Drill-down to source transactions
+-->
+<odoo>
+    <template id="report_balance_sheet">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <!-- Report Header -->
+                        <div class="text-center">
+                            <h2>Balance Sheet</h2>
+                            <p>
+                                <strong>As of: </strong>
+                                <span t-field="doc.date_to"/>
+                                <t t-if="doc.compare_period">
+                                    <span> vs </span>
+                                    <span t-field="doc.compare_date_to"/>
+                                </t>
+                            </p>
+                            <p t-if="doc.company_id">
+                                <span t-field="doc.company_id.name"/>
+                            </p>
+                        </div>
+
+                        <!-- Report Parameters -->
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Target Moves:</strong></td>
+                                        <td>
+                                            <t t-if="doc.target_move == 'posted'">Posted Entries Only</t>
+                                            <t t-else="">All Entries</t>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="doc.account_ids">
+                                        <td><strong>Filtered Accounts:</strong></td>
+                                        <td><span t-esc="len(doc.account_ids)"/> accounts selected</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Balance Sheet Table -->
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr class="bg-primary text-white">
+                                    <th style="width: 60%">Account</th>
+                                    <th class="text-end" style="width: 20%">Current Period</th>
+                                    <t t-if="doc.compare_period">
+                                        <th class="text-end" style="width: 20%">Prior Period</th>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- ASSETS Section -->
+                                <tr class="table-secondary">
+                                    <td colspan="3"><strong>ASSETS</strong></td>
+                                </tr>
+                                <t t-set="total_assets" t-value="0"/>
+                                <t t-set="total_assets_compare" t-value="0"/>
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'asset')" t-as="line">
+                                    <tr>
+                                        <td>
+                                            <t t-if="line.is_group">
+                                                <strong t-esc="line.display_name"/>
+                                            </t>
+                                            <t t-else="">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }})]"
+                                                   class="text-primary">
+                                                    <span t-esc="line.account_code"/> - <span t-esc="line.account_name"/>
+                                                </a>
+                                            </t>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-esc="line.balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-if="doc.compare_period">
+                                            <td class="text-end">
+                                                <span t-esc="line.balance_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                    <t t-set="total_assets" t-value="total_assets + line.balance"/>
+                                    <t t-set="total_assets_compare" t-value="total_assets_compare + (line.balance_compare or 0)"/>
+                                </t>
+                                <tr class="table-info">
+                                    <td><strong>Total Assets</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_assets" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_assets_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- LIABILITIES Section -->
+                                <tr class="table-secondary">
+                                    <td colspan="3"><strong>LIABILITIES</strong></td>
+                                </tr>
+                                <t t-set="total_liabilities" t-value="0"/>
+                                <t t-set="total_liabilities_compare" t-value="0"/>
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'liability')" t-as="line">
+                                    <tr>
+                                        <td>
+                                            <t t-if="line.is_group">
+                                                <strong t-esc="line.display_name"/>
+                                            </t>
+                                            <t t-else="">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }})]"
+                                                   class="text-primary">
+                                                    <span t-esc="line.account_code"/> - <span t-esc="line.account_name"/>
+                                                </a>
+                                            </t>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-esc="line.balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-if="doc.compare_period">
+                                            <td class="text-end">
+                                                <span t-esc="line.balance_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                    <t t-set="total_liabilities" t-value="total_liabilities + line.balance"/>
+                                    <t t-set="total_liabilities_compare" t-value="total_liabilities_compare + (line.balance_compare or 0)"/>
+                                </t>
+                                <tr class="table-info">
+                                    <td><strong>Total Liabilities</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_liabilities" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_liabilities_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- EQUITY Section -->
+                                <tr class="table-secondary">
+                                    <td colspan="3"><strong>EQUITY</strong></td>
+                                </tr>
+                                <t t-set="total_equity" t-value="0"/>
+                                <t t-set="total_equity_compare" t-value="0"/>
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'equity')" t-as="line">
+                                    <tr>
+                                        <td>
+                                            <t t-if="line.is_group">
+                                                <strong t-esc="line.display_name"/>
+                                            </t>
+                                            <t t-else="">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }})]"
+                                                   class="text-primary">
+                                                    <span t-esc="line.account_code"/> - <span t-esc="line.account_name"/>
+                                                </a>
+                                            </t>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-esc="line.balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-if="doc.compare_period">
+                                            <td class="text-end">
+                                                <span t-esc="line.balance_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                    <t t-set="total_equity" t-value="total_equity + line.balance"/>
+                                    <t t-set="total_equity_compare" t-value="total_equity_compare + (line.balance_compare or 0)"/>
+                                </t>
+                                <tr class="table-info">
+                                    <td><strong>Total Equity</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_equity" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_equity_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- TOTAL LIABILITIES + EQUITY -->
+                                <tr class="table-primary">
+                                    <td><strong>Total Liabilities + Equity</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_liabilities + total_equity" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_liabilities_compare + total_equity_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Balance Verification -->
+                        <div class="mt-4">
+                            <t t-set="difference" t-value="total_assets - (total_liabilities + total_equity)"/>
+                            <t t-if="abs(difference) &lt; 0.01">
+                                <div class="alert alert-success">
+                                    <i class="fa fa-check"/> Balance Sheet is in balance (Assets = Liabilities + Equity)
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-danger">
+                                    <i class="fa fa-warning"/> Balance Sheet is out of balance by 
+                                    <span t-esc="difference" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- Report Footer -->
+                        <div class="mt-4 text-muted small">
+                            <p>
+                                Generated on: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/>
+                                <br/>
+                                Report ID: <span t-field="doc.id"/>
+                            </p>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

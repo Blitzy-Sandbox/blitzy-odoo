@@ -1,0 +1,236 @@
+/**
+ * Financial Reports SCSS - Backend Styling
+ * Copyright 2024 Enterprise Accounting Team
+ * License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+ *
+ * Styles for financial report display in Odoo backend
+ */
+
+// Financial Report Variables
+$report-primary-color: #875a7b;
+$report-success-color: #28a745;
+$report-warning-color: #ffc107;
+$report-danger-color: #dc3545;
+$report-info-color: #17a2b8;
+
+// Financial Report Container
+.o_financial_report {
+    .report-header {
+        text-align: center;
+        margin-bottom: 2rem;
+
+        h2 {
+            color: $report-primary-color;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .report-subtitle {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    }
+
+    // Report Parameters Display
+    .report-parameters {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+
+        .parameter-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .parameter-value {
+            color: #212529;
+        }
+    }
+
+    // Report Tables
+    .report-table {
+        width: 100%;
+        margin-bottom: 1.5rem;
+
+        th {
+            background: $report-primary-color;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem;
+            border: none;
+        }
+
+        td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .section-header {
+            background: #e9ecef;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .subtotal-row {
+            background: #d1ecf1;
+            font-weight: 600;
+        }
+
+        .total-row {
+            background: $report-primary-color;
+            color: white;
+            font-weight: 700;
+        }
+
+        .text-end {
+            text-align: right;
+        }
+
+        // Drill-down links
+        a.drilldown {
+            color: $report-primary-color;
+            text-decoration: none;
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+    }
+
+    // Balance Verification Alert
+    .balance-verification {
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+
+        &.balanced {
+            background: lighten($report-success-color, 40%);
+            border: 1px solid $report-success-color;
+            color: darken($report-success-color, 20%);
+        }
+
+        &.unbalanced {
+            background: lighten($report-danger-color, 35%);
+            border: 1px solid $report-danger-color;
+            color: darken($report-danger-color, 15%);
+        }
+    }
+
+    // Aging Color Coding
+    .aging-not-due {
+        color: $report-success-color;
+    }
+
+    .aging-1-30 {
+        color: $report-info-color;
+    }
+
+    .aging-31-60 {
+        color: #6f42c1;
+    }
+
+    .aging-61-90 {
+        color: #fd7e14;
+    }
+
+    .aging-91-120 {
+        color: $report-warning-color;
+        font-weight: 600;
+    }
+
+    .aging-120-plus {
+        color: $report-danger-color;
+        font-weight: 700;
+    }
+
+    // Progress Bar for Aging Distribution
+    .aging-progress {
+        height: 25px;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 1rem 0;
+
+        .progress-segment {
+            display: inline-block;
+            height: 100%;
+            line-height: 25px;
+            text-align: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+    }
+
+    // Report Summary Cards
+    .report-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 1.5rem;
+
+        .summary-card {
+            flex: 1;
+            min-width: 200px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+
+            .card-title {
+                font-size: 0.875rem;
+                color: #6c757d;
+                margin-bottom: 0.5rem;
+            }
+
+            .card-value {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: #212529;
+            }
+
+            &.positive .card-value {
+                color: $report-success-color;
+            }
+
+            &.negative .card-value {
+                color: $report-danger-color;
+            }
+        }
+    }
+
+    // Report Footer
+    .report-footer {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #dee2e6;
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+}
+
+// Wizard Specific Styles
+.o_financial_report_wizard {
+    .report-type-selection {
+        .o_radio_input {
+            margin-right: 0.5rem;
+        }
+
+        label {
+            font-weight: 500;
+        }
+    }
+
+    .filter-section {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+
+    .o_notebook {
+        .nav-link {
+            font-weight: 500;
+        }
+    }
+}

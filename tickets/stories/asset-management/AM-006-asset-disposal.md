@@ -337,6 +337,25 @@ AM-001 (Asset Registration)
 
 ---
 
+## Constraints
+
+### License Requirements
+
+| Constraint | Requirement |
+|------------|-------------|
+| **License** | AGPL-3.0 compatible |
+| **Compliance** | Module must be distributable under AGPL-3.0 license |
+
+### Coding Standards
+
+| Standard | Requirement |
+|----------|-------------|
+| **OCA Guidelines** | Follow OCA coding standards and module structure |
+| **Odoo Guidelines** | Adhere to Odoo development best practices |
+| **Pre-commit Hooks** | Code must pass pre-commit and pylint-odoo checks |
+
+---
+
 ## Test Requirements
 
 ### Coverage Target

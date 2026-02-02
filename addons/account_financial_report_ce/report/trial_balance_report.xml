@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+    
+    Trial Balance Report Template (FR-005)
+    Implements trial balance with:
+    - Account code and name
+    - Opening, period movement, and closing balances
+    - Debit/Credit column totals verification
+    - Optional account type grouping
+-->
+<odoo>
+    <template id="report_trial_balance">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <!-- Report Header -->
+                        <div class="text-center">
+                            <h2>Trial Balance</h2>
+                            <p>
+                                <strong>As of: </strong>
+                                <span t-field="doc.date_to"/>
+                                <t t-if="doc.date_from">
+                                    <span> (Period from <span t-field="doc.date_from"/>)</span>
+                                </t>
+                            </p>
+                            <p t-if="doc.company_id">
+                                <span t-field="doc.company_id.name"/>
+                            </p>
+                        </div>
+
+                        <!-- Report Parameters -->
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Target Moves:</strong></td>
+                                        <td>
+                                            <t t-if="doc.target_move == 'posted'">Posted Entries Only</t>
+                                            <t t-else="">All Entries</t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Hide Zero Balances:</strong></td>
+                                        <td>
+                                            <t t-if="doc.hide_account_at_0">Yes</t>
+                                            <t t-else="">No</t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Show Partners:</strong></td>
+                                        <td>
+                                            <t t-if="doc.show_partner_details">Yes</t>
+                                            <t t-else="">No</t>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Trial Balance Table -->
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr class="bg-primary text-white">
+                                    <th style="width: 8%">Code</th>
+                                    <th style="width: 27%">Account</th>
+                                    <th class="text-end" style="width: 13%">Opening Debit</th>
+                                    <th class="text-end" style="width: 13%">Opening Credit</th>
+                                    <th class="text-end" style="width: 13%">Period Debit</th>
+                                    <th class="text-end" style="width: 13%">Period Credit</th>
+                                    <th class="text-end" style="width: 13%">Closing Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Initialize totals -->
+                                <t t-set="total_opening_debit" t-value="0"/>
+                                <t t-set="total_opening_credit" t-value="0"/>
+                                <t t-set="total_period_debit" t-value="0"/>
+                                <t t-set="total_period_credit" t-value="0"/>
+                                <t t-set="total_closing_debit" t-value="0"/>
+                                <t t-set="total_closing_credit" t-value="0"/>
+
+                                <!-- Group by account type if hierarchy enabled -->
+                                <t t-if="doc.show_hierarchy">
+                                    <t t-set="account_types" t-value="['asset_receivable', 'asset_cash', 'asset_current', 'asset_non_current', 'asset_prepayments', 'asset_fixed', 'liability_payable', 'liability_credit_card', 'liability_current', 'liability_non_current', 'equity', 'equity_unaffected', 'income', 'income_other', 'expense', 'expense_depreciation', 'expense_direct_cost', 'off_balance']"/>
+                                    <t t-foreach="account_types" t-as="acc_type">
+                                        <t t-set="type_lines" t-value="doc.line_ids.filtered(lambda l: l.account_id.account_type == acc_type)"/>
+                                        <t t-if="type_lines">
+                                            <tr class="table-secondary">
+                                                <td colspan="7"><strong t-esc="acc_type.replace('_', ' ').title()"/></td>
+                                            </tr>
+                                            <t t-foreach="type_lines.sorted(key=lambda l: l.account_code)" t-as="line">
+                                                <tr>
+                                                    <td><span t-esc="line.account_code"/></td>
+                                                    <td>
+                                                        <a t-att-href="'/web#model=account.account&amp;id=%s&amp;view_type=form' % line.account_id.id"
+                                                           class="text-primary">
+                                                            <span t-esc="line.account_name"/>
+                                                        </a>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <t t-if="line.opening_debit">
+                                                            <span t-esc="line.opening_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </t>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <t t-if="line.opening_credit">
+                                                            <span t-esc="line.opening_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </t>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <t t-if="line.period_debit">
+                                                            <span t-esc="line.period_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </t>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <t t-if="line.period_credit">
+                                                            <span t-esc="line.period_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </t>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <span t-esc="line.closing_balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    </td>
+                                                </tr>
+                                                <t t-set="total_opening_debit" t-value="total_opening_debit + line.opening_debit"/>
+                                                <t t-set="total_opening_credit" t-value="total_opening_credit + line.opening_credit"/>
+                                                <t t-set="total_period_debit" t-value="total_period_debit + line.period_debit"/>
+                                                <t t-set="total_period_credit" t-value="total_period_credit + line.period_credit"/>
+                                                <t t-set="total_closing_debit" t-value="total_closing_debit + max(0, line.closing_balance)"/>
+                                                <t t-set="total_closing_credit" t-value="total_closing_credit + abs(min(0, line.closing_balance))"/>
+                                            </t>
+                                        </t>
+                                    </t>
+                                </t>
+
+                                <!-- Flat list (no hierarchy) -->
+                                <t t-else="">
+                                    <t t-foreach="doc.line_ids.sorted(key=lambda l: l.account_code)" t-as="line">
+                                        <tr>
+                                            <td><span t-esc="line.account_code"/></td>
+                                            <td>
+                                                <a t-att-href="'/web#model=account.account&amp;id=%s&amp;view_type=form' % line.account_id.id"
+                                                   class="text-primary">
+                                                    <span t-esc="line.account_name"/>
+                                                </a>
+                                            </td>
+                                            <td class="text-end">
+                                                <t t-if="line.opening_debit">
+                                                    <span t-esc="line.opening_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </t>
+                                            </td>
+                                            <td class="text-end">
+                                                <t t-if="line.opening_credit">
+                                                    <span t-esc="line.opening_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </t>
+                                            </td>
+                                            <td class="text-end">
+                                                <t t-if="line.period_debit">
+                                                    <span t-esc="line.period_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </t>
+                                            </td>
+                                            <td class="text-end">
+                                                <t t-if="line.period_credit">
+                                                    <span t-esc="line.period_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </t>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="line.closing_balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </tr>
+                                        <t t-set="total_opening_debit" t-value="total_opening_debit + line.opening_debit"/>
+                                        <t t-set="total_opening_credit" t-value="total_opening_credit + line.opening_credit"/>
+                                        <t t-set="total_period_debit" t-value="total_period_debit + line.period_debit"/>
+                                        <t t-set="total_period_credit" t-value="total_period_credit + line.period_credit"/>
+                                        <t t-set="total_closing_debit" t-value="total_closing_debit + max(0, line.closing_balance)"/>
+                                        <t t-set="total_closing_credit" t-value="total_closing_credit + abs(min(0, line.closing_balance))"/>
+                                    </t>
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <!-- Totals Row -->
+                                <tr class="table-primary">
+                                    <td colspan="2"><strong>TOTALS</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_opening_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_opening_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_period_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_period_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_closing_debit - total_closing_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <!-- Balance Verification -->
+                        <div class="mt-4">
+                            <t t-set="opening_diff" t-value="abs(total_opening_debit - total_opening_credit)"/>
+                            <t t-set="period_diff" t-value="abs(total_period_debit - total_period_credit)"/>
+                            
+                            <t t-if="opening_diff &lt; 0.01 and period_diff &lt; 0.01">
+                                <div class="alert alert-success">
+                                    <i class="fa fa-check"/> Trial Balance is in balance
+                                    <ul class="mb-0">
+                                        <li>Opening: Debits = Credits</li>
+                                        <li>Period: Debits = Credits</li>
+                                    </ul>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-danger">
+                                    <i class="fa fa-warning"/> Trial Balance is out of balance
+                                    <ul class="mb-0">
+                                        <t t-if="opening_diff >= 0.01">
+                                            <li>Opening balance difference: 
+                                                <span t-esc="opening_diff" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </li>
+                                        </t>
+                                        <t t-if="period_diff >= 0.01">
+                                            <li>Period movement difference: 
+                                                <span t-esc="period_diff" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </li>
+                                        </t>
+                                    </ul>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- Summary Statistics -->
+                        <div class="row mt-4">
+                            <div class="col-6">
+                                <h5>Summary</h5>
+                                <table class="table table-sm table-bordered">
+                                    <tr>
+                                        <td>Total Accounts</td>
+                                        <td class="text-end"><span t-esc="len(doc.line_ids)"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Accounts with Balance</td>
+                                        <td class="text-end"><span t-esc="len(doc.line_ids.filtered(lambda l: l.closing_balance != 0))"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Net Position</td>
+                                        <td class="text-end">
+                                            <span t-esc="total_closing_debit - total_closing_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Report Footer -->
+                        <div class="mt-4 text-muted small">
+                            <p>
+                                Generated on: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/>
+                                <br/>
+                                Report ID: <span t-field="doc.id"/>
+                            </p>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

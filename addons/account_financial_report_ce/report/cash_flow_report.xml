@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+    
+    Cash Flow Statement Report Template (FR-003)
+    Implements GAAP/IFRS compliant cash flow statement with:
+    - Operating Activities (Indirect Method)
+    - Investing Activities
+    - Financing Activities
+    - Beginning and Ending Cash Reconciliation
+-->
+<odoo>
+    <template id="report_cash_flow">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <!-- Report Header -->
+                        <div class="text-center">
+                            <h2>Statement of Cash Flows</h2>
+                            <p>
+                                <strong>Period: </strong>
+                                <span t-field="doc.date_from"/> to <span t-field="doc.date_to"/>
+                                <t t-if="doc.compare_period">
+                                    <span> vs </span>
+                                    <span t-field="doc.compare_date_from"/> to <span t-field="doc.compare_date_to"/>
+                                </t>
+                            </p>
+                            <p t-if="doc.company_id">
+                                <span t-field="doc.company_id.name"/>
+                            </p>
+                            <p class="text-muted small">
+                                <t t-if="doc.method == 'indirect'">(Indirect Method)</t>
+                                <t t-else="">(Direct Method)</t>
+                            </p>
+                        </div>
+
+                        <!-- Report Parameters -->
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Target Moves:</strong></td>
+                                        <td>
+                                            <t t-if="doc.target_move == 'posted'">Posted Entries Only</t>
+                                            <t t-else="">All Entries</t>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Cash Flow Table -->
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr class="bg-primary text-white">
+                                    <th style="width: 70%">Description</th>
+                                    <th class="text-end" style="width: 15%">Amount</th>
+                                    <t t-if="doc.compare_period">
+                                        <th class="text-end" style="width: 15%">Prior Period</th>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- OPERATING ACTIVITIES Section -->
+                                <tr class="table-secondary">
+                                    <td colspan="3"><strong>CASH FLOWS FROM OPERATING ACTIVITIES</strong></td>
+                                </tr>
+                                
+                                <!-- Net Income (Starting Point for Indirect Method) -->
+                                <tr t-if="doc.method == 'indirect'">
+                                    <td class="ps-4">Net Income</td>
+                                    <td class="text-end">
+                                        <span t-esc="doc.net_income" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <span t-esc="doc.net_income_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+                                
+                                <!-- Adjustments -->
+                                <tr t-if="doc.method == 'indirect'" class="fst-italic">
+                                    <td class="ps-4">Adjustments to reconcile net income:</td>
+                                    <td></td>
+                                    <t t-if="doc.compare_period"><td></td></t>
+                                </tr>
+                                
+                                <t t-set="total_operating" t-value="doc.net_income if doc.method == 'indirect' else 0"/>
+                                <t t-set="total_operating_compare" t-value="doc.net_income_compare if doc.method == 'indirect' else 0"/>
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'operating')" t-as="line">
+                                    <tr>
+                                        <td class="ps-5">
+                                            <span t-esc="line.display_name"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-esc="line.amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-if="doc.compare_period">
+                                            <td class="text-end">
+                                                <span t-esc="line.amount_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                    <t t-set="total_operating" t-value="total_operating + line.amount"/>
+                                    <t t-set="total_operating_compare" t-value="total_operating_compare + (line.amount_compare or 0)"/>
+                                </t>
+                                <tr class="table-info">
+                                    <td><strong>Net Cash from Operating Activities</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_operating" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_operating_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- INVESTING ACTIVITIES Section -->
+                                <tr class="table-secondary">
+                                    <td colspan="3"><strong>CASH FLOWS FROM INVESTING ACTIVITIES</strong></td>
+                                </tr>
+                                <t t-set="total_investing" t-value="0"/>
+                                <t t-set="total_investing_compare" t-value="0"/>
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'investing')" t-as="line">
+                                    <tr>
+                                        <td class="ps-4">
+                                            <span t-esc="line.display_name"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-esc="line.amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-if="doc.compare_period">
+                                            <td class="text-end">
+                                                <span t-esc="line.amount_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                    <t t-set="total_investing" t-value="total_investing + line.amount"/>
+                                    <t t-set="total_investing_compare" t-value="total_investing_compare + (line.amount_compare or 0)"/>
+                                </t>
+                                <tr class="table-info">
+                                    <td><strong>Net Cash from Investing Activities</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_investing" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_investing_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- FINANCING ACTIVITIES Section -->
+                                <tr class="table-secondary">
+                                    <td colspan="3"><strong>CASH FLOWS FROM FINANCING ACTIVITIES</strong></td>
+                                </tr>
+                                <t t-set="total_financing" t-value="0"/>
+                                <t t-set="total_financing_compare" t-value="0"/>
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'financing')" t-as="line">
+                                    <tr>
+                                        <td class="ps-4">
+                                            <span t-esc="line.display_name"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-esc="line.amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-if="doc.compare_period">
+                                            <td class="text-end">
+                                                <span t-esc="line.amount_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                    <t t-set="total_financing" t-value="total_financing + line.amount"/>
+                                    <t t-set="total_financing_compare" t-value="total_financing_compare + (line.amount_compare or 0)"/>
+                                </t>
+                                <tr class="table-info">
+                                    <td><strong>Net Cash from Financing Activities</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_financing" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_financing_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- NET CHANGE IN CASH -->
+                                <t t-set="net_change" t-value="total_operating + total_investing + total_financing"/>
+                                <t t-set="net_change_compare" t-value="total_operating_compare + total_investing_compare + total_financing_compare"/>
+                                <tr class="table-warning">
+                                    <td><strong>NET CHANGE IN CASH</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="net_change" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="net_change_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- CASH RECONCILIATION -->
+                                <tr class="table-secondary">
+                                    <td colspan="3"><strong>CASH RECONCILIATION</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-4">Cash at Beginning of Period</td>
+                                    <td class="text-end">
+                                        <span t-esc="doc.beginning_cash" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <span t-esc="doc.beginning_cash_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+                                <tr>
+                                    <td class="ps-4">Net Change in Cash</td>
+                                    <td class="text-end">
+                                        <span t-esc="net_change" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <span t-esc="net_change_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+                                <tr class="table-primary">
+                                    <td><strong>Cash at End of Period</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.beginning_cash + net_change" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="doc.beginning_cash_compare + net_change_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Cash Verification -->
+                        <div class="mt-4">
+                            <t t-set="calculated_ending" t-value="doc.beginning_cash + net_change"/>
+                            <t t-set="actual_ending" t-value="doc.ending_cash"/>
+                            <t t-set="difference" t-value="calculated_ending - actual_ending"/>
+                            <t t-if="abs(difference) &lt; 0.01">
+                                <div class="alert alert-success">
+                                    <i class="fa fa-check"/> Cash reconciliation verified (Beginning + Net Change = Ending Cash)
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-warning">
+                                    <i class="fa fa-warning"/> Cash discrepancy of 
+                                    <span t-esc="difference" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    detected. This may indicate unclassified transactions.
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- Report Footer -->
+                        <div class="mt-4 text-muted small">
+                            <p>
+                                Generated on: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/>
+                                <br/>
+                                Report ID: <span t-field="doc.id"/>
+                            </p>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

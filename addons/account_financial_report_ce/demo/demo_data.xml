@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+    
+    Demo Data for Financial Reports
+    Provides sample report configurations for testing
+-->
+<odoo>
+    <!-- Demo data is minimal as financial reports work with existing accounting demo data -->
+    <!-- The reports generate from existing account.move and account.move.line records -->
+
+    <!-- Demo: Pre-configured Report Wizard Defaults -->
+    <!-- These are runtime configurations, not persistent data -->
+
+</odoo>

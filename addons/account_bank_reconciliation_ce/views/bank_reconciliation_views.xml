@@ -1,0 +1,536 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Bank Reconciliation Views — Bank Reconciliation CE Module
+    ==========================================================
+
+    Tree, form, and search view definitions along with window actions for the
+    Bank Reconciliation CE module.  Defines UI for three main areas:
+
+    1. Reconciliation status browsing (account.reconciliation.matching model)
+       - Tree view with confidence score progress bars and state decorations
+       - Form view with scoring breakdown and matched entry details
+       - Search view with confidence-level and state filters
+       - Implements BR-002 matching results display and BR-003 status browsing
+
+    2. Enhanced reconciliation rule views (account.reconcile.model extensions)
+       - Inherits core views to add priority, confidence thresholds, regex
+         patterns, amount tolerance, and evaluation statistics fields
+       - Implements BR-004 rule configuration requirements
+
+    3. Statement browsing for reconciliation context
+       - Window action providing quick access to bank statements filtered
+         to bank journals for reconciliation workflows
+
+    All views follow Odoo 19.0 XML conventions:
+    - ``invisible`` attribute (not ``attrs``) per Odoo 17+ convention
+    - ``column_invisible`` for hidden list columns
+    - ``optional="hidden"`` for toggleable columns
+    - Consistent 4-space indentation
+-->
+<odoo>
+    <data>
+
+        <!-- ================================================================
+             SECTION 1: RECONCILIATION MATCHING STATUS VIEWS
+             Model: account.reconciliation.matching
+             =================================================================
+             Provides the browsing interface for reconciliation match results
+             with confidence scores, statement line references, matched
+             journal entries, and reconciliation state.
+
+             Implements:
+               - BR-002: Reconciliation matching results display with
+                         confidence scores
+               - BR-003: Manual reconciliation interface — status browsing
+                         component with audit trail
+             ================================================================ -->
+
+        <!-- Reconciliation Matching — Tree (List) View
+             Shows all match proposals with confidence indicators and state
+             decorations.  Rows are colour-coded:
+               green  = confirmed match
+               orange = low confidence (< 70 %)
+               red    = rejected match
+             Default sort: highest confidence first.  -->
+        <record id="view_reconciliation_matching_tree" model="ir.ui.view">
+            <field name="name">account.reconciliation.matching.list</field>
+            <field name="model">account.reconciliation.matching</field>
+            <field name="arch" type="xml">
+                <list string="Reconciliation Matches"
+                      decoration-success="state == 'confirmed'"
+                      decoration-warning="confidence_score &lt; 70"
+                      decoration-danger="state == 'rejected'"
+                      default_order="confidence_score desc, id desc">
+                    <field name="statement_line_id" string="Statement Line"/>
+                    <field name="move_line_id" string="Journal Item"/>
+                    <field name="confidence_score" widget="progressbar"
+                           string="Confidence"/>
+                    <field name="confidence_level" string="Level"/>
+                    <field name="match_type" string="Match Type"/>
+                    <field name="matched_amount" string="Amount"/>
+                    <field name="state" string="Status"
+                           widget="badge"
+                           decoration-success="state == 'confirmed'"
+                           decoration-info="state == 'proposed'"
+                           decoration-danger="state == 'rejected'"/>
+                    <field name="is_selected" string="Selected"
+                           optional="hidden"/>
+                    <field name="amount_score" string="Amount Score"
+                           optional="hidden"/>
+                    <field name="reference_score" string="Reference Score"
+                           optional="hidden"/>
+                    <field name="partner_score" string="Partner Score"
+                           optional="hidden"/>
+                    <field name="date_score" string="Date Score"
+                           optional="hidden"/>
+                    <field name="company_id"
+                           groups="base.group_multi_company"
+                           optional="hidden"/>
+                    <field name="currency_id" column_invisible="True"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Reconciliation Matching — Form View
+             Displays the full detail of a single match proposal including
+             statement line reference, matched journal item, overall
+             confidence score with progress bar, sub-score breakdown by
+             dimension (amount, reference, partner, date), and match state
+             management via the statusbar widget.  -->
+        <record id="view_reconciliation_matching_form" model="ir.ui.view">
+            <field name="name">account.reconciliation.matching.form</field>
+            <field name="model">account.reconciliation.matching</field>
+            <field name="arch" type="xml">
+                <form string="Reconciliation Match">
+                    <header>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="proposed,confirmed,rejected"/>
+                    </header>
+                    <sheet>
+                        <!-- Title: statement line reference for quick identification -->
+                        <div class="oe_title">
+                            <label for="statement_line_id"/>
+                            <h1>
+                                <field name="statement_line_id" readonly="1"/>
+                            </h1>
+                        </div>
+
+                        <!-- Two-column layout: statement details (left) and
+                             matching details (right) -->
+                        <group>
+                            <group string="Statement Line Details">
+                                <field name="statement_line_id"
+                                       string="Statement Line"/>
+                                <field name="matched_amount"/>
+                                <field name="match_type"/>
+                                <field name="is_selected"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="company_id"
+                                       groups="base.group_multi_company"/>
+                            </group>
+                            <group string="Matching Results">
+                                <field name="confidence_score"
+                                       widget="progressbar"/>
+                                <field name="confidence_level"/>
+                                <field name="move_line_id"
+                                       string="Matched Journal Item"/>
+                                <field name="state"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <!-- Tab 1: Matched Entry
+                                 Displays the matched journal item link for
+                                 drill-through to the source transaction.  -->
+                            <page string="Matched Entry"
+                                  name="matched_entries">
+                                <group>
+                                    <group string="Journal Item">
+                                        <field name="move_line_id"
+                                               readonly="1"
+                                               string="Journal Item"/>
+                                        <field name="matched_amount"
+                                               readonly="1"/>
+                                    </group>
+                                    <group string="Match Classification">
+                                        <field name="match_type"
+                                               readonly="1"/>
+                                        <field name="is_selected"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- Tab 2: Scoring Breakdown
+                                 Shows the per-dimension sub-scores that
+                                 contribute to the overall confidence score.
+                                 Each sub-score ranges 0-100 and is weighted
+                                 according to DEFAULT_WEIGHTS:
+                                   amount=40%, reference=25%,
+                                   partner=20%, date=15%.  -->
+                            <page string="Scoring Breakdown"
+                                  name="matching_details">
+                                <group>
+                                    <group string="Score Components">
+                                        <field name="amount_score"
+                                               widget="progressbar"
+                                               string="Amount (40% weight)"/>
+                                        <field name="reference_score"
+                                               widget="progressbar"
+                                               string="Reference (25% weight)"/>
+                                        <field name="partner_score"
+                                               widget="progressbar"
+                                               string="Partner (20% weight)"/>
+                                        <field name="date_score"
+                                               widget="progressbar"
+                                               string="Date (15% weight)"/>
+                                    </group>
+                                    <group string="Overall Result">
+                                        <field name="confidence_score"
+                                               widget="progressbar"
+                                               string="Total Confidence"/>
+                                        <field name="confidence_level"
+                                               string="Confidence Level"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <!-- Note: chatter omitted because the
+                         account.reconciliation.matching model does not
+                         inherit mail.thread.  Audit trail is maintained
+                         through the state field and reconciliation records
+                         (account.partial.reconcile / account.full.reconcile)
+                         as specified by BR-003.  -->
+                </form>
+            </field>
+        </record>
+
+        <!-- Reconciliation Matching — Search View
+             Provides filters for browsing match proposals by state,
+             confidence level, and match type.  Supports grouping by the
+             most common dimensions.  -->
+        <record id="view_reconciliation_matching_search" model="ir.ui.view">
+            <field name="name">account.reconciliation.matching.search</field>
+            <field name="model">account.reconciliation.matching</field>
+            <field name="arch" type="xml">
+                <search string="Search Reconciliation Matches">
+                    <field name="statement_line_id"
+                           string="Statement Line"/>
+                    <field name="move_line_id"
+                           string="Journal Item"/>
+                    <separator/>
+                    <!-- State filters -->
+                    <filter string="Proposed"
+                            name="proposed"
+                            domain="[('state', '=', 'proposed')]"/>
+                    <filter string="Confirmed"
+                            name="confirmed"
+                            domain="[('state', '=', 'confirmed')]"/>
+                    <filter string="Rejected"
+                            name="rejected"
+                            domain="[('state', '=', 'rejected')]"/>
+                    <separator/>
+                    <!-- Confidence level filters
+                         High ≥ 90, Medium 70-89, Low < 70 -->
+                    <filter string="High Confidence (≥90%)"
+                            name="high_confidence"
+                            domain="[('confidence_score', '>=', 90)]"/>
+                    <filter string="Medium Confidence (70-89%)"
+                            name="medium_confidence"
+                            domain="[('confidence_score', '>=', 70), ('confidence_score', '&lt;', 90)]"/>
+                    <filter string="Low Confidence (&lt;70%)"
+                            name="low_confidence"
+                            domain="[('confidence_score', '&lt;', 70)]"/>
+                    <separator/>
+                    <!-- Match type filters -->
+                    <filter string="One-to-One"
+                            name="one_to_one"
+                            domain="[('match_type', '=', 'one_to_one')]"/>
+                    <filter string="One-to-Many"
+                            name="one_to_many"
+                            domain="[('match_type', '=', 'one_to_many')]"/>
+                    <filter string="Many-to-One"
+                            name="many_to_one"
+                            domain="[('match_type', '=', 'many_to_one')]"/>
+                    <separator/>
+                    <!-- Selection filter -->
+                    <filter string="Selected for Reconciliation"
+                            name="selected"
+                            domain="[('is_selected', '=', True)]"/>
+                    <!-- Group-by options -->
+                    <group expand="0" string="Group By">
+                        <filter string="State"
+                                name="group_state"
+                                context="{'group_by': 'state'}"/>
+                        <filter string="Match Type"
+                                name="group_match_type"
+                                context="{'group_by': 'match_type'}"/>
+                        <filter string="Confidence Level"
+                                name="group_confidence"
+                                context="{'group_by': 'confidence_level'}"/>
+                        <filter string="Company"
+                                name="group_company"
+                                context="{'group_by': 'company_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Reconciliation Status — Window Action
+             Primary entry point for browsing reconciliation match proposals.
+             Opens the list view with a default filter on 'proposed' state
+             so users see actionable items first.
+             Referenced by views/menuitem.xml: menu_bank_reconciliation_status -->
+        <record id="action_bank_reconciliation_status" model="ir.actions.act_window">
+            <field name="name">Reconciliation Status</field>
+            <field name="res_model">account.reconciliation.matching</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_reconciliation_matching_search"/>
+            <field name="context">{'search_default_proposed': 1}</field>
+            <field name="help" type="html">
+              <p class="o_view_nocontent_smiling_face">
+                No reconciliation matches found
+              </p><p>
+                Run the matching engine on your bank statement lines to
+                generate match proposals.  The engine scores each potential
+                match by amount, reference, partner, and date proximity,
+                producing confidence scores that help you quickly identify
+                the best matches.
+              </p><p>
+                Use the <b>Import Statements</b> menu to load bank
+                statements, then launch the <b>Reconciliation</b> wizard
+                to generate and review match proposals.
+              </p>
+            </field>
+        </record>
+
+
+        <!-- ================================================================
+             SECTION 2: ENHANCED RECONCILIATION RULE VIEWS
+             Model: account.reconcile.model (extended via _inherit)
+             =================================================================
+             Extends the core reconciliation model tree, form, and search
+             views with fields added by models/reconciliation_rule.py:
+               - Priority ordering (lower = higher priority)
+               - Confidence thresholds (min confidence, auto-reconcile level)
+               - Enhanced regex matching for payment references
+               - Partner name matching with regex support
+               - Date range and amount tolerance controls
+               - Evaluation statistics
+
+             Implements BR-004: Reconciliation rules configuration views
+             with priority ordering, regex matching, confidence thresholds.
+             ================================================================ -->
+
+        <!-- Reconciliation Rules — Tree View Extension
+             Adds priority, confidence threshold, and CE enhanced flag
+             columns to the core reconciliation model list view.  -->
+        <record id="view_bank_reconciliation_rule_tree" model="ir.ui.view">
+            <field name="name">account.reconcile.model.list.bank.reconciliation.ce</field>
+            <field name="model">account.reconcile.model</field>
+            <field name="inherit_id" ref="account.view_account_reconcile_model_tree"/>
+            <field name="arch" type="xml">
+                <!-- Insert priority, confidence, and CE flag columns after
+                     the existing 'trigger' column -->
+                <xpath expr="//field[@name='trigger']" position="after">
+                    <field name="priority" string="Priority"
+                           optional="show"/>
+                    <field name="confidence_threshold"
+                           string="Min Confidence"
+                           optional="hidden"/>
+                    <field name="auto_reconcile_threshold"
+                           string="Auto-Reconcile At"
+                           optional="hidden"/>
+                    <field name="is_ce_rule" string="CE Enhanced"
+                           optional="hidden"/>
+                    <field name="evaluation_count"
+                           string="Evaluations"
+                           optional="hidden"/>
+                    <field name="match_count"
+                           string="Matches"
+                           optional="hidden"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Reconciliation Rules — Form View Extension
+             Adds a "Bank Reconciliation Settings" notebook page to the
+             core reconciliation model form with:
+               - Priority and confidence threshold controls
+               - Enhanced matching condition fields (regex, date range,
+                 amount tolerance)
+               - Evaluation statistics (read-only)  -->
+        <record id="view_bank_reconciliation_rule_form" model="ir.ui.view">
+            <field name="name">account.reconcile.model.form.bank.reconciliation.ce</field>
+            <field name="model">account.reconcile.model</field>
+            <field name="inherit_id" ref="account.view_account_reconcile_model_form"/>
+            <field name="arch" type="xml">
+                <!-- Add CE-enhanced reconciliation settings as a new
+                     notebook page after the existing Counterpart Items tab -->
+                <xpath expr="//notebook" position="inside">
+                    <page id="bank_reconciliation_tab"
+                          string="Bank Reconciliation Settings"
+                          name="bank_reconciliation">
+                        <group>
+                            <!-- Left column: Priority and confidence controls
+                                 for BR-004 rule evaluation ordering and
+                                 auto-reconcile gating -->
+                            <group string="Priority &amp; Confidence">
+                                <field name="priority"
+                                       help="Lower number = higher priority. Rules are evaluated in priority order."/>
+                                <field name="confidence_threshold"
+                                       help="Minimum matching-engine confidence (0-100) for this rule to apply."/>
+                                <field name="auto_reconcile_threshold"
+                                       help="Confidence score at which automatic reconciliation is triggered."/>
+                                <field name="is_ce_rule"
+                                       help="Enable Community Edition enhanced matching features."/>
+                            </group>
+                            <!-- Right column: Enhanced matching conditions
+                                 for reference patterns, partner name,
+                                 date range, and amount tolerance -->
+                            <group string="Enhanced Matching Conditions">
+                                <label for="match_reference"/>
+                                <div class="d-flex gap-3">
+                                    <field name="match_reference"
+                                           placeholder="Any reference"/>
+                                    <field name="match_reference_param"
+                                           invisible="not match_reference"
+                                           required="match_reference"
+                                           placeholder="Pattern or value"/>
+                                </div>
+                                <label for="match_partner_name"/>
+                                <div class="d-flex gap-3">
+                                    <field name="match_partner_name"
+                                           placeholder="Any partner"/>
+                                    <field name="match_partner_name_param"
+                                           invisible="not match_partner_name"
+                                           required="match_partner_name"
+                                           placeholder="Pattern or value"/>
+                                </div>
+                                <field name="match_date_range"
+                                       help="Maximum days between statement and journal entry dates. 0 = disabled."/>
+                                <field name="match_amount_tolerance"
+                                       help="Percentage tolerance for amount matching. 0 = exact match."/>
+                            </group>
+                        </group>
+                        <!-- Evaluation statistics — read-only counters
+                             tracking how often the rule is used and how
+                             effective it is at producing matches -->
+                        <group string="Evaluation Statistics">
+                            <group>
+                                <field name="evaluation_count"
+                                       readonly="1"/>
+                                <field name="match_count"
+                                       readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="last_evaluation_date"
+                                       readonly="1"/>
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Reconciliation Rules — Search View Extension
+             Adds CE-specific filters for high-priority rules, CE-enhanced
+             rules, and a group-by option for priority ordering.  -->
+        <record id="view_bank_reconciliation_rule_search" model="ir.ui.view">
+            <field name="name">account.reconcile.model.search.bank.reconciliation.ce</field>
+            <field name="model">account.reconcile.model</field>
+            <field name="inherit_id" ref="account.view_account_reconcile_model_search"/>
+            <field name="arch" type="xml">
+                <!-- Add CE-specific filters after the last separator in
+                     the base search view -->
+                <xpath expr="//filter[@name='inactive']" position="after">
+                    <separator/>
+                    <filter string="High Priority (≤5)"
+                            name="high_priority"
+                            domain="[('priority', '&lt;=', 5)]"/>
+                    <filter string="CE Enhanced"
+                            name="ce_enhanced"
+                            domain="[('is_ce_rule', '=', True)]"/>
+                </xpath>
+                <!-- Add group-by priority option inside the existing
+                     group-by section -->
+                <xpath expr="//group/filter[@name='group_by_auto_validate']" position="after">
+                    <filter string="Priority"
+                            name="group_by_priority"
+                            context="{'group_by': 'priority'}"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Reconciliation Rules — Window Action
+             Opens the reconciliation model list/form with the enhanced
+             CE fields visible.  Uses the inherited views automatically.
+             Referenced by views/menuitem.xml: menu_bank_reconciliation_rules -->
+        <record id="action_bank_reconciliation_rules" model="ir.actions.act_window">
+            <field name="name">Reconciliation Rules</field>
+            <field name="res_model">account.reconcile.model</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="account.view_account_reconcile_model_search"/>
+            <field name="help" type="html">
+              <p class="o_view_nocontent_smiling_face">
+                Create a reconciliation rule
+              </p><p>
+                Reconciliation rules automate the matching of bank statement
+                lines to journal entries.  Configure amount tolerance,
+                reference patterns (including regex), partner name matching,
+                date range proximity, and confidence thresholds to control
+                how the matching engine evaluates potential matches.
+              </p><p>
+                Rules are evaluated in <b>priority order</b> (lower number
+                = higher priority).  When a rule's confidence threshold is
+                met and auto-reconcile is enabled, matches are confirmed
+                automatically without manual review.
+              </p>
+            </field>
+        </record>
+
+
+        <!-- ================================================================
+             SECTION 3: STATEMENT BROWSING FOR RECONCILIATION CONTEXT
+             Model: account.bank.statement (core model, no extension)
+             =================================================================
+             Provides a convenience window action that opens bank statements
+             filtered to bank-type journals.  Since account.bank.statement
+             .import is a TransientModel, persistent statement browsing
+             relies on the core account.bank.statement model.
+
+             This action gives users quick access to review imported
+             statements before launching reconciliation workflows.
+             ================================================================ -->
+
+        <!-- Bank Statements — Reconciliation Context Action
+             Opens the core bank statement list filtered to bank journals,
+             providing easy access to statements for reconciliation.
+             Referenced by views/menuitem.xml: menu_bank_reconciliation_statements
+             (if defined) or available for direct linking from other views.  -->
+        <record id="action_bank_statements_reconciliation" model="ir.actions.act_window">
+            <field name="name">Bank Statements</field>
+            <field name="res_model">account.bank.statement</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('journal_id.type', '=', 'bank')]</field>
+            <field name="context">{'journal_type': 'bank'}</field>
+            <field name="search_view_id" ref="account.view_bank_statement_search"/>
+            <field name="help" type="html">
+              <p class="o_view_nocontent_smiling_face">
+                No bank statements found
+              </p><p>
+                Import bank statements using the <b>Import Statements</b>
+                wizard to load transaction data from your bank.  Supported
+                formats include CSV, OFX, QIF, and CAMT.053 (ISO 20022).
+              </p><p>
+                Once statements are imported, use the <b>Reconciliation</b>
+                wizard to match statement lines against open journal entries.
+              </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

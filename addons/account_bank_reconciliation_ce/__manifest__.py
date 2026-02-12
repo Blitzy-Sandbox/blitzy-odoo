@@ -19,6 +19,7 @@
         'security/ir.model.access.csv',
         'data/reconciliation_data.xml',
         'wizard/bank_statement_import_wizard_views.xml',
+        'wizard/reconciliation_wizard_views.xml',
     ],
     'demo': [
     ],

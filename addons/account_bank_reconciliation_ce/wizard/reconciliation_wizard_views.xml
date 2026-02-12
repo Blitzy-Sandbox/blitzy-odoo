@@ -236,7 +236,8 @@
                             to book a write-off for the remaining
                             difference.
                         -->
-                        <page string="Write-Off Settings" name="write_off_settings">
+                        <page string="Write-Off Settings" name="write_off_settings"
+                              invisible="not selected_line_id">
                             <group string="Write-Off Configuration">
                                 <group>
                                     <field name="write_off_account_id"
@@ -247,6 +248,10 @@
                                     <field name="write_off_label"
                                            placeholder="Write-Off"
                                            help="Label applied to the write-off journal entry line."/>
+                                    <field name="write_off_amount"
+                                           readonly="1"
+                                           widget="monetary"
+                                           help="Computed difference amount that will be booked as a write-off entry."/>
                                 </group>
                                 <group>
                                     <field name="tolerance_percentage"

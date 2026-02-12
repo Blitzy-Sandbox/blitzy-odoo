@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Default Configuration Data for Bank Reconciliation
+
+    This file defines sensible out-of-box defaults for the Community Edition
+    bank reconciliation module:
+
+      1. Matching engine configuration parameters — confidence thresholds
+         (High ≥90%, Medium 70-89%, Low 50-69%) and scoring weights
+         (amount=0.40, reference=0.25, partner=0.20, date=0.15).
+
+      2. Sample reconciliation rules — demonstrating regex-based label
+         matching, exact amount + reference matching, amount tolerance
+         matching, and partner name matching with priority ordering.
+
+      3. Import format configuration parameters — enabling/disabling
+         supported statement import formats (CSV, OFX, QIF, CAMT.053)
+         and CSV parsing defaults.
+
+    These records are loaded at module installation via the __manifest__.py
+    data list.  Reconciliation rules use noupdate="1" to prevent overwriting
+    user customisations during module upgrade.
+-->
+<odoo>
+
+    <!-- =================================================================
+         SECTION 1: Matching Engine — Confidence Threshold Parameters
+         =================================================================
+         Defines the score boundaries for the three confidence levels used
+         by the matching engine (FEATURE-002 BR-002):
+           - High   ≥ 90%  → strong candidate for auto-reconcile
+           - Medium   70-89% → reasonable match, manual review suggested
+           - Low      50-69% → weak match, likely needs manual intervention
+    -->
+    <record id="matching_engine_confidence_high" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.confidence_high</field>
+        <field name="value">90.0</field>
+    </record>
+
+    <record id="matching_engine_confidence_medium" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.confidence_medium</field>
+        <field name="value">70.0</field>
+    </record>
+
+    <record id="matching_engine_confidence_low" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.confidence_low</field>
+        <field name="value">50.0</field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 2: Matching Engine — Scoring Weight Parameters
+         =================================================================
+         Configurable weights that control how much each matching criterion
+         contributes to the overall confidence score (FEATURE-002 BR-002):
+           - amount    = 0.40 (highest — exact amount match is strongest signal)
+           - reference = 0.25 (high   — payment reference correlation)
+           - partner   = 0.20 (high   — partner name/ID correlation)
+           - date      = 0.15 (medium — date proximity)
+
+         The four weights sum to 1.00.
+    -->
+    <record id="matching_engine_weight_amount" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.weight_amount</field>
+        <field name="value">0.40</field>
+    </record>
+
+    <record id="matching_engine_weight_reference" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.weight_reference</field>
+        <field name="value">0.25</field>
+    </record>
+
+    <record id="matching_engine_weight_partner" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.weight_partner</field>
+        <field name="value">0.20</field>
+    </record>
+
+    <record id="matching_engine_weight_date" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.weight_date</field>
+        <field name="value">0.15</field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 3: Sample Reconciliation Rules (noupdate="1")
+         =================================================================
+         Demonstrates the enhanced reconciliation rule capabilities added
+         by the CE module (FEATURE-002 BR-004).  Wrapped in noupdate="1"
+         so that user customisations are preserved during module upgrades.
+
+         Rules use the extended fields defined in
+         models/reconciliation_rule.py:
+           - priority, confidence_threshold, auto_reconcile_threshold
+           - match_reference, match_reference_param
+           - match_partner_name, match_partner_name_param
+           - match_date_range, match_amount_tolerance
+           - is_ce_rule
+    -->
+    <data noupdate="1">
+
+        <!-- Rule 1: Exact Amount + Reference Match (Priority 10)
+             Highest-priority automatic rule.  Matches when the bank
+             statement line has an exact payment reference match and
+             exact amount within a 7-day date window.  Suitable for
+             direct-debit collections and wire transfers with structured
+             references. -->
+        <record id="reconcile_rule_exact_match" model="account.reconcile.model">
+            <field name="name">CE: Exact Amount and Reference Match</field>
+            <field name="sequence">10</field>
+            <field name="priority">10</field>
+            <field name="trigger">auto_reconcile</field>
+            <field name="confidence_threshold">90.0</field>
+            <field name="auto_reconcile_threshold">95.0</field>
+            <field name="match_amount">between</field>
+            <field name="match_amount_min">0.01</field>
+            <field name="match_amount_max">0.0</field>
+            <field name="match_label">match_regex</field>
+            <field name="match_label_param">.*</field>
+            <field name="match_reference">exact</field>
+            <field name="match_date_range">7</field>
+            <field name="match_amount_tolerance">0.0</field>
+            <field name="is_ce_rule" eval="True"/>
+        </record>
+
+        <!-- Rule 2: Invoice Reference Pattern (Priority 20)
+             Regex-based label matching for common invoice/bill reference
+             patterns (INV-2024001, BILL/12345, FAC-9876, etc.).
+             Manual trigger with a 1% amount tolerance to cover minor
+             bank fees or rounding differences. -->
+        <record id="reconcile_rule_regex_label" model="account.reconcile.model">
+            <field name="name">CE: Invoice Reference Pattern</field>
+            <field name="sequence">20</field>
+            <field name="priority">20</field>
+            <field name="trigger">manual</field>
+            <field name="confidence_threshold">70.0</field>
+            <field name="auto_reconcile_threshold">90.0</field>
+            <field name="match_label">match_regex</field>
+            <field name="match_label_param">(?i)(INV|BILL|FAC)[/-]?\d{4,}</field>
+            <field name="match_reference">contains</field>
+            <field name="match_reference_param"></field>
+            <field name="match_date_range">30</field>
+            <field name="match_amount_tolerance">1.0</field>
+            <field name="is_ce_rule" eval="True"/>
+        </record>
+
+        <!-- Rule 3: Amount with Tolerance Match (Priority 30)
+             Broad amount-based matching with a 5% tolerance to
+             accommodate bank fees, currency conversion differences,
+             and other minor discrepancies.  Manual trigger — presents
+             candidates to the user for confirmation. -->
+        <record id="reconcile_rule_amount_tolerance" model="account.reconcile.model">
+            <field name="name">CE: Amount with Tolerance Match</field>
+            <field name="sequence">30</field>
+            <field name="priority">30</field>
+            <field name="trigger">manual</field>
+            <field name="confidence_threshold">50.0</field>
+            <field name="auto_reconcile_threshold">85.0</field>
+            <field name="match_amount">between</field>
+            <field name="match_amount_min">0.01</field>
+            <field name="match_date_range">30</field>
+            <field name="match_amount_tolerance">5.0</field>
+            <field name="is_ce_rule" eval="True"/>
+        </record>
+
+        <!-- Rule 4: Partner Name Matching (Priority 40)
+             Matches statement lines to open journal entries based on
+             partner-name similarity.  Uses a generous 60-day window
+             and 2% amount tolerance.  The blank match_partner_name_param
+             instructs the engine to use the statement line's own partner
+             name field for matching against known partner records. -->
+        <record id="reconcile_rule_partner_match" model="account.reconcile.model">
+            <field name="name">CE: Partner Name Matching</field>
+            <field name="sequence">40</field>
+            <field name="priority">40</field>
+            <field name="trigger">manual</field>
+            <field name="confidence_threshold">60.0</field>
+            <field name="auto_reconcile_threshold">90.0</field>
+            <field name="match_partner_name">contains</field>
+            <field name="match_partner_name_param"></field>
+            <field name="match_date_range">60</field>
+            <field name="match_amount_tolerance">2.0</field>
+            <field name="is_ce_rule" eval="True"/>
+        </record>
+
+    </data>
+
+    <!-- =================================================================
+         SECTION 4: Import Format Configuration Parameters
+         =================================================================
+         Controls which bank statement import formats are enabled and
+         provides default CSV parsing settings (FEATURE-002 BR-001).
+         These are updatable (no noupdate) so module upgrades can add
+         support for new formats.
+    -->
+
+    <!-- Format enablement flags -->
+    <record id="import_format_csv_enabled" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.import_csv_enabled</field>
+        <field name="value">True</field>
+    </record>
+
+    <record id="import_format_ofx_enabled" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.import_ofx_enabled</field>
+        <field name="value">True</field>
+    </record>
+
+    <record id="import_format_qif_enabled" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.import_qif_enabled</field>
+        <field name="value">True</field>
+    </record>
+
+    <record id="import_format_camt053_enabled" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.import_camt053_enabled</field>
+        <field name="value">True</field>
+    </record>
+
+    <!-- CSV parsing defaults -->
+    <record id="import_default_csv_delimiter" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.csv_default_delimiter</field>
+        <field name="value">,</field>
+    </record>
+
+    <record id="import_default_csv_encoding" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.csv_default_encoding</field>
+        <field name="value">utf-8</field>
+    </record>
+
+    <record id="import_default_csv_date_format" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.csv_default_date_format</field>
+        <field name="value">%Y-%m-%d</field>
+    </record>
+
+</odoo>

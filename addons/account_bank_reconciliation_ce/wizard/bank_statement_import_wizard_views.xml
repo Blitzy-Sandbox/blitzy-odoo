@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Bank Statement Import Wizard Views
+    Defines the user interface for importing bank statement files
+    in CSV, OFX, QIF, and CAMT.053 formats into Odoo.
+    Part of FEATURE-002: Bank Reconciliation System (BR-001).
+-->
+<odoo>
+
+    <!--
+        ============================================================
+        Bank Statement Import Wizard — Form View
+        ============================================================
+        Provides a multi-step wizard interface for importing bank
+        statement files:
+          Step 1 (draft)   : Select journal, upload file, configure format
+          Step 2 (preview) : Review parsed preview data before committing
+          Step 3 (done)    : View import results and created statements
+        ============================================================
+    -->
+    <record id="view_bank_statement_import_wizard_form" model="ir.ui.view">
+        <field name="name">bank.statement.import.wizard.form</field>
+        <field name="model">account.bank.statement.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Bank Statement">
+                <!-- Hidden fields for state-based visibility and company isolation -->
+                <field name="state" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+
+                <!--
+                    ========================================
+                    Section 1: Bank Journal Selection
+                    ========================================
+                    The target journal determines which bank account
+                    the imported statement lines will be associated with.
+                    Only bank and cash journals are available.
+                -->
+                <group>
+                    <group string="Bank Journal" colspan="2">
+                        <field name="journal_id"
+                               domain="[('type', 'in', ('bank', 'cash'))]"
+                               options="{'no_create': True}"
+                               required="1"
+                               placeholder="Select a bank or cash journal..."/>
+                    </group>
+                </group>
+
+                <!--
+                    ========================================
+                    Section 2: Statement File Upload
+                    ========================================
+                    Upload the bank statement file and configure
+                    how the format should be detected or specified.
+                    Supports CSV, OFX, QIF, and CAMT.053 formats.
+                -->
+                <group string="Statement File">
+                    <group>
+                        <field name="data_file"
+                               widget="binary"
+                               filename="filename"
+                               required="1"/>
+                        <field name="filename" invisible="1"/>
+                    </group>
+                    <group>
+                        <field name="auto_detect_format"
+                               help="When enabled, the file format is automatically detected from the file extension and content signatures."/>
+                        <field name="file_format"
+                               widget="radio"
+                               invisible="auto_detect_format"
+                               required="not auto_detect_format"/>
+                    </group>
+                </group>
+
+                <!--
+                    ========================================
+                    Section 3: CSV Column Mapping
+                    ========================================
+                    Visible only when the selected or detected format
+                    is CSV. Allows configuration of delimiter, encoding,
+                    date format, and zero-based column indices for
+                    mapping CSV columns to statement line fields.
+                    Set column index to -1 to skip an optional column.
+                -->
+                <group string="CSV Settings"
+                       invisible="file_format != 'csv'">
+                    <group string="File Settings">
+                        <field name="csv_delimiter"
+                               placeholder=","
+                               help="Single character used as column separator (e.g. comma, semicolon, tab)."/>
+                        <field name="csv_encoding"
+                               placeholder="utf-8"
+                               help="Character encoding of the CSV file (e.g. utf-8, latin-1, cp1252)."/>
+                        <field name="csv_date_format"
+                               placeholder="%Y-%m-%d"
+                               help="Python strptime format string for parsing date values (e.g. %%Y-%%m-%%d, %%d/%%m/%%Y)."/>
+                        <field name="csv_skip_header"
+                               help="Enable to skip the first row of the CSV file (typically contains column headers)."/>
+                    </group>
+                    <group string="Column Mapping">
+                        <field name="csv_date_column"
+                               help="Zero-based column index containing the transaction date."/>
+                        <field name="csv_label_column"
+                               help="Zero-based column index containing the payment label or description."/>
+                        <field name="csv_amount_column"
+                               help="Zero-based column index containing the transaction amount."/>
+                        <field name="csv_ref_column"
+                               help="Zero-based column index for the payment reference. Set to -1 to skip."/>
+                        <field name="csv_partner_column"
+                               help="Zero-based column index for the partner name. Set to -1 to skip."/>
+                    </group>
+                </group>
+
+                <!--
+                    ========================================
+                    Section 4: Preview and Import Log
+                    ========================================
+                    Notebook with two pages:
+                    - Preview: Shows the first N rows parsed from the
+                      uploaded file before committing the import.
+                    - Import Log: Displays execution messages, warnings,
+                      and errors from the import process.
+                -->
+                <notebook>
+                    <page string="Preview" name="preview">
+                        <group>
+                            <group>
+                                <field name="preview_line_count"
+                                       readonly="1"
+                                       string="Lines in Preview"/>
+                            </group>
+                        </group>
+                        <field name="preview_data"
+                               readonly="1"
+                               nolabel="1"
+                               placeholder="Upload a file and click 'Preview' to see the first rows of parsed data here."/>
+                    </page>
+                    <page string="Import Log" name="log">
+                        <field name="import_log"
+                               readonly="1"
+                               nolabel="1"
+                               placeholder="Import execution details and any warnings or errors will be displayed here."/>
+                    </page>
+                </notebook>
+
+                <!--
+                    ========================================
+                    Section 5: Import Results
+                    ========================================
+                    Visible only after a successful import (state=done).
+                    Shows the created bank statement records and the
+                    total count of imported statement lines.
+                -->
+                <group string="Import Results"
+                       invisible="state != 'done'">
+                    <group>
+                        <field name="statement_ids"
+                               widget="many2many_tags"
+                               readonly="1"
+                               string="Created Statements"/>
+                    </group>
+                    <group>
+                        <field name="line_count"
+                               readonly="1"
+                               string="Total Imported Lines"/>
+                    </group>
+                </group>
+
+                <!--
+                    Error notification banner displayed when the
+                    import process encounters a failure (state=error).
+                    Directs the user to the Import Log tab for details.
+                -->
+                <div class="alert alert-danger" role="alert"
+                     invisible="state != 'error'">
+                    <strong>Import Failed</strong>
+                    <p>An error occurred during the import process. Please review the Import Log tab for detailed error information and correct the issue before retrying.</p>
+                </div>
+
+                <!--
+                    ========================================
+                    Section 6: Footer Action Buttons
+                    ========================================
+                    Button visibility is driven by the wizard state:
+                    - draft   : Preview and Import buttons visible
+                    - preview : Import button visible (Preview hidden)
+                    - done    : Close button visible
+                    - error   : Cancel button visible for retry
+                -->
+                <footer>
+                    <!-- Preview: Parse and display first N rows without importing -->
+                    <button name="action_preview"
+                            type="object"
+                            string="Preview"
+                            class="btn-secondary"
+                            invisible="state != 'draft'"
+                            help="Parse the uploaded file and display a preview of the first rows without importing."/>
+                    <!-- Import: Execute the full import, creating statement records -->
+                    <button name="action_import"
+                            type="object"
+                            string="Import"
+                            class="btn-primary"
+                            invisible="state not in ('draft', 'preview')"
+                            help="Import all lines from the uploaded file and create bank statement records."/>
+                    <!-- Close: Dismiss the wizard after successful import -->
+                    <button string="Close"
+                            class="btn-primary"
+                            special="cancel"
+                            invisible="state != 'done'"/>
+                    <!-- Cancel: Dismiss the wizard without importing -->
+                    <button string="Cancel"
+                            class="btn-secondary"
+                            special="cancel"
+                            invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!--
+        ============================================================
+        Bank Statement Import Wizard — Window Action
+        ============================================================
+        Launches the import wizard as a modal dialog (target=new).
+        Can be invoked from the Accounting menu or from a bank
+        journal's action buttons. When launched from a journal
+        context, the default_journal_id is automatically populated.
+    -->
+    <record id="action_bank_statement_import_wizard" model="ir.actions.act_window">
+        <field name="name">Import Bank Statement</field>
+        <field name="res_model">account.bank.statement.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_bank_statement_import_wizard_form"/>
+        <field name="target">new</field>
+        <field name="context">{}</field>
+    </record>
+
+</odoo>

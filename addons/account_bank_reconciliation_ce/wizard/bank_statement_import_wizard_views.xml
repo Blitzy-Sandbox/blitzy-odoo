@@ -234,7 +234,9 @@
         <field name="view_mode">form</field>
         <field name="view_id" ref="view_bank_statement_import_wizard_form"/>
         <field name="target">new</field>
-        <field name="context">{}</field>
+        <field name="context">{
+            'default_journal_id': context.get('active_id', False) if context.get('active_model') == 'account.journal' else False,
+        }</field>
     </record>
 
 </odoo>

@@ -1,0 +1,28 @@
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+{
+    'name': 'Bank Reconciliation for Community Edition',
+    'version': '19.0.1.0.0',
+    'category': 'Accounting/Reconciliation',
+    'summary': (
+        'Bank statement import (CSV, OFX, QIF, CAMT.053), algorithmic '
+        'matching engine, configurable reconciliation rules, manual '
+        'reconciliation workflows, and partial reconciliation with write-offs.'
+    ),
+    'author': 'Enterprise Accounting Team',
+    'website': 'https://github.com/odoo/odoo',
+    'license': 'AGPL-3',
+    'depends': [
+        'account',
+    ],
+    'data': [
+        'security/ir.model.access.csv',
+    ],
+    'demo': [
+    ],
+    'external_dependencies': {
+        'python': ['ofxparse'],
+    },
+    'installable': True,
+    'application': False,
+    'auto_install': False,
+}

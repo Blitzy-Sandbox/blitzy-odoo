@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 Enterprise Accounting Team
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Bank Reconciliation Security Groups
+            ====================================
+            Two groups are defined for the Bank Reconciliation CE module:
+
+            1. group_bank_reconciliation_user
+               - Grants access to import bank statements and perform reconciliation
+               - Automatically assigned to users who have account.group_account_user
+                 via the implied_by_ids mechanism (Odoo 19.0 reverse implication)
+
+            2. group_bank_reconciliation_manager
+               - Grants access to configure reconciliation rules and manage settings
+               - Implies the user group (managers automatically have user permissions)
+               - Automatically assigned to users who have account.group_account_manager
+                 via the implied_by_ids mechanism
+
+            This ensures seamless access inheritance: existing accounting users and
+            managers automatically receive the appropriate bank reconciliation
+            permissions without manual group assignment.
+        -->
+
+        <!-- Bank Reconciliation User Group -->
+        <record id="group_bank_reconciliation_user" model="res.groups">
+            <field name="name">Bank Reconciliation User</field>
+            <field name="category_id" ref="base.module_category_accounting_accounting"/>
+            <field name="implied_by_ids" eval="[Command.link(ref('account.group_account_user'))]"/>
+            <field name="comment">Users can import bank statements and perform reconciliation.</field>
+        </record>
+
+        <!-- Bank Reconciliation Manager Group -->
+        <record id="group_bank_reconciliation_manager" model="res.groups">
+            <field name="name">Bank Reconciliation Manager</field>
+            <field name="category_id" ref="base.module_category_accounting_accounting"/>
+            <field name="implied_ids" eval="[(4, ref('group_bank_reconciliation_user'))]"/>
+            <field name="implied_by_ids" eval="[Command.link(ref('account.group_account_manager'))]"/>
+            <field name="comment">Managers can configure reconciliation rules and manage bank reconciliation settings.</field>
+        </record>
+
+        <!--
+            Multi-Company Record Rules
+            ==========================
+            Enforce data isolation across companies for persistent models.
+            Uses the company_ids variable (current user's allowed companies)
+            following the pattern from account_security.xml's
+            account_move_comp_rule and account_bank_statement_comp_rule.
+        -->
+
+        <!-- Multi-company rule for account.reconciliation.matching -->
+        <record id="reconciliation_matching_comp_rule" model="ir.rule">
+            <field name="name">Reconciliation Matching multi-company</field>
+            <field name="model_id" ref="model_account_reconciliation_matching"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

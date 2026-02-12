@@ -7,7 +7,6 @@
         <!-- Financial Reports User Group -->
         <record id="group_financial_report_user" model="res.groups">
             <field name="name">Financial Reports User</field>
-            <field name="category_id" ref="base.module_category_accounting_accounting"/>
             <field name="implied_ids" eval="[(4, ref('account.group_account_invoice'))]"/>
             <field name="comment">Users can view and generate financial reports.</field>
         </record>
@@ -15,7 +14,6 @@
         <!-- Financial Reports Manager Group -->
         <record id="group_financial_report_manager" model="res.groups">
             <field name="name">Financial Reports Manager</field>
-            <field name="category_id" ref="base.module_category_accounting_accounting"/>
             <field name="implied_ids" eval="[(4, ref('group_financial_report_user'))]"/>
             <field name="comment">Managers can configure and customize financial reports.</field>
         </record>

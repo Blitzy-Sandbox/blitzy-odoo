@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -27,9 +26,7 @@
         # Security
         "security/account_financial_report_security.xml",
         "security/ir.model.access.csv",
-        # Data
-        "data/report_paperformat.xml",
-        # Reports
+        # Reports (report actions must be defined before paperformat references them)
         "report/report_templates.xml",
         "report/balance_sheet_report.xml",
         "report/profit_loss_report.xml",
@@ -37,6 +34,8 @@
         "report/general_ledger_report.xml",
         "report/trial_balance_report.xml",
         "report/aged_partner_balance_report.xml",
+        # Data (paper formats reference report actions above)
+        "data/report_paperformat.xml",
         # Wizards
         "wizard/financial_report_wizard_views.xml",
         # Views

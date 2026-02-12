@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -20,16 +19,16 @@ class ReportBalanceSheet(models.AbstractModel):
     def _get_report_values(self, docids, data=None):
         """
         Prepare data for the Balance Sheet report template.
-        
+
         Args:
             docids: List of report record IDs
             data: Additional data passed from wizard
-        
+
         Returns:
             Dictionary with report data for QWeb template
         """
         docs = self.env['account.balance.sheet.report'].browse(docids)
-        
+
         return {
             'doc_ids': docids,
             'doc_model': 'account.balance.sheet.report',

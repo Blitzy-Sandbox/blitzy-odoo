@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -28,13 +27,13 @@ Integration Notes:
 Constraints:
     - AGPL-3.0 licensing
     - Multi-company isolation via check_company and company-scoped queries
-    - Python 3.10–3.13 compatibility
+    - Python 3.10-3.13 compatibility
 """
 
-from odoo import api, fields, models, _, Command
-from odoo.exceptions import UserError, ValidationError
-
 import logging
+
+from odoo import Command, _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -78,7 +77,6 @@ class BankStatementLineExt(models.Model):
         ],
         string='Reconciliation Status',
         default='unreconciled',
-        tracking=True,
         copy=False,
         help=(
             'Tracks the current reconciliation state of this statement line.  '
@@ -249,18 +247,18 @@ class PartialReconcileHelper(models.TransientModel):
     def _compute_amounts(self):
         """Compute reconciliation summary amounts and tolerance check.
 
-        * ``total_statement_amount`` – the absolute bank statement line amount.
-        * ``total_move_line_amount`` – sum of the selected journal items'
+        * ``total_statement_amount`` - the absolute bank statement line amount.
+        * ``total_move_line_amount`` - sum of the selected journal items'
           residual amounts (absolute values for comparison purposes).
-        * ``difference_amount`` – signed difference (statement − journal items).
-        * ``is_within_tolerance`` – True when the absolute difference as a
+        * ``difference_amount`` - signed difference (statement - journal items).
+        * ``is_within_tolerance`` - True when the absolute difference as a
           percentage of the statement amount does not exceed
           ``tolerance_percentage``.
         """
         for wizard in self:
             st_amount = wizard.statement_line_id.amount if wizard.statement_line_id else 0.0
             ml_amount = sum(
-                wizard.move_line_ids.mapped('amount_residual')
+                wizard.move_line_ids.mapped('amount_residual'),
             ) if wizard.move_line_ids else 0.0
 
             wizard.total_statement_amount = st_amount
@@ -322,11 +320,11 @@ class PartialReconcileHelper(models.TransientModel):
         # --- Validation ---------------------------------------------------
         if not self.statement_line_id:
             raise UserError(_(
-                "Please select a bank statement line to reconcile."
+                "Please select a bank statement line to reconcile.",
             ))
         if not self.move_line_ids:
             raise UserError(_(
-                "Please select at least one journal item to reconcile against."
+                "Please select at least one journal item to reconcile against.",
             ))
 
         _logger.info(
@@ -350,12 +348,12 @@ class PartialReconcileHelper(models.TransientModel):
         # If the statement's move has no reconcilable counterpart lines we
         # cannot proceed.
         reconcilable_lines = lines_to_reconcile.filtered(
-            lambda l: l.account_id.reconcile
+            lambda line: line.account_id.reconcile,
         )
         if not reconcilable_lines:
             raise UserError(_(
                 "The statement line journal entry has no reconcilable "
-                "counterpart lines.  Please verify the journal configuration."
+                "counterpart lines.  Please verify the journal configuration.",
             ))
 
         # --- Exact / tolerance match path ---------------------------------
@@ -365,7 +363,7 @@ class PartialReconcileHelper(models.TransientModel):
         if currency.is_zero(difference) or (
             self.is_within_tolerance and not self.write_off_account_id
         ):
-            # Direct reconciliation – absorb any tiny rounding difference
+            # Direct reconciliation - absorb any tiny rounding difference
             # within the partial reconcile amounts.
             self._reconcile_lines(reconcilable_lines, move_lines, converted_amounts)
             new_status = 'reconciled'
@@ -374,13 +372,13 @@ class PartialReconcileHelper(models.TransientModel):
                 st_line.id,
             )
         elif self.write_off_account_id:
-            # Write-off path – create a journal entry for the difference,
+            # Write-off path - create a journal entry for the difference,
             # then reconcile everything together.
             write_off_move = self._create_write_off_entry(difference)
             # The write-off entry's reconcilable line(s) are included in the
             # reconciliation set.
             wo_lines = write_off_move.line_ids.filtered(
-                lambda l: l.account_id.reconcile
+                lambda line: line.account_id.reconcile,
             )
             self._reconcile_lines(
                 reconcilable_lines, move_lines | wo_lines, converted_amounts,
@@ -394,7 +392,7 @@ class PartialReconcileHelper(models.TransientModel):
                 difference,
             )
         else:
-            # Partial reconciliation – the amounts don't match and no
+            # Partial reconciliation - the amounts don't match and no
             # write-off was requested.
             self._reconcile_lines(reconcilable_lines, move_lines, converted_amounts)
             new_status = 'partially'
@@ -476,7 +474,7 @@ class PartialReconcileHelper(models.TransientModel):
         # ``reconcile()`` on the combined lines to let the ORM run its full
         # reconciliation check.
         try:
-            reconcilable = all_lines.filtered(lambda l: l.account_id.reconcile and not l.reconciled)
+            reconcilable = all_lines.filtered(lambda line: line.account_id.reconcile and not line.reconciled)
             if reconcilable:
                 reconcilable.reconcile()
         except Exception:
@@ -505,7 +503,7 @@ class PartialReconcileHelper(models.TransientModel):
 
         if not self.statement_line_id:
             raise UserError(_(
-                "No statement line selected for un-reconciliation."
+                "No statement line selected for un-reconciliation.",
             ))
 
         st_line = self.statement_line_id
@@ -553,7 +551,7 @@ class PartialReconcileHelper(models.TransientModel):
 
         if not self.write_off_account_id:
             raise UserError(_(
-                "A write-off account must be selected to create a write-off entry."
+                "A write-off account must be selected to create a write-off entry.",
             ))
 
         st_line = self.statement_line_id
@@ -646,7 +644,7 @@ class PartialReconcileHelper(models.TransientModel):
         if not debit_line.currency_id or not credit_line.currency_id:
             raise ValidationError(_(
                 "Cannot create a partial reconciliation: both journal items "
-                "must have a currency set."
+                "must have a currency set.",
             ))
 
         company_currency = debit_line.company_currency_id

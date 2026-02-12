@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -19,14 +18,14 @@ Acceptance Criteria:
 - Scenario 6: Comparative Cash Flow with variance analysis
 """
 
-from odoo import api, fields, models, _
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
 class CashFlowReport(models.TransientModel):
     """
     Cash Flow Statement Report.
-    
+
     Generates statement of cash flows using the indirect method,
     showing cash from operating, investing, and financing activities.
     """
@@ -37,20 +36,20 @@ class CashFlowReport(models.TransientModel):
     # -------------------------------------------------------------------------
     # CASH FLOW SPECIFIC FIELDS
     # -------------------------------------------------------------------------
-    
+
     date_from = fields.Date(
         string='From Date',
         required=True,
         help="Start date of the cash flow period.",
     )
-    
+
     date_to = fields.Date(
         string='To Date',
         required=True,
         default=fields.Date.context_today,
         help="End date of the cash flow period.",
     )
-    
+
     method = fields.Selection(
         selection=[
             ('indirect', 'Indirect Method'),
@@ -61,7 +60,7 @@ class CashFlowReport(models.TransientModel):
         help="Cash flow calculation method. Indirect method starts with "
              "net income and adjusts for non-cash items.",
     )
-    
+
     # Account types for cash flow classification
     CASH_TYPES = ['asset_cash']
     RECEIVABLE_TYPES = ['asset_receivable']
@@ -69,118 +68,138 @@ class CashFlowReport(models.TransientModel):
     FIXED_ASSET_TYPES = ['asset_fixed']
     EQUITY_TYPES = ['equity']
     LIABILITY_TYPES = ['liability_non_current']
-    
+
     # -------------------------------------------------------------------------
     # COMPUTED REPORT DATA
     # -------------------------------------------------------------------------
-    
+
     # Opening and closing cash
     opening_cash = fields.Monetary(
         string='Opening Cash',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     closing_cash = fields.Monetary(
         string='Closing Cash',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     # Operating Activities
     net_income = fields.Monetary(
         string='Net Income',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     depreciation_amortization = fields.Monetary(
         string='Depreciation & Amortization',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     change_in_receivables = fields.Monetary(
         string='Change in Receivables',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     change_in_payables = fields.Monetary(
         string='Change in Payables',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     change_in_inventory = fields.Monetary(
         string='Change in Inventory',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     cash_from_operating = fields.Monetary(
         string='Cash from Operating Activities',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     # Investing Activities
     capital_expenditures = fields.Monetary(
         string='Capital Expenditures',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     asset_disposals = fields.Monetary(
         string='Proceeds from Asset Sales',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     cash_from_investing = fields.Monetary(
         string='Cash from Investing Activities',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     # Financing Activities
     debt_proceeds = fields.Monetary(
         string='Proceeds from Borrowings',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     debt_repayments = fields.Monetary(
         string='Debt Repayments',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     dividends_paid = fields.Monetary(
         string='Dividends Paid',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     cash_from_financing = fields.Monetary(
         string='Cash from Financing Activities',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     # Net change
     net_change_in_cash = fields.Monetary(
         string='Net Change in Cash',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     is_reconciled = fields.Boolean(
         string='Is Reconciled',
         compute='_compute_report_data',
         help="True if Opening + Net Change = Closing",
     )
-    
+
+    # -------------------------------------------------------------------------
+    # BACKWARD-COMPATIBLE ALIAS FIELDS
+    # -------------------------------------------------------------------------
+
+    beginning_cash = fields.Monetary(
+        string='Beginning Cash',
+        currency_field='currency_id',
+        related='opening_cash',
+        readonly=True,
+        help="Alias for opening_cash.",
+    )
+
+    ending_cash = fields.Monetary(
+        string='Ending Cash',
+        currency_field='currency_id',
+        related='closing_cash',
+        readonly=True,
+        help="Alias for closing_cash.",
+    )
+
     line_ids = fields.One2many(
         comodel_name='account.cash.flow.report.line',
         inverse_name='report_id',
@@ -192,7 +211,7 @@ class CashFlowReport(models.TransientModel):
     def _compute_report_data(self):
         """
         Compute Cash Flow Statement data.
-        
+
         For indirect method:
         1. Start with Net Income from P&L
         2. Add back non-cash expenses (depreciation)
@@ -203,29 +222,29 @@ class CashFlowReport(models.TransientModel):
         """
         for report in self:
             report.currency_id = report.company_id.currency_id
-            
+
             # Get opening cash balance
             cash_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.CASH_TYPES)
+                report._get_account_domain(report.CASH_TYPES),
             )
-            
+
             # Opening cash (balance as of date_from - 1)
             opening_balances = report._compute_account_balance(
-                cash_accounts, 
-                date_to=fields.Date.subtract(report.date_from, days=1)
+                cash_accounts,
+                date_to=fields.Date.subtract(report.date_from, days=1),
             )
             report.opening_cash = sum(b['balance'] for b in opening_balances.values())
-            
+
             # Closing cash (balance as of date_to)
             closing_balances = report._compute_account_balance(
-                cash_accounts, date_to=report.date_to
+                cash_accounts, date_to=report.date_to,
             )
             report.closing_cash = sum(b['balance'] for b in closing_balances.values())
-            
+
             # ----------------------------------------------------------------
             # OPERATING ACTIVITIES (Indirect Method)
             # ----------------------------------------------------------------
-            
+
             # Net Income from P&L
             pl_report = self.env['account.profit.loss.report'].new({
                 'company_id': report.company_id.id,
@@ -235,55 +254,55 @@ class CashFlowReport(models.TransientModel):
             })
             pl_report._compute_report_data()
             report.net_income = pl_report.net_income
-            
+
             # Depreciation (non-cash expense add-back)
             depreciation_accounts = self.env['account.account'].search(
-                report._get_account_domain(['expense_depreciation'])
+                report._get_account_domain(['expense_depreciation']),
             )
             depreciation_balances = report._compute_account_balance(
                 depreciation_accounts,
                 date_from=report.date_from,
-                date_to=report.date_to
+                date_to=report.date_to,
             )
             report.depreciation_amortization = sum(
                 b['balance'] for b in depreciation_balances.values()
             )
-            
+
             # Change in Receivables
             receivable_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.RECEIVABLE_TYPES)
+                report._get_account_domain(report.RECEIVABLE_TYPES),
             )
             opening_ar = report._compute_account_balance(
                 receivable_accounts,
-                date_to=fields.Date.subtract(report.date_from, days=1)
+                date_to=fields.Date.subtract(report.date_from, days=1),
             )
             closing_ar = report._compute_account_balance(
-                receivable_accounts, date_to=report.date_to
+                receivable_accounts, date_to=report.date_to,
             )
             report.change_in_receivables = -(
                 sum(b['balance'] for b in closing_ar.values()) -
                 sum(b['balance'] for b in opening_ar.values())
             )
-            
+
             # Change in Payables
             payable_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.PAYABLE_TYPES)
+                report._get_account_domain(report.PAYABLE_TYPES),
             )
             opening_ap = report._compute_account_balance(
                 payable_accounts,
-                date_to=fields.Date.subtract(report.date_from, days=1)
+                date_to=fields.Date.subtract(report.date_from, days=1),
             )
             closing_ap = report._compute_account_balance(
-                payable_accounts, date_to=report.date_to
+                payable_accounts, date_to=report.date_to,
             )
             report.change_in_payables = -(
                 sum(b['balance'] for b in closing_ap.values()) -
                 sum(b['balance'] for b in opening_ap.values())
             )
-            
+
             # Inventory changes (placeholder - requires inventory module)
             report.change_in_inventory = 0.0
-            
+
             # Cash from Operating Activities
             report.cash_from_operating = (
                 report.net_income +
@@ -292,79 +311,79 @@ class CashFlowReport(models.TransientModel):
                 report.change_in_payables +
                 report.change_in_inventory
             )
-            
+
             # ----------------------------------------------------------------
             # INVESTING ACTIVITIES
             # ----------------------------------------------------------------
-            
+
             # Fixed asset changes
             fixed_asset_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.FIXED_ASSET_TYPES)
+                report._get_account_domain(report.FIXED_ASSET_TYPES),
             )
             opening_fa = report._compute_account_balance(
                 fixed_asset_accounts,
-                date_to=fields.Date.subtract(report.date_from, days=1)
+                date_to=fields.Date.subtract(report.date_from, days=1),
             )
             closing_fa = report._compute_account_balance(
-                fixed_asset_accounts, date_to=report.date_to
+                fixed_asset_accounts, date_to=report.date_to,
             )
             fa_change = (
                 sum(b['balance'] for b in closing_fa.values()) -
                 sum(b['balance'] for b in opening_fa.values())
             )
-            
+
             # Simplified: all FA increases are CapEx, decreases are disposals
             report.capital_expenditures = -max(fa_change, 0)
             report.asset_disposals = -min(fa_change, 0)
-            
+
             report.cash_from_investing = (
                 report.capital_expenditures + report.asset_disposals
             )
-            
+
             # ----------------------------------------------------------------
             # FINANCING ACTIVITIES
             # ----------------------------------------------------------------
-            
+
             # Long-term debt changes
             debt_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.LIABILITY_TYPES)
+                report._get_account_domain(report.LIABILITY_TYPES),
             )
             opening_debt = report._compute_account_balance(
                 debt_accounts,
-                date_to=fields.Date.subtract(report.date_from, days=1)
+                date_to=fields.Date.subtract(report.date_from, days=1),
             )
             closing_debt = report._compute_account_balance(
-                debt_accounts, date_to=report.date_to
+                debt_accounts, date_to=report.date_to,
             )
             debt_change = -(
                 sum(b['balance'] for b in closing_debt.values()) -
                 sum(b['balance'] for b in opening_debt.values())
             )
-            
+
             report.debt_proceeds = max(debt_change, 0)
             report.debt_repayments = -min(debt_change, 0)
             report.dividends_paid = 0.0  # Would need specific dividend accounts
-            
+
             report.cash_from_financing = (
-                report.debt_proceeds - 
-                report.debt_repayments - 
+                report.debt_proceeds -
+                report.debt_repayments -
                 report.dividends_paid
             )
-            
+
             # ----------------------------------------------------------------
             # NET CHANGE AND RECONCILIATION
             # ----------------------------------------------------------------
-            
+
             report.net_change_in_cash = (
                 report.cash_from_operating +
                 report.cash_from_investing +
                 report.cash_from_financing
             )
-            
+
             # Verify: Opening + Net Change = Closing
             expected_closing = report.opening_cash + report.net_change_in_cash
             report.is_reconciled = abs(expected_closing - report.closing_cash) < 0.01
-            
+
             report.line_ids = []  # Placeholder for line generation
 
     def action_generate_report(self):
@@ -372,9 +391,9 @@ class CashFlowReport(models.TransientModel):
         self.ensure_one()
         if not self.date_from or not self.date_to:
             raise UserError(_("Please specify the date range."))
-        
+
         self._compute_report_data()
-        
+
         return {
             'name': _('Cash Flow: %s to %s') % (self.date_from, self.date_to),
             'type': 'ir.actions.act_window',
@@ -390,7 +409,7 @@ class CashFlowReportLine(models.TransientModel):
     _name = 'account.cash.flow.report.line'
     _description = 'Cash Flow Report Line'
     _order = 'sequence, id'
-    
+
     report_id = fields.Many2one(
         comodel_name='account.cash.flow.report',
         string='Report',

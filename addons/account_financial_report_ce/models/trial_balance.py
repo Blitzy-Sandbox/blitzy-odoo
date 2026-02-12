@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -19,14 +18,14 @@ Acceptance Criteria:
 - Scenario 6: Comparative Trial Balance
 """
 
-from odoo import api, fields, models, _
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
 class TrialBalanceReport(models.TransientModel):
     """
     Trial Balance Report.
-    
+
     Shows all account balances with debit and credit columns,
     verifying the fundamental rule that debits must equal credits.
     """
@@ -37,37 +36,37 @@ class TrialBalanceReport(models.TransientModel):
     # -------------------------------------------------------------------------
     # TRIAL BALANCE SPECIFIC FIELDS
     # -------------------------------------------------------------------------
-    
+
     date_to = fields.Date(
         string='As of Date',
         required=True,
         default=fields.Date.context_today,
         help="Generate Trial Balance as of this date.",
     )
-    
+
     date_from = fields.Date(
         string='From Date',
         help="Optional start date to show only period activity.",
     )
-    
+
     show_balance_zero = fields.Boolean(
         string='Show Zero Balances',
         default=False,
         help="Include accounts with zero balance.",
     )
-    
+
     show_hierarchy = fields.Boolean(
         string='Show Account Groups',
         default=False,
         help="Display accounts grouped by account group/type.",
     )
-    
+
     show_analytic = fields.Boolean(
         string='Include Analytic',
         default=False,
         help="Show analytic account breakdown.",
     )
-    
+
     display_type = fields.Selection(
         selection=[
             ('balance', 'Balance Only'),
@@ -78,36 +77,36 @@ class TrialBalanceReport(models.TransientModel):
         default='both',
         help="How to display account balances.",
     )
-    
+
     # -------------------------------------------------------------------------
     # COMPUTED REPORT DATA
     # -------------------------------------------------------------------------
-    
+
     line_ids = fields.One2many(
         comodel_name='account.trial.balance.report.line',
         inverse_name='report_id',
         string='Account Lines',
         compute='_compute_report_data',
     )
-    
+
     total_debit = fields.Monetary(
         string='Total Debit',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     total_credit = fields.Monetary(
         string='Total Credit',
         currency_field='currency_id',
         compute='_compute_report_data',
     )
-    
+
     is_balanced = fields.Boolean(
         string='Is Balanced',
         compute='_compute_report_data',
         help="True if total debits equal total credits.",
     )
-    
+
     difference = fields.Monetary(
         string='Difference',
         currency_field='currency_id',
@@ -121,7 +120,7 @@ class TrialBalanceReport(models.TransientModel):
     def _compute_report_data(self):
         """
         Compute Trial Balance report data.
-        
+
         For each account:
         1. Calculate total debit (all debit entries)
         2. Calculate total credit (all credit entries)
@@ -130,12 +129,12 @@ class TrialBalanceReport(models.TransientModel):
         """
         for report in self:
             report.currency_id = report.company_id.currency_id
-            
-            # Get all accounts
+
+            # Get all accounts (Odoo 19.0: company_ids Many2many)
             accounts = self.env['account.account'].search([
-                ('company_id', '=', report.company_id.id),
+                ('company_ids', 'in', report.company_id.ids),
             ], order='code')
-            
+
             # Compute balances
             if report.date_from:
                 # Period balance (activity during period)
@@ -150,27 +149,27 @@ class TrialBalanceReport(models.TransientModel):
                     accounts,
                     date_to=report.date_to,
                 )
-            
+
             # Generate lines
             lines = []
             Line = self.env['account.trial.balance.report.line']
             total_debit = 0.0
             total_credit = 0.0
-            
+
             for account in accounts:
                 bal = balances.get(account.id, {})
                 debit = bal.get('debit', 0.0)
                 credit = bal.get('credit', 0.0)
                 balance = bal.get('balance', 0.0)
-                
+
                 # Skip zero balance if not showing them
                 if not report.show_balance_zero and balance == 0 and debit == 0 and credit == 0:
                     continue
-                
+
                 # Debit balance vs Credit balance display
                 debit_balance = balance if balance > 0 else 0.0
                 credit_balance = -balance if balance < 0 else 0.0
-                
+
                 lines.append(Line.new({
                     'report_id': report.id,
                     'account_id': account.id,
@@ -184,10 +183,10 @@ class TrialBalanceReport(models.TransientModel):
                     'credit_balance': credit_balance,
                     'currency_id': report.currency_id.id,
                 }))
-                
+
                 total_debit += debit_balance
                 total_credit += credit_balance
-            
+
             report.line_ids = lines
             report.total_debit = total_debit
             report.total_credit = total_credit
@@ -199,9 +198,9 @@ class TrialBalanceReport(models.TransientModel):
         self.ensure_one()
         if not self.date_to:
             raise UserError(_("Please specify the As of Date."))
-        
+
         self._compute_report_data()
-        
+
         return {
             'name': _('Trial Balance as of %s') % self.date_to,
             'type': 'ir.actions.act_window',
@@ -217,7 +216,7 @@ class TrialBalanceReportLine(models.TransientModel):
     _name = 'account.trial.balance.report.line'
     _description = 'Trial Balance Report Line'
     _order = 'code'
-    
+
     report_id = fields.Many2one(
         comodel_name='account.trial.balance.report',
         string='Report',
@@ -227,23 +226,23 @@ class TrialBalanceReportLine(models.TransientModel):
     code = fields.Char(string='Code')
     name = fields.Char(string='Account Name')
     account_type = fields.Char(string='Type')
-    
+
     # Actual debit/credit totals
     debit = fields.Monetary(string='Period Debit', currency_field='currency_id')
     credit = fields.Monetary(string='Period Credit', currency_field='currency_id')
     balance = fields.Monetary(string='Net Balance', currency_field='currency_id')
-    
+
     # Debit/Credit balance columns (for trial balance format)
     debit_balance = fields.Monetary(string='Debit Balance', currency_field='currency_id')
     credit_balance = fields.Monetary(string='Credit Balance', currency_field='currency_id')
-    
+
     # Comparison
     comparison_debit = fields.Monetary(string='Prior Debit', currency_field='currency_id')
     comparison_credit = fields.Monetary(string='Prior Credit', currency_field='currency_id')
     variance = fields.Monetary(string='Variance', currency_field='currency_id')
-    
+
     currency_id = fields.Many2one('res.currency', string='Currency')
-    
+
     def action_drilldown(self):
         """Drill down to account transactions."""
         self.ensure_one()

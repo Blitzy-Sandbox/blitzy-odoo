@@ -407,7 +407,7 @@ class BankStatementImportWizard(models.TransientModel):
                 log_parts.append(import_log_detail)
 
             self.write({
-                'statement_ids': Command.set(statements.ids),
+                'statement_ids': [Command.set(statements.ids)],
                 'line_count': total_lines,
                 'state': 'done',
                 'import_log': '\n'.join(log_parts),

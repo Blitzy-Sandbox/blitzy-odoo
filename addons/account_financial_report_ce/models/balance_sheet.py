@@ -19,7 +19,7 @@ Acceptance Criteria Implemented:
 - Scenario 6: Balance validation (A = L + E)
 """
 
-from odoo import _, api, fields, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 from odoo.fields import Command
 

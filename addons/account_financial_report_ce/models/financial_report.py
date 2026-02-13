@@ -245,7 +245,7 @@ class FinancialReportAbstract(models.AbstractModel):
         # Analytic account filter — supports analytic dimension filtering
         if analytic_account_ids:
             domain.append(
-                ('analytic_distribution', 'in', analytic_account_ids)
+                ('analytic_distribution', 'in', analytic_account_ids),
             )
 
         return domain
@@ -419,7 +419,7 @@ class FinancialReportAbstract(models.AbstractModel):
 
         if not self.comparison_date_to:
             raise UserError(
-                _("Comparison end date is required when comparison is enabled.")
+                _("Comparison end date is required when comparison is enabled."),
             )
 
         return self._compute_account_balance(

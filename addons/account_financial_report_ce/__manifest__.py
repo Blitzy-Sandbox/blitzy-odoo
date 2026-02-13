@@ -79,6 +79,6 @@
     # - AGPL-3.0 license (satisfied)
     # - Zero Enterprise module dependencies (satisfied — only account, analytic)
     # - OCA coding standards compliance (satisfied)
-    # - Python 3.10–3.13 compatibility (satisfied)
+    # - Python 3.10-3.13 compatibility (satisfied)
     # - Odoo 19.0 API (version-agnostic where possible)
 }

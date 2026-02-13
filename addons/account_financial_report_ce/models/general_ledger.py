@@ -18,7 +18,7 @@ Acceptance Criteria:
 - Scenario 6: Drill-down to source journal entries
 """
 
-from odoo import _, api, fields, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 from odoo.fields import Command
 

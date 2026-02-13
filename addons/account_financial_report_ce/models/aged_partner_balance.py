@@ -23,7 +23,6 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.fields import Command
 
-
 # Mapping between partner_type aliases and internal report_type values
 _PARTNER_TYPE_TO_REPORT_TYPE = {
     'customer': 'receivable',
@@ -53,11 +52,11 @@ def _sync_alias_vals(vals):
     # partner_type -> report_type
     if 'partner_type' in vals and 'report_type' not in vals:
         vals['report_type'] = _PARTNER_TYPE_TO_REPORT_TYPE.get(
-            vals['partner_type'], 'receivable'
+            vals['partner_type'], 'receivable',
         )
     elif 'report_type' in vals and 'partner_type' not in vals:
         vals['partner_type'] = _REPORT_TYPE_TO_PARTNER_TYPE.get(
-            vals['report_type'], 'customer'
+            vals['report_type'], 'customer',
         )
 
 
@@ -163,7 +162,7 @@ class AgedPartnerBalanceReport(models.TransientModel):
                 rec.date_at = rec.date_to
             if not rec.partner_type and rec.report_type:
                 rec.partner_type = _REPORT_TYPE_TO_PARTNER_TYPE.get(
-                    rec.report_type, 'customer'
+                    rec.report_type, 'customer',
                 )
         return records
 
@@ -178,7 +177,7 @@ class AgedPartnerBalanceReport(models.TransientModel):
             for rec in self:
                 super(AgedPartnerBalanceReport, rec).write({
                     'partner_type': _REPORT_TYPE_TO_PARTNER_TYPE.get(
-                        rec.report_type, 'customer'
+                        rec.report_type, 'customer',
                     ),
                 })
         return res
@@ -271,12 +270,12 @@ class AgedPartnerBalanceReport(models.TransientModel):
             # Fetch with search_read for performance: a single SQL round-trip
             # returns only the columns we need, avoiding full ORM record
             # instantiation for potentially 100 000+ rows.
-            _ML_FIELDS = [
+            ml_fields = [
                 'partner_id', 'date_maturity', 'date', 'amount_residual',
                 'account_id', 'move_id', 'ref', 'balance',
             ]
             ml_rows = self.env['account.move.line'].search_read(
-                domain, fields=_ML_FIELDS,
+                domain, fields=ml_fields,
                 order='partner_id, date_maturity, date',
             )
 

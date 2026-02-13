@@ -518,7 +518,7 @@ class TestReportSecurity(TestFinancialReportsBase):
         """Test that accountants can access reports."""
         accountant_group = self.env.ref('account.group_account_user')
         report_user_group = self.env.ref(
-            'account_financial_report_ce.group_financial_report_user'
+            'account_financial_report_ce.group_financial_report_user',
         )
 
         # Create a user with accountant and financial report user permissions

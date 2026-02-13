@@ -562,7 +562,11 @@ class GeneralLedgerReportLine(models.TransientModel):
 
     _name = 'account.general.ledger.report.line'
     _description = 'General Ledger Report Transaction'
-    _order = 'date, id'
+    # Order by id to preserve the creation sequence set by
+    # _compute_report_data, which already sorts lines according to
+    # the user's sort_by preference (date/ref/name).  Using 'date, id'
+    # would override non-date sort choices.
+    _order = 'id'
 
     account_line_id = fields.Many2one(
         comodel_name='account.general.ledger.report.account',

@@ -11,6 +11,7 @@
     - Multi-currency support (conditional foreign currency columns)
     - Grand totals with debit, credit, and balance summaries
     - Sorting respects model sort_by preference (date/ref/name)
+    - Partner subtotal rows when centralize mode is active
 -->
 <odoo>
     <template id="report_general_ledger">
@@ -61,11 +62,12 @@
                         </div>
 
                         <!-- Detect foreign currency transactions for conditional multi-currency columns.
-                             Checks if any non-opening/non-closing line has a transaction currency
-                             that differs from the company currency. When true, extra columns for
-                             original currency amount and currency code are rendered. -->
-                        <t t-set="all_period_lines" t-value="doc.line_ids.filtered(lambda l: not l.is_opening and not l.is_closing)"/>
-                        <t t-set="foreign_currency_lines" t-value="all_period_lines.filtered(lambda l: l.move_line_id.currency_id and l.move_line_id.currency_id.id != doc.company_id.currency_id.id)"/>
+                             Navigates the account_line_ids → line_ids hierarchy to find transaction
+                             lines whose move_line_id carries a different currency than the company
+                             currency.  When true, extra columns for original currency amount and
+                             currency code are rendered in per-account tables. -->
+                        <t t-set="all_txn_lines" t-value="doc.account_line_ids.mapped('line_ids')"/>
+                        <t t-set="foreign_currency_lines" t-value="all_txn_lines.filtered(lambda l: l.move_line_id and l.move_line_id.currency_id and l.move_line_id.currency_id.id != doc.company_id.currency_id.id)"/>
                         <t t-set="show_foreign_currency" t-value="bool(foreign_currency_lines)"/>
 
                         <!-- Grand total accumulators for debit, credit, and running balance -->
@@ -79,10 +81,13 @@
                         <t t-set="grand_closing_credit" t-value="0"/>
                         <t t-set="grand_closing_balance" t-value="0"/>
 
-                        <!-- General Ledger by Account -->
-                        <t t-foreach="doc.account_ids or doc.line_ids.mapped('account_id')" t-as="account">
-                            <t t-set="account_lines" t-value="doc.line_ids.filtered(lambda l: l.account_id == account)"/>
-                            <t t-if="account_lines or not doc.hide_account_at_0">
+                        <!-- General Ledger by Account — iterates account_line_ids which are
+                             account.general.ledger.report.account records created by
+                             _compute_report_data.  Each record holds aggregated balances and
+                             a nested line_ids collection of individual transactions. -->
+                        <t t-foreach="doc.account_line_ids" t-as="account_line">
+                            <t t-set="account" t-value="account_line.account_id"/>
+                            <t t-if="account_line.line_ids or account_line.opening_balance or not doc.hide_account_at_0">
 
                                 <!-- Account Header with code and name -->
                                 <div class="mt-4">
@@ -110,10 +115,12 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <!-- Opening Balance row with debit, credit, and computed running balance -->
-                                        <t t-set="opening_debit" t-value="sum(account_lines.filtered(lambda l: l.is_opening).mapped('debit'))"/>
-                                        <t t-set="opening_credit" t-value="sum(account_lines.filtered(lambda l: l.is_opening).mapped('credit'))"/>
-                                        <t t-set="opening_balance" t-value="opening_debit - opening_credit"/>
+                                        <!-- Opening Balance row — the model stores opening_balance as a
+                                             net value; split into debit/credit columns for presentation.
+                                             Positive = debit balance, negative = credit balance. -->
+                                        <t t-set="opening_balance" t-value="account_line.opening_balance"/>
+                                        <t t-set="opening_debit" t-value="opening_balance if opening_balance >= 0 else 0.0"/>
+                                        <t t-set="opening_credit" t-value="abs(opening_balance) if opening_balance &lt; 0 else 0.0"/>
                                         <tr class="table-light">
                                             <td colspan="5"><strong>Opening Balance</strong></td>
                                             <td class="text-end">
@@ -130,63 +137,85 @@
                                             <td t-if="show_foreign_currency"/>
                                         </tr>
 
-                                        <!-- Transaction Lines — sorted by model's sort_by preference,
-                                             no hardcoded re-sort in template. The model's _compute_report_data
-                                             already orders lines according to doc.sort_by (date/ref/name). -->
+                                        <!-- Transaction Lines — iterates account_line.line_ids which are
+                                             account.general.ledger.report.line records already ordered by
+                                             _compute_report_data according to the user's sort_by preference
+                                             (date/ref/name).  The model's _order='id' preserves creation
+                                             sequence so no re-sorting in the template is needed. -->
                                         <t t-if="doc.show_details">
-                                            <t t-set="period_lines" t-value="account_lines.filtered(lambda l: not l.is_opening and not l.is_closing)"/>
-                                            <t t-foreach="period_lines" t-as="line">
-                                                <tr>
-                                                    <td><span t-field="line.date"/></td>
-                                                    <td><span t-esc="line.journal_id.code"/></td>
-                                                    <td>
-                                                        <!-- Drill-down link to source journal entry with view_type=form parameter
-                                                             and tooltip displaying the full move reference for quick identification -->
-                                                        <a t-att-href="'/web#model=account.move&amp;id=%s&amp;view_type=form' % line.move_id.id"
-                                                           class="text-primary"
-                                                           t-att-title="'%s — %s' % (line.move_id.name or '', line.ref or line.move_id.ref or '')">
-                                                            <span t-esc="line.move_id.name"/>
-                                                        </a>
-                                                    </td>
-                                                    <td><span t-esc="line.partner_id.name or ''"/></td>
-                                                    <td><span t-esc="line.name or line.ref or ''"/></td>
-                                                    <td class="text-end">
-                                                        <t t-if="line.debit">
-                                                            <span t-esc="line.debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
-                                                        </t>
-                                                    </td>
-                                                    <td class="text-end">
-                                                        <t t-if="line.credit">
-                                                            <span t-esc="line.credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
-                                                        </t>
-                                                    </td>
-                                                    <!-- Running balance column — displays cumulative balance per account
-                                                         from opening through each transaction line -->
-                                                    <td class="text-end">
-                                                        <span t-esc="line.balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
-                                                    </td>
-                                                    <!-- Conditional multi-currency columns: original transaction amount
-                                                         and currency code shown only when the line's currency differs
-                                                         from the company currency -->
-                                                    <t t-if="show_foreign_currency">
+                                            <t t-foreach="account_line.line_ids" t-as="line">
+                                                <!-- Regular transaction line -->
+                                                <t t-if="not line.is_partner_subtotal">
+                                                    <tr>
+                                                        <td><span t-field="line.date"/></td>
+                                                        <td><span t-esc="line.journal_id.code"/></td>
+                                                        <td>
+                                                            <!-- Drill-down link to source journal entry with view_type=form parameter
+                                                                 and tooltip displaying the full move reference for quick identification -->
+                                                            <a t-if="line.move_id"
+                                                               t-att-href="'/web#model=account.move&amp;id=%s&amp;view_type=form' % line.move_id.id"
+                                                               class="text-primary"
+                                                               t-att-title="'%s — %s' % (line.move_id.name or '', line.ref or line.move_id.ref or '')">
+                                                                <span t-esc="line.move_id.name"/>
+                                                            </a>
+                                                        </td>
+                                                        <td><span t-esc="line.partner_id.name or ''"/></td>
+                                                        <td><span t-esc="line.name or line.ref or ''"/></td>
                                                         <td class="text-end">
-                                                            <t t-if="line.move_line_id.currency_id and line.move_line_id.currency_id.id != doc.company_id.currency_id.id">
-                                                                <span t-esc="line.move_line_id.amount_currency" t-options="{'widget': 'monetary', 'display_currency': line.move_line_id.currency_id}"/>
+                                                            <t t-if="line.debit">
+                                                                <span t-esc="line.debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                                             </t>
                                                         </td>
                                                         <td class="text-end">
-                                                            <t t-if="line.move_line_id.currency_id and line.move_line_id.currency_id.id != doc.company_id.currency_id.id">
-                                                                <span t-esc="line.move_line_id.currency_id.name"/>
+                                                            <t t-if="line.credit">
+                                                                <span t-esc="line.credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                                             </t>
                                                         </td>
-                                                    </t>
-                                                </tr>
+                                                        <!-- Running balance column — displays cumulative balance per account
+                                                             from opening through each transaction line -->
+                                                        <td class="text-end">
+                                                            <span t-esc="line.balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </td>
+                                                        <!-- Conditional multi-currency columns: original transaction amount
+                                                             and currency code shown only when the line's currency differs
+                                                             from the company currency -->
+                                                        <t t-if="show_foreign_currency">
+                                                            <td class="text-end">
+                                                                <t t-if="line.move_line_id and line.move_line_id.currency_id and line.move_line_id.currency_id.id != doc.company_id.currency_id.id">
+                                                                    <span t-esc="line.move_line_id.amount_currency" t-options="{'widget': 'monetary', 'display_currency': line.move_line_id.currency_id}"/>
+                                                                </t>
+                                                            </td>
+                                                            <td class="text-end">
+                                                                <t t-if="line.move_line_id and line.move_line_id.currency_id and line.move_line_id.currency_id.id != doc.company_id.currency_id.id">
+                                                                    <span t-esc="line.move_line_id.currency_id.name"/>
+                                                                </t>
+                                                            </td>
+                                                        </t>
+                                                    </tr>
+                                                </t>
+                                                <!-- Partner subtotal line (rendered when centralize mode is active) -->
+                                                <t t-if="line.is_partner_subtotal">
+                                                    <tr class="table-warning">
+                                                        <td colspan="5"><em t-esc="line.name"/></td>
+                                                        <td class="text-end">
+                                                            <em t-esc="line.debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <em t-esc="line.credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <em t-esc="line.balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </td>
+                                                        <td t-if="show_foreign_currency"/>
+                                                        <td t-if="show_foreign_currency"/>
+                                                    </tr>
+                                                </t>
                                             </t>
                                         </t>
 
                                         <!-- Period Totals row with debit, credit, and net period balance -->
-                                        <t t-set="period_debit" t-value="sum(account_lines.filtered(lambda l: not l.is_opening and not l.is_closing).mapped('debit'))"/>
-                                        <t t-set="period_credit" t-value="sum(account_lines.filtered(lambda l: not l.is_opening and not l.is_closing).mapped('credit'))"/>
+                                        <t t-set="period_debit" t-value="account_line.total_debit"/>
+                                        <t t-set="period_credit" t-value="account_line.total_credit"/>
                                         <t t-set="period_balance" t-value="period_debit - period_credit"/>
                                         <tr class="table-info">
                                             <td colspan="5"><strong>Period Movement</strong></td>
@@ -205,9 +234,9 @@
                                         </tr>
 
                                         <!-- Closing Balance row: opening + period movement, with running balance -->
+                                        <t t-set="closing_balance" t-value="account_line.closing_balance"/>
                                         <t t-set="closing_debit" t-value="opening_debit + period_debit"/>
                                         <t t-set="closing_credit" t-value="opening_credit + period_credit"/>
-                                        <t t-set="closing_balance" t-value="opening_balance + period_balance"/>
                                         <tr class="table-primary">
                                             <td colspan="5"><strong>Closing Balance</strong></td>
                                             <td class="text-end">

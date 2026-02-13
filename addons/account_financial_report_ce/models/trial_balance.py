@@ -26,7 +26,7 @@ Each column pair must balance (sum debits == sum credits).
 import logging
 from collections import defaultdict
 
-from odoo import _, api, fields, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 from odoo.fields import Command
 
@@ -476,9 +476,7 @@ class TrialBalanceReport(models.TransientModel):
         # Exclude when user explicitly hides zeros via either flag
         if not self.show_balance_zero:
             return True
-        if self.hide_zero_balance:
-            return True
-        return False
+        return bool(self.hide_zero_balance)
 
     def _build_flat_lines(self, accounts, opening_balances, period_balances,
                           comparison_balances):

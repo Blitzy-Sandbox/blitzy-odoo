@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -18,7 +17,6 @@ Performance target: import <10 seconds for 500 statement lines.
 """
 
 import base64
-import io
 import logging
 
 from odoo import _, api, fields, models
@@ -245,12 +243,12 @@ class BankStatementImportWizard(models.TransientModel):
                 if not raw:
                     raise ValidationError(
                         _('The uploaded file is empty. Please select a valid '
-                          'bank statement file.')
+                          'bank statement file.'),
                     )
                 if len(raw) > _MAX_FILE_SIZE:
                     raise ValidationError(
                         _('The uploaded file exceeds the maximum allowed size '
-                          'of %d MB.') % (_MAX_FILE_SIZE // (1024 * 1024),)
+                          'of %d MB.') % (_MAX_FILE_SIZE // (1024 * 1024),),
                     )
 
     # ------------------------------------------------------------------
@@ -271,7 +269,8 @@ class BankStatementImportWizard(models.TransientModel):
         self.ensure_one()
         self._validate_before_action()
 
-        raw_data = base64.b64decode(self.data_file)
+        # Validate file can be decoded (early-fail before delegating)
+        base64.b64decode(self.data_file)
 
         try:
             import_model = self.env['account.bank.statement.import']
@@ -295,14 +294,12 @@ class BankStatementImportWizard(models.TransientModel):
                 ref = (row.get('ref', '') or '')[:20]
                 partner = (row.get('partner_name', '') or '')[:20]
                 preview_parts.append(
-                    '{:<12} {:<40} {:>14.2f} {:<20} {:<20}'.format(
-                        date_str, label, amount, ref, partner,
-                    )
+                    f'{date_str:<12} {label:<40} {amount:>14.2f} {ref:<20} {partner:<20}',
                 )
 
             preview_parts.append('')
             preview_parts.append(
-                _('Total lines in file: %d') % len(parsed_lines)
+                _('Total lines in file: %d') % len(parsed_lines),
             )
 
             self.write({
@@ -346,9 +343,9 @@ class BankStatementImportWizard(models.TransientModel):
             import_model = self.env['account.bank.statement.import']
             import_rec = import_model.create(self._prepare_import_vals())
 
-            # Execute import — the model handles parsing, validation,
+            # Execute import - the model handles parsing, validation,
             # duplicate detection, and statement line creation.
-            result = import_rec.action_import()
+            import_rec.action_import()
 
             # Collect results from the import record.
             statements = import_rec.statement_ids
@@ -412,7 +409,7 @@ class BankStatementImportWizard(models.TransientModel):
             name_lower = self.filename.lower()
             if name_lower.endswith('.csv'):
                 return 'csv'
-            if name_lower.endswith('.ofx') or name_lower.endswith('.qfx'):
+            if name_lower.endswith(('.ofx', '.qfx')):
                 return 'ofx'
             if name_lower.endswith('.qif'):
                 return 'qif'
@@ -495,15 +492,15 @@ class BankStatementImportWizard(models.TransientModel):
         self.ensure_one()
         if not self.journal_id:
             raise UserError(
-                _('Please select a bank or cash journal before proceeding.')
+                _('Please select a bank or cash journal before proceeding.'),
             )
         if not self.data_file:
             raise UserError(
-                _('Please upload a bank statement file before proceeding.')
+                _('Please upload a bank statement file before proceeding.'),
             )
         if not self.auto_detect_format and not self.file_format:
             raise UserError(
-                _('Please select a file format or enable auto-detection.')
+                _('Please select a file format or enable auto-detection.'),
             )
 
     def _reopen_wizard(self):

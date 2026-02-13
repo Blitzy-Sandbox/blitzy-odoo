@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -21,10 +20,10 @@ Multi-company isolation: all queries include company_id scoping.
 Zero Enterprise dependencies.
 """
 
-from odoo import api, fields, models, _, Command
-from odoo.exceptions import UserError, ValidationError
-
 import logging
+
+from odoo import Command, _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -246,7 +245,7 @@ class ReconciliationWizard(models.TransientModel):
         for wizard in self:
             if wizard.date_from and wizard.date_to and wizard.date_from > wizard.date_to:
                 raise ValidationError(
-                    _("The start date must be earlier than or equal to the end date.")
+                    _("The start date must be earlier than or equal to the end date."),
                 )
 
     @api.onchange('journal_id')
@@ -283,7 +282,7 @@ class ReconciliationWizard(models.TransientModel):
         # Find new matches for all unreconciled statement lines
         new_matches = MatchingEngine.find_matches(
             statement_lines=self.statement_line_ids,
-            company_id=self.company_id.id,
+            journal_id=self.journal_id.id,
         )
 
         # Apply reconciliation rules in priority order
@@ -373,7 +372,7 @@ class ReconciliationWizard(models.TransientModel):
 
         # Update matching records
         related_matches = self.match_ids.filtered(
-            lambda m: m.statement_line_id == st_line
+            lambda m: m.statement_line_id == st_line,
         )
         if related_matches:
             related_matches.write({'state': 'rejected'})
@@ -423,13 +422,13 @@ class ReconciliationWizard(models.TransientModel):
         self.ensure_one()
 
         high_confidence_matches = self.match_ids.filtered(
-            lambda m: m.confidence_score >= 90.0 and m.state == 'proposed'
+            lambda m: m.confidence_score >= 90.0 and m.state == 'proposed',
         )
 
         if not high_confidence_matches:
             raise UserError(_(
                 "No high-confidence matches (score >= 90%%) found for batch "
-                "confirmation."
+                "confirmation.",
             ))
 
         confirmed_count = 0
@@ -450,7 +449,7 @@ class ReconciliationWizard(models.TransientModel):
                     match_records=matches,
                 )
                 confirmed_count += 1
-            except Exception as exc:
+            except (ValueError, TypeError, KeyError) as exc:
                 _logger.warning(
                     "Batch confirm failed for statement line '%s': %s",
                     st_line.display_name, exc,
@@ -499,15 +498,15 @@ class ReconciliationWizard(models.TransientModel):
 
         # Identify the liquidity line(s) on the statement line's move
         liquidity_lines = move.line_ids.filtered(
-            lambda l: l.account_id == st_line.journal_id.default_account_id
+            lambda ml: ml.account_id == st_line.journal_id.default_account_id,
         )
 
         if not liquidity_lines:
             # Fallback: use lines with matching debit/credit
             liquidity_lines = move.line_ids.filtered(
-                lambda l: l.account_id.account_type in (
+                lambda ml: ml.account_id.account_type in (
                     'asset_cash', 'liability_credit_card',
-                )
+                ),
             )
 
         if not liquidity_lines:
@@ -541,8 +540,8 @@ class ReconciliationWizard(models.TransientModel):
             })
             # Re-fetch lines after write-off creation
             wo_line = move.line_ids.filtered(
-                lambda l: l.account_id == self.write_off_account_id
-                and abs(l.balance - (-difference)) < 0.01
+                lambda ml: ml.account_id == self.write_off_account_id
+                and abs(ml.balance - (-difference)) < 0.01,
             )
             if wo_line:
                 lines_to_reconcile |= wo_line[:1]
@@ -606,11 +605,11 @@ class ReconciliationWizard(models.TransientModel):
         for rule in rules:
             if hasattr(rule, 'evaluate_rule'):
                 for st_line in statement_lines.filtered(
-                    lambda l: not l.is_reconciled
+                    lambda ml: not ml.is_reconciled,
                 ):
                     try:
                         rule.evaluate_rule(st_line)
-                    except Exception as exc:
+                    except (ValueError, TypeError, KeyError) as exc:
                         _logger.warning(
                             "Rule '%s' evaluation failed for line '%s': %s",
                             rule.name, st_line.display_name, exc,

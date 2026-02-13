@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -27,9 +26,9 @@ import hashlib
 import io
 import logging
 import re
-from datetime import datetime, date
+from datetime import date, datetime
 
-from odoo import api, fields, models, _, Command
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 # Conditional import for CAMT.053 XML parsing
@@ -263,11 +262,11 @@ class BankStatementImport(models.TransientModel):
         # Try decoding as text for signature matching
         try:
             text_content = raw_data[:4096].decode('utf-8', errors='replace')
-        except Exception:
+        except (UnicodeDecodeError, ValueError):
             text_content = raw_data[:4096].decode('latin-1', errors='replace')
 
         # Check for OFX signatures
-        if re.search(r'OFXHEADER', text_content) or re.search(r'<\?OFX', text_content):
+        if r'OFXHEADER' in text_content or re.search(r'<\?OFX', text_content):
             _logger.info(
                 "Format detected from content signature: OFX (file: %s)",
                 self.filename or 'unknown',
@@ -405,12 +404,12 @@ class BankStatementImport(models.TransientModel):
         # Step 2: Parse file
         try:
             parsed_lines = self._parse_file()
-        except Exception as exc:
+        except (ValueError, KeyError, TypeError, OSError) as exc:
             _logger.error(
-                "Failed to parse bank statement file: %s", str(exc),
+                "Failed to parse bank statement file: %s", exc,
             )
             raise UserError(
-                _("Failed to parse the bank statement file.\n\nError: %s") % str(exc)
+                _("Failed to parse the bank statement file.\n\nError: %s") % exc,
             ) from exc
 
         log_lines.append(_("Parsed %d transaction lines.") % len(parsed_lines))
@@ -427,16 +426,16 @@ class BankStatementImport(models.TransientModel):
 
         # Step 4: Create statement lines
         created_lines, duplicate_count = self._create_statement_lines(
-            self.journal_id, parsed_lines
+            self.journal_id, parsed_lines,
         )
 
         if duplicate_count > 0:
             log_lines.append(
-                _("Skipped %d duplicate lines.") % duplicate_count
+                _("Skipped %d duplicate lines.") % duplicate_count,
             )
 
         log_lines.append(
-            _("Successfully imported %d lines.") % len(created_lines)
+            _("Successfully imported %d lines.") % len(created_lines),
         )
 
         self.import_log = '\n'.join(log_lines)
@@ -505,7 +504,7 @@ class BankStatementImport(models.TransientModel):
         parser = parser_map.get(self.file_format)
         if not parser:
             raise UserError(
-                _("Unsupported file format: %s") % self.file_format
+                _("Unsupported file format: %s") % self.file_format,
             )
 
         return parser(raw_data)
@@ -547,7 +546,7 @@ class BankStatementImport(models.TransientModel):
             raise UserError(
                 _("Cannot decode the CSV file with encoding '%s'. "
                   "Please verify the encoding setting.\n\nError: %s")
-                % (encoding, str(exc))
+                % (encoding, str(exc)),
             ) from exc
 
         reader = csv.reader(io.StringIO(text_data), delimiter=delimiter)
@@ -564,7 +563,7 @@ class BankStatementImport(models.TransientModel):
 
         for row in reader:
             row_number += 1
-            if not row or all(cell.strip() == '' for cell in row):
+            if not row or all(not cell.strip() for cell in row):
                 continue  # skip empty rows
 
             try:
@@ -644,7 +643,7 @@ class BankStatementImport(models.TransientModel):
             except (IndexError, ValueError) as exc:
                 _logger.warning(
                     "CSV row %d: parsing error: %s. Skipping.",
-                    row_number, str(exc),
+                    row_number, exc,
                 )
                 continue
 
@@ -677,7 +676,7 @@ class BankStatementImport(models.TransientModel):
         if OfxParser is None:
             raise UserError(
                 _("The 'ofxparse' Python library is required to import OFX files. "
-                  "Please install it with: pip install ofxparse")
+                  "Please install it with: pip install ofxparse"),
             )
 
         lines = []
@@ -685,12 +684,12 @@ class BankStatementImport(models.TransientModel):
             ofx = OfxParser.parse(io.BytesIO(data_file))
         except Exception as exc:
             raise UserError(
-                _("Failed to parse the OFX file.\n\nError: %s") % str(exc)
+                _("Failed to parse the OFX file.\n\nError: %s") % str(exc),
             ) from exc
 
         if not ofx.account:
             raise UserError(
-                _("The OFX file does not contain any account information.")
+                _("The OFX file does not contain any account information."),
             )
 
         account = ofx.account
@@ -704,7 +703,7 @@ class BankStatementImport(models.TransientModel):
         statement = getattr(account, 'statement', None)
         if not statement:
             raise UserError(
-                _("The OFX file does not contain any statement data.")
+                _("The OFX file does not contain any statement data."),
             )
 
         transactions = getattr(statement, 'transactions', [])
@@ -792,7 +791,7 @@ class BankStatementImport(models.TransientModel):
 
         if text_data is None:
             raise UserError(
-                _("Cannot decode the QIF file. Please verify the file encoding.")
+                _("Cannot decode the QIF file. Please verify the file encoding."),
             )
 
         # Initialize current transaction accumulator
@@ -817,7 +816,7 @@ class BankStatementImport(models.TransientModel):
                 # Date field
                 date_str = line[1:].strip()
                 current_txn['date_str'] = date_str
-            elif line.startswith('T') or line.startswith('U'):
+            elif line.startswith(('T', 'U')):
                 # Amount field (T = total amount, U = amount in split)
                 amount_str = line[1:].strip()
                 amount_str = re.sub(r'[^\d.\-+,]', '', amount_str)
@@ -934,7 +933,7 @@ class BankStatementImport(models.TransientModel):
         if etree is None:
             raise UserError(
                 _("The 'lxml' Python library is required to import CAMT.053 files. "
-                  "Please install it with: pip install lxml")
+                  "Please install it with: pip install lxml"),
             )
 
         lines = []
@@ -943,7 +942,7 @@ class BankStatementImport(models.TransientModel):
             root = etree.fromstring(data_file)
         except Exception as exc:
             raise UserError(
-                _("Failed to parse the CAMT.053 XML file.\n\nError: %s") % str(exc)
+                _("Failed to parse the CAMT.053 XML file.\n\nError: %s") % str(exc),
             ) from exc
 
         # Detect the namespace from the root element
@@ -951,7 +950,7 @@ class BankStatementImport(models.TransientModel):
         if not ns:
             raise UserError(
                 _("The XML file does not appear to be a valid CAMT.053 statement. "
-                  "No recognized ISO 20022 CAMT.053 namespace found.")
+                  "No recognized ISO 20022 CAMT.053 namespace found."),
             )
 
         ns_map = {'ns': ns}
@@ -960,7 +959,7 @@ class BankStatementImport(models.TransientModel):
         statements = root.findall('.//ns:Stmt', ns_map)
         if not statements:
             raise UserError(
-                _("No statement (Stmt) elements found in the CAMT.053 file.")
+                _("No statement (Stmt) elements found in the CAMT.053 file."),
             )
 
         for stmt_elem in statements:
@@ -1048,7 +1047,7 @@ class BankStatementImport(models.TransientModel):
                 if dt_elem is not None and dt_elem.text:
                     try:
                         parsed_date = datetime.strptime(
-                            dt_elem.text.strip(), '%Y-%m-%d'
+                            dt_elem.text.strip(), '%Y-%m-%d',
                         ).date()
                         break
                     except ValueError:
@@ -1109,9 +1108,9 @@ class BankStatementImport(models.TransientModel):
                 'partner_name': partner_name,
             }
 
-        except Exception as exc:
+        except (ValueError, KeyError, TypeError, AttributeError) as exc:
             _logger.warning(
-                "CAMT.053: failed to parse entry: %s", str(exc),
+                "CAMT.053: failed to parse entry: %s", exc,
             )
             return None
 
@@ -1139,7 +1138,7 @@ class BankStatementImport(models.TransientModel):
         if not parsed_data:
             raise ValidationError(
                 _("The file does not contain any valid transaction data. "
-                  "Please check the file format and content.")
+                  "Please check the file format and content."),
             )
 
         errors = []
@@ -1148,7 +1147,7 @@ class BankStatementImport(models.TransientModel):
             # Check required fields
             if 'date' not in line_data or not line_data['date']:
                 errors.append(
-                    _("Line %d: missing or empty date field.") % idx
+                    _("Line %d: missing or empty date field.") % idx,
                 )
             elif not isinstance(line_data['date'], date):
                 # Try to parse as string
@@ -1158,22 +1157,22 @@ class BankStatementImport(models.TransientModel):
                     except ValueError:
                         errors.append(
                             _("Line %d: invalid date format '%s'. Expected YYYY-MM-DD.")
-                            % (idx, line_data['date'])
+                            % (idx, line_data['date']),
                         )
                 else:
                     errors.append(
                         _("Line %d: date must be a date object or string, got %s.")
-                        % (idx, type(line_data['date']).__name__)
+                        % (idx, type(line_data['date']).__name__),
                     )
 
             if 'amount' not in line_data:
                 errors.append(
-                    _("Line %d: missing amount field.") % idx
+                    _("Line %d: missing amount field.") % idx,
                 )
             elif not isinstance(line_data['amount'], (int, float)):
                 errors.append(
                     _("Line %d: amount must be numeric, got '%s'.")
-                    % (idx, line_data['amount'])
+                    % (idx, line_data['amount']),
                 )
 
             if not line_data.get('payment_ref'):
@@ -1286,12 +1285,12 @@ class BankStatementImport(models.TransientModel):
                 created_lines = StLine.with_context(
                     is_statement_line=True,
                 ).create(batch_vals)
-            except Exception as exc:
+            except (ValueError, TypeError, KeyError, OSError) as exc:
                 _logger.error(
-                    "Failed to create statement lines: %s", str(exc),
+                    "Failed to create statement lines: %s", exc,
                 )
                 raise UserError(
-                    _("Failed to create statement lines.\n\nError: %s") % str(exc)
+                    _("Failed to create statement lines.\n\nError: %s") % exc,
                 ) from exc
 
             # Collect associated statements for the result

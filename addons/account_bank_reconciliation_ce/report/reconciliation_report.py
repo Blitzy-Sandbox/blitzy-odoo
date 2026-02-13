@@ -17,11 +17,11 @@ Odoo resolves the parser by prefixing ``report.`` to the ``report_name``
 attribute and looking up an ``AbstractModel`` with that ``_name``.
 """
 
+import datetime as dt_module
+import logging
 from datetime import date
 
-from odoo import api, fields, models
-
-import logging
+from odoo import api, models
 
 _logger = logging.getLogger(__name__)
 
@@ -50,20 +50,16 @@ class ReportReconciliationStatus(models.AbstractModel):
         Returns:
             dict consumed by the QWeb engine with keys:
 
-            - ``doc_ids``   – list of record IDs
-            - ``doc_model`` – model technical name
-            - ``docs``      – browse recordset of wizard records
-            - ``data``      – pass-through of *data*
-            - ``today``     – ``datetime.date.today()`` for aging calcs
-            - ``datetime``  – reference to the ``datetime`` stdlib module
+            - ``doc_ids``   - list of record IDs
+            - ``doc_model`` - model technical name
+            - ``docs``      - browse recordset of wizard records
+            - ``data``      - pass-through of *data*
+            - ``today``     - ``datetime.date.today()`` for aging calcs
+            - ``datetime``  - reference to the ``datetime`` stdlib module
                               so the template can call
                               ``datetime.datetime.now()``
         """
         docs = self.env['account.reconciliation.wizard'].browse(docids)
-
-        # Import datetime module so the QWeb template can access
-        # ``datetime.datetime.now()`` for the "Generated on" footer.
-        import datetime as dt_module
 
         return {
             'doc_ids': docids,

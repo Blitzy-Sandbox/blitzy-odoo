@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 """
@@ -26,15 +25,16 @@ Integration notes:
       all fields are added to the existing ``account_reconcile_model`` table.
     - The core ``account`` module is never modified; only extended.
     - Zero Enterprise-module dependencies.
-    - Python 3.10–3.13 compatible.
+    - Python 3.10-3.13 compatible.
     - Performance target: < 1 second per rule evaluation.
 """
 
 import logging
+import math
 import re
 
-from odoo import api, fields, models, _, Command
-from odoo.exceptions import UserError, ValidationError
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -200,7 +200,7 @@ class ReconciliationRuleExtension(models.Model):
                 except re.error as exc:
                     raise ValidationError(
                         _('Invalid regular expression for Payment Reference: %s',
-                          str(exc))
+                          str(exc)),
                     )
 
     @api.constrains('match_partner_name', 'match_partner_name_param')
@@ -219,7 +219,7 @@ class ReconciliationRuleExtension(models.Model):
                 except re.error as exc:
                     raise ValidationError(
                         _('Invalid regular expression for Partner Name: %s',
-                          str(exc))
+                          str(exc)),
                     )
 
     @api.constrains('confidence_threshold')
@@ -229,7 +229,7 @@ class ReconciliationRuleExtension(models.Model):
             if record.confidence_threshold < 0.0 or record.confidence_threshold > 100.0:
                 raise ValidationError(
                     _('Confidence Threshold must be between 0 and 100.  '
-                      'Current value: %s', record.confidence_threshold)
+                      'Current value: %s', record.confidence_threshold),
                 )
 
     @api.constrains('auto_reconcile_threshold')
@@ -239,7 +239,7 @@ class ReconciliationRuleExtension(models.Model):
             if record.auto_reconcile_threshold < 0.0 or record.auto_reconcile_threshold > 100.0:
                 raise ValidationError(
                     _('Auto-Reconcile Threshold must be between 0 and 100.  '
-                      'Current value: %s', record.auto_reconcile_threshold)
+                      'Current value: %s', record.auto_reconcile_threshold),
                 )
 
     @api.constrains('match_amount_tolerance')
@@ -249,7 +249,7 @@ class ReconciliationRuleExtension(models.Model):
             if record.match_amount_tolerance < 0.0:
                 raise ValidationError(
                     _('Amount Tolerance must be non-negative.  '
-                      'Current value: %s', record.match_amount_tolerance)
+                      'Current value: %s', record.match_amount_tolerance),
                 )
 
     # =====================================================================
@@ -360,7 +360,7 @@ class ReconciliationRuleExtension(models.Model):
                             1.0 - (diff_pct / tolerance),
                         )
                         candidate_adjustment += amount_proximity * 15.0
-                    elif ml_amount == 0.0:
+                    elif math.isclose(ml_amount, 0.0, abs_tol=1e-9):
                         # Both amounts are zero — perfect match
                         candidate_adjustment += 15.0
 
@@ -534,14 +534,14 @@ class ReconciliationRuleExtension(models.Model):
         ml_amount = abs(move_line.balance or 0.0)
 
         # Both zero → trivial match.
-        if st_amount == 0.0 and ml_amount == 0.0:
+        if math.isclose(st_amount, 0.0, abs_tol=1e-9) and math.isclose(ml_amount, 0.0, abs_tol=1e-9):
             return True
         # Exactly one is zero → no match.
-        if st_amount == 0.0 or ml_amount == 0.0:
+        if math.isclose(st_amount, 0.0, abs_tol=1e-9) or math.isclose(ml_amount, 0.0, abs_tol=1e-9):
             return False
 
         # Exact-match mode (tolerance == 0): use a half-cent guard.
-        if self.match_amount_tolerance == 0.0:
+        if math.isclose(self.match_amount_tolerance, 0.0, abs_tol=1e-9):
             return abs(st_amount - ml_amount) < 0.005
 
         # Percentage-tolerance mode.
@@ -577,15 +577,15 @@ class ReconciliationRuleExtension(models.Model):
                 "Invalid regex pattern '%s' in reconciliation rule %s: %s",
                 pattern,
                 self.id if self else 'N/A',
-                str(exc),
+                exc,
             )
             return False
-        except Exception as exc:
+        except (TypeError, AttributeError) as exc:
             _logger.warning(
                 "Unexpected error applying regex '%s' in rule %s: %s",
                 pattern,
                 self.id if self else 'N/A',
-                str(exc),
+                exc,
             )
             return False
 
@@ -622,13 +622,13 @@ class ReconciliationRuleExtension(models.Model):
                 if matched:
                     update_vals['match_count'] = record.match_count + 1
                 record.sudo().write(update_vals)
-            except Exception as exc:
+            except (ValueError, TypeError, KeyError, AttributeError) as exc:
                 # Statistics failure must never block reconciliation.
                 _logger.warning(
                     "Failed to update evaluation stats for rule %s (id=%s): %s",
                     record.name if record else 'unknown',
                     record.id if record else 'N/A',
-                    str(exc),
+                    exc,
                 )
 
     # =====================================================================

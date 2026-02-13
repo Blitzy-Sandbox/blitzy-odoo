@@ -449,12 +449,13 @@ class TrialBalanceReport(models.TransientModel):
         Returns:
             bool: ``True`` if the line would display as all-zeros.
         """
+        currency = self.env.company.currency_id
         opening_balance = opening_bal.get('balance', 0.0)
         return (
-            opening_balance == 0.0
-            and period_bal.get('debit', 0.0) == 0.0
-            and period_bal.get('credit', 0.0) == 0.0
-            and period_bal.get('balance', 0.0) == 0.0
+            currency.is_zero(opening_balance)
+            and currency.is_zero(period_bal.get('debit', 0.0))
+            and currency.is_zero(period_bal.get('credit', 0.0))
+            and currency.is_zero(period_bal.get('balance', 0.0))
         )
 
     def _should_skip_zero(self, opening_bal, period_bal):

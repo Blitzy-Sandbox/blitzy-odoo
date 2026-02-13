@@ -135,7 +135,7 @@ class GeneralLedgerReport(models.TransientModel):
         4. When *centralize* is enabled, group transactions by partner
            and append partner-level subtotal lines for drill-down
            convenience.
-        5. Store **closing balance** = opening + Σdebit − Σcredit.
+        5. Store **closing balance** = opening + total_debit - total_credit.
 
         The method writes via ORM ``Command`` operations so the data is
         persisted in the transient table and survives a page reload
@@ -181,7 +181,7 @@ class GeneralLedgerReport(models.TransientModel):
                 # Apply partner filtering when specific partners are selected
                 if report.partner_ids:
                     move_line_domain.append(
-                        ('partner_id', 'in', report.partner_ids.ids)
+                        ('partner_id', 'in', report.partner_ids.ids),
                     )
 
                 # Determine sort order based on user selection
@@ -284,7 +284,7 @@ class GeneralLedgerReport(models.TransientModel):
             if not first_line and partner_id != current_partner_id:
                 partner_name = (
                     self.env['res.partner'].browse(
-                        current_partner_id
+                        current_partner_id,
                     ).display_name
                     if current_partner_id
                     else _('No Partner')
@@ -326,7 +326,7 @@ class GeneralLedgerReport(models.TransientModel):
         if not first_line:
             partner_name = (
                 self.env['res.partner'].browse(
-                    current_partner_id
+                    current_partner_id,
                 ).display_name
                 if current_partner_id
                 else _('No Partner')
@@ -369,6 +369,109 @@ class GeneralLedgerReport(models.TransientModel):
             'view_mode': 'form',
             'target': 'inline',
         }
+
+    # -------------------------------------------------------------------------
+    # XLSX EXPORT OVERRIDES
+    # -------------------------------------------------------------------------
+
+    def _get_xlsx_columns(self):
+        """Return General Ledger specific column definitions for XLSX export.
+
+        Overrides the base implementation to provide columns appropriate for
+        the GL report structure: date, journal, reference, description,
+        partner, debit, credit, and running balance.
+
+        :returns: List of column definition dicts with ``header``, ``field``,
+            ``width``, and ``style`` keys.
+        :rtype: list[dict]
+        """
+        return [
+            {'header': _('Date'), 'field': 'date', 'width': 12,
+             'style': 'text'},
+            {'header': _('Journal'), 'field': 'journal', 'width': 10,
+             'style': 'text'},
+            {'header': _('Reference'), 'field': 'ref', 'width': 20,
+             'style': 'text'},
+            {'header': _('Description'), 'field': 'name', 'width': 35,
+             'style': 'text'},
+            {'header': _('Partner'), 'field': 'partner', 'width': 25,
+             'style': 'text'},
+            {'header': _('Debit'), 'field': 'debit', 'width': 18,
+             'style': 'monetary'},
+            {'header': _('Credit'), 'field': 'credit', 'width': 18,
+             'style': 'monetary'},
+            {'header': _('Balance'), 'field': 'balance', 'width': 18,
+             'style': 'monetary'},
+        ]
+
+    def _get_xlsx_data(self):
+        """Return General Ledger data rows for XLSX export.
+
+        Overrides the base implementation to produce a flat list of rows
+        that interleave account-section headers (with opening/closing
+        balances) and individual transaction lines.
+
+        Account header rows have ``level=0`` and ``is_total=True``.
+        Transaction rows have ``level=1`` and ``is_total=False``.
+        Partner subtotal rows (when centralizing) have ``level=1`` and
+        ``is_total=True``.
+
+        :returns: List of row dicts keyed by the column ``field`` values
+            from :meth:`_get_xlsx_columns`.
+        :rtype: list[dict]
+        """
+        self.ensure_one()
+        rows = []
+        for acct_line in self.account_line_ids:
+            # Account header row with opening balance
+            rows.append({
+                'date': '',
+                'journal': '',
+                'ref': '',
+                'name': acct_line.name or '',
+                'partner': '',
+                'debit': acct_line.total_debit,
+                'credit': acct_line.total_credit,
+                'balance': acct_line.opening_balance,
+                'level': 0,
+                'is_total': True,
+            })
+
+            # Individual transaction lines
+            for txn in acct_line.line_ids:
+                rows.append({
+                    'date': str(txn.date) if txn.date else '',
+                    'journal': (
+                        txn.journal_id.code if txn.journal_id else ''
+                    ),
+                    'ref': txn.ref or '',
+                    'name': txn.name or '',
+                    'partner': (
+                        txn.partner_id.display_name
+                        if txn.partner_id else ''
+                    ),
+                    'debit': txn.debit,
+                    'credit': txn.credit,
+                    'balance': txn.balance,
+                    'level': 1,
+                    'is_total': bool(txn.is_partner_subtotal),
+                })
+
+            # Closing balance row
+            rows.append({
+                'date': '',
+                'journal': '',
+                'ref': '',
+                'name': _('Closing Balance'),
+                'partner': '',
+                'debit': acct_line.total_debit,
+                'credit': acct_line.total_credit,
+                'balance': acct_line.closing_balance,
+                'level': 0,
+                'is_total': True,
+            })
+
+        return rows
 
 
 class GeneralLedgerReportAccount(models.TransientModel):

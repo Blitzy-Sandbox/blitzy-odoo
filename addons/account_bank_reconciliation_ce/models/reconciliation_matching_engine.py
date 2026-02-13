@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -22,14 +21,15 @@ Design Notes:
     - Zero dependencies on Odoo Enterprise modules.
 """
 
-from odoo import api, fields, models, _, Command
-from odoo.exceptions import UserError, ValidationError
-
-from datetime import timedelta
 import itertools
 import logging
+import math
 import re
 import time
+from datetime import timedelta
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -383,8 +383,7 @@ class ReconciliationMatching(models.Model):
 
         # Performance: limit the number of candidates to avoid runaway
         # scoring.  1 000 candidates per statement line is generous.
-        candidates = self.env['account.move.line'].search(domain, limit=1000)
-        return candidates
+        return self.env['account.move.line'].search(domain, limit=1000)
 
     # -------------------------------------------------------------------------
     # SCORE COMPUTATION
@@ -466,9 +465,9 @@ class ReconciliationMatching(models.Model):
         abs_ml = abs(ml_compare)
 
         # Avoid division by zero — if both are zero, it is a perfect match.
-        if abs_st == 0.0 and abs_ml == 0.0:
+        if math.isclose(abs_st, 0.0, abs_tol=1e-9) and math.isclose(abs_ml, 0.0, abs_tol=1e-9):
             return 100.0
-        if abs_st == 0.0 or abs_ml == 0.0:
+        if math.isclose(abs_st, 0.0, abs_tol=1e-9) or math.isclose(abs_ml, 0.0, abs_tol=1e-9):
             return 0.0
 
         # Check sign compatibility.  A positive statement amount should match
@@ -484,7 +483,7 @@ class ReconciliationMatching(models.Model):
         max_val = max(abs_st, abs_ml)
         pct_diff = diff / max_val
 
-        if pct_diff == 0.0:
+        if math.isclose(pct_diff, 0.0, abs_tol=1e-9):
             score = 100.0
         elif pct_diff <= 0.01:
             score = 90.0
@@ -531,10 +530,10 @@ class ReconciliationMatching(models.Model):
 
         def _tokenise(text):
             """Split on non-alphanumeric boundaries, lower-case."""
-            return set(
+            return {
                 tok for tok in re.split(r'[^a-z0-9]+', (text or '').lower())
                 if tok
-            )
+            }
 
         norm_st = _normalise(st_ref)
         if not norm_st:
@@ -744,7 +743,7 @@ class ReconciliationMatching(models.Model):
             list of vals dicts ready for ``create``.
         """
         st_amount = abs(st_line.amount or 0.0)
-        if st_amount == 0.0:
+        if math.isclose(st_amount, 0.0, abs_tol=1e-9):
             return []
 
         tolerance = st_amount * self._COMBINATION_AMOUNT_TOLERANCE
@@ -818,7 +817,7 @@ class ReconciliationMatching(models.Model):
         selected = self.filtered(lambda m: m.state == 'proposed')
         if not selected:
             raise UserError(
-                _("No proposed matches to confirm. Please select at least one match.")
+                _("No proposed matches to confirm. Please select at least one match."),
             )
 
         confirmed = self.browse()
@@ -905,7 +904,7 @@ class ReconciliationMatching(models.Model):
         proposed = self.filtered(lambda m: m.state == 'proposed')
         if not proposed:
             raise UserError(
-                _("No proposed matches to reject.")
+                _("No proposed matches to reject."),
             )
         proposed.write({
             'state': 'rejected',

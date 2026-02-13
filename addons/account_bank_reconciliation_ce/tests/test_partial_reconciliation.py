@@ -47,6 +47,9 @@ from odoo.addons.account_bank_reconciliation_ce.tests.common import (
 def _make_invoice_line(env, amount, partner, company_data, tax_free=True):
     """Create and post an invoice, returning the receivable move line.
 
+    The invoice uses immediate payment terms to guarantee a single receivable
+    line, which simplifies reconciliation testing.
+
     Args:
         env: Odoo environment.
         amount: Positive unit price for the invoice line.
@@ -65,13 +68,18 @@ def _make_invoice_line(env, amount, partner, company_data, tax_free=True):
     }
     if tax_free:
         line_vals['tax_ids'] = [Command.clear()]
-    move = env['account.move'].create({
+    # Use immediate payment terms to guarantee a single receivable line.
+    immediate_term = env.ref('account.account_payment_term_immediate', raise_if_not_found=False)
+    move_vals = {
         'move_type': 'out_invoice',
         'partner_id': partner.id,
         'invoice_date': fields.Date.today(),
         'journal_id': company_data['default_journal_sale'].id,
         'invoice_line_ids': [Command.create(line_vals)],
-    })
+    }
+    if immediate_term:
+        move_vals['invoice_payment_term_id'] = immediate_term.id
+    move = env['account.move'].create(move_vals)
     move.action_post()
     receivable = move.line_ids.filtered(
         lambda l: l.account_id.account_type == 'asset_receivable'
@@ -81,6 +89,9 @@ def _make_invoice_line(env, amount, partner, company_data, tax_free=True):
 
 def _make_bill_line(env, amount, partner, company_data, tax_free=True):
     """Create and post a vendor bill, returning the payable move line.
+
+    The bill uses immediate payment terms to guarantee a single payable line,
+    which simplifies reconciliation testing.
 
     Returns:
         Tuple of (posted ``account.move``, payable ``account.move.line``).
@@ -93,13 +104,18 @@ def _make_bill_line(env, amount, partner, company_data, tax_free=True):
     }
     if tax_free:
         line_vals['tax_ids'] = [Command.clear()]
-    move = env['account.move'].create({
+    # Use immediate payment terms to guarantee a single payable line.
+    immediate_term = env.ref('account.account_payment_term_immediate', raise_if_not_found=False)
+    move_vals = {
         'move_type': 'in_invoice',
         'partner_id': partner.id,
         'invoice_date': fields.Date.today(),
         'journal_id': company_data['default_journal_purchase'].id,
         'invoice_line_ids': [Command.create(line_vals)],
-    })
+    }
+    if immediate_term:
+        move_vals['invoice_payment_term_id'] = immediate_term.id
+    move = env['account.move'].create(move_vals)
     move.action_post()
     payable = move.line_ids.filtered(
         lambda l: l.account_id.account_type == 'liability_payable'
@@ -679,14 +695,17 @@ class TestSplitTransaction(BankReconciliationTestCommon):
     def test_br005_split_partial_amount(self):
         """BR-005: Statement line -300 matched against bill payable line of
         -500 → partial reconcile for 300, move line still has residual."""
-        # Create a larger bill and match it with a smaller statement line
-        bill = self.create_posted_bill(500.0, partner=self.partner_b)
-        pay_line = bill.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'liability_payable'
+        # Create a larger bill using the tax-free helper for deterministic
+        # amounts (avoids tax-related extra lines).
+        _bill, pay_lines = _make_bill_line(
+            self.env, 500.0, self.partner_b, self.company_data,
         )
+        # Use only the first payable line in case payment terms split
+        # the payable into multiple instalments.
+        pay_line = pay_lines[:1]
+        self.assertTrue(pay_line, "At least one payable line should exist.")
 
-        # Use st_line_2 (amount=-500) as reference pattern, but create a
-        # smaller line to test partial matching.
+        # Create a smaller statement line to test partial matching.
         st_line = _create_st_line(
             self.env, self.bank_journal, -300.0,
             partner=self.partner_b, payment_ref='Split partial bill',

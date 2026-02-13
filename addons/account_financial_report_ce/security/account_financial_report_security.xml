@@ -56,6 +56,23 @@
             <field name="implied_by_ids" eval="[Command.link(ref('account.group_account_manager'))]"/>
             <field name="comment">Managers can configure and customize financial reports.</field>
         </record>
+
+        <!--
+            Explicit accounting group extension (standard OCA pattern)
+            ===========================================================
+            Rather than relying solely on implied_by_ids (reverse direction),
+            we also set the forward implied_ids on the core accounting groups.
+            This guarantees that users with the base accounting user / manager
+            groups automatically receive the corresponding financial-report
+            groups, regardless of module installation order or data-reload
+            semantics.
+        -->
+        <record id="account.group_account_user" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_financial_report_user'))]"/>
+        </record>
+        <record id="account.group_account_manager" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_financial_report_manager'))]"/>
+        </record>
     </data>
 
     <!-- =================================================================

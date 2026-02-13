@@ -596,7 +596,7 @@ class PartialReconcileHelper(models.TransientModel):
                     'currency_id': currency.id,
                     'debit': write_off_debit,
                     'credit': write_off_credit,
-                    'amount_currency': difference if currency != company.currency_id else 0.0,
+                    'amount_currency': difference,
                 }),
                 Command.create({
                     'name': label,
@@ -605,7 +605,7 @@ class PartialReconcileHelper(models.TransientModel):
                     'currency_id': currency.id,
                     'debit': counter_debit,
                     'credit': counter_credit,
-                    'amount_currency': -difference if currency != company.currency_id else 0.0,
+                    'amount_currency': -difference,
                 }),
             ],
         }

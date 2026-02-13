@@ -128,6 +128,13 @@ class AgedPartnerBalanceReport(models.TransientModel):
         help="Exclude items that are not yet due.",
     )
 
+    show_move_lines = fields.Boolean(
+        string='Show Move Lines',
+        default=False,
+        help="When enabled, display individual invoice/bill detail lines "
+             "below each partner summary row in the report.",
+    )
+
     sort_by = fields.Selection(
         selection=[
             ('partner', 'Partner Name'),

@@ -285,6 +285,7 @@ class FinancialReportWizard(models.TransientModel):
             vals['date_at'] = self.date_at
             vals['partner_type'] = self.partner_type or 'customer'
             vals['partner_ids'] = [(6, 0, self.partner_ids.ids)]
+            vals['show_move_lines'] = self.show_move_lines
 
         # Create report and generate
         report = self.env[model_name].create(vals)

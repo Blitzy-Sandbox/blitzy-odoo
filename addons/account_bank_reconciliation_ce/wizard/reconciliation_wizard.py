@@ -1,22 +1,19 @@
-# Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
-"""
-Reconciliation Wizard
+"""Bank reconciliation wizard for manual review and confirmation of match suggestions.
 
-Manual bank reconciliation interface wizard for FEATURE-002 BR-003.
-Provides the primary user interface for:
-  - Loading unreconciled bank statement lines for a selected journal/date range
-  - Triggering the algorithmic matching engine to propose matches
-  - Displaying match suggestions with confidence badges (High/Medium/Low)
-  - Supporting manual match/unmatch, partial match with write-off, batch confirm
+Provides the primary manual reconciliation interface for FEATURE-002 BR-003:
+  - Loads unreconciled bank statement lines for a selected journal/date range.
+  - Triggers the algorithmic matching engine to propose matches.
+  - Displays match suggestions with confidence badges (High/Medium/Low).
+  - Supports manual match/unmatch, partial match with write-off, batch confirm.
 
 Design follows the TransientModel pattern from
 ``addons/account_financial_report_ce/wizard/financial_report_wizard.py``
 and the reconciliation flow from
 ``addons/account/wizard/account_payment_register.py``.
 
-Multi-company isolation: all queries include company_id scoping.
+Multi-company isolation: all queries include company_id scoping per Section 0.7.3.
 Zero Enterprise dependencies.
 """
 
@@ -34,6 +31,14 @@ class ReconciliationWizard(models.TransientModel):
     Loads unreconciled bank statement lines for a selected bank/cash journal,
     triggers the matching engine, displays suggestions with confidence scores,
     and provides match/unmatch/partial-match/batch-confirm operations.
+
+    Integration points:
+      - ``account.reconciliation.matching``: algorithmic matching engine
+        (``find_matches()``, ``CONFIDENCE_HIGH``)
+      - ``account.reconciliation.partial.helper``: reconciliation execution
+        (``action_reconcile()``, ``action_unreconcile()``)
+      - ``account.reconcile.model`` (CE extensions): enhanced rule evaluation
+        (``get_ordered_rules()``, ``evaluate_rule()``)
     """
 
     _name = 'account.reconciliation.wizard'
@@ -122,16 +127,21 @@ class ReconciliationWizard(models.TransientModel):
 
     match_ids = fields.Many2many(
         comodel_name='account.reconciliation.matching',
-        relation='reconciliation_wizard_matching_rel',
-        column1='wizard_id',
-        column2='matching_id',
         string='Match Suggestions',
+        compute='_compute_matches',
+        help=(
+            "Matching suggestions from the algorithmic engine and rule "
+            "evaluation, including proposed and confirmed entries."
+        ),
     )
 
     selected_match_ids = fields.Many2many(
         comodel_name='account.reconciliation.matching',
+        relation='reconciliation_wizard_match_sel_rel',
+        column1='wizard_id',
+        column2='matching_id',
         string='Selected Matches',
-        compute='_compute_selected_matches',
+        help="User-selected matching records for the current statement line.",
     )
 
     # -------------------------------------------------------------------------
@@ -155,15 +165,14 @@ class ReconciliationWizard(models.TransientModel):
         help="Label applied to the write-off journal entry line.",
     )
 
-    write_off_amount = fields.Monetary(
+    write_off_amount = fields.Float(
         string='Write-Off Amount',
-        currency_field='currency_id',
+        digits=(16, 2),
         compute='_compute_write_off_amount',
         readonly=True,
         help=(
-            "Computed difference amount that will be booked as a write-off "
-            "entry.  This is the gap between the statement line amount and "
-            "the total of the selected matching journal entries."
+            "Computed difference between the selected statement line amount "
+            "and the total of the selected matching journal entry amounts."
         ),
     )
 
@@ -188,11 +197,15 @@ class ReconciliationWizard(models.TransientModel):
         and optional date range.
 
         Multi-company isolation: only lines belonging to the wizard's company
-        are returned.
+        are returned.  Uses the native ``is_reconciled`` field from
+        ``account.bank.statement.line`` to identify pending lines, along with
+        the CE extension field ``reconciliation_status`` for display badges
+        when available.
         """
+        StLine = self.env['account.bank.statement.line']
         for wizard in self:
             if not wizard.journal_id:
-                wizard.statement_line_ids = self.env['account.bank.statement.line']
+                wizard.statement_line_ids = StLine
                 wizard.unreconciled_count = 0
                 continue
 
@@ -207,15 +220,37 @@ class ReconciliationWizard(models.TransientModel):
             if wizard.date_to:
                 domain.append(('date', '<=', wizard.date_to))
 
-            lines = self.env['account.bank.statement.line'].search(domain)
+            lines = StLine.search(domain, order='date asc, id asc')
             wizard.statement_line_ids = lines
             wizard.unreconciled_count = len(lines)
 
-    @api.depends('match_ids.is_selected')
-    def _compute_selected_matches(self):
-        """Collect matches the user has toggled as selected."""
+            _logger.debug(
+                "Loaded %d unreconciled statement lines for journal '%s' "
+                "(company: %s).",
+                len(lines),
+                wizard.journal_id.display_name,
+                wizard.company_id.name,
+            )
+
+    @api.depends('statement_line_ids')
+    def _compute_matches(self):
+        """Load existing ``account.reconciliation.matching`` records linked
+        to the statement lines currently in the wizard scope.
+
+        Retrieves all proposed and confirmed matching suggestions so the
+        user can review pending proposals and see previously confirmed
+        matches.  Rejected matches are excluded.
+        """
+        MatchingModel = self.env['account.reconciliation.matching']
         for wizard in self:
-            wizard.selected_match_ids = wizard.match_ids.filtered('is_selected')
+            if wizard.statement_line_ids:
+                matches = MatchingModel.search([
+                    ('statement_line_id', 'in', wizard.statement_line_ids.ids),
+                    ('state', 'in', ('proposed', 'confirmed')),
+                ])
+                wizard.match_ids = matches
+            else:
+                wizard.match_ids = MatchingModel
 
     @api.depends(
         'selected_line_id',
@@ -226,33 +261,46 @@ class ReconciliationWizard(models.TransientModel):
         """Calculate the write-off amount as the difference between the
         selected statement line's amount and the total of selected matching
         journal entry amounts.
+
+        A positive value indicates the statement line amount exceeds the
+        matched total; a negative value indicates the opposite.
         """
         for wizard in self:
             if wizard.selected_line_id and wizard.selected_match_ids:
                 st_amount = abs(wizard.selected_line_id.amount)
-                match_total = sum(abs(m.matched_amount) for m in wizard.selected_match_ids)
+                match_total = sum(
+                    abs(m.matched_amount) for m in wizard.selected_match_ids
+                )
                 wizard.write_off_amount = st_amount - match_total
             else:
                 wizard.write_off_amount = 0.0
 
     # =========================================================================
-    # Constraint / Onchange
+    # Constraints / Onchange
     # =========================================================================
 
     @api.constrains('date_from', 'date_to')
     def _check_dates(self):
         """Ensure date_from <= date_to when both are set."""
         for wizard in self:
-            if wizard.date_from and wizard.date_to and wizard.date_from > wizard.date_to:
+            if (wizard.date_from and wizard.date_to
+                    and wizard.date_from > wizard.date_to):
                 raise ValidationError(
-                    _("The start date must be earlier than or equal to the end date."),
+                    _("The start date must be earlier than or equal to "
+                      "the end date.")
                 )
 
     @api.onchange('journal_id')
     def _onchange_journal_id(self):
-        """Reset dependent fields when the journal changes."""
+        """Reset dependent fields when the journal changes.
+
+        Clears the current selection and reverts the wizard state to draft
+        so the user must re-run the matching engine for the new journal.
+        """
         self.selected_line_id = False
-        self.match_ids = [(5, 0, 0)]
+        self.selected_match_ids = [Command.clear()]
+        if self.state != 'draft':
+            self.state = 'draft'
 
     # =========================================================================
     # Action Methods
@@ -262,43 +310,64 @@ class ReconciliationWizard(models.TransientModel):
         """Trigger the algorithmic matching engine for all unreconciled
         statement lines in the current wizard scope.
 
-        Delegates to ``account.reconciliation.matching.find_matches()``
-        and additionally evaluates enhanced reconciliation rules from
-        ``account.reconcile.model`` in priority order.
+        Workflow:
+          1. Clear previous proposed matching suggestions from the database.
+          2. Call ``account.reconciliation.matching.find_matches()`` to
+             generate new match proposals with confidence scores.
+          3. Evaluate enhanced reconciliation rules from
+             ``account.reconcile.model`` (CE extensions) in priority order
+             to boost confidence and auto-select high-quality matches.
+          4. Update wizard state to ``in_progress``.
 
-        Updates wizard state to 'in_progress'.
+        :return: window action to refresh the wizard form.
+        :raises UserError: if no journal is selected.
         """
         self.ensure_one()
         if not self.journal_id:
-            raise UserError(_("Please select a bank journal before searching for matches."))
+            raise UserError(
+                _("Please select a bank journal before searching for matches.")
+            )
 
-        MatchingEngine = self.env['account.reconciliation.matching']
+        MatchingModel = self.env['account.reconciliation.matching']
 
-        # Remove previous suggestions that were not confirmed
-        old_matches = self.match_ids.filtered(lambda m: m.state == 'proposed')
+        # 1. Clear old proposed matches that may be stale.  We search the
+        #    database directly to avoid stale-cache issues with computed fields.
+        old_matches = MatchingModel.search([
+            ('statement_line_id', 'in', self.statement_line_ids.ids),
+            ('state', '=', 'proposed'),
+        ])
         if old_matches:
+            _logger.debug(
+                "Removing %d stale proposed matches before re-running engine.",
+                len(old_matches),
+            )
             old_matches.unlink()
 
-        # Find new matches for all unreconciled statement lines
-        new_matches = MatchingEngine.find_matches(
-            statement_lines=self.statement_line_ids,
-            journal_id=self.journal_id.id,
+        # Clear wizard selection state
+        self.selected_match_ids = [Command.clear()]
+
+        # 2. Run the algorithmic matching engine
+        unreconciled = self.statement_line_ids.filtered(
+            lambda l: not l.is_reconciled
         )
+        new_matches = MatchingModel.browse()  # empty recordset default
+        if unreconciled:
+            new_matches = MatchingModel.find_matches(
+                unreconciled, self.journal_id,
+            )
 
-        # Apply reconciliation rules in priority order
-        self._apply_rules(self.statement_line_ids)
+        # 3. Apply reconciliation rules in priority order
+        if unreconciled:
+            self._apply_rules(unreconciled)
 
-        # Link new matches to this wizard via Many2many
-        if new_matches:
-            self.match_ids = [(4, m_id) for m_id in new_matches.ids]
-
+        # 4. Transition state
         self.state = 'in_progress'
 
         _logger.info(
-            "Matching engine found %d suggestions for %d statement lines "
-            "in journal '%s'.",
-            len(new_matches) if new_matches else 0,
-            self.unreconciled_count,
+            "Matching engine found %d suggestion(s) for %d unreconciled "
+            "line(s) in journal '%s'.",
+            len(new_matches),
+            len(unreconciled),
             self.journal_id.display_name,
         )
 
@@ -311,26 +380,64 @@ class ReconciliationWizard(models.TransientModel):
         }
 
     def action_confirm_selected(self):
-        """Confirm the selected matches and execute the reconciliation
-        for the currently selected statement line.
+        """Confirm the selected matches and execute the reconciliation for
+        the currently selected statement line.
 
-        If the match is exact or within tolerance, a full reconciliation
-        is created.  If a write-off is needed, a write-off journal entry
-        line is generated.
+        Decision logic:
+          - **Exact match** (zero difference) or **within tolerance**:
+            directly execute reconciliation via ``_execute_reconciliation()``.
+          - **Write-off needed** (difference beyond tolerance with write-off
+            account set): reconciliation includes a write-off entry via the
+            ``PartialReconcileHelper``.
+          - **No write-off account**: raises ``UserError`` asking user to
+            set one or use partial match instead.
+
+        :return: window action to refresh the wizard form.
+        :raises UserError: if no line or no matches are selected, or if a
+                           write-off is needed but no account is configured.
         """
         self.ensure_one()
         if not self.selected_line_id:
             raise UserError(_("Please select a statement line first."))
         if not self.selected_match_ids:
-            raise UserError(_("Please select at least one matching journal entry."))
+            raise UserError(
+                _("Please select at least one matching journal entry.")
+            )
 
-        self._execute_reconciliation(
-            st_line=self.selected_line_id,
-            match_records=self.selected_match_ids,
-        )
+        st_line = self.selected_line_id
+        match_records = self.selected_match_ids
 
-        # Reset selection
+        # Determine if write-off is needed
+        currency = self.currency_id or self.env.company.currency_id
+        st_amount = abs(st_line.amount)
+        match_total = sum(abs(m.matched_amount) for m in match_records)
+        difference = st_amount - match_total
+
+        needs_write_off = not currency.is_zero(difference)
+        within_tolerance = False
+
+        if needs_write_off and self.tolerance_percentage > 0 and st_amount > 0:
+            threshold = st_amount * (self.tolerance_percentage / 100.0)
+            within_tolerance = abs(difference) <= threshold
+
+        if needs_write_off and not within_tolerance and not self.write_off_account_id:
+            raise UserError(
+                _("A write-off is required but no Write-Off Account is set. "
+                  "Please configure a Write-Off Account or use "
+                  "'Partial Match' instead.")
+            )
+
+        self._execute_reconciliation(st_line, match_records)
+
+        # Clear selection for next statement line
         self.selected_line_id = False
+        self.selected_match_ids = [Command.clear()]
+
+        _logger.info(
+            "Confirmed reconciliation for statement line '%s' with "
+            "%d match(es).",
+            st_line.display_name, len(match_records),
+        )
 
         return {
             'type': 'ir.actions.act_window',
@@ -343,39 +450,60 @@ class ReconciliationWizard(models.TransientModel):
     def action_unmatch(self):
         """Remove existing reconciliation for the selected statement line
         and reset its status to unreconciled.
+
+        Delegates to ``PartialReconcileHelper.action_unreconcile()`` which
+        handles:
+          - Removing partial and full reconciliation records via the native
+            ``action_undo_reconciliation()`` on the statement line.
+          - Resetting CE tracking fields (``reconciliation_status``,
+            ``matching_confidence``) to their unreconciled defaults.
+
+        Related matching suggestions are transitioned to ``rejected`` state
+        to maintain the audit trail required by BR-003.
+
+        :return: window action to refresh the wizard form.
+        :raises UserError: if no statement line is selected.
         """
         self.ensure_one()
         if not self.selected_line_id:
-            raise UserError(_("Please select a statement line to unmatch."))
+            raise UserError(
+                _("Please select a statement line to unmatch.")
+            )
 
         st_line = self.selected_line_id
-        move = st_line.move_id
 
-        # Unreconcile all linked partial reconciliations
-        if move and move.line_ids:
-            partials = move.line_ids.mapped('matched_debit_ids') | \
-                       move.line_ids.mapped('matched_credit_ids')
-            if partials:
-                partials.unlink()
-                _logger.info(
-                    "Unmatched statement line '%s' — removed %d partial "
-                    "reconciliation(s).",
-                    st_line.display_name, len(partials),
-                )
-
-        # Reset CE tracking fields
-        if hasattr(st_line, 'reconciliation_status'):
-            st_line.write({
-                'reconciliation_status': 'unreconciled',
-                'matching_confidence': 0.0,
-            })
-
-        # Update matching records
-        related_matches = self.match_ids.filtered(
-            lambda m: m.statement_line_id == st_line,
+        # Delegate unreconciliation to the PartialReconcileHelper which
+        # handles native undo mechanics and CE tracking field resets.
+        PartialHelper = self.env['account.reconciliation.partial.helper']
+        # Satisfy the required move_line_ids field using the statement
+        # line's own journal entry lines as a reference.
+        ref_line_ids = (
+            st_line.move_id.line_ids.ids if st_line.move_id else []
         )
+        helper = PartialHelper.create({
+            'company_id': self.company_id.id,
+            'statement_line_id': st_line.id,
+            'move_line_ids': [Command.set(ref_line_ids)],
+        })
+        helper.action_unreconcile()
+
+        # Mark related matching records as rejected for audit trail
+        related_matches = self.env['account.reconciliation.matching'].search([
+            ('statement_line_id', '=', st_line.id),
+            ('state', 'in', ('proposed', 'confirmed')),
+        ])
         if related_matches:
             related_matches.write({'state': 'rejected'})
+
+        _logger.info(
+            "Unmatched statement line '%s' — %d matching record(s) "
+            "rejected.",
+            st_line.display_name, len(related_matches),
+        )
+
+        # Reset selection
+        self.selected_line_id = False
+        self.selected_match_ids = [Command.clear()]
 
         return {
             'type': 'ir.actions.act_window',
@@ -388,23 +516,38 @@ class ReconciliationWizard(models.TransientModel):
     def action_partial_match(self):
         """Open the partial reconciliation helper wizard pre-populated
         with the selected statement line and matching journal entries.
+
+        The helper wizard provides fine-grained control over:
+          - Which counterpart lines to include
+          - Write-off account and label configuration
+          - Tolerance percentage for auto-write-off
+
+        :return: window action opening the ``PartialReconcileHelper`` form.
+        :raises UserError: if no statement line is selected.
         """
         self.ensure_one()
         if not self.selected_line_id:
-            raise UserError(_("Please select a statement line for partial matching."))
+            raise UserError(
+                _("Please select a statement line for partial matching.")
+            )
 
         PartialHelper = self.env['account.reconciliation.partial.helper']
-
         move_line_ids = self.selected_match_ids.mapped('move_line_id').ids
 
-        helper = PartialHelper.create({
+        helper_vals = {
             'company_id': self.company_id.id,
             'statement_line_id': self.selected_line_id.id,
-            'move_line_ids': [(6, 0, move_line_ids)],
-            'write_off_account_id': self.write_off_account_id.id if self.write_off_account_id else False,
-            'write_off_label': self.write_off_label or _('Write-Off'),
+            'move_line_ids': [Command.set(move_line_ids)],
             'tolerance_percentage': self.tolerance_percentage,
-        })
+        }
+
+        # Pre-populate write-off configuration if set on the wizard
+        if self.write_off_account_id:
+            helper_vals['write_off_account_id'] = self.write_off_account_id.id
+        if self.write_off_label:
+            helper_vals['write_off_label'] = self.write_off_label
+
+        helper = PartialHelper.create(helper_vals)
 
         return {
             'type': 'ir.actions.act_window',
@@ -416,51 +559,92 @@ class ReconciliationWizard(models.TransientModel):
         }
 
     def action_batch_confirm(self):
-        """Automatically confirm all high-confidence matches (score >= 90%)
-        in a single batch operation.
+        """Automatically confirm all high-confidence matches in a single
+        batch operation.
+
+        Uses the ``CONFIDENCE_HIGH`` threshold (90%) from the matching
+        engine to identify auto-confirmable matches.  Each confirmed match
+        triggers the full reconciliation flow via
+        ``_execute_reconciliation()``.
+
+        Matches are grouped by statement line to handle one-to-many matching
+        scenarios correctly.
+
+        :return: window action refreshing the wizard form with the result
+                 summary logged.
+        :raises UserError: if no high-confidence matches are found.
         """
         self.ensure_one()
 
+        MatchingModel = self.env['account.reconciliation.matching']
+        # Use the CONFIDENCE_HIGH threshold from the matching engine rather
+        # than a hard-coded value to stay in sync with engine constants.
+        high_threshold = MatchingModel.CONFIDENCE_HIGH
+
         high_confidence_matches = self.match_ids.filtered(
-            lambda m: m.confidence_score >= 90.0 and m.state == 'proposed',
+            lambda m: (m.confidence_score >= high_threshold
+                       and m.state == 'proposed')
         )
 
         if not high_confidence_matches:
-            raise UserError(_(
-                "No high-confidence matches (score >= 90%%) found for batch "
-                "confirmation.",
-            ))
-
-        confirmed_count = 0
-        error_count = 0
+            raise UserError(
+                _("No high-confidence matches (score >= %(threshold)s%%) "
+                  "found for batch confirmation.")
+                % {'threshold': int(high_threshold)}
+            )
 
         # Group matches by statement line for proper reconciliation
         matches_by_line = {}
         for match in high_confidence_matches:
             line = match.statement_line_id
             if line not in matches_by_line:
-                matches_by_line[line] = self.env['account.reconciliation.matching']
+                matches_by_line[line] = MatchingModel.browse()
             matches_by_line[line] |= match
 
+        confirmed_count = 0
+        error_count = 0
+
         for st_line, matches in matches_by_line.items():
+            # Log per-line details including confidence_level for audit
+            best_match = max(
+                matches,
+                key=lambda m: m.confidence_score,
+                default=None,
+            )
+            best_score = (
+                best_match.confidence_score if best_match else 0.0
+            )
+            best_level = (
+                best_match.confidence_level if best_match else 'unknown'
+            )
+
+            _logger.debug(
+                "Batch confirm: processing line '%s' with %d match(es) "
+                "(best confidence: %.1f%%, level: %s).",
+                st_line.display_name, len(matches),
+                best_score, best_level,
+            )
+
             try:
-                self._execute_reconciliation(
-                    st_line=st_line,
-                    match_records=matches,
-                )
+                self._execute_reconciliation(st_line, matches)
                 confirmed_count += 1
-            except (ValueError, TypeError, KeyError) as exc:
+            except (UserError, ValidationError, ValueError, TypeError) as exc:
                 _logger.warning(
                     "Batch confirm failed for statement line '%s': %s",
                     st_line.display_name, exc,
                 )
                 error_count += 1
 
-        self.state = 'in_progress'
+        # Update wizard state based on remaining work
+        remaining = self.match_ids.filtered(
+            lambda m: m.state == 'proposed'
+        )
+        self.state = 'done' if not remaining else 'in_progress'
 
         _logger.info(
-            "Batch confirm completed: %d confirmed, %d errors.",
-            confirmed_count, error_count,
+            "Batch confirm completed: %d confirmed, %d error(s), "
+            "%d remaining proposed match(es).",
+            confirmed_count, error_count, len(remaining),
         )
 
         return {
@@ -479,92 +663,99 @@ class ReconciliationWizard(models.TransientModel):
         """Perform the actual reconciliation between a bank statement line
         and the matched journal entry move lines.
 
-        Creates ``account.partial.reconcile`` records linking the statement
-        line's underlying ``account.move.line`` (via ``account.move``) with
-        the matched counterpart lines.
+        Delegates to ``PartialReconcileHelper.action_reconcile()`` which
+        handles all reconciliation mechanics including:
+          - Identifying suspense/counterpart lines on the statement move
+          - Creating ``account.partial.reconcile`` records
+          - Handling write-off entries when difference exists
+          - Multi-currency difference resolution
 
-        Follows the same pattern used by
+        Follows the reconciliation pattern established by
         ``addons/account/wizard/account_payment_register.py``.
 
-        :param st_line: ``account.bank.statement.line`` record
+        After reconciliation, updates matching record states to ``confirmed``
+        and refreshes the statement line's ``matching_confidence`` CE tracking
+        field with the best match score.
+
+        :param st_line: ``account.bank.statement.line`` singleton
         :param match_records: ``account.reconciliation.matching`` recordset
+        :raises UserError: if the statement line has no associated journal
+                           entry or no counterpart lines are found.
         """
-        move = st_line.move_id
-        if not move:
-            raise UserError(_(
-                "Statement line '%s' has no associated journal entry.",
-                st_line.display_name,
-            ))
-
-        # Identify the liquidity line(s) on the statement line's move
-        liquidity_lines = move.line_ids.filtered(
-            lambda ml: ml.account_id == st_line.journal_id.default_account_id,
-        )
-
-        if not liquidity_lines:
-            # Fallback: use lines with matching debit/credit
-            liquidity_lines = move.line_ids.filtered(
-                lambda ml: ml.account_id.account_type in (
-                    'asset_cash', 'liability_credit_card',
-                ),
+        if not st_line.move_id:
+            raise UserError(
+                _("Statement line '%(line)s' has no associated journal "
+                  "entry.")
+                % {'line': st_line.display_name}
             )
-
-        if not liquidity_lines:
-            raise UserError(_(
-                "Cannot find a liquidity line on the journal entry for "
-                "statement line '%s'.",
-                st_line.display_name,
-            ))
 
         counterpart_lines = match_records.mapped('move_line_id')
-
-        # Determine write-off need
-        st_amount = sum(liquidity_lines.mapped('balance'))
-        counterpart_amount = sum(counterpart_lines.mapped('balance'))
-        difference = st_amount + counterpart_amount
-
-        lines_to_reconcile = liquidity_lines | counterpart_lines
-
-        # Handle write-off if needed and write-off account is set
-        if abs(difference) > 0.01 and self.write_off_account_id:
-            write_off_vals = {
-                'name': self.write_off_label or _('Write-Off'),
-                'account_id': self.write_off_account_id.id,
-                'balance': -difference,
-                'currency_id': self.currency_id.id,
-                'partner_id': st_line.partner_id.id if st_line.partner_id else False,
-            }
-            # Create write-off line on the statement line's move
-            move.write({
-                'line_ids': [Command.create(write_off_vals)],
-            })
-            # Re-fetch lines after write-off creation
-            wo_line = move.line_ids.filtered(
-                lambda ml: ml.account_id == self.write_off_account_id
-                and abs(ml.balance - (-difference)) < 0.01,
+        if not counterpart_lines:
+            raise UserError(
+                _("No counterpart journal entry lines found in the "
+                  "selected matches for statement line '%(line)s'.")
+                % {'line': st_line.display_name}
             )
-            if wo_line:
-                lines_to_reconcile |= wo_line[:1]
 
-        # Trigger reconciliation via the ORM
-        lines_to_reconcile.reconcile()
+        # Determine write-off configuration
+        currency = self.currency_id or self.env.company.currency_id
+        st_amount = abs(st_line.amount)
+        match_total = sum(abs(m.matched_amount) for m in match_records)
+        difference = st_amount - match_total
 
-        # Update match records state
+        helper_vals = {
+            'company_id': self.company_id.id,
+            'statement_line_id': st_line.id,
+            'move_line_ids': [Command.set(counterpart_lines.ids)],
+            'tolerance_percentage': self.tolerance_percentage,
+        }
+
+        # Configure write-off when there is a meaningful difference beyond
+        # the tolerance threshold and a write-off account is available.
+        if not currency.is_zero(difference):
+            within_tolerance = False
+            if self.tolerance_percentage > 0 and st_amount > 0:
+                threshold = st_amount * (self.tolerance_percentage / 100.0)
+                within_tolerance = abs(difference) <= threshold
+
+            if not within_tolerance and self.write_off_account_id:
+                helper_vals['write_off_account_id'] = (
+                    self.write_off_account_id.id
+                )
+                helper_vals['write_off_label'] = (
+                    self.write_off_label or _('Write-Off')
+                )
+
+        # Delegate to PartialReconcileHelper for consistent reconciliation
+        # across both manual confirm and batch confirm flows.
+        PartialHelper = self.env['account.reconciliation.partial.helper']
+        helper = PartialHelper.create(helper_vals)
+        helper.action_reconcile()
+
+        # Transition matching record states to confirmed
         match_records.write({'state': 'confirmed'})
 
-        # Update statement line CE tracking fields
-        if hasattr(st_line, 'reconciliation_status'):
-            best_score = max(match_records.mapped('confidence_score'), default=0.0)
-            st_line.write({
-                'reconciliation_status': 'reconciled',
-                'matching_confidence': best_score,
-            })
+        # Update the statement line's CE confidence tracking field with the
+        # actual matching engine score rather than the default from the helper.
+        best_match = max(
+            match_records,
+            key=lambda m: m.confidence_score,
+            default=None,
+        )
+        best_score = best_match.confidence_score if best_match else 0.0
+        best_level = best_match.confidence_level if best_match else 'n/a'
+
+        if best_score > 0 and hasattr(st_line, 'matching_confidence'):
+            st_line.write({'matching_confidence': best_score})
 
         _logger.info(
-            "Reconciled statement line '%s' with %d journal entr%s.",
+            "Reconciled statement line '%s' with %d counterpart entr%s "
+            "(best confidence: %.1f%%, level: %s).",
             st_line.display_name,
             len(counterpart_lines),
             'y' if len(counterpart_lines) == 1 else 'ies',
+            best_score,
+            best_level,
         )
 
     def _apply_rules(self, statement_lines):
@@ -572,45 +763,106 @@ class ReconciliationWizard(models.TransientModel):
         ``account.reconcile.model`` (with CE extensions) against the given
         statement lines in priority order.
 
+        Rules are retrieved via ``get_ordered_rules()`` and evaluated per
+        statement line using ``evaluate_rule(st_line, candidates)``.
+        Matching confidence scores are adjusted based on rule evaluation
+        results.  Matches whose scores exceed a rule's
+        ``auto_reconcile_threshold`` are automatically marked as selected
+        via the ``is_selected`` field for batch confirmation.
+
         :param statement_lines: ``account.bank.statement.line`` recordset
         """
         if not statement_lines:
             return
 
         ReconcileModel = self.env['account.reconcile.model']
-
-        # Retrieve rules applicable to this company, ordered by priority
-        domain = [
-            '|',
-            ('company_id', '=', self.company_id.id),
-            ('company_id', '=', False),
-        ]
-
-        # Use priority ordering if the CE extension provides it
-        order = 'sequence, id'
-        if hasattr(ReconcileModel, 'priority'):
-            order = 'priority, sequence, id'
-
-        rules = ReconcileModel.search(domain, order=order)
+        rules = ReconcileModel.get_ordered_rules(self.company_id.id)
 
         if not rules:
-            _logger.debug("No reconciliation rules found for company %s.", self.company_id.name)
+            _logger.debug(
+                "No CE reconciliation rules found for company '%s'.",
+                self.company_id.name,
+            )
             return
 
         _logger.info(
-            "Applying %d reconciliation rule(s) to %d statement lines.",
+            "Applying %d reconciliation rule(s) (ordered by priority) to "
+            "%d statement line(s).",
             len(rules), len(statement_lines),
         )
 
-        for rule in rules:
-            if hasattr(rule, 'evaluate_rule'):
-                for st_line in statement_lines.filtered(
-                    lambda ml: not ml.is_reconciled,
-                ):
-                    try:
-                        rule.evaluate_rule(st_line)
-                    except (ValueError, TypeError, KeyError) as exc:
-                        _logger.warning(
-                            "Rule '%s' evaluation failed for line '%s': %s",
-                            rule.name, st_line.display_name, exc,
-                        )
+        MatchingModel = self.env['account.reconciliation.matching']
+
+        for st_line in statement_lines.filtered(lambda l: not l.is_reconciled):
+            # Retrieve existing match suggestions for this line
+            existing_matches = MatchingModel.search([
+                ('statement_line_id', '=', st_line.id),
+                ('state', '=', 'proposed'),
+            ])
+            if not existing_matches:
+                continue
+
+            candidate_move_lines = existing_matches.mapped('move_line_id')
+
+            for rule in rules:
+                # Gate on rule's confidence_threshold: skip this rule if
+                # the best existing match score is below the threshold
+                if rule.confidence_threshold > 0:
+                    best_current = max(
+                        existing_matches.mapped('confidence_score'),
+                        default=0.0,
+                    )
+                    if best_current < rule.confidence_threshold:
+                        continue
+
+                try:
+                    result = rule.evaluate_rule(st_line, candidate_move_lines)
+                except (ValueError, TypeError, KeyError) as exc:
+                    _logger.warning(
+                        "Rule '%s' (priority %s) evaluation failed for "
+                        "line '%s': %s",
+                        rule.name, rule.priority,
+                        st_line.display_name, exc,
+                    )
+                    continue
+
+                if not result.get('rule_matched'):
+                    continue
+
+                # Apply confidence adjustments to matching records
+                matched_candidates = result.get(
+                    'candidates', self.env['account.move.line']
+                )
+                adjustment = result.get('confidence_adjustment', 0.0)
+
+                if adjustment and matched_candidates:
+                    for match in existing_matches:
+                        if match.move_line_id in matched_candidates:
+                            new_score = min(
+                                100.0,
+                                match.confidence_score + adjustment,
+                            )
+                            match.write({'confidence_score': new_score})
+                            _logger.debug(
+                                "Rule '%s' boosted match confidence to "
+                                "%.1f%% for line '%s' -> entry '%s'.",
+                                rule.name, new_score,
+                                st_line.display_name,
+                                match.move_line_id.display_name,
+                            )
+
+                # Auto-select matches that exceed the rule's
+                # auto_reconcile_threshold for batch confirmation
+                if rule.auto_reconcile_threshold > 0 and matched_candidates:
+                    for match in existing_matches:
+                        if (match.move_line_id in matched_candidates
+                                and match.confidence_score
+                                >= rule.auto_reconcile_threshold):
+                            match.write({'is_selected': True})
+                            _logger.debug(
+                                "Auto-selected match for line '%s' "
+                                "(score %.1f%% >= threshold %.1f%%).",
+                                st_line.display_name,
+                                match.confidence_score,
+                                rule.auto_reconcile_threshold,
+                            )

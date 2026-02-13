@@ -353,7 +353,7 @@ class ReconciliationWizard(models.TransientModel):
         new_matches = MatchingModel.browse()  # empty recordset default
         if unreconciled:
             new_matches = MatchingModel.find_matches(
-                unreconciled, self.journal_id,
+                unreconciled, self.journal_id.id,
             )
 
         # 3. Apply reconciliation rules in priority order

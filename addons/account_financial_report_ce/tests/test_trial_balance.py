@@ -71,6 +71,26 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         cls.company = cls.env.company
         cls.currency = cls.company.currency_id
 
+        # Grant Financial Reports User/Manager groups to the test user
+        # so that ACL checks pass when creating/reading report records.
+        fr_user_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_user',
+            raise_if_not_found=False,
+        )
+        fr_mgr_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_manager',
+            raise_if_not_found=False,
+        )
+        groups_to_add = cls.env['res.groups']
+        if fr_user_group:
+            groups_to_add |= fr_user_group
+        if fr_mgr_group:
+            groups_to_add |= fr_mgr_group
+        if groups_to_add and cls.env.user != cls.env.ref('base.user_admin'):
+            cls.env.user.write({
+                'group_ids': [(4, g.id) for g in groups_to_add],
+            })
+
         # Retrieve key accounts from company_data fixtures
         cls.account_receivable = cls.company_data['default_account_receivable']
         cls.account_payable = cls.company_data['default_account_payable']
@@ -83,11 +103,12 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         cls.journal_bank = cls.company_data['default_journal_bank']
 
         # Create a dedicated "zero balance" account for testing hide-zero
+        # Odoo 19.0: account.account uses company_ids (Many2many) not company_id
         cls.account_zero_balance = cls.env['account.account'].create({
             'name': 'Zero Balance Test Account',
             'code': 'XZERO0',
             'account_type': 'asset_current',
-            'company_id': cls.company.id,
+            'company_ids': [cls.company.id],
         })
 
         # ---- Dates used throughout tests ----
@@ -308,7 +329,7 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         When I create a Trial Balance report with date_to = 2024-06-30
         Then the report is created in 'draft' state with correct parameters.
         Also verifies that action_generate_report raises UserError when
-        date_to validation fails.
+        date_from > date_to (invalid date range).
         """
         report = self._create_trial_balance_report()
         self.assertTrue(report, "Trial Balance report should be created")
@@ -321,11 +342,13 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         self.assertEqual(report.target_move, 'posted',
                          "Default target_move should be 'posted'")
 
-        # Verify that action_generate_report raises UserError when date_to
-        # is cleared (the model validates this before computing)
-        report.date_to = False
+        # Verify that action_generate_report raises UserError when
+        # date_from is after date_to (the model validates this)
+        report_invalid = self._create_trial_balance_report(
+            date_from=self.date_period_end + timedelta(days=1),
+        )
         with self.assertRaises(UserError):
-            report.action_generate_report()
+            report_invalid.action_generate_report()
 
     @freeze_time('2024-06-30')
     def test_fr005_trial_balance_computation(self):
@@ -878,11 +901,12 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         This tests the invariant with fresh data beyond setUp entries.
         """
         # Create an additional balanced entry
+        # Odoo 19.0: account.account uses company_ids (Many2many) not company_id
         extra_account = self.env['account.account'].create({
             'name': 'Extra Test Account',
             'code': 'XEXTR1',
             'account_type': 'asset_current',
-            'company_id': self.company.id,
+            'company_ids': [self.company.id],
         })
         extra_move = self.env['account.move'].create({
             'move_type': 'entry',

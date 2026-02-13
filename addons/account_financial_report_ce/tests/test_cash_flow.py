@@ -34,6 +34,7 @@ OCA Coding Standards:
 from datetime import date, timedelta
 
 from freezegun import freeze_time
+from odoo import Command
 from odoo.tests import tagged
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.exceptions import UserError
@@ -83,6 +84,18 @@ class TestCashFlow(AccountTestInvoicingCommon):
         """
         super().setUpClass()
 
+        # Grant the test user access to financial report models
+        # Required by account_financial_report_ce ACL configuration
+        # Odoo 19.0 uses 'group_ids' (not 'groups_id')
+        report_user_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_user',
+            raise_if_not_found=False,
+        )
+        if report_user_group:
+            cls.env.user.write({
+                'group_ids': [Command.link(report_user_group.id)],
+            })
+
         cls.company = cls.env.company
         cls.currency = cls.company.currency_id
 
@@ -121,7 +134,7 @@ class TestCashFlow(AccountTestInvoicingCommon):
 
         # Cash account (asset_cash) — primary cash flow tracking account
         cls.account_cash = Account.search([
-            ('company_id', '=', company.id),
+            ('company_ids', '=', company.id),
             ('account_type', '=', 'asset_cash'),
         ], limit=1)
         if not cls.account_cash:
@@ -129,7 +142,7 @@ class TestCashFlow(AccountTestInvoicingCommon):
                 'code': '101000',
                 'name': 'Cash - CF Test',
                 'account_type': 'asset_cash',
-                'company_id': company.id,
+                'company_ids': [Command.set([company.id])],
             })
 
         # Receivable (asset_receivable) — working capital component
@@ -148,7 +161,7 @@ class TestCashFlow(AccountTestInvoicingCommon):
         cls.account_fixed_assets = cls.company_data.get('default_account_assets')
         if not cls.account_fixed_assets:
             cls.account_fixed_assets = Account.search([
-                ('company_id', '=', company.id),
+                ('company_ids', '=', company.id),
                 ('account_type', '=', 'asset_fixed'),
             ], limit=1)
         if not cls.account_fixed_assets:
@@ -156,12 +169,12 @@ class TestCashFlow(AccountTestInvoicingCommon):
                 'code': '160000',
                 'name': 'Fixed Assets - CF Test',
                 'account_type': 'asset_fixed',
-                'company_id': company.id,
+                'company_ids': [Command.set([company.id])],
             })
 
         # Depreciation expense (expense_depreciation) — non-cash add-back
         cls.account_depreciation = Account.search([
-            ('company_id', '=', company.id),
+            ('company_ids', '=', company.id),
             ('account_type', '=', 'expense_depreciation'),
         ], limit=1)
         if not cls.account_depreciation:
@@ -169,14 +182,14 @@ class TestCashFlow(AccountTestInvoicingCommon):
                 'code': '680000',
                 'name': 'Depreciation Expense - CF Test',
                 'account_type': 'expense_depreciation',
-                'company_id': company.id,
+                'company_ids': [Command.set([company.id])],
             })
 
         # Accumulated depreciation (asset_non_current) — contra-asset,
         # deliberately not asset_fixed to avoid interfering with
         # investing activity FA balance computation
         cls.account_accum_depreciation = Account.search([
-            ('company_id', '=', company.id),
+            ('company_ids', '=', company.id),
             ('account_type', '=', 'asset_non_current'),
             ('name', 'ilike', 'depreciation'),
         ], limit=1)
@@ -185,12 +198,12 @@ class TestCashFlow(AccountTestInvoicingCommon):
                 'code': '169000',
                 'name': 'Accumulated Depreciation - CF Test',
                 'account_type': 'asset_non_current',
-                'company_id': company.id,
+                'company_ids': [Command.set([company.id])],
             })
 
         # Equity (equity) — used for initial capital and financing
         cls.account_equity = Account.search([
-            ('company_id', '=', company.id),
+            ('company_ids', '=', company.id),
             ('account_type', '=', 'equity'),
         ], limit=1)
         if not cls.account_equity:
@@ -198,12 +211,12 @@ class TestCashFlow(AccountTestInvoicingCommon):
                 'code': '310000',
                 'name': 'Equity - CF Test',
                 'account_type': 'equity',
-                'company_id': company.id,
+                'company_ids': [Command.set([company.id])],
             })
 
         # Long-term liability (liability_non_current) — financing
         cls.account_lt_liability = Account.search([
-            ('company_id', '=', company.id),
+            ('company_ids', '=', company.id),
             ('account_type', '=', 'liability_non_current'),
         ], limit=1)
         if not cls.account_lt_liability:
@@ -211,7 +224,7 @@ class TestCashFlow(AccountTestInvoicingCommon):
                 'code': '240000',
                 'name': 'Long-term Loan - CF Test',
                 'account_type': 'liability_non_current',
-                'company_id': company.id,
+                'company_ids': [Command.set([company.id])],
             })
 
     @classmethod
@@ -1014,11 +1027,11 @@ class TestCashFlow(AccountTestInvoicingCommon):
         journal_2 = company_2_data['default_journal_misc']
         if journal_2:
             account_cash_2 = self.env['account.account'].search([
-                ('company_id', '=', company_2.id),
+                ('company_ids', '=', company_2.id),
                 ('account_type', '=', 'asset_cash'),
             ], limit=1)
             account_equity_2 = self.env['account.account'].search([
-                ('company_id', '=', company_2.id),
+                ('company_ids', '=', company_2.id),
                 ('account_type', '=', 'equity'),
             ], limit=1)
 

@@ -434,11 +434,13 @@ class CashFlowReport(models.TransientModel):
         # ==================================================================
         # INVESTING ACTIVITIES (Scenario 3)
         # ==================================================================
-        # Combine fixed assets (``asset_fixed``) and other non-current assets
-        # (``asset_non_current``) for broader investing coverage.
-        investing_types = (
-            report.FIXED_ASSET_TYPES + report.NON_CURRENT_ASSET_TYPES
-        )
+        # Use only ``asset_fixed`` accounts for investing activities under the
+        # indirect method.  The ``asset_non_current`` type (which includes
+        # accumulated depreciation contra-asset accounts) is intentionally
+        # excluded because the depreciation impact is already captured by the
+        # depreciation add-back in operating activities above.  Including it
+        # here would double-count the non-cash depreciation expense.
+        investing_types = list(report.FIXED_ASSET_TYPES)
         investing_accounts = self.env['account.account'].search(
             report._get_account_domain(investing_types),
         )

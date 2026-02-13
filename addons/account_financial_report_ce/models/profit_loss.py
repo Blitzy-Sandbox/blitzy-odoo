@@ -798,7 +798,11 @@ class ProfitLossReport(models.TransientModel):
         Generate PDF version of the P&L report.
 
         Delegates to the ``ir.actions.report`` engine with the QWeb
-        template registered for this report type.
+        template registered for this report type.  ``config=False``
+        prevents Odoo from redirecting to the document-layout
+        configurator when the company has no external report layout
+        set, which would otherwise return an ``ir.actions.act_window``
+        instead of the expected ``ir.actions.report`` action.
 
         Returns:
             dict: Report action dictionary for PDF generation.
@@ -811,7 +815,7 @@ class ProfitLossReport(models.TransientModel):
         self.ensure_one()
         return self.env.ref(
             'account_financial_report_ce.action_report_profit_loss'
-        ).report_action(self)
+        ).report_action(self, config=False)
 
     def action_export_xlsx(self):
         """

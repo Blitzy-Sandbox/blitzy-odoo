@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Menu Items for Bank Reconciliation CE Module
+    Accessible under Accounting > Bank Reconciliation
+    Provides navigation to: Import Statements, Reconciliation,
+    Reconciliation Status, and Reconciliation Rules.
+-->
+<odoo>
+
+    <!-- ============================================================
+         Root Menu: Bank Reconciliation
+         ============================================================
+         Top-level entry under the Accounting menu (account.menu_finance_entries).
+         Positioned at sequence 30, after existing Accounting sub-menus:
+           - Transactions (sequence 0)
+           - Closing (sequence 20)
+         Visible only to full accounting users (account.group_account_user)
+         because reconciliation workflows require write access to journal
+         entries and reconciliation records.
+         ============================================================ -->
+    <menuitem id="menu_bank_reconciliation_root"
+              name="Bank Reconciliation"
+              parent="account.menu_finance_entries"
+              sequence="30"
+              groups="account.group_account_user"/>
+
+    <!-- ============================================================
+         Workflow Menus (sequence 1–3)
+         ============================================================
+         Day-to-day operational menu items for importing bank statements,
+         running the reconciliation engine, and browsing match results.
+         ============================================================ -->
+
+    <!-- Import Statements: Opens the bank statement import wizard (BR-001).
+         Allows uploading CSV, OFX, QIF, and CAMT.053 files for parsing
+         and creation of bank statement records. -->
+    <menuitem id="menu_bank_reconciliation_import"
+              name="Import Statements"
+              parent="menu_bank_reconciliation_root"
+              action="action_bank_statement_import_wizard"
+              sequence="1"/>
+
+    <!-- Reconciliation: Opens the reconciliation wizard (BR-002/BR-003).
+         Provides the split-panel interface for reviewing algorithmic match
+         suggestions, performing manual match/unmatch, and confirming
+         reconciliation with optional write-off handling. -->
+    <menuitem id="menu_bank_reconciliation_reconcile"
+              name="Reconciliation"
+              parent="menu_bank_reconciliation_root"
+              action="action_reconciliation_wizard"
+              sequence="2"/>
+
+    <!-- Reconciliation Status: Opens the reconciliation matching list view.
+         Displays all match proposals with confidence scores, states, and
+         match types for browsing and audit purposes. -->
+    <menuitem id="menu_bank_reconciliation_status"
+              name="Reconciliation Status"
+              parent="menu_bank_reconciliation_root"
+              action="action_bank_reconciliation_status"
+              sequence="3"/>
+
+    <!-- ============================================================
+         Separator between workflow items and configuration items
+         ============================================================ -->
+    <menuitem id="menu_bank_reconciliation_separator"
+              parent="menu_bank_reconciliation_root"
+              sequence="5"/>
+
+    <!-- ============================================================
+         Configuration Menus (sequence 10+)
+         ============================================================
+         Administrative menu items for configuring reconciliation rules,
+         matching thresholds, and other module settings. Restricted to
+         accounting managers (account.group_account_manager).
+         ============================================================ -->
+
+    <!-- Reconciliation Rules: Opens the enhanced reconciliation rules list (BR-004).
+         Allows managers to configure matching rules with priority ordering,
+         regex patterns, amount tolerance, confidence thresholds, and
+         auto-reconcile triggers. Restricted to accounting managers. -->
+    <menuitem id="menu_bank_reconciliation_rules"
+              name="Reconciliation Rules"
+              parent="menu_bank_reconciliation_root"
+              action="action_bank_reconciliation_rules"
+              sequence="10"
+              groups="account.group_account_manager"/>
+
+</odoo>

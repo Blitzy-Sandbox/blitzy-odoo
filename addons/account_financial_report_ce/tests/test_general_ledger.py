@@ -77,6 +77,28 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         """
         super().setUpClass()
 
+        # -- Grant financial report module security groups to test user -------
+        # The parent AccountTestInvoicingCommon creates an 'accountman' test
+        # user with only core accounting groups (group_account_manager,
+        # group_account_user).  Our module's ACL requires the custom groups
+        # group_financial_report_user / group_financial_report_manager for
+        # create/read/write/unlink access on all financial report models.
+        fr_manager_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_manager',
+            raise_if_not_found=False,
+        )
+        fr_user_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_user',
+            raise_if_not_found=False,
+        )
+        groups_to_add = cls.env['res.groups']
+        if fr_manager_group:
+            groups_to_add |= fr_manager_group
+        if fr_user_group:
+            groups_to_add |= fr_user_group
+        if groups_to_add:
+            cls.env.user.group_ids += groups_to_add
+
         # === Key Dates ===
         cls.date_from = date(2024, 1, 1)
         cls.date_to = date(2024, 6, 30)
@@ -419,18 +441,37 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         self.assertEqual(report.state, 'draft',
                          "Newly created report must be in 'draft' state.")
 
-        # Validate date-range guard: clearing dates via SQL to bypass
-        # the ORM ``required`` constraint, then calling
-        # ``action_generate_report`` must raise UserError.
+        # Validate date-range guard: temporarily drop the DB NOT NULL
+        # constraint, set date_from = NULL via SQL to bypass the ORM
+        # ``required`` check, then verify ``action_generate_report``
+        # raises UserError.  The constraint is restored in a finally
+        # block to keep the table pristine for subsequent tests.
         report_nodate = self._create_gl_report()
-        self.env.cr.execute(
-            "UPDATE %s SET date_from = NULL WHERE id = %%s"
-            % report_nodate._table,
-            (report_nodate.id,),
-        )
-        report_nodate.invalidate_recordset()
-        with self.assertRaises(UserError):
-            report_nodate.action_generate_report()
+        table = report_nodate._table
+        try:
+            self.env.cr.execute(
+                "ALTER TABLE %s ALTER COLUMN date_from DROP NOT NULL"
+                % table,
+            )
+            self.env.cr.execute(
+                "UPDATE %s SET date_from = NULL WHERE id = %%s"
+                % table,
+                (report_nodate.id,),
+            )
+            report_nodate.invalidate_recordset()
+            with self.assertRaises(UserError):
+                report_nodate.action_generate_report()
+        finally:
+            # Remove rows with NULL date_from before restoring the
+            # NOT NULL constraint – otherwise PostgreSQL rejects the
+            # ALTER TABLE because the column still contains NULLs.
+            self.env.cr.execute(
+                "DELETE FROM %s WHERE date_from IS NULL" % table,
+            )
+            self.env.cr.execute(
+                "ALTER TABLE %s ALTER COLUMN date_from SET NOT NULL"
+                % table,
+            )
 
     def test_fr004_general_ledger_computation(self):
         """FR-004 Scenario 1: Compute GL data and verify state transition.

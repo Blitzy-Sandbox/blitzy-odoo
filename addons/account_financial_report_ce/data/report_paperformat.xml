@@ -22,7 +22,7 @@
         <field name="dpi">90</field>
     </record>
 
-    <!-- A4 Landscape - Detailed Reports (General Ledger, Aged Balance) -->
+    <!-- A4 Landscape - Detailed Reports (General Ledger, Trial Balance, Aged Partner Balance) -->
     <record id="paperformat_financial_report_a4_landscape" model="report.paperformat">
         <field name="name">Financial Report A4 Landscape</field>
         <field name="default" eval="False"/>
@@ -67,15 +67,16 @@
         <field name="dpi">90</field>
     </record>
 
-    <!-- Update report actions to use appropriate paper formats -->
-    <record id="action_report_general_ledger" model="ir.actions.report">
-        <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
-    </record>
+    <!--
+        Assign paper formats to report actions defined in report/report_templates.xml.
+        NOTE: This file must be loaded AFTER report/report_templates.xml in __manifest__.py
+        to ensure the ir.actions.report records exist before these updates are applied.
 
-    <record id="action_report_aged_partner_balance" model="ir.actions.report">
-        <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
-    </record>
+        Portrait (A4): Summary reports with 2-3 columns
+        Landscape (A4): Detailed reports with 7-8 columns requiring wider table layout
+    -->
 
+    <!-- Portrait Reports: Summary-style with few columns (Description + Amount [+ Comparison]) -->
     <record id="action_report_balance_sheet" model="ir.actions.report">
         <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
     </record>
@@ -88,7 +89,16 @@
         <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
     </record>
 
+    <!-- Landscape Reports: Multi-column detail tables requiring wider page layout -->
+    <record id="action_report_general_ledger" model="ir.actions.report">
+        <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
+    </record>
+
     <record id="action_report_trial_balance" model="ir.actions.report">
+        <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
+    </record>
+
+    <record id="action_report_aged_partner_balance" model="ir.actions.report">
         <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
     </record>
 

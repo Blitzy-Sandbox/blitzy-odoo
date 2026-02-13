@@ -470,15 +470,11 @@ class ReconciliationMatching(models.Model):
         if math.isclose(abs_st, 0.0, abs_tol=1e-9) or math.isclose(abs_ml, 0.0, abs_tol=1e-9):
             return 0.0
 
-        # Check sign compatibility.  A positive statement amount should match
-        # against a *negative* residual (credit) and vice-versa.  We score on
-        # absolute values but give a bonus/penalty for sign alignment.
-        # In Odoo, a bank *credit* (deposit) produces a positive st_amount and
-        # the matching invoice payment line has a negative balance.  So
-        # opposite signs are actually the expected case.
-        sign_match = (st_amount > 0) != (ml_compare > 0)
-
-        # Relative difference on absolute values.
+        # Compare absolute magnitudes only — sign is irrelevant because in
+        # standard Odoo bank reconciliation the expected case is *same-sign*
+        # matching: a positive bank deposit (+) matches a positive receivable
+        # line (+) from a customer invoice, and a negative bank payment (−)
+        # matches a negative payable line (−) from a vendor bill.
         diff = abs(abs_st - abs_ml)
         max_val = max(abs_st, abs_ml)
         pct_diff = diff / max_val
@@ -498,10 +494,6 @@ class ReconciliationMatching(models.Model):
             score = 50.0 * (1.0 - (pct_diff - 0.10) / 0.90)
         else:
             score = 0.0
-
-        # Penalise same-sign matches (unusual in bank reconciliation).
-        if not sign_match:
-            score *= 0.6
 
         return max(round(score, 2), 0.0)
 

@@ -94,13 +94,25 @@ class TestMatchingScoring(BankReconciliationTestCommon):
         )
 
     def test_br002_score_amount_sign_handling(self):
-        """Same-sign amounts are penalised with a ×0.6 factor."""
+        """Same-sign amounts receive the same score as opposite-sign.
+
+        In standard Odoo bank reconciliation a positive bank deposit
+        matches a positive receivable and a negative payment matches a
+        negative payable, so same-sign is the *normal* case and must
+        not be penalised.
+        """
         MatchModel = self.env['account.reconciliation.matching']
-        # Same-sign exact match → base 100 × 0.6 = 60
-        score = MatchModel._score_amount(1000.0, 1000.0, 1000.0)
+        # Same-sign exact match → base 100 (no penalty).
+        same_sign = MatchModel._score_amount(1000.0, 1000.0, 1000.0)
+        # Opposite-sign exact match → also 100.
+        opp_sign = MatchModel._score_amount(1000.0, -1000.0, -1000.0)
         self.assertAlmostEqual(
-            score, 60.0, delta=1.0,
-            msg="Same-sign match should be penalised (~60).",
+            same_sign, 100.0, delta=1.0,
+            msg="Same-sign exact match should score 100 (no penalty).",
+        )
+        self.assertAlmostEqual(
+            same_sign, opp_sign, delta=1.0,
+            msg="Sign should not affect amount score.",
         )
 
     # -- Reference scoring ----------------------------------------------------
@@ -308,7 +320,7 @@ class TestMatchingConfidence(BankReconciliationTestCommon):
         # Create a statement line and invoice with predictable characteristics
         st_line = self.create_bank_statement_line(
             500.0, partner=self.partner_a,
-            ref='TEST-WEIGHT-001', date=test_date,
+            payment_ref='TEST-WEIGHT-001', date=test_date,
         )
         invoice = self.create_posted_invoice(
             500.0, partner=self.partner_a,
@@ -387,7 +399,7 @@ class TestMatchingEngine(BankReconciliationTestCommon):
         """Statement line with no plausible open entries → no matches."""
         MatchModel = self.env['account.reconciliation.matching']
         odd_line = self.create_bank_statement_line(
-            99999.99, partner=None, ref='NOMATCH-XYZ-999',
+            99999.99, partner=None, payment_ref='NOMATCH-XYZ-999',
         )
         MatchModel.find_matches(odd_line)
 
@@ -418,7 +430,7 @@ class TestMatchingEngine(BankReconciliationTestCommon):
         )
 
         st_line = self.create_bank_statement_line(
-            1000.0, partner=self.partner_a, ref='MULTI-INV-001',
+            1000.0, partner=self.partner_a, payment_ref='MULTI-INV-001',
         )
         MatchModel.find_matches(st_line)
 
@@ -466,7 +478,7 @@ class TestMatchingEngine(BankReconciliationTestCommon):
         # Intentionally NOT posting → stays in draft
 
         st_line = self.create_bank_statement_line(
-            1000.0, partner=self.partner_a, ref='FILTER-TEST',
+            1000.0, partner=self.partner_a, payment_ref='FILTER-TEST',
         )
         MatchModel.find_matches(st_line)
 
@@ -515,7 +527,7 @@ class TestMatchingEngine(BankReconciliationTestCommon):
 
         # Statement line in company 1
         st_line = self.create_bank_statement_line(
-            1000.0, partner=self.partner_a, ref='COMPANY-ISO',
+            1000.0, partner=self.partner_a, payment_ref='COMPANY-ISO',
         )
         MatchModel.find_matches(st_line)
 
@@ -553,7 +565,7 @@ class TestMatchingMultiMatch(BankReconciliationTestCommon):
         )
 
         st_line = self.create_bank_statement_line(
-            750.0, partner=self.partner_a, ref='RESOLVE-EXACT',
+            750.0, partner=self.partner_a, payment_ref='RESOLVE-EXACT',
         )
         MatchModel.find_matches(st_line)
 
@@ -579,7 +591,7 @@ class TestMatchingMultiMatch(BankReconciliationTestCommon):
 
         # Statement line for 1500
         st_line = self.create_bank_statement_line(
-            1500.0, partner=self.partner_a, ref='OTM-TEST',
+            1500.0, partner=self.partner_a, payment_ref='OTM-TEST',
         )
 
         # Two invoices that sum to 1500 (no taxes)
@@ -629,12 +641,16 @@ class TestMatchingMultiMatch(BankReconciliationTestCommon):
             "equals the sum of two invoices.",
         )
 
-        # If a combination match was found, verify its type
+        # If a combination match was found, verify that the *sum* of all
+        # individual leg records equals the statement amount.  The engine
+        # creates one matching record per move line in the combination, so
+        # we must aggregate instead of checking a single record.
         combo = matches.filtered(lambda m: m.match_type == 'one_to_many')
         if combo:
+            total_matched = sum(combo.mapped('matched_amount'))
             self.assertAlmostEqual(
-                combo[0].matched_amount, 1500.0, delta=5.0,
-                msg="Combination match amount should approximate 1500.",
+                total_matched, 1500.0, delta=5.0,
+                msg="Sum of combination match amounts should approximate 1500.",
             )
 
     def test_br002_many_to_one_matching(self):
@@ -667,7 +683,7 @@ class TestMatchingMultiMatch(BankReconciliationTestCommon):
         for idx in range(3):
             st_lines |= self.create_bank_statement_line(
                 1000.0, partner=self.partner_a,
-                ref=f'MTO-PART-{idx + 1}',
+                payment_ref=f'MTO-PART-{idx + 1}',
             )
 
         MatchModel.find_matches(st_lines)
@@ -735,7 +751,7 @@ class TestMatchingMultiMatch(BankReconciliationTestCommon):
 
         # Statement line for the exact combined amount
         st_line = self.create_bank_statement_line(
-            2000.0, partner=self.partner_a, ref='COMBO-SUM-TEST',
+            2000.0, partner=self.partner_a, payment_ref='COMBO-SUM-TEST',
         )
 
         # Use find_matches — it internally invokes _find_combination_matches
@@ -902,11 +918,16 @@ class TestMatchingAccuracy(BankReconciliationTestCommon):
     def _create_no_tax_bill(self, amount, partner, ref, bill_date):
         """Create and post a vendor bill without taxes for deterministic
         payable amounts.
+
+        Uses immediate payment terms (``pay_terms_a``) to guarantee a
+        single payable line whose ``amount_residual`` exactly equals
+        ``-amount``, regardless of the partner's default payment terms.
         """
         bill = self.env['account.move'].create({
             'move_type': 'in_invoice',
             'partner_id': partner.id,
             'invoice_date': bill_date,
+            'invoice_payment_term_id': self.pay_terms_a.id,
             'journal_id': self.company_data['default_journal_purchase'].id,
             'invoice_line_ids': [
                 Command.create({
@@ -955,30 +976,20 @@ class TestMatchingAccuracy(BankReconciliationTestCommon):
             )
             self.assertTrue(recv, f"Invoice {ref} must have a receivable line.")
             st_line = self.create_bank_statement_line(
-                amount, partner=self.partner_a, ref=ref, date=test_date,
+                amount, partner=self.partner_a,
+                payment_ref=ref, date=test_date,
             )
             pairs.append((st_line, recv[:1]))
 
-        # --- 5 Vendor bills via helper method create_posted_bill ---
-        for idx in range(1, 6):
-            amount = idx * 100.0 + 50.0
-            ref = f'ACC-BILL-{idx:03d}'
-            bill = self.create_posted_bill(
-                amount=amount,
-                partner=self.partner_b,
-                ref=ref,
-            )
-            payable = bill.line_ids.filtered(
-                lambda l: l.account_id.account_type == 'liability_payable'
-            )
-            self.assertTrue(payable, f"Bill {ref} must have a payable line.")
-            st_line = self.create_bank_statement_line(
-                -amount, partner=self.partner_b, ref=ref, date=test_date,
-            )
-            pairs.append((st_line, payable[:1]))
-
-        # --- 5 Vendor bills via local helper ---
-        for idx in range(6, 11):
+        # --- 10 Vendor bills (no-tax, immediate payment for deterministic
+        #     single-line payables) ---
+        # We use ``_create_no_tax_bill`` for **all** vendor bill pairs so
+        # that each bill produces exactly one payable line with
+        # ``amount_residual == -amount``.  The helper explicitly sets
+        # ``invoice_payment_term_id = pay_terms_a`` (immediate) to prevent
+        # multi-installment splitting that ``partner_b``'s default 30/70
+        # payment terms would otherwise cause.
+        for idx in range(1, 11):
             amount = idx * 100.0 + 50.0
             ref = f'ACC-BILL-{idx:03d}'
             bill = self._create_no_tax_bill(
@@ -988,8 +999,15 @@ class TestMatchingAccuracy(BankReconciliationTestCommon):
                 lambda l: l.account_id.account_type == 'liability_payable'
             )
             self.assertTrue(payable, f"Bill {ref} must have a payable line.")
+            # Verify single payable line with exact amount (no splitting).
+            self.assertEqual(
+                len(payable), 1,
+                f"Bill {ref} must have exactly one payable line "
+                f"(got {len(payable)}); check payment terms.",
+            )
             st_line = self.create_bank_statement_line(
-                -amount, partner=self.partner_b, ref=ref, date=test_date,
+                -amount, partner=self.partner_b,
+                payment_ref=ref, date=test_date,
             )
             pairs.append((st_line, payable[:1]))
 

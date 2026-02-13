@@ -690,8 +690,8 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         expected_total = report.retained_earnings + report.current_year_earnings
         self.assertAlmostEqual(
             report.total_equity, expected_total, places=2,
-            "total_equity must equal retained_earnings + "
-            "current_year_earnings",
+            msg="total_equity must equal retained_earnings + "
+                "current_year_earnings",
         )
 
     @freeze_time('2024-06-30')
@@ -757,9 +757,9 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
             expected_abs_variance = line.amount - line.comparison_amount
             self.assertAlmostEqual(
                 line.variance_absolute, expected_abs_variance, places=2,
-                f"Line '{line.name}': variance_absolute should equal "
-                f"amount − comparison_amount "
-                f"({line.amount} − {line.comparison_amount})",
+                msg=f"Line '{line.name}': variance_absolute should equal "
+                    f"amount − comparison_amount "
+                    f"({line.amount} − {line.comparison_amount})",
             )
             # Percentage variance
             if line.comparison_amount:
@@ -899,10 +899,10 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         expected = report.total_current_assets + report.total_non_current_assets
         self.assertAlmostEqual(
             report.total_assets, expected, places=2,
-            "total_assets must equal "
-            "total_current_assets + total_non_current_assets "
-            f"({report.total_current_assets} + "
-            f"{report.total_non_current_assets})",
+            msg="total_assets must equal "
+                "total_current_assets + total_non_current_assets "
+                f"({report.total_current_assets} + "
+                f"{report.total_non_current_assets})",
         )
 
     @freeze_time('2024-06-30')
@@ -923,10 +923,10 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         )
         self.assertAlmostEqual(
             report.total_liabilities, expected, places=2,
-            "total_liabilities must equal "
-            "total_current_liabilities + total_non_current_liabilities "
-            f"({report.total_current_liabilities} + "
-            f"{report.total_non_current_liabilities})",
+            msg="total_liabilities must equal "
+                "total_current_liabilities + total_non_current_liabilities "
+                f"({report.total_current_liabilities} + "
+                f"{report.total_non_current_liabilities})",
         )
 
     @freeze_time('2024-06-30')
@@ -986,8 +986,8 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
             # Receivable should reflect both posted and draft balances
             self.assertAlmostEqual(
                 line.amount, 6000.0, places=2,
-                "Receivable line with target_move='all' should include "
-                "draft entry amount (5,000 + 1,000 = 6,000)",
+                msg="Receivable line with target_move='all' should include "
+                    "draft entry amount (5,000 + 1,000 = 6,000)",
             )
 
     @freeze_time('2024-06-30')
@@ -1079,8 +1079,8 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
 
         self.assertAlmostEqual(
             report.balance_difference, 0.0, places=2,
-            "balance_difference should be 0 for a balanced sheet "
-            f"(got {report.balance_difference})",
+            msg="balance_difference should be 0 for a balanced sheet "
+                f"(got {report.balance_difference})",
         )
         self.assertTrue(report.is_balanced)
 
@@ -1155,9 +1155,9 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         if line:
             self.assertAlmostEqual(
                 line.amount, 5500.0, places=2,
-                "Receivable should include boundary entry (500) but "
-                "exclude post-boundary entry (2,000). "
-                f"Expected 5,500, got {line.amount}",
+                msg="Receivable should include boundary entry (500) but "
+                    "exclude post-boundary entry (2,000). "
+                    f"Expected 5,500, got {line.amount}",
             )
 
         # Verify the after-boundary date is indeed one day later

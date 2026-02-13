@@ -633,12 +633,11 @@ class BalanceSheetReport(models.TransientModel):
                 comparison columns.
 
         Returns:
-            list: Virtual ``account.balance.sheet.report.line`` records
-            suitable for direct assignment to ``line_ids``.
+            list: ``fields.Command.create()`` tuples for assignment
+            to ``line_ids``, producing persisted report-line records.
         """
         lines = []
         sequence = 0
-        Line = self.env['account.balance.sheet.report.line']
 
         # -- Variance helper ---------------------------------------------------
         # Returns (comparison_amount, variance_absolute, variance_percentage)
@@ -663,7 +662,8 @@ class BalanceSheetReport(models.TransientModel):
                 comp_balances: Optional comparison balance dict.
 
             Returns:
-                list: Virtual ``Line`` records for the accounts.
+                list: ``fields.Command.create()`` tuples for the
+                    account detail lines.
             """
             nonlocal sequence
             result = []
@@ -681,7 +681,7 @@ class BalanceSheetReport(models.TransientModel):
                 c_amt, v_abs, v_pct = _var(amount, comp_amount)
 
                 sequence += 1
-                result.append(Line.new({
+                result.append(fields.Command.create({
                     'sequence': sequence,
                     'name': "%s - %s" % (account.code, account.name),
                     'level': level,
@@ -701,7 +701,7 @@ class BalanceSheetReport(models.TransientModel):
         ca_ta, va_ta, vp_ta = _var(self.total_assets, comp_ta)
 
         sequence = 100
-        lines.append(Line.new({
+        lines.append(fields.Command.create({
             'sequence': sequence,
             'name': _('ASSETS'),
             'level': 0,
@@ -718,7 +718,7 @@ class BalanceSheetReport(models.TransientModel):
         ca_tca, va_tca, vp_tca = _var(self.total_current_assets, comp_tca)
 
         sequence = 110
-        lines.append(Line.new({
+        lines.append(fields.Command.create({
             'sequence': sequence,
             'name': _('Current Assets'),
             'level': 1,
@@ -747,7 +747,7 @@ class BalanceSheetReport(models.TransientModel):
         )
 
         sequence = 150
-        lines.append(Line.new({
+        lines.append(fields.Command.create({
             'sequence': sequence,
             'name': _('Non-Current Assets'),
             'level': 1,
@@ -774,7 +774,7 @@ class BalanceSheetReport(models.TransientModel):
         ca_tl, va_tl, vp_tl = _var(self.total_liabilities, comp_tl)
 
         sequence = 200
-        lines.append(Line.new({
+        lines.append(fields.Command.create({
             'sequence': sequence,
             'name': _('LIABILITIES'),
             'level': 0,
@@ -795,7 +795,7 @@ class BalanceSheetReport(models.TransientModel):
         )
 
         sequence = 210
-        lines.append(Line.new({
+        lines.append(fields.Command.create({
             'sequence': sequence,
             'name': _('Current Liabilities'),
             'level': 1,
@@ -825,7 +825,7 @@ class BalanceSheetReport(models.TransientModel):
         )
 
         sequence = 250
-        lines.append(Line.new({
+        lines.append(fields.Command.create({
             'sequence': sequence,
             'name': _('Non-Current Liabilities'),
             'level': 1,
@@ -852,7 +852,7 @@ class BalanceSheetReport(models.TransientModel):
         ca_te, va_te, vp_te = _var(self.total_equity, comp_te)
 
         sequence = 300
-        lines.append(Line.new({
+        lines.append(fields.Command.create({
             'sequence': sequence,
             'name': _('EQUITY'),
             'level': 0,
@@ -878,7 +878,7 @@ class BalanceSheetReport(models.TransientModel):
         ca_cye, va_cye, vp_cye = _var(self.current_year_earnings, comp_cye)
 
         sequence += 10
-        lines.append(Line.new({
+        lines.append(fields.Command.create({
             'sequence': sequence,
             'name': _('Current Year Earnings'),
             'level': 1,
@@ -900,7 +900,7 @@ class BalanceSheetReport(models.TransientModel):
         ca_tle, va_tle, vp_tle = _var(total_l_and_e, comp_total_l_and_e)
 
         sequence = 400
-        lines.append(Line.new({
+        lines.append(fields.Command.create({
             'sequence': sequence,
             'name': _('TOTAL LIABILITIES AND EQUITY'),
             'level': 0,

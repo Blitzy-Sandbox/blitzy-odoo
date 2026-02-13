@@ -454,14 +454,14 @@ class TestReportComparison(TestFinancialReportsBase):
             'date_to': self.date_end,
             'company_id': self.company.id,
             'target_move': 'posted',
-            'compare_period': True,
-            'compare_date_to': compare_date,
+            'enable_comparison': True,
+            'comparison_date_to': compare_date,
         })
 
         report.action_compute()
 
         # Verify comparison data is populated
-        self.assertTrue(report.compare_period)
+        self.assertTrue(report.enable_comparison)
 
 
 @tagged('post_install', '-at_install')

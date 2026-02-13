@@ -90,6 +90,12 @@ class GeneralLedgerReport(models.TransientModel):
         help="Group transactions by partner within each account.",
     )
 
+    partner_ids = fields.Many2many(
+        comodel_name='res.partner',
+        string='Partners',
+        help="Specific partners to include. Leave empty for all partners.",
+    )
+
     # -------------------------------------------------------------------------
     # COMPUTED REPORT DATA
     # -------------------------------------------------------------------------
@@ -110,14 +116,30 @@ class GeneralLedgerReport(models.TransientModel):
     )
 
     def _compute_report_data(self):
-        """
-        Compute General Ledger report data.
+        """Compute General Ledger report data.
 
-        For each account:
-        1. Calculate opening balance
-        2. Retrieve all transactions in date range
-        3. Calculate running balance
-        4. Calculate closing balance
+        Builds the full General Ledger by iterating over the selected
+        accounts and populating :attr:`account_line_ids` with one
+        ``account.general.ledger.report.account`` per account, each
+        containing nested ``account.general.ledger.report.line`` records
+        for the individual transactions.
+
+        Algorithm per account:
+
+        1. Compute **opening balance** from all posted entries before
+           ``date_from`` via ``_compute_account_balance``.
+        2. Retrieve every ``account.move.line`` within ``[date_from,
+           date_to]``, honouring partner and target-move filters.
+        3. Accumulate a **running balance** starting from the opening
+           balance.
+        4. When *centralize* is enabled, group transactions by partner
+           and append partner-level subtotal lines for drill-down
+           convenience.
+        5. Store **closing balance** = opening + Σdebit − Σcredit.
+
+        The method writes via ORM ``Command`` operations so the data is
+        persisted in the transient table and survives a page reload
+        within the same session.
         """
         for report in self:
             report.currency_id = report.company_id.currency_id
@@ -149,18 +171,30 @@ class GeneralLedgerReport(models.TransientModel):
                 else:
                     opening_balance = 0.0
 
-                # Get transactions
+                # Build move line domain for this account
                 move_line_domain = report._get_move_line_domain(
                     date_from=report.date_from,
                     date_to=report.date_to,
                     account_ids=[account.id],
                 )
 
+                # Apply partner filtering when specific partners are selected
+                if report.partner_ids:
+                    move_line_domain.append(
+                        ('partner_id', 'in', report.partner_ids.ids)
+                    )
+
+                # Determine sort order based on user selection
                 order_field = {
                     'date': 'date, id',
                     'ref': 'ref, date, id',
                     'name': 'name, date, id',
                 }.get(report.sort_by, 'date, id')
+
+                # When centralizing by partner, prepend partner sort to
+                # group all transactions for the same partner together
+                if report.centralize:
+                    order_field = 'partner_id, ' + order_field
 
                 move_lines = self.env['account.move.line'].search(
                     move_line_domain, order=order_field,
@@ -179,21 +213,28 @@ class GeneralLedgerReport(models.TransientModel):
                 transaction_cmds = []
                 running_balance = opening_balance
 
-                for ml in move_lines:
-                    running_balance += ml.debit - ml.credit
-                    transaction_cmds.append(Command.create({
-                        'move_line_id': ml.id,
-                        'date': ml.date,
-                        'journal_id': ml.journal_id.id,
-                        'move_id': ml.move_id.id,
-                        'ref': ml.ref or ml.move_id.ref,
-                        'name': ml.name,
-                        'partner_id': ml.partner_id.id,
-                        'debit': ml.debit,
-                        'credit': ml.credit,
-                        'balance': running_balance,
-                        'currency_id': report.currency_id.id,
-                    }))
+                if report.centralize and move_lines:
+                    # Group transactions by partner with subtotals
+                    transaction_cmds = report._build_centralized_lines(
+                        move_lines, running_balance,
+                    )
+                else:
+                    # Standard chronological transaction listing
+                    for ml in move_lines:
+                        running_balance += ml.debit - ml.credit
+                        transaction_cmds.append(Command.create({
+                            'move_line_id': ml.id,
+                            'date': ml.date,
+                            'journal_id': ml.journal_id.id,
+                            'move_id': ml.move_id.id,
+                            'ref': ml.ref or ml.move_id.ref,
+                            'name': ml.name,
+                            'partner_id': ml.partner_id.id,
+                            'debit': ml.debit,
+                            'credit': ml.credit,
+                            'balance': running_balance,
+                            'currency_id': report.currency_id.id,
+                        }))
 
                 # Create account line with embedded transaction lines
                 account_cmds.append(Command.create({
@@ -209,8 +250,111 @@ class GeneralLedgerReport(models.TransientModel):
 
             report.account_line_ids = account_cmds
 
+    def _build_centralized_lines(self, move_lines, running_balance):
+        """Build transaction lines grouped by partner with subtotals.
+
+        When the *centralize* option is active, transactions within an
+        account are organised into partner groups.  Each group ends with
+        a subtotal line whose :attr:`is_partner_subtotal` flag is
+        ``True``, making it easy for the QWeb template to render
+        distinct formatting.
+
+        The *move_lines* recordset **must** already be sorted with
+        ``partner_id`` as the primary key (handled by the caller which
+        prepends ``partner_id`` to the ORDER BY clause).
+
+        :param move_lines: ``account.move.line`` recordset sorted by
+            ``partner_id`` first, then by the user-chosen sort field.
+        :param running_balance: Opening balance carried forward into the
+            first transaction line.
+        :returns: list of ORM ``Command.create()`` dicts suitable for
+            assignment to ``line_ids`` on an account section record.
+        """
+        self.ensure_one()
+        transaction_cmds = []
+        current_partner_id = None
+        partner_debit = 0.0
+        partner_credit = 0.0
+        first_line = True
+
+        for ml in move_lines:
+            partner_id = ml.partner_id.id or False
+
+            # Detect partner change — emit subtotal for previous group
+            if not first_line and partner_id != current_partner_id:
+                partner_name = (
+                    self.env['res.partner'].browse(
+                        current_partner_id
+                    ).display_name
+                    if current_partner_id
+                    else _('No Partner')
+                )
+                transaction_cmds.append(Command.create({
+                    'date': False,
+                    'name': _('Partner Subtotal: %s') % partner_name,
+                    'partner_id': current_partner_id or False,
+                    'debit': partner_debit,
+                    'credit': partner_credit,
+                    'balance': running_balance,
+                    'currency_id': self.currency_id.id,
+                    'is_partner_subtotal': True,
+                }))
+                partner_debit = 0.0
+                partner_credit = 0.0
+
+            first_line = False
+            current_partner_id = partner_id
+            running_balance += ml.debit - ml.credit
+            partner_debit += ml.debit
+            partner_credit += ml.credit
+
+            transaction_cmds.append(Command.create({
+                'move_line_id': ml.id,
+                'date': ml.date,
+                'journal_id': ml.journal_id.id,
+                'move_id': ml.move_id.id,
+                'ref': ml.ref or ml.move_id.ref,
+                'name': ml.name,
+                'partner_id': ml.partner_id.id,
+                'debit': ml.debit,
+                'credit': ml.credit,
+                'balance': running_balance,
+                'currency_id': self.currency_id.id,
+            }))
+
+        # Emit subtotal for the last partner group
+        if not first_line:
+            partner_name = (
+                self.env['res.partner'].browse(
+                    current_partner_id
+                ).display_name
+                if current_partner_id
+                else _('No Partner')
+            )
+            transaction_cmds.append(Command.create({
+                'date': False,
+                'name': _('Partner Subtotal: %s') % partner_name,
+                'partner_id': current_partner_id or False,
+                'debit': partner_debit,
+                'credit': partner_credit,
+                'balance': running_balance,
+                'currency_id': self.currency_id.id,
+                'is_partner_subtotal': True,
+            }))
+
+        return transaction_cmds
+
     def action_generate_report(self):
-        """Generate and display the General Ledger report."""
+        """Generate and display the General Ledger report.
+
+        Validates the mandatory date range, triggers the data
+        computation pipeline, and returns an ``ir.actions.act_window``
+        action that opens the populated report record in an inline form.
+
+        :raises UserError: When ``date_from`` or ``date_to`` is missing.
+        :returns: Window action dictionary.
+        :rtype: dict
+        """
         self.ensure_one()
         if not self.date_from or not self.date_to:
             raise UserError(_("Please specify the date range."))
@@ -228,7 +372,14 @@ class GeneralLedgerReport(models.TransientModel):
 
 
 class GeneralLedgerReportAccount(models.TransientModel):
-    """General Ledger Account Section."""
+    """General Ledger account-level section record.
+
+    Each record represents one account in the ledger and holds the
+    aggregated opening balance, total debits/credits, closing balance,
+    and a one-to-many collection of individual transaction lines
+    (``account.general.ledger.report.line``).
+    """
+
     _name = 'account.general.ledger.report.account'
     _description = 'General Ledger Report Account'
     _order = 'name'
@@ -252,7 +403,16 @@ class GeneralLedgerReportAccount(models.TransientModel):
     )
 
     def action_drilldown(self):
-        """Open account transactions."""
+        """Open the underlying journal items for this account section.
+
+        Delegates to the parent report's ``action_drilldown`` method,
+        passing both ``date_from`` and ``date_to`` so the resulting
+        list view is filtered to the exact reporting period.
+
+        :returns: ``ir.actions.act_window`` action dictionary filtered
+            to ``account.move.line`` records for this account.
+        :rtype: dict
+        """
         self.ensure_one()
         return self.report_id.action_drilldown(
             account_id=self.account_id.id,
@@ -262,7 +422,19 @@ class GeneralLedgerReportAccount(models.TransientModel):
 
 
 class GeneralLedgerReportLine(models.TransientModel):
-    """General Ledger Transaction Line."""
+    """General Ledger individual transaction line.
+
+    Each record corresponds to a single ``account.move.line`` within
+    the reporting period for the parent account section.  The
+    ``balance`` field carries a **running balance** accumulated from
+    the account's opening balance through the current line.
+
+    When the *centralize* option is enabled on the parent report,
+    additional partner-subtotal rows are generated with
+    ``is_partner_subtotal = True`` and without a linked
+    ``move_line_id``.
+    """
+
     _name = 'account.general.ledger.report.line'
     _description = 'General Ledger Report Transaction'
     _order = 'date, id'
@@ -283,9 +455,26 @@ class GeneralLedgerReportLine(models.TransientModel):
     credit = fields.Monetary(string='Credit', currency_field='currency_id')
     balance = fields.Monetary(string='Running Balance', currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', string='Currency')
+    is_partner_subtotal = fields.Boolean(
+        string='Is Partner Subtotal',
+        default=False,
+        help="Marks this line as a partner-group subtotal generated "
+             "by the centralize option.  These lines have no linked "
+             "move_line_id and carry the sum of debit/credit for the "
+             "partner within the account.",
+    )
 
     def action_open_move(self):
-        """Open source journal entry."""
+        """Open the source journal entry in a form view.
+
+        Per FR-007 acceptance criteria:
+            *"When I click on a line item amount, then I am navigated
+            to a filtered view of the underlying journal entries."*
+
+        :returns: ``ir.actions.act_window`` action pointing at the
+            ``account.move`` record that originated this line.
+        :rtype: dict
+        """
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',

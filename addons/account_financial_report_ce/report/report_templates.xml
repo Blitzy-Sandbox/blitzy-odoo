@@ -14,7 +14,6 @@
         <field name="report_name">account_financial_report_ce.report_balance_sheet</field>
         <field name="report_file">account_financial_report_ce.report_balance_sheet</field>
         <field name="print_report_name">'Balance Sheet - %s' % (object.date_to)</field>
-        <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
         <field name="binding_model_id" ref="model_account_balance_sheet_report"/>
         <field name="binding_type">report</field>
     </record>
@@ -27,7 +26,6 @@
         <field name="report_name">account_financial_report_ce.report_profit_loss</field>
         <field name="report_file">account_financial_report_ce.report_profit_loss</field>
         <field name="print_report_name">'Profit and Loss - %s to %s' % (object.date_from, object.date_to)</field>
-        <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
         <field name="binding_model_id" ref="model_account_profit_loss_report"/>
         <field name="binding_type">report</field>
     </record>
@@ -40,7 +38,6 @@
         <field name="report_name">account_financial_report_ce.report_cash_flow</field>
         <field name="report_file">account_financial_report_ce.report_cash_flow</field>
         <field name="print_report_name">'Cash Flow Statement - %s to %s' % (object.date_from, object.date_to)</field>
-        <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
         <field name="binding_model_id" ref="model_account_cash_flow_report"/>
         <field name="binding_type">report</field>
     </record>
@@ -53,7 +50,6 @@
         <field name="report_name">account_financial_report_ce.report_general_ledger</field>
         <field name="report_file">account_financial_report_ce.report_general_ledger</field>
         <field name="print_report_name">'General Ledger - %s to %s' % (object.date_from, object.date_to)</field>
-        <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
         <field name="binding_model_id" ref="model_account_general_ledger_report"/>
         <field name="binding_type">report</field>
     </record>
@@ -66,7 +62,6 @@
         <field name="report_name">account_financial_report_ce.report_trial_balance</field>
         <field name="report_file">account_financial_report_ce.report_trial_balance</field>
         <field name="print_report_name">'Trial Balance - %s' % (object.date_to)</field>
-        <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
         <field name="binding_model_id" ref="model_account_trial_balance_report"/>
         <field name="binding_type">report</field>
     </record>
@@ -79,15 +74,18 @@
         <field name="report_name">account_financial_report_ce.report_aged_partner_balance</field>
         <field name="report_file">account_financial_report_ce.report_aged_partner_balance</field>
         <field name="print_report_name">'Aged %s - %s' % ('Receivable' if object.report_type == 'receivable' else 'Payable', object.date_to)</field>
-        <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
         <field name="binding_model_id" ref="model_account_aged_partner_balance_report"/>
         <field name="binding_type">report</field>
     </record>
 
     <!--
-        XLSX export is handled programmatically via wizard action_export_xlsx()
-        using openpyxl/XlsxWriter in Python, not through ir.actions.report.
-        Standard Odoo 19.0 only supports qweb-html, qweb-pdf, qweb-text report types.
+        XLSX export is handled programmatically via the wizard's
+        action_export_xlsx() method using openpyxl/XlsxWriter in Python,
+        not through ir.actions.report — standard Odoo 19.0 only supports
+        qweb-html, qweb-pdf, and qweb-text report types.
+
+        Paper format assignment is handled in data/report_paperformat.xml,
+        which is loaded after this file in __manifest__.py.
     -->
 
 </odoo>

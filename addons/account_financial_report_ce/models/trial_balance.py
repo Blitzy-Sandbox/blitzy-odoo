@@ -20,6 +20,7 @@ Acceptance Criteria:
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.fields import Command
 
 
 class TrialBalanceReport(models.TransientModel):
@@ -86,37 +87,29 @@ class TrialBalanceReport(models.TransientModel):
         comodel_name='account.trial.balance.report.line',
         inverse_name='report_id',
         string='Account Lines',
-        compute='_compute_report_data',
     )
 
     total_debit = fields.Monetary(
         string='Total Debit',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     total_credit = fields.Monetary(
         string='Total Credit',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     is_balanced = fields.Boolean(
         string='Is Balanced',
-        compute='_compute_report_data',
         help="True if total debits equal total credits.",
     )
 
     difference = fields.Monetary(
         string='Difference',
         currency_field='currency_id',
-        compute='_compute_report_data',
         help="Difference between total debits and credits (should be 0).",
     )
 
-    @api.depends('date_from', 'date_to', 'company_id', 'target_move',
-                 'show_balance_zero', 'show_hierarchy', 'display_type',
-                 'enable_comparison', 'comparison_date_to')
     def _compute_report_data(self):
         """
         Compute Trial Balance report data.
@@ -126,6 +119,9 @@ class TrialBalanceReport(models.TransientModel):
         2. Calculate total credit (all credit entries)
         3. Calculate balance (debit - credit)
         4. Sum totals and verify balance
+
+        Lines are persisted using Command.create() for reliable ORM
+        compatibility with stored TransientModel records.
         """
         for report in self:
             report.currency_id = report.company_id.currency_id
@@ -150,9 +146,8 @@ class TrialBalanceReport(models.TransientModel):
                     date_to=report.date_to,
                 )
 
-            # Generate lines
-            lines = []
-            Line = self.env['account.trial.balance.report.line']
+            # Generate lines using Command.create for DB persistence
+            line_commands = [Command.clear()]
             total_debit = 0.0
             total_credit = 0.0
 
@@ -170,8 +165,7 @@ class TrialBalanceReport(models.TransientModel):
                 debit_balance = balance if balance > 0 else 0.0
                 credit_balance = -balance if balance < 0 else 0.0
 
-                lines.append(Line.new({
-                    'report_id': report.id,
+                line_commands.append(Command.create({
                     'account_id': account.id,
                     'code': account.code,
                     'name': account.name,
@@ -187,7 +181,7 @@ class TrialBalanceReport(models.TransientModel):
                 total_debit += debit_balance
                 total_credit += credit_balance
 
-            report.line_ids = lines
+            report.line_ids = line_commands
             report.total_debit = total_debit
             report.total_credit = total_credit
             report.difference = round(total_debit - total_credit, 2)

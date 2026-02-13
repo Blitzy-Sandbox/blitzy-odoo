@@ -21,6 +21,7 @@ Acceptance Criteria Implemented:
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.fields import Command
 
 
 class BalanceSheetReport(models.TransientModel):
@@ -128,50 +129,42 @@ class BalanceSheetReport(models.TransientModel):
     total_assets = fields.Monetary(
         string='Total Assets',
         currency_field='currency_id',
-        compute='_compute_report_data',
         help="Sum of all asset accounts.",
     )
 
     total_current_assets = fields.Monetary(
         string='Total Current Assets',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     total_non_current_assets = fields.Monetary(
         string='Total Non-Current Assets',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     total_liabilities = fields.Monetary(
         string='Total Liabilities',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     total_current_liabilities = fields.Monetary(
         string='Total Current Liabilities',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     total_non_current_liabilities = fields.Monetary(
         string='Total Non-Current Liabilities',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     total_equity = fields.Monetary(
         string='Total Equity',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     current_year_earnings = fields.Monetary(
         string='Current Year Earnings',
         currency_field='currency_id',
-        compute='_compute_report_data',
         help="Unallocated earnings for the current fiscal year "
              "(Income - Expenses for period).",
     )
@@ -179,20 +172,17 @@ class BalanceSheetReport(models.TransientModel):
     retained_earnings = fields.Monetary(
         string='Retained Earnings',
         currency_field='currency_id',
-        compute='_compute_report_data',
         help="Accumulated profits from prior periods.",
     )
 
     is_balanced = fields.Boolean(
         string='Is Balanced',
-        compute='_compute_report_data',
         help="True if Assets = Liabilities + Equity",
     )
 
     balance_difference = fields.Monetary(
         string='Balance Difference',
         currency_field='currency_id',
-        compute='_compute_report_data',
         help="Difference between Assets and (Liabilities + Equity). "
              "Should be 0 for a balanced sheet.",
     )
@@ -202,15 +192,12 @@ class BalanceSheetReport(models.TransientModel):
         comodel_name='account.balance.sheet.report.line',
         inverse_name='report_id',
         string='Report Lines',
-        compute='_compute_report_data',
     )
 
     # -------------------------------------------------------------------------
     # COMPUTATION METHODS
     # -------------------------------------------------------------------------
 
-    @api.depends('date_to', 'date_from', 'company_id', 'target_move',
-                 'enable_comparison', 'comparison_date_to')
     def _compute_report_data(self):
         """
         Compute all Balance Sheet data.
@@ -344,7 +331,7 @@ class BalanceSheetReport(models.TransientModel):
             # ----------------------------------------------------------------
             # GENERATE REPORT LINES
             # ----------------------------------------------------------------
-            report.line_ids = report._generate_report_lines(
+            report.line_ids = [Command.clear()] + report._generate_report_lines(
                 current_asset_accounts, current_asset_balances,
                 non_current_asset_accounts, non_current_asset_balances,
                 current_liability_accounts, current_liability_balances,
@@ -391,9 +378,8 @@ class BalanceSheetReport(models.TransientModel):
         """
         lines = []
         sequence = 0
-        Line = self.env['account.balance.sheet.report.line']
 
-        # Helper to create account lines
+        # Helper to create account lines using Command.create for DB persistence
         def add_account_lines(accounts, balances, level, sign=1):
             nonlocal sequence
             result = []
@@ -403,19 +389,19 @@ class BalanceSheetReport(models.TransientModel):
                 if self.hide_zero_balance and not amount:
                     continue
                 sequence += 1
-                result.append(Line.new({
+                result.append(Command.create({
                     'sequence': sequence,
                     'name': f"{account.code} - {account.name}",
                     'level': level,
                     'amount': amount,
-                    'account_ids': [(6, 0, [account.id])],
+                    'account_ids': [Command.set([account.id])],
                     'currency_id': self.currency_id.id,
                 }))
             return result
 
         # ASSETS SECTION
         sequence = 100
-        lines.append(Line.new({
+        lines.append(Command.create({
             'sequence': sequence,
             'name': _('ASSETS'),
             'level': 0,
@@ -426,7 +412,7 @@ class BalanceSheetReport(models.TransientModel):
 
         # Current Assets
         sequence = 110
-        lines.append(Line.new({
+        lines.append(Command.create({
             'sequence': sequence,
             'name': _('Current Assets'),
             'level': 1,
@@ -440,7 +426,7 @@ class BalanceSheetReport(models.TransientModel):
 
         # Non-Current Assets
         sequence = 150
-        lines.append(Line.new({
+        lines.append(Command.create({
             'sequence': sequence,
             'name': _('Non-Current Assets'),
             'level': 1,
@@ -454,7 +440,7 @@ class BalanceSheetReport(models.TransientModel):
 
         # LIABILITIES SECTION
         sequence = 200
-        lines.append(Line.new({
+        lines.append(Command.create({
             'sequence': sequence,
             'name': _('LIABILITIES'),
             'level': 0,
@@ -465,7 +451,7 @@ class BalanceSheetReport(models.TransientModel):
 
         # Current Liabilities
         sequence = 210
-        lines.append(Line.new({
+        lines.append(Command.create({
             'sequence': sequence,
             'name': _('Current Liabilities'),
             'level': 1,
@@ -479,7 +465,7 @@ class BalanceSheetReport(models.TransientModel):
 
         # Non-Current Liabilities
         sequence = 250
-        lines.append(Line.new({
+        lines.append(Command.create({
             'sequence': sequence,
             'name': _('Non-Current Liabilities'),
             'level': 1,
@@ -493,7 +479,7 @@ class BalanceSheetReport(models.TransientModel):
 
         # EQUITY SECTION
         sequence = 300
-        lines.append(Line.new({
+        lines.append(Command.create({
             'sequence': sequence,
             'name': _('EQUITY'),
             'level': 0,
@@ -507,7 +493,7 @@ class BalanceSheetReport(models.TransientModel):
 
         # Current Year Earnings line
         sequence += 10
-        lines.append(Line.new({
+        lines.append(Command.create({
             'sequence': sequence,
             'name': _('Current Year Earnings'),
             'level': 1,
@@ -517,7 +503,7 @@ class BalanceSheetReport(models.TransientModel):
 
         # TOTAL LIABILITIES AND EQUITY
         sequence = 400
-        lines.append(Line.new({
+        lines.append(Command.create({
             'sequence': sequence,
             'name': _('TOTAL LIABILITIES AND EQUITY'),
             'level': 0,

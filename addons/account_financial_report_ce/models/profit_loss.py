@@ -20,6 +20,7 @@ Acceptance Criteria:
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.fields import Command
 
 
 class ProfitLossReport(models.TransientModel):
@@ -62,49 +63,41 @@ class ProfitLossReport(models.TransientModel):
     total_revenue = fields.Monetary(
         string='Total Revenue',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     total_cogs = fields.Monetary(
         string='Cost of Goods Sold',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     gross_profit = fields.Monetary(
         string='Gross Profit',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     total_operating_expenses = fields.Monetary(
         string='Operating Expenses',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     operating_income = fields.Monetary(
         string='Operating Income',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     total_other_income = fields.Monetary(
         string='Other Income',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     total_other_expenses = fields.Monetary(
         string='Other Expenses',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     net_income = fields.Monetary(
         string='Net Income',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     # -------------------------------------------------------------------------
@@ -136,11 +129,8 @@ class ProfitLossReport(models.TransientModel):
         comodel_name='account.profit.loss.report.line',
         inverse_name='report_id',
         string='Report Lines',
-        compute='_compute_report_data',
     )
 
-    @api.depends('date_from', 'date_to', 'company_id', 'target_move',
-                 'enable_comparison', 'comparison_date_from', 'comparison_date_to')
     def _compute_report_data(self):
         """
         Compute P&L report data.
@@ -221,8 +211,8 @@ class ProfitLossReport(models.TransientModel):
                 report.total_other_expenses
             )
 
-            # Generate report lines
-            report.line_ids = []  # Placeholder for line generation
+            # Generate report lines using Command.create for DB persistence
+            report.line_ids = [Command.clear()]
 
     def action_generate_report(self):
         """Generate and display the P&L report."""

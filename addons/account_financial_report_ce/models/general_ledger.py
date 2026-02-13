@@ -20,6 +20,7 @@ Acceptance Criteria:
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.fields import Command
 
 
 class GeneralLedgerReport(models.TransientModel):
@@ -97,7 +98,6 @@ class GeneralLedgerReport(models.TransientModel):
         comodel_name='account.general.ledger.report.account',
         inverse_name='report_id',
         string='Account Lines',
-        compute='_compute_report_data',
     )
 
     # Alias: line_ids points to same sub-records as account_line_ids
@@ -109,9 +109,6 @@ class GeneralLedgerReport(models.TransientModel):
         string='Lines',
     )
 
-    @api.depends('date_from', 'date_to', 'company_id', 'target_move',
-                 'account_ids', 'account_from', 'account_to',
-                 'include_initial_balance', 'sort_by')
     def _compute_report_data(self):
         """
         Compute General Ledger report data.
@@ -139,9 +136,8 @@ class GeneralLedgerReport(models.TransientModel):
 
             accounts = self.env['account.account'].search(domain, order='code')
 
-            # Build account lines
-            account_lines = []
-            AccountLine = self.env['account.general.ledger.report.account']
+            # Build account lines using Command operations for ORM persistence
+            account_cmds = [Command.clear()]
 
             for account in accounts:
                 # Opening balance
@@ -174,31 +170,18 @@ class GeneralLedgerReport(models.TransientModel):
                 if report.hide_zero_balance and not move_lines and opening_balance == 0:
                     continue
 
-                # Create account line
+                # Aggregate totals
                 total_debit = sum(move_lines.mapped('debit'))
                 total_credit = sum(move_lines.mapped('credit'))
                 closing_balance = opening_balance + total_debit - total_credit
 
-                account_line = AccountLine.new({
-                    'report_id': report.id,
-                    'account_id': account.id,
-                    'name': f"{account.code} - {account.name}",
-                    'opening_balance': opening_balance,
-                    'total_debit': total_debit,
-                    'total_credit': total_credit,
-                    'closing_balance': closing_balance,
-                    'currency_id': report.currency_id.id,
-                })
-
-                # Add transaction lines
-                transaction_lines = []
-                TransactionLine = self.env['account.general.ledger.report.line']
+                # Build nested transaction line Command.create() entries
+                transaction_cmds = []
                 running_balance = opening_balance
 
                 for ml in move_lines:
                     running_balance += ml.debit - ml.credit
-                    transaction_lines.append(TransactionLine.new({
-                        'account_line_id': account_line.id,
+                    transaction_cmds.append(Command.create({
                         'move_line_id': ml.id,
                         'date': ml.date,
                         'journal_id': ml.journal_id.id,
@@ -212,10 +195,19 @@ class GeneralLedgerReport(models.TransientModel):
                         'currency_id': report.currency_id.id,
                     }))
 
-                account_line.line_ids = transaction_lines
-                account_lines.append(account_line)
+                # Create account line with embedded transaction lines
+                account_cmds.append(Command.create({
+                    'account_id': account.id,
+                    'name': f"{account.code} - {account.name}",
+                    'opening_balance': opening_balance,
+                    'total_debit': total_debit,
+                    'total_credit': total_credit,
+                    'closing_balance': closing_balance,
+                    'currency_id': report.currency_id.id,
+                    'line_ids': transaction_cmds,
+                }))
 
-            report.account_line_ids = account_lines
+            report.account_line_ids = account_cmds
 
     def action_generate_report(self):
         """Generate and display the General Ledger report."""

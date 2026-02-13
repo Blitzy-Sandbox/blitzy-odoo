@@ -184,7 +184,12 @@ class TestFinancialReportWizard(TestFinancialReportsBase):
         self.assertEqual(result.get('type'), 'ir.actions.report')
 
     def test_wizard_excel_export(self):
-        """Test Excel export functionality."""
+        """Test Excel export functionality.
+
+        The XLSX export generates an ``ir.attachment`` and returns an
+        ``ir.actions.act_url`` action dict pointing to the file download
+        controller so the browser triggers a download.
+        """
         wizard = self.env['account.financial.report.wizard'].create({
             'report_type': 'trial_balance',
             'date_to': self.date_end,
@@ -193,7 +198,9 @@ class TestFinancialReportWizard(TestFinancialReportsBase):
         })
 
         result = wizard.action_export_xlsx()
-        self.assertEqual(result.get('type'), 'ir.actions.report')
+        self.assertEqual(result.get('type'), 'ir.actions.act_url')
+        self.assertTrue(result.get('url'), "Download URL should be set")
+        self.assertEqual(result.get('target'), 'new')
 
 
 @tagged('post_install', '-at_install')

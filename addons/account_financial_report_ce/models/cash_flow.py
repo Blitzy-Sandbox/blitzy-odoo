@@ -20,6 +20,7 @@ Acceptance Criteria:
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.fields import Command
 
 
 class CashFlowReport(models.TransientModel):
@@ -77,106 +78,89 @@ class CashFlowReport(models.TransientModel):
     opening_cash = fields.Monetary(
         string='Opening Cash',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     closing_cash = fields.Monetary(
         string='Closing Cash',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     # Operating Activities
     net_income = fields.Monetary(
         string='Net Income',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     depreciation_amortization = fields.Monetary(
         string='Depreciation & Amortization',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     change_in_receivables = fields.Monetary(
         string='Change in Receivables',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     change_in_payables = fields.Monetary(
         string='Change in Payables',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     change_in_inventory = fields.Monetary(
         string='Change in Inventory',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     cash_from_operating = fields.Monetary(
         string='Cash from Operating Activities',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     # Investing Activities
     capital_expenditures = fields.Monetary(
         string='Capital Expenditures',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     asset_disposals = fields.Monetary(
         string='Proceeds from Asset Sales',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     cash_from_investing = fields.Monetary(
         string='Cash from Investing Activities',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     # Financing Activities
     debt_proceeds = fields.Monetary(
         string='Proceeds from Borrowings',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     debt_repayments = fields.Monetary(
         string='Debt Repayments',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     dividends_paid = fields.Monetary(
         string='Dividends Paid',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     cash_from_financing = fields.Monetary(
         string='Cash from Financing Activities',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     # Net change
     net_change_in_cash = fields.Monetary(
         string='Net Change in Cash',
         currency_field='currency_id',
-        compute='_compute_report_data',
     )
 
     is_reconciled = fields.Boolean(
         string='Is Reconciled',
-        compute='_compute_report_data',
         help="True if Opening + Net Change = Closing",
     )
 
@@ -204,10 +188,8 @@ class CashFlowReport(models.TransientModel):
         comodel_name='account.cash.flow.report.line',
         inverse_name='report_id',
         string='Report Lines',
-        compute='_compute_report_data',
     )
 
-    @api.depends('date_from', 'date_to', 'company_id', 'target_move', 'method')
     def _compute_report_data(self):
         """
         Compute Cash Flow Statement data.
@@ -384,7 +366,7 @@ class CashFlowReport(models.TransientModel):
             expected_closing = report.opening_cash + report.net_change_in_cash
             report.is_reconciled = abs(expected_closing - report.closing_cash) < 0.01
 
-            report.line_ids = []  # Placeholder for line generation
+            report.line_ids = [Command.clear()]
 
     def action_generate_report(self):
         """Generate and display the Cash Flow Statement."""

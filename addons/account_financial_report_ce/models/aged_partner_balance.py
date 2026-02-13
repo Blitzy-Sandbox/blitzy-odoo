@@ -21,6 +21,7 @@ Acceptance Criteria:
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.fields import Command
 
 
 # Mapping between partner_type aliases and internal report_type values
@@ -190,7 +191,6 @@ class AgedPartnerBalanceReport(models.TransientModel):
         comodel_name='account.aged.partner.balance.report.partner',
         inverse_name='report_id',
         string='Partner Lines',
-        compute='_compute_report_data',
     )
 
     # Alias: line_ids points to same sub-records as partner_line_ids
@@ -203,17 +203,14 @@ class AgedPartnerBalanceReport(models.TransientModel):
     )
 
     # Totals
-    total_not_due = fields.Monetary(string='Not Due', currency_field='currency_id', compute='_compute_report_data')
-    total_bucket_1 = fields.Monetary(string='1-30 Days', currency_field='currency_id', compute='_compute_report_data')
-    total_bucket_2 = fields.Monetary(string='31-60 Days', currency_field='currency_id', compute='_compute_report_data')
-    total_bucket_3 = fields.Monetary(string='61-90 Days', currency_field='currency_id', compute='_compute_report_data')
-    total_bucket_4 = fields.Monetary(string='91-120 Days', currency_field='currency_id', compute='_compute_report_data')
-    total_bucket_5 = fields.Monetary(string='120+ Days', currency_field='currency_id', compute='_compute_report_data')
-    total_balance = fields.Monetary(string='Total', currency_field='currency_id', compute='_compute_report_data')
+    total_not_due = fields.Monetary(string='Not Due', currency_field='currency_id')
+    total_bucket_1 = fields.Monetary(string='1-30 Days', currency_field='currency_id')
+    total_bucket_2 = fields.Monetary(string='31-60 Days', currency_field='currency_id')
+    total_bucket_3 = fields.Monetary(string='61-90 Days', currency_field='currency_id')
+    total_bucket_4 = fields.Monetary(string='91-120 Days', currency_field='currency_id')
+    total_bucket_5 = fields.Monetary(string='120+ Days', currency_field='currency_id')
+    total_balance = fields.Monetary(string='Total', currency_field='currency_id')
 
-    @api.depends('date_to', 'company_id', 'target_move', 'report_type',
-                 'partner_ids', 'bucket_1_days', 'bucket_2_days',
-                 'bucket_3_days', 'bucket_4_days', 'show_only_overdue', 'sort_by')
     def _compute_report_data(self):
         """
         Compute Aged Partner Balance report data.
@@ -223,6 +220,9 @@ class AgedPartnerBalanceReport(models.TransientModel):
         2. Calculate age based on due date vs report date
         3. Categorize into aging buckets
         4. Sum totals
+
+        Uses ``fields.Command`` operations for ORM-safe persistence of
+        One2many records on stored TransientModel records.
         """
         for report in self:
             report.currency_id = report.company_id.currency_id
@@ -304,10 +304,6 @@ class AgedPartnerBalanceReport(models.TransientModel):
                 partner_data[partner.id]['total'] += amount
                 partner_data[partner.id]['lines'].append(ml)
 
-            # Create partner lines
-            lines = []
-            PartnerLine = self.env['account.aged.partner.balance.report.partner']
-
             # Sorting
             partners_sorted = list(partner_data.values())
             if report.sort_by == 'partner':
@@ -317,7 +313,8 @@ class AgedPartnerBalanceReport(models.TransientModel):
             elif report.sort_by == 'oldest':
                 partners_sorted.sort(key=lambda x: -(x['bucket_5'] + x['bucket_4']))
 
-            # Totals
+            # Build partner lines using Command operations and accumulate totals
+            partner_cmds = [Command.clear()]
             total_not_due = 0.0
             total_bucket_1 = 0.0
             total_bucket_2 = 0.0
@@ -330,8 +327,49 @@ class AgedPartnerBalanceReport(models.TransientModel):
                 if pd['total'] == 0:
                     continue
 
-                partner_line = PartnerLine.new({
-                    'report_id': report.id,
+                # Build nested detail line commands for each partner
+                detail_cmds = []
+                for ml in pd['lines']:
+                    due_date = ml.date_maturity or ml.date
+                    days_ov = (report.date_to - due_date).days
+                    # Determine bucket label
+                    if days_ov <= 0:
+                        bucket_label = _('Not Due')
+                    elif days_ov <= report.bucket_1_days:
+                        bucket_label = _('1-%d') % report.bucket_1_days
+                    elif days_ov <= report.bucket_2_days:
+                        bucket_label = _('%d-%d') % (
+                            report.bucket_1_days + 1, report.bucket_2_days,
+                        )
+                    elif days_ov <= report.bucket_3_days:
+                        bucket_label = _('%d-%d') % (
+                            report.bucket_2_days + 1, report.bucket_3_days,
+                        )
+                    elif days_ov <= report.bucket_4_days:
+                        bucket_label = _('%d-%d') % (
+                            report.bucket_3_days + 1, report.bucket_4_days,
+                        )
+                    else:
+                        bucket_label = _('%d+') % (report.bucket_4_days + 1)
+
+                    residual = ml.amount_residual
+                    if ml.account_id.account_type in report.PAYABLE_TYPES:
+                        residual = -residual
+
+                    detail_cmds.append(Command.create({
+                        'move_line_id': ml.id,
+                        'move_id': ml.move_id.id,
+                        'date': ml.date,
+                        'date_due': due_date,
+                        'ref': ml.ref or ml.move_id.ref or '',
+                        'days_overdue': max(days_ov, 0),
+                        'original_amount': abs(ml.balance),
+                        'residual_amount': residual,
+                        'bucket': bucket_label,
+                        'currency_id': report.currency_id.id,
+                    }))
+
+                partner_cmds.append(Command.create({
                     'partner_id': pd['partner'].id,
                     'name': pd['partner'].name or _('Unknown Partner'),
                     'not_due': pd['not_due'],
@@ -342,8 +380,8 @@ class AgedPartnerBalanceReport(models.TransientModel):
                     'bucket_5': pd['bucket_5'],
                     'total': pd['total'],
                     'currency_id': report.currency_id.id,
-                })
-                lines.append(partner_line)
+                    'line_ids': detail_cmds,
+                }))
 
                 total_not_due += pd['not_due']
                 total_bucket_1 += pd['bucket_1']
@@ -353,7 +391,7 @@ class AgedPartnerBalanceReport(models.TransientModel):
                 total_bucket_5 += pd['bucket_5']
                 total_balance += pd['total']
 
-            report.partner_line_ids = lines
+            report.partner_line_ids = partner_cmds
             report.total_not_due = total_not_due
             report.total_bucket_1 = total_bucket_1
             report.total_bucket_2 = total_bucket_2

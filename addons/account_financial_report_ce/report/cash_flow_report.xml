@@ -2,13 +2,44 @@
 <!--
     Copyright 2024 Enterprise Accounting Team
     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-    
+
     Cash Flow Statement Report Template (FR-003)
     Implements GAAP/IFRS compliant cash flow statement with:
-    - Operating Activities (Indirect Method)
-    - Investing Activities
-    - Financing Activities
+    - Operating Activities (Indirect and Direct Method)
+    - Investing Activities with labelled line items
+    - Financing Activities with labelled line items
     - Beginning and Ending Cash Reconciliation
+    - Variance analysis columns (absolute and percentage)
+    - Cash verification via model's is_reconciled field
+
+    Activity section rendering:
+    - Indirect method: Net Income, non-cash adjustments (Depreciation,
+      Change in Receivables / Payables / Inventory), then working-capital
+      changes, followed by Investing and Financing detail lines.
+    - Direct method: Cash Receipts from Customers, Cash Paid to
+      Suppliers, Cash Paid for Operating Expenses.
+
+    Line model fields used:
+    - activity_type: 'operating' | 'investing' | 'financing'
+    - amount / amount_compare: current and comparison period amounts
+    - variance_absolute / variance_percentage: period-over-period delta
+    - is_total: subtotal / total row flag
+    - level: indentation depth (0 = header, 1 = detail)
+    - name: display label provided by the model
+
+    Report-level fields used:
+    - method: 'indirect' | 'direct'
+    - compare_period / show_variance: comparison and variance toggles
+    - beginning_cash / ending_cash / net_change_in_cash: reconciliation
+    - net_income / net_income_compare: P&L starting point (indirect)
+    - depreciation_amortization / change_in_receivables /
+      change_in_payables / change_in_inventory: indirect adjustments
+    - capital_expenditures / asset_disposals: investing detail
+    - debt_proceeds / debt_repayments / equity_proceeds /
+      dividends_paid: financing detail
+    - cash_from_operating / cash_from_investing / cash_from_financing
+    - beginning_cash_compare: comparison period opening cash
+    - is_reconciled: model-computed reconciliation status
 -->
 <odoo>
     <template id="report_cash_flow">
@@ -30,6 +61,7 @@
                             <p t-if="doc.company_id">
                                 <span t-field="doc.company_id.name"/>
                             </p>
+                            <!-- Method indicator: Indirect or Direct -->
                             <p class="text-muted small">
                                 <t t-if="doc.method == 'indirect'">(Indirect Method)</t>
                                 <t t-else="">(Direct Method)</t>
@@ -51,84 +83,264 @@
                             </div>
                         </div>
 
+                        <!--
+                            Determine the dynamic column span used for
+                            section header rows.  Base = 2 (Description + Amount).
+                            +1 for Prior Period, +1 for Variance $, +1 for Variance %.
+                        -->
+                        <t t-set="header_colspan" t-value="2"/>
+                        <t t-if="doc.compare_period" t-set="header_colspan" t-value="header_colspan + 1"/>
+                        <t t-if="doc.compare_period and doc.show_variance" t-set="header_colspan" t-value="header_colspan + 2"/>
+
                         <!-- Cash Flow Table -->
                         <table class="table table-sm table-striped">
                             <thead>
                                 <tr class="bg-primary text-white">
-                                    <th style="width: 70%">Description</th>
-                                    <th class="text-end" style="width: 15%">Amount</th>
+                                    <!--
+                                        Column widths adapt to the number of
+                                        visible data columns.  When all five
+                                        columns are present the description
+                                        column shrinks to accommodate the
+                                        extra variance columns.
+                                    -->
+                                    <t t-if="doc.compare_period and doc.show_variance">
+                                        <th style="width: 40%">Description</th>
+                                    </t>
+                                    <t t-elif="doc.compare_period">
+                                        <th style="width: 55%">Description</th>
+                                    </t>
+                                    <t t-else="">
+                                        <th style="width: 70%">Description</th>
+                                    </t>
+                                    <th class="text-end">Amount</th>
                                     <t t-if="doc.compare_period">
-                                        <th class="text-end" style="width: 15%">Prior Period</th>
+                                        <th class="text-end">Prior Period</th>
+                                    </t>
+                                    <!-- Variance columns shown when comparison is active and show_variance is True -->
+                                    <t t-if="doc.compare_period and doc.show_variance">
+                                        <th class="text-end">Variance $</th>
+                                        <th class="text-end">Variance %</th>
                                     </t>
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- OPERATING ACTIVITIES Section -->
+                                <!-- ========================================================
+                                     OPERATING ACTIVITIES Section
+                                     ======================================================== -->
                                 <tr class="table-secondary">
-                                    <td colspan="3"><strong>CASH FLOWS FROM OPERATING ACTIVITIES</strong></td>
+                                    <td t-att-colspan="header_colspan"><strong>CASH FLOWS FROM OPERATING ACTIVITIES</strong></td>
                                 </tr>
-                                
-                                <!-- Net Income (Starting Point for Indirect Method) -->
-                                <tr t-if="doc.method == 'indirect'">
-                                    <td class="ps-4">Net Income</td>
-                                    <td class="text-end">
-                                        <span t-esc="doc.net_income" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
-                                    </td>
-                                    <t t-if="doc.compare_period">
-                                        <td class="text-end">
-                                            <span t-esc="doc.net_income_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
-                                        </td>
-                                    </t>
-                                </tr>
-                                
-                                <!-- Adjustments -->
-                                <tr t-if="doc.method == 'indirect'" class="fst-italic">
-                                    <td class="ps-4">Adjustments to reconcile net income:</td>
-                                    <td></td>
-                                    <t t-if="doc.compare_period"><td></td></t>
-                                </tr>
-                                
-                                <t t-set="total_operating" t-value="doc.net_income if doc.method == 'indirect' else 0"/>
-                                <t t-set="total_operating_compare" t-value="doc.net_income_compare if doc.method == 'indirect' else 0"/>
-                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'operating')" t-as="line">
+
+                                <!-- Indirect Method: Net Income Starting Point -->
+                                <t t-if="doc.method == 'indirect'">
                                     <tr>
-                                        <td class="ps-5">
-                                            <span t-esc="line.display_name"/>
-                                        </td>
+                                        <td class="ps-4">Net Income</td>
                                         <td class="text-end">
-                                            <span t-esc="line.amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            <span t-esc="doc.net_income" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <t t-if="doc.compare_period">
                                             <td class="text-end">
-                                                <span t-esc="line.amount_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                <span t-esc="doc.net_income_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                        <t t-if="doc.compare_period and doc.show_variance">
+                                            <td class="text-end">
+                                                <span t-esc="doc.net_income - (doc.net_income_compare or 0)" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <t t-if="doc.net_income_compare">
+                                                    <span t-esc="'%.1f%%' % (((doc.net_income - doc.net_income_compare) / abs(doc.net_income_compare)) * 100)"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span>—</span>
+                                                </t>
                                             </td>
                                         </t>
                                     </tr>
-                                    <t t-set="total_operating" t-value="total_operating + line.amount"/>
-                                    <t t-set="total_operating_compare" t-value="total_operating_compare + (line.amount_compare or 0)"/>
+
+                                    <!-- Non-cash adjustments sub-header -->
+                                    <tr class="fst-italic">
+                                        <td class="ps-4">Adjustments for non-cash items:</td>
+                                        <td/>
+                                        <t t-if="doc.compare_period"><td/></t>
+                                        <t t-if="doc.compare_period and doc.show_variance"><td/><td/></t>
+                                    </tr>
+
+                                    <!-- Depreciation & Amortization -->
+                                    <tr>
+                                        <td class="ps-5">Depreciation &amp; Amortization</td>
+                                        <td class="text-end">
+                                            <span t-esc="doc.depreciation_amortization" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-if="doc.compare_period">
+                                            <!-- Comparison value sourced from operating lines below -->
+                                            <td class="text-end">
+                                                <t t-set="dep_compare_line" t-value="doc.line_ids.filtered(lambda l: l.activity_type == 'operating' and 'Depreciation' in (l.name or ''))[:1]"/>
+                                                <span t-esc="dep_compare_line.amount_compare if dep_compare_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                        <t t-if="doc.compare_period and doc.show_variance">
+                                            <td class="text-end">
+                                                <t t-set="dep_line" t-value="doc.line_ids.filtered(lambda l: l.activity_type == 'operating' and 'Depreciation' in (l.name or ''))[:1]"/>
+                                                <span t-esc="dep_line.variance_absolute if dep_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="'%.1f%%' % (dep_line.variance_percentage) if dep_line and dep_line.variance_percentage else '—'"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+
+                                    <!-- Working capital changes sub-header -->
+                                    <tr class="fst-italic">
+                                        <td class="ps-4">Changes in working capital:</td>
+                                        <td/>
+                                        <t t-if="doc.compare_period"><td/></t>
+                                        <t t-if="doc.compare_period and doc.show_variance"><td/><td/></t>
+                                    </tr>
+
+                                    <!-- Change in Receivables -->
+                                    <tr>
+                                        <td class="ps-5">Change in Accounts Receivable</td>
+                                        <td class="text-end">
+                                            <span t-esc="doc.change_in_receivables" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-if="doc.compare_period">
+                                            <td class="text-end">
+                                                <t t-set="ar_line" t-value="doc.line_ids.filtered(lambda l: l.activity_type == 'operating' and 'Receivable' in (l.name or ''))[:1]"/>
+                                                <span t-esc="ar_line.amount_compare if ar_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                        <t t-if="doc.compare_period and doc.show_variance">
+                                            <td class="text-end">
+                                                <span t-esc="ar_line.variance_absolute if ar_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="'%.1f%%' % (ar_line.variance_percentage) if ar_line and ar_line.variance_percentage else '—'"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+
+                                    <!-- Change in Payables -->
+                                    <tr>
+                                        <td class="ps-5">Change in Accounts Payable</td>
+                                        <td class="text-end">
+                                            <span t-esc="doc.change_in_payables" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-if="doc.compare_period">
+                                            <td class="text-end">
+                                                <t t-set="ap_line" t-value="doc.line_ids.filtered(lambda l: l.activity_type == 'operating' and 'Payable' in (l.name or ''))[:1]"/>
+                                                <span t-esc="ap_line.amount_compare if ap_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                        <t t-if="doc.compare_period and doc.show_variance">
+                                            <td class="text-end">
+                                                <span t-esc="ap_line.variance_absolute if ap_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="'%.1f%%' % (ap_line.variance_percentage) if ap_line and ap_line.variance_percentage else '—'"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+
+                                    <!-- Change in Inventory -->
+                                    <tr>
+                                        <td class="ps-5">Change in Inventory</td>
+                                        <td class="text-end">
+                                            <span t-esc="doc.change_in_inventory" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-if="doc.compare_period">
+                                            <td class="text-end">
+                                                <t t-set="inv_line" t-value="doc.line_ids.filtered(lambda l: l.activity_type == 'operating' and 'Inventory' in (l.name or ''))[:1]"/>
+                                                <span t-esc="inv_line.amount_compare if inv_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </t>
+                                        <t t-if="doc.compare_period and doc.show_variance">
+                                            <td class="text-end">
+                                                <span t-esc="inv_line.variance_absolute if inv_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="'%.1f%%' % (inv_line.variance_percentage) if inv_line and inv_line.variance_percentage else '—'"/>
+                                            </td>
+                                        </t>
+                                    </tr>
                                 </t>
+
+                                <!-- Direct Method: Cash receipt / payment breakdown -->
+                                <t t-if="doc.method == 'direct'">
+                                    <!--
+                                        Direct method iterates operating lines from the model
+                                        which are already classified by the matching engine.
+                                        Common labels: Cash Receipts from Customers, Cash Paid
+                                        to Suppliers, Cash Paid for Operating Expenses.
+                                    -->
+                                    <t t-set="total_operating" t-value="0"/>
+                                    <t t-set="total_operating_compare" t-value="0"/>
+                                    <t t-foreach="doc.line_ids.filtered(lambda l: l.activity_type == 'operating' and not l.is_total and l.level == 1)" t-as="line">
+                                        <tr>
+                                            <td class="ps-4">
+                                                <span t-esc="line.name"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="line.amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                            <t t-if="doc.compare_period">
+                                                <td class="text-end">
+                                                    <span t-esc="line.amount_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                            </t>
+                                            <t t-if="doc.compare_period and doc.show_variance">
+                                                <td class="text-end">
+                                                    <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <t t-if="line.variance_percentage">
+                                                        <span t-esc="'%.1f%%' % line.variance_percentage"/>
+                                                    </t>
+                                                    <t t-else=""><span>—</span></t>
+                                                </td>
+                                            </t>
+                                        </tr>
+                                        <t t-set="total_operating" t-value="total_operating + line.amount"/>
+                                        <t t-set="total_operating_compare" t-value="total_operating_compare + (line.amount_compare or 0)"/>
+                                    </t>
+                                </t>
+
+                                <!-- Operating Activities Subtotal -->
                                 <tr class="table-info">
                                     <td><strong>Net Cash from Operating Activities</strong></td>
                                     <td class="text-end">
-                                        <strong t-esc="total_operating" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        <strong t-esc="doc.cash_from_operating" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                     </td>
                                     <t t-if="doc.compare_period">
                                         <td class="text-end">
-                                            <strong t-esc="total_operating_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            <t t-set="operating_subtotal_line" t-value="doc.line_ids.filtered(lambda l: l.activity_type == 'operating' and l.is_total)[:1]"/>
+                                            <strong t-esc="operating_subtotal_line.amount_compare if operating_subtotal_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="doc.compare_period and doc.show_variance">
+                                        <td class="text-end">
+                                            <strong t-esc="operating_subtotal_line.variance_absolute if operating_subtotal_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong t-esc="'%.1f%%' % (operating_subtotal_line.variance_percentage) if operating_subtotal_line and operating_subtotal_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>
 
-                                <!-- INVESTING ACTIVITIES Section -->
+                                <!-- ========================================================
+                                     INVESTING ACTIVITIES Section
+                                     ======================================================== -->
                                 <tr class="table-secondary">
-                                    <td colspan="3"><strong>CASH FLOWS FROM INVESTING ACTIVITIES</strong></td>
+                                    <td t-att-colspan="header_colspan"><strong>CASH FLOWS FROM INVESTING ACTIVITIES</strong></td>
                                 </tr>
-                                <t t-set="total_investing" t-value="0"/>
-                                <t t-set="total_investing_compare" t-value="0"/>
-                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'investing')" t-as="line">
+
+                                <!-- Investing detail lines from the model -->
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.activity_type == 'investing' and not l.is_total and l.level == 1)" t-as="line">
                                     <tr>
                                         <td class="ps-4">
-                                            <span t-esc="line.display_name"/>
+                                            <!-- Model provides labelled names: Capital Expenditures,
+                                                 Proceeds from Asset Sales, etc. -->
+                                            <span t-esc="line.name"/>
                                         </td>
                                         <td class="text-end">
                                             <span t-esc="line.amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
@@ -138,32 +350,56 @@
                                                 <span t-esc="line.amount_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                             </td>
                                         </t>
+                                        <t t-if="doc.compare_period and doc.show_variance">
+                                            <td class="text-end">
+                                                <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <t t-if="line.variance_percentage">
+                                                    <span t-esc="'%.1f%%' % line.variance_percentage"/>
+                                                </t>
+                                                <t t-else=""><span>—</span></t>
+                                            </td>
+                                        </t>
                                     </tr>
-                                    <t t-set="total_investing" t-value="total_investing + line.amount"/>
-                                    <t t-set="total_investing_compare" t-value="total_investing_compare + (line.amount_compare or 0)"/>
                                 </t>
+
+                                <!-- Investing Activities Subtotal -->
                                 <tr class="table-info">
                                     <td><strong>Net Cash from Investing Activities</strong></td>
                                     <td class="text-end">
-                                        <strong t-esc="total_investing" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        <strong t-esc="doc.cash_from_investing" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                     </td>
                                     <t t-if="doc.compare_period">
                                         <td class="text-end">
-                                            <strong t-esc="total_investing_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            <t t-set="investing_subtotal_line" t-value="doc.line_ids.filtered(lambda l: l.activity_type == 'investing' and l.is_total)[:1]"/>
+                                            <strong t-esc="investing_subtotal_line.amount_compare if investing_subtotal_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="doc.compare_period and doc.show_variance">
+                                        <td class="text-end">
+                                            <strong t-esc="investing_subtotal_line.variance_absolute if investing_subtotal_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong t-esc="'%.1f%%' % (investing_subtotal_line.variance_percentage) if investing_subtotal_line and investing_subtotal_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>
 
-                                <!-- FINANCING ACTIVITIES Section -->
+                                <!-- ========================================================
+                                     FINANCING ACTIVITIES Section
+                                     ======================================================== -->
                                 <tr class="table-secondary">
-                                    <td colspan="3"><strong>CASH FLOWS FROM FINANCING ACTIVITIES</strong></td>
+                                    <td t-att-colspan="header_colspan"><strong>CASH FLOWS FROM FINANCING ACTIVITIES</strong></td>
                                 </tr>
-                                <t t-set="total_financing" t-value="0"/>
-                                <t t-set="total_financing_compare" t-value="0"/>
-                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'financing')" t-as="line">
+
+                                <!-- Financing detail lines from the model -->
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.activity_type == 'financing' and not l.is_total and l.level == 1)" t-as="line">
                                     <tr>
                                         <td class="ps-4">
-                                            <span t-esc="line.display_name"/>
+                                            <!-- Model provides labelled names: Proceeds from Borrowings,
+                                                 Debt Repayments, Equity Proceeds, Dividends Paid, etc. -->
+                                            <span t-esc="line.name"/>
                                         </td>
                                         <td class="text-end">
                                             <span t-esc="line.amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
@@ -173,41 +409,75 @@
                                                 <span t-esc="line.amount_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                             </td>
                                         </t>
+                                        <t t-if="doc.compare_period and doc.show_variance">
+                                            <td class="text-end">
+                                                <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <t t-if="line.variance_percentage">
+                                                    <span t-esc="'%.1f%%' % line.variance_percentage"/>
+                                                </t>
+                                                <t t-else=""><span>—</span></t>
+                                            </td>
+                                        </t>
                                     </tr>
-                                    <t t-set="total_financing" t-value="total_financing + line.amount"/>
-                                    <t t-set="total_financing_compare" t-value="total_financing_compare + (line.amount_compare or 0)"/>
                                 </t>
+
+                                <!-- Financing Activities Subtotal -->
                                 <tr class="table-info">
                                     <td><strong>Net Cash from Financing Activities</strong></td>
                                     <td class="text-end">
-                                        <strong t-esc="total_financing" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        <strong t-esc="doc.cash_from_financing" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                     </td>
                                     <t t-if="doc.compare_period">
                                         <td class="text-end">
-                                            <strong t-esc="total_financing_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            <t t-set="financing_subtotal_line" t-value="doc.line_ids.filtered(lambda l: l.activity_type == 'financing' and l.is_total)[:1]"/>
+                                            <strong t-esc="financing_subtotal_line.amount_compare if financing_subtotal_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="doc.compare_period and doc.show_variance">
+                                        <td class="text-end">
+                                            <strong t-esc="financing_subtotal_line.variance_absolute if financing_subtotal_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong t-esc="'%.1f%%' % (financing_subtotal_line.variance_percentage) if financing_subtotal_line and financing_subtotal_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>
 
-                                <!-- NET CHANGE IN CASH -->
-                                <t t-set="net_change" t-value="total_operating + total_investing + total_financing"/>
-                                <t t-set="net_change_compare" t-value="total_operating_compare + total_investing_compare + total_financing_compare"/>
-                                <tr class="table-warning">
+                                <!-- ========================================================
+                                     NET CHANGE IN CASH
+                                     Uses doc.net_change_in_cash model field for consistency.
+                                     ======================================================== -->
+                                <t t-set="net_change_line" t-value="doc.line_ids.filtered(lambda l: l.is_total and not l.activity_type and 'NET CHANGE' in (l.name or '').upper())[:1]"/>
+                                <tr class="table-primary">
                                     <td><strong>NET CHANGE IN CASH</strong></td>
                                     <td class="text-end">
-                                        <strong t-esc="net_change" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        <strong t-esc="doc.net_change_in_cash" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                     </td>
                                     <t t-if="doc.compare_period">
                                         <td class="text-end">
-                                            <strong t-esc="net_change_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            <strong t-esc="net_change_line.amount_compare if net_change_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="doc.compare_period and doc.show_variance">
+                                        <td class="text-end">
+                                            <strong t-esc="net_change_line.variance_absolute if net_change_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong t-esc="'%.1f%%' % (net_change_line.variance_percentage) if net_change_line and net_change_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>
 
-                                <!-- CASH RECONCILIATION -->
+                                <!-- ========================================================
+                                     CASH RECONCILIATION
+                                     Beginning Cash + Net Change = Ending Cash
+                                     ======================================================== -->
                                 <tr class="table-secondary">
-                                    <td colspan="3"><strong>CASH RECONCILIATION</strong></td>
+                                    <td t-att-colspan="header_colspan"><strong>CASH RECONCILIATION</strong></td>
                                 </tr>
+                                <!-- Cash at Beginning of Period -->
                                 <tr>
                                     <td class="ps-4">Cash at Beginning of Period</td>
                                     <td class="text-end">
@@ -218,47 +488,153 @@
                                             <span t-esc="doc.beginning_cash_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                     </t>
-                                </tr>
-                                <tr>
-                                    <td class="ps-4">Net Change in Cash</td>
-                                    <td class="text-end">
-                                        <span t-esc="net_change" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
-                                    </td>
-                                    <t t-if="doc.compare_period">
+                                    <t t-if="doc.compare_period and doc.show_variance">
                                         <td class="text-end">
-                                            <span t-esc="net_change_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            <span t-esc="doc.beginning_cash - (doc.beginning_cash_compare or 0)" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <t t-if="doc.beginning_cash_compare">
+                                                <span t-esc="'%.1f%%' % (((doc.beginning_cash - doc.beginning_cash_compare) / abs(doc.beginning_cash_compare)) * 100)"/>
+                                            </t>
+                                            <t t-else=""><span>—</span></t>
                                         </td>
                                     </t>
                                 </tr>
-                                <tr class="table-primary">
-                                    <td><strong>Cash at End of Period</strong></td>
+                                <!-- Net Change in Cash -->
+                                <tr>
+                                    <td class="ps-4">Net Change in Cash</td>
                                     <td class="text-end">
-                                        <strong t-esc="doc.beginning_cash + net_change" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        <span t-esc="doc.net_change_in_cash" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                     </td>
                                     <t t-if="doc.compare_period">
                                         <td class="text-end">
-                                            <strong t-esc="doc.beginning_cash_compare + net_change_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            <span t-esc="net_change_line.amount_compare if net_change_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="doc.compare_period and doc.show_variance">
+                                        <td class="text-end">
+                                            <span t-esc="net_change_line.variance_absolute if net_change_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-esc="'%.1f%%' % (net_change_line.variance_percentage) if net_change_line and net_change_line.variance_percentage else '—'"/>
+                                        </td>
+                                    </t>
+                                </tr>
+                                <!-- Cash at End of Period -->
+                                <tr class="table-primary">
+                                    <td><strong>Cash at End of Period</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.ending_cash" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <t t-set="closing_line" t-value="doc.line_ids.filtered(lambda l: l.is_total and not l.activity_type and 'Closing' in (l.name or ''))[:1]"/>
+                                            <strong t-esc="closing_line.amount_compare if closing_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="doc.compare_period and doc.show_variance">
+                                        <td class="text-end">
+                                            <strong t-esc="closing_line.variance_absolute if closing_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong t-esc="'%.1f%%' % (closing_line.variance_percentage) if closing_line and closing_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>
                             </tbody>
                         </table>
 
-                        <!-- Cash Verification -->
+                        <!-- ========================================================
+                             Indirect Method Reconciliation Detail
+                             Shows how Net Income reconciles to Net Cash from
+                             Operating Activities, separating non-cash items from
+                             working capital changes.
+                             ======================================================== -->
+                        <t t-if="doc.method == 'indirect'">
+                            <div class="mt-4">
+                                <h5>Reconciliation of Net Income to Operating Cash Flow</h5>
+                                <table class="table table-sm table-bordered" style="width: 70%">
+                                    <thead>
+                                        <tr class="table-light">
+                                            <th>Item</th>
+                                            <th class="text-end">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Net Income</td>
+                                            <td class="text-end">
+                                                <span t-esc="doc.net_income" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </tr>
+                                        <!-- Non-cash items -->
+                                        <tr class="fst-italic">
+                                            <td class="ps-3"><em>Non-cash adjustments:</em></td>
+                                            <td/>
+                                        </tr>
+                                        <tr>
+                                            <td class="ps-4">Depreciation &amp; Amortization</td>
+                                            <td class="text-end">
+                                                <span t-esc="doc.depreciation_amortization" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </tr>
+                                        <!-- Working capital changes -->
+                                        <tr class="fst-italic">
+                                            <td class="ps-3"><em>Working capital changes:</em></td>
+                                            <td/>
+                                        </tr>
+                                        <tr>
+                                            <td class="ps-4">Change in Accounts Receivable</td>
+                                            <td class="text-end">
+                                                <span t-esc="doc.change_in_receivables" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="ps-4">Change in Accounts Payable</td>
+                                            <td class="text-end">
+                                                <span t-esc="doc.change_in_payables" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="ps-4">Change in Inventory</td>
+                                            <td class="text-end">
+                                                <span t-esc="doc.change_in_inventory" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </tr>
+                                        <tr class="table-info">
+                                            <td><strong>Net Cash from Operating Activities</strong></td>
+                                            <td class="text-end">
+                                                <strong t-esc="doc.cash_from_operating" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </t>
+
+                        <!-- ========================================================
+                             Cash Verification Badge
+                             Uses the model's is_reconciled computed field rather
+                             than template-side arithmetic for consistency.
+                             ======================================================== -->
                         <div class="mt-4">
-                            <t t-set="calculated_ending" t-value="doc.beginning_cash + net_change"/>
-                            <t t-set="actual_ending" t-value="doc.ending_cash"/>
-                            <t t-set="difference" t-value="calculated_ending - actual_ending"/>
-                            <t t-if="abs(difference) &lt; 0.01">
+                            <t t-if="doc.is_reconciled">
                                 <div class="alert alert-success">
-                                    <i class="fa fa-check"/> Cash reconciliation verified (Beginning + Net Change = Ending Cash)
+                                    <i class="fa fa-check-circle"/> Cash reconciliation verified — Beginning Cash
+                                    (<span t-esc="doc.beginning_cash" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>)
+                                    + Net Change
+                                    (<span t-esc="doc.net_change_in_cash" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>)
+                                    = Ending Cash
+                                    (<span t-esc="doc.ending_cash" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>)
                                 </div>
                             </t>
                             <t t-else="">
                                 <div class="alert alert-warning">
-                                    <i class="fa fa-warning"/> Cash discrepancy of 
-                                    <span t-esc="difference" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
-                                    detected. This may indicate unclassified transactions.
+                                    <i class="fa fa-warning"/> Cash discrepancy of
+                                    <span t-esc="(doc.beginning_cash + doc.net_change_in_cash) - doc.ending_cash" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    detected. This may indicate unclassified transactions or
+                                    foreign-exchange adjustments not captured in the activity
+                                    sections above.
                                 </div>
                             </t>
                         </div>

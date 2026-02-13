@@ -285,7 +285,7 @@ class FinancialReportAbstract(models.AbstractModel):
         """Compute balance for a set of accounts using SQL-level aggregation.
 
         Aggregates debit, credit, and balance for the specified accounts within
-        the given date range via ``read_group`` for optimal performance on large
+        the given date range via ``_read_group`` for optimal performance on large
         datasets (target: <30 s for 100 000 transactions per FR-001 SLA).
 
         Args:
@@ -330,20 +330,21 @@ class FinancialReportAbstract(models.AbstractModel):
             analytic_account_ids=analytic_account_ids,
         )
 
-        # Use read_group for efficient SQL-level aggregation — avoids loading
+        # Use _read_group for efficient SQL-level aggregation — avoids loading
         # individual move lines into Python memory.
-        move_lines = self.env['account.move.line'].read_group(
+        # Odoo 19.0 API: _read_group returns list of tuples
+        # (account_recordset, debit_sum, credit_sum, balance_sum)
+        groups = self.env['account.move.line']._read_group(
             domain=domain,
-            fields=['account_id', 'debit:sum', 'credit:sum', 'balance:sum'],
             groupby=['account_id'],
+            aggregates=['debit:sum', 'credit:sum', 'balance:sum'],
         )
 
-        for line in move_lines:
-            account_id = line['account_id'][0]
-            result[account_id] = {
-                'debit': line['debit'] or 0.0,
-                'credit': line['credit'] or 0.0,
-                'balance': line['balance'] or 0.0,
+        for account, debit_sum, credit_sum, balance_sum in groups:
+            result[account.id] = {
+                'debit': debit_sum or 0.0,
+                'credit': credit_sum or 0.0,
+                'balance': balance_sum or 0.0,
             }
 
         # Ensure all requested accounts are present in the result dict, even

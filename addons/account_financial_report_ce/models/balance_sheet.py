@@ -20,6 +20,7 @@ Acceptance Criteria Implemented:
 """
 
 import logging
+from datetime import timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -349,9 +350,31 @@ class BalanceSheetReport(models.TransientModel):
 
             report.current_year_earnings = total_income - total_expenses
 
-            # Retained earnings = base equity from equity-typed accounts
-            # (equity_unaffected captures prior-period accumulated earnings)
-            report.retained_earnings = base_equity
+            # ----------------------------------------------------------------
+            # PRIOR-YEAR RETAINED EARNINGS
+            # The balance sheet equation (A = L + E) requires that all
+            # income/expense from prior fiscal years is captured as
+            # retained earnings in equity.  When the year-end close
+            # process has not been executed, P&L account balances from
+            # prior periods still exist and must be folded into equity
+            # so the equation balances.
+            # ----------------------------------------------------------------
+            prior_income_balances = report._compute_account_balance(
+                income_accounts, date_to=date_from - timedelta(days=1),
+            )
+            prior_expense_balances = report._compute_account_balance(
+                expense_accounts, date_to=date_from - timedelta(days=1),
+            )
+            prior_year_income = -sum(
+                b['balance'] for b in prior_income_balances.values()
+            )
+            prior_year_expenses = sum(
+                b['balance'] for b in prior_expense_balances.values()
+            )
+            prior_year_earnings = prior_year_income - prior_year_expenses
+
+            # Retained earnings = equity accounts + prior-year net income
+            report.retained_earnings = base_equity + prior_year_earnings
 
             report.total_equity = (
                 report.retained_earnings + report.current_year_earnings
@@ -548,6 +571,24 @@ class BalanceSheetReport(models.TransientModel):
         comp_total_expenses = sum(b['balance'] for b in comp_exp.values())
         comp_year_earnings = comp_total_income - comp_total_expenses
 
+        # Prior-year retained earnings for comparison period
+        comp_prior_inc = self._compute_account_balance(
+            income_accounts,
+            date_to=comp_fiscal_start - timedelta(days=1),
+        )
+        comp_prior_exp = self._compute_account_balance(
+            expense_accounts,
+            date_to=comp_fiscal_start - timedelta(days=1),
+        )
+        comp_prior_income = -sum(
+            b['balance'] for b in comp_prior_inc.values()
+        )
+        comp_prior_expenses = sum(
+            b['balance'] for b in comp_prior_exp.values()
+        )
+        comp_prior_earnings = comp_prior_income - comp_prior_expenses
+        comp_retained = comp_base_equity + comp_prior_earnings
+
         return {
             # Per-account balance dicts (used by account-detail lines)
             'current_asset_balances': comp_ca,
@@ -562,9 +603,9 @@ class BalanceSheetReport(models.TransientModel):
             'total_current_liabilities': total_cl,
             'total_non_current_liabilities': total_ncl,
             'total_liabilities': total_cl + total_ncl,
-            'retained_earnings': comp_base_equity,
+            'retained_earnings': comp_retained,
             'current_year_earnings': comp_year_earnings,
-            'total_equity': comp_base_equity + comp_year_earnings,
+            'total_equity': comp_retained + comp_year_earnings,
         }
 
     # -------------------------------------------------------------------------

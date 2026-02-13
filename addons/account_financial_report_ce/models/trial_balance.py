@@ -443,6 +443,8 @@ class TrialBalanceReport(models.TransientModel):
             'period_debit': period_debit,
             'period_credit': period_credit,
             'closing_balance': closing_balance,
+            'closing_debit': debit_balance,
+            'closing_credit': credit_balance,
         }
 
         # Comparison and variance (FR-005 Scenario 6)
@@ -1006,6 +1008,22 @@ class TrialBalanceReportLine(models.TransientModel):
         currency_field='currency_id',
         help="Net closing balance (opening + period). Positive = net "
              "debit, negative = net credit.",
+    )
+
+    closing_debit = fields.Monetary(
+        string='Closing Debit (Template)',
+        currency_field='currency_id',
+        help="Alias of 'debit_balance' for QWeb template compatibility.  "
+             "Closing debit position: positive when the account closes "
+             "with a net debit balance.",
+    )
+
+    closing_credit = fields.Monetary(
+        string='Closing Credit (Template)',
+        currency_field='currency_id',
+        help="Alias of 'credit_balance' for QWeb template compatibility.  "
+             "Closing credit position: positive when the account closes "
+             "with a net credit balance.",
     )
 
     def action_drilldown(self):

@@ -1,502 +1,430 @@
-# Project Guide: Enterprise Accounting Epic for Odoo Community Edition
+# Project Guide — Phase 1: Enterprise Accounting Parity for Odoo CE 19.0
 
-## Executive Summary
+## 1. Executive Summary
 
-**Project Completion: 17% (110 hours completed out of 640 total hours)**
+**Project**: Implement Phase 1 of the Enterprise Accounting Parity initiative for Odoo Community Edition 19.0, encompassing a Financial Reporting Engine (FEATURE-001) and a Bank Reconciliation System (FEATURE-002).
 
-This project delivers comprehensive user story documentation for implementing enterprise-grade accounting capabilities in Odoo Community Edition. The documentation task is 100% complete with all 43 required files created. Additionally, a functional module scaffold (`account_financial_report_ce`) was created as a prototype for the Financial Reporting feature.
+**Completion**: 240 hours of development work have been completed out of an estimated 292 total hours required, representing **82.2% project completion**.
+
+**Formula**: 240 completed hours / (240 completed + 52 remaining) = 240/292 = 82.2%
 
 ### Key Achievements
-- ✅ **43 Documentation Files**: Complete epic, feature, and user story documentation
-- ✅ **36 Module Files**: Functional scaffold for Financial Reports module (6,667 lines)
-- ✅ **100% BDD Compliance**: All 32 user stories follow Given/When/Then format
-- ✅ **Zero Compilation Errors**: All 21 Python files and 12 XML files validated
-- ✅ **AGPL-3.0 Compliant**: No Enterprise module dependencies
+- **All 12 user stories implemented**: FR-001 through FR-007 (Financial Reporting) and BR-001 through BR-005 (Bank Reconciliation)
+- **100% test pass rate**: 351 tests passing (210 FR + 141 BR) with zero failures and zero errors
+- **76 files delivered**: 40 newly created files + 36 modified files across both modules
+- **31,465 net new lines** of production code, tests, templates, and configuration
+- **Both modules install cleanly** and load without conflicts (45 modules loaded in 2.16s)
+- **Runtime validated**: Odoo HTTP server starts successfully, `/web/login` returns HTTP 200
+- **Zero compilation errors**: All Python files compile; all 21 XML files validate
 
-### Hours Breakdown
-- **Completed**: 110 hours (66h documentation + 40h module scaffold + 4h validation)
-- **Remaining**: 530 hours (with enterprise multipliers applied)
-- **Total Project**: 640 hours
-- **Completion**: 110 / 640 = **17.2%**
-
----
-
-## Validation Results Summary
-
-### Documentation Validation (43 files)
-| Category | Count | Status |
-|----------|-------|--------|
-| Epic Documents | 1 | ✅ Complete |
-| Feature Specifications | 6 | ✅ Complete |
-| User Stories | 32 | ✅ Complete |
-| Templates | 3 | ✅ Complete |
-| Navigation Index | 1 | ✅ Complete |
-
-### Module Validation (36 files)
-| File Type | Count | Lines | Status |
-|-----------|-------|-------|--------|
-| Python Models | 8 | 2,824 | ✅ Compiles |
-| Python Wizards | 2 | 477 | ✅ Compiles |
-| Python Reports | 6 | 163 | ✅ Compiles |
-| Python Tests | 2 | 533 | ✅ Compiles |
-| XML Templates | 12 | 2,074 | ✅ Valid |
-| SCSS Styles | 2 | 596 | ✅ Valid |
-
-### Constraint Compliance
-| Constraint | Requirement | Status |
-|------------|-------------|--------|
-| License | AGPL-3.0 | ✅ Satisfied |
-| Enterprise Dependencies | None allowed | ✅ Zero dependencies |
-| OCA Standards | Required | ✅ Followed |
-| Test Coverage | 80% minimum | ⚠️ Specified in stories |
-| BDD Format | Given/When/Then | ✅ 100% compliance |
+### Critical Items for Human Review
+- No code-level blockers exist — all tests pass and both modules function correctly
+- Remaining work is primarily deployment, performance validation at scale, security audit, and CI/CD setup
+- The 52 remaining hours represent production readiness tasks, not feature gaps
 
 ---
 
-## Visual Representation
+## 2. Validation Results Summary
+
+### 2.1 Final Validator Outcomes
+
+| Gate | Status | Details |
+|------|--------|---------|
+| Python Compilation | ✅ PASS | All 47 .py files compile without errors |
+| XML Validation | ✅ PASS | All 21 XML files parse without errors |
+| Module Installation | ✅ PASS | Both modules install successfully (45 modules loaded) |
+| FR Test Suite | ✅ PASS | 210/210 tests passed (8 test modules, 90.73s, 75,926 queries) |
+| BR Test Suite | ✅ PASS | 141/141 tests passed (5 test modules, 123.23s, 98,938 queries) |
+| Combined Loading | ✅ PASS | Both modules load simultaneously without conflicts |
+| HTTP Runtime | ✅ PASS | Server starts on port 8069, `/web/login` returns HTTP 200 |
+| Git Cleanliness | ✅ PASS | Branch clean (only venv/ untracked) |
+
+### 2.2 Test Coverage by Module
+
+**Financial Reporting Engine (account_financial_report_ce):**
+
+| Test File | Test Methods | Status |
+|-----------|-------------|--------|
+| test_financial_reports.py | 72 | ✅ All pass |
+| test_balance_sheet.py | 19 | ✅ All pass |
+| test_profit_loss.py | 20 | ✅ All pass |
+| test_cash_flow.py | 17 | ✅ All pass |
+| test_general_ledger.py | 19 | ✅ All pass |
+| test_trial_balance.py | 17 | ✅ All pass |
+| test_aged_partner.py | 20 | ✅ All pass |
+| test_export.py | 26 | ✅ All pass |
+| **Total** | **210** | **100% pass** |
+
+**Bank Reconciliation System (account_bank_reconciliation_ce):**
+
+| Test File | Test Methods | Status |
+|-----------|-------------|--------|
+| test_statement_import.py | 26 | ✅ All pass |
+| test_matching_engine.py | 36 | ✅ All pass |
+| test_manual_reconciliation.py | 21 | ✅ All pass |
+| test_reconciliation_rules.py | 30 | ✅ All pass |
+| test_partial_reconciliation.py | 28 | ✅ All pass |
+| **Total** | **141** | **100% pass** |
+
+### 2.3 Fixes Applied During Validation
+
+The 115 commits on the branch include systematic fix cycles:
+- Ruff linting corrections across both modules
+- Odoo 19.0 API compatibility fixes (fields.Command, report_action signatures)
+- XML view/model field alignment corrections
+- Test data adjustments for deterministic assertions
+- Security group inheritance hierarchy corrections
+- ACL permission resolution for all transient models
+
+---
+
+## 3. Hours Breakdown and Visual Representation
+
+### 3.1 Completed Hours by Component (240h total)
+
+| Component | Hours | Description |
+|-----------|-------|-------------|
+| FR Core Models (8 files) | 40 | Abstract base, Balance Sheet, P&L, Cash Flow, GL, TB, Aged Partner |
+| FR Reports & Templates (14 files) | 32 | 6 QWeb templates, 6 report parsers, report actions, paper formats |
+| FR Wizard & UI (3 files) | 12 | Unified wizard, wizard views, menu items |
+| FR Security & Config (5 files) | 8 | Security groups, ACLs, SCSS styling, manifest, demo data |
+| BR Core Models (5 files) | 36 | Statement import, matching engine, rules, partial reconciliation |
+| BR Wizard & UI (5 files) | 20 | Import wizard, reconciliation wizard, XML views |
+| BR Views & Config (7 files) | 16 | Menu items, views, security, ACLs, data, SCSS, demo |
+| BR Reports (3 files) | 8 | Reconciliation report parser and template |
+| Tests — Both Modules (15 files) | 48 | 351 test methods across 13 test modules + common fixtures + test files |
+| Integration & Debugging | 20 | Fix cycles, linting, Odoo 19.0 compatibility, XML alignment |
+| **Total Completed** | **240** | |
+
+### 3.2 Remaining Hours (52h total, after enterprise multipliers)
+
+Raw estimate: 36h × enterprise multipliers (1.15 compliance × 1.25 uncertainty) = 51.75 ≈ 52h
+
+### 3.3 Visual Representation
 
 ```mermaid
 pie title Project Hours Breakdown
-    "Completed Work" : 110
-    "Remaining Work" : 530
-```
-
-```mermaid
-pie title Documentation Completion
-    "Epic" : 1
-    "Features" : 6
-    "Stories" : 32
-    "Templates" : 3
-    "Index" : 1
+    "Completed Work" : 240
+    "Remaining Work" : 52
 ```
 
 ---
 
-## Detailed Task Table
+## 4. Feature Completion Matrix
 
-### Remaining Work Summary
+### 4.1 FEATURE-001: Financial Reporting Engine
 
-| Task ID | Description | Hours | Priority | Severity |
-|---------|-------------|-------|----------|----------|
-| **HT-001** | Complete Financial Reports Module Implementation | 69 | High | Critical |
-| **HT-002** | Create Bank Reconciliation Module | 86 | High | Critical |
-| **HT-003** | Create Budget Management Module | 72 | High | High |
-| **HT-004** | Create Asset Management Module | 101 | High | High |
-| **HT-005** | Create Deferred Revenue Module | 65 | Medium | High |
-| **HT-006** | Create Payment Follow-ups Module | 79 | Medium | High |
-| **HT-007** | Integration Testing Across All Modules | 35 | Medium | Medium |
-| **HT-008** | Deployment Configuration & Documentation | 23 | Low | Medium |
-| **TOTAL** | | **530** | | |
+| Story | Description | Status | Evidence |
+|-------|-------------|--------|----------|
+| FR-001 | Balance Sheet (GAAP/IFRS) | ✅ Complete | balance_sheet.py (1,286 lines), 19 tests pass |
+| FR-002 | Profit & Loss Statement | ✅ Complete | profit_loss.py (1,051 lines), 20 tests pass |
+| FR-003 | Cash Flow Statement | ✅ Complete | cash_flow.py (1,185 lines), 17 tests pass |
+| FR-004 | General Ledger | ✅ Complete | general_ledger.py (614 lines), 19 tests pass |
+| FR-005 | Trial Balance | ✅ Complete | trial_balance.py (1,047 lines), 17 tests pass |
+| FR-006 | Aged AR/AP | ✅ Complete | aged_partner_balance.py (616 lines), 20 tests pass |
+| FR-007 | Export (PDF/XLSX/Drill-down) | ✅ Complete | Export methods in models, 26 tests pass |
 
-### Task Details
+**Module Metrics:**
+- Source Python: 8,821 lines across 28 files
+- Test Python: 8,707 lines across 9 test files
+- XML/SCSS/CSV: 4,590 lines across 15 files
+- Total: ~22,118 lines
 
-#### HT-001: Complete Financial Reports Module Implementation (69 hours)
-**Priority**: High | **Severity**: Critical
+### 4.2 FEATURE-002: Bank Reconciliation System
 
-**Current State**: Module scaffold exists with model structure, wizard, and report templates.
+| Story | Description | Status | Evidence |
+|-------|-------------|--------|----------|
+| BR-001 | Multi-Format Statement Import | ✅ Complete | bank_statement_import.py (1,379 lines), 26 tests pass |
+| BR-002 | Algorithmic Matching Engine | ✅ Complete | reconciliation_matching_engine.py (909 lines), 36 tests pass |
+| BR-003 | Manual Reconciliation | ✅ Complete | reconciliation_wizard.py (868 lines), 21 tests pass |
+| BR-004 | Configurable Reconciliation Rules | ✅ Complete | reconciliation_rule.py (668 lines), 30 tests pass |
+| BR-005 | Partial Reconciliation | ✅ Complete | partial_reconcile_ext.py (802 lines), 28 tests pass |
 
-**Action Steps**:
-1. Implement full business logic in `balance_sheet.py` (compute GAAP/IFRS compliant totals)
-2. Implement full business logic in `profit_loss.py` (compute income/expense categorization)
-3. Implement full business logic in `cash_flow.py` (compute operating/investing/financing activities)
-4. Implement full business logic in `general_ledger.py` (compute account-level drill-down)
-5. Implement full business logic in `trial_balance.py` (compute debit/credit balance verification)
-6. Implement full business logic in `aged_partner_balance.py` (compute aging buckets)
-7. Add multi-currency support to all reports
-8. Implement comparative period functionality
-9. Add Excel export functionality (xlsxwriter integration)
-10. Execute test suite and achieve 80% coverage
-
-**Files to Modify**:
-- `addons/account_financial_report_ce/models/*.py`
-- `addons/account_financial_report_ce/report/*.py`
-- `addons/account_financial_report_ce/tests/test_financial_reports.py`
+**Module Metrics:**
+- Source Python: 5,901 lines across 19 files
+- Test Python: 6,335 lines across 7 test files (including common.py)
+- XML/SCSS/CSV: 3,665 lines across 12 files
+- Total: ~15,901 lines
 
 ---
 
-#### HT-002: Create Bank Reconciliation Module (86 hours)
-**Priority**: High | **Severity**: Critical
+## 5. Remaining Work — Detailed Task Table
 
-**Reference Stories**: BR-001 through BR-005
+All tasks below sum to exactly **52 hours** matching the pie chart "Remaining Work" value.
 
-**Action Steps**:
-1. Create module scaffold following `account_financial_report_ce` pattern
-2. Implement statement import wizard (CSV, OFX, QIF, CAMT.053 formats)
-3. Develop algorithmic matching engine with confidence scoring
-4. Create reconciliation UI with OWL components
-5. Implement reconciliation rules/models configuration
-6. Add partial reconciliation support
-7. Create comprehensive test suite (80% coverage)
-
-**Dependencies**: 
-- `account.bank.statement` model
-- `account.reconcile.model` patterns
-- OCA `account_reconcile_oca` for reference
-
----
-
-#### HT-003: Create Budget Management Module (72 hours)
-**Priority**: High | **Severity**: High
-
-**Reference Stories**: BM-001 through BM-005
-
-**Action Steps**:
-1. Create `account_budget_ce` module scaffold
-2. Implement budget definition models with analytic dimension support
-3. Create period allocation wizard (monthly/quarterly/annual)
-4. Develop actual vs budget comparison reports
-5. Implement variance analysis with drill-down capability
-6. Add budget alert configuration and notifications
-7. Create comprehensive test suite (80% coverage)
-
-**Dependencies**:
-- `account.analytic.account` model
-- `account.analytic.plan` model
+| # | Task | Priority | Severity | Hours | Description |
+|---|------|----------|----------|-------|-------------|
+| 1 | Performance testing at scale (100K transactions) | High | High | 6 | Execute financial report generation against 100K+ account.move.line records to validate <30s SLA per FR requirements. Profile and optimize any slow queries. |
+| 2 | CI/CD pipeline configuration | High | Medium | 6 | Set up automated test pipeline (GitHub Actions/GitLab CI) with Odoo test runner, linting (ruff, pylint-odoo), and module installation verification on each push. |
+| 3 | User acceptance testing with accountants | High | High | 6 | Have domain experts validate all 6 financial reports against known datasets and verify bank reconciliation workflows against real-world scenarios. |
+| 4 | End-to-end integration testing | High | High | 5 | Test complete workflows: report generation → export → drill-down; statement import → matching → reconciliation → ledger update. |
+| 5 | Production environment configuration | Medium | High | 4 | Configure production database, environment variables, Odoo configuration file, reverse proxy (nginx), SSL certificates, and worker processes. |
+| 6 | Real-world bank statement format testing | Medium | Medium | 4 | Test statement import with actual bank-exported OFX, QIF, CSV, and CAMT.053 files from multiple financial institutions to validate parser robustness. |
+| 7 | Security audit and penetration testing | Medium | High | 4 | Review ACLs, record rules, and multi-company isolation. Test for SQL injection via custom domains, XSS in report templates, and unauthorized data access. |
+| 8 | Production monitoring and alerting | Medium | Medium | 3 | Configure Odoo logging levels, set up error alerting (Sentry or equivalent), health check endpoints, and database connection monitoring. |
+| 9 | OCA coding standards compliance verification | Medium | Low | 3 | Run full OCA pre-commit hooks (pylint-odoo, ruff, isort) and address any remaining style issues. Verify AGPL-3.0 headers on all files. |
+| 10 | Operations documentation and runbooks | Low | Medium | 3 | Write deployment runbook, troubleshooting guide, backup/restore procedures, and module upgrade instructions for operations team. |
+| 11 | Load testing and performance optimization | Low | Medium | 3 | Stress test concurrent report generation and bank reconciliation operations. Validate matching engine <5s SLA for 1,000 statement lines. |
+| 12 | Backup and disaster recovery setup | Low | Medium | 2 | Configure PostgreSQL backup schedule, test restore procedures, and document RPO/RTO targets. |
+| 13 | Multi-company production testing | Low | Low | 2 | Validate multi-company record rules with production-like data across 3+ companies to ensure complete data isolation. |
+| 14 | AGPL-3.0 license compliance review | Low | Low | 1 | Final review ensuring all files have correct license headers, no Enterprise module imports, and compliance with AGPL distribution requirements. |
+| | **Total Remaining Hours** | | | **52** | |
 
 ---
 
-#### HT-004: Create Asset Management Module (101 hours)
-**Priority**: High | **Severity**: High
+## 6. Comprehensive Development Guide
 
-**Reference Stories**: AM-001 through AM-006
+### 6.1 System Prerequisites
 
-**Action Steps**:
-1. Create `account_asset_ce` module scaffold
-2. Implement asset registration from purchase invoices
-3. Create depreciation configuration (straight-line, declining balance, units of production)
-4. Develop depreciation board with schedule visualization
-5. Implement automatic depreciation entry generation (cron job)
-6. Add asset modification workflows (revaluation, impairment)
-7. Create disposal workflow with gain/loss calculation
-8. Create comprehensive test suite (80% coverage)
+| Component | Required Version | Verified Version |
+|-----------|-----------------|-----------------|
+| Python | 3.10–3.13 | 3.12.3 |
+| PostgreSQL | 14+ | 16.11 |
+| Operating System | Ubuntu 22.04+ / Debian 12+ | Ubuntu 24.04 |
+| Node.js | Not required | N/A |
+| RAM | 4GB minimum (8GB recommended) | — |
+| Disk | 2GB free for repository + database | — |
 
-**Dependencies**:
-- `account.move` model for journal entries
-- `product.product` model for asset classification
-
----
-
-#### HT-005: Create Deferred Revenue Module (65 hours)
-**Priority**: Medium | **Severity**: High
-
-**Reference Stories**: DR-001 through DR-004
-
-**Action Steps**:
-1. Create `account_deferred_revenue_ce` module scaffold
-2. Implement deferral schedule definition models
-3. Create automatic period allocation engine (ASC 606/IFRS 15 compliant)
-4. Develop cut-off entry generation wizard
-5. Build recognition dashboard with schedule monitoring
-6. Create comprehensive test suite (80% coverage)
-
-**Dependencies**:
-- `account.move` model
-- `account.move.line` model
-
----
-
-#### HT-006: Create Payment Follow-ups Module (79 hours)
-**Priority**: Medium | **Severity**: High
-
-**Reference Stories**: PF-001 through PF-005
-
-**Action Steps**:
-1. Create `account_followup_ce` module scaffold
-2. Implement follow-up level configuration
-3. Create automated email generation with templates
-4. Develop follow-up report generation
-5. Implement action history tracking
-6. Add overdue calculation engine with aging analysis
-7. Create comprehensive test suite (80% coverage)
-
-**Dependencies**:
-- `res.partner` model
-- `mail.template` model
-- `account.move` model
-
----
-
-#### HT-007: Integration Testing Across All Modules (35 hours)
-**Priority**: Medium | **Severity**: Medium
-
-**Action Steps**:
-1. Create integration test suite spanning all 6 modules
-2. Test cross-module workflows (e.g., asset purchase → depreciation → financial reports)
-3. Validate data consistency across reporting modules
-4. Performance testing with large datasets
-5. Multi-company scenario testing (if applicable)
-6. Document integration test results
-
----
-
-#### HT-008: Deployment Configuration & Documentation (23 hours)
-**Priority**: Low | **Severity**: Medium
-
-**Action Steps**:
-1. Create Docker deployment configuration
-2. Write installation guide with prerequisites
-3. Configure CI/CD pipeline for automated testing
-4. Create admin guide for module configuration
-5. Write user guide for each feature area
-6. Performance tuning documentation
-
----
-
-## Development Guide
-
-### System Prerequisites
-
-| Requirement | Version | Purpose |
-|-------------|---------|---------|
-| Python | 3.10+ | Runtime environment |
-| PostgreSQL | 12+ | Database server |
-| Node.js | 18+ | Asset compilation |
-| wkhtmltopdf | 0.12.6+ | PDF report generation |
-| Git | 2.x | Version control |
-
-### Environment Setup
+### 6.2 Environment Setup
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/odoo/odoo.git
-cd odoo
-git checkout blitzy-226b0e2b-67da-4341-b2ee-58a436783f1b
+# 1. Clone the repository and switch to the feature branch
+cd /tmp/blitzy/blitzy-odoo/blitzyebbf6c961
+git checkout blitzy-ebbf6c96-1347-4c7f-bd3d-8b4d79737619
 
-# 2. Create Python virtual environment
+# 2. Create and activate Python virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-# 3. Install Python dependencies
-pip install -r requirements.txt
-
-# 4. Install additional dependencies for reports
-pip install xlsxwriter xlrd openpyxl
+# 3. Verify Python version (must be 3.10+)
+python3 --version
+# Expected: Python 3.12.3 (or any 3.10–3.13)
 ```
 
-### Database Setup
+### 6.3 Dependency Installation
 
 ```bash
-# 1. Create PostgreSQL database
-sudo -u postgres createuser -s odoo
-sudo -u postgres createdb odoo_enterprise_accounting
+# 4. Install Odoo and all Python dependencies
+cd /tmp/blitzy/blitzy-odoo/blitzyebbf6c961
+source venv/bin/activate
+pip install -e .
 
-# 2. Initialize Odoo database
-./odoo-bin -d odoo_enterprise_accounting -i base --stop-after-init
+# 5. Verify critical dependencies are installed
+python3 -c "import psycopg2; print('psycopg2:', psycopg2.__version__)"
+# Expected: psycopg2: 2.9.9
+python3 -c "import openpyxl; print('openpyxl:', openpyxl.__version__)"
+# Expected: openpyxl: 3.1.2
+python3 -c "import lxml; print('lxml:', lxml.__version__)"
+# Expected: lxml: 5.2.1
+python3 -c "import ofxparse; print('ofxparse: OK')"
+# Expected: ofxparse: OK
+python3 -c "import reportlab; print('reportlab:', reportlab.Version)"
+# Expected: reportlab: 4.1.0
 ```
 
-### Module Installation
+### 6.4 Database Setup
 
 ```bash
-# 1. Install account module (dependency)
-./odoo-bin -d odoo_enterprise_accounting -i account --stop-after-init
+# 6. Ensure PostgreSQL is running
+pg_isready -h localhost -p 5432 -U odoo
+# Expected: localhost:5432 - accepting connections
 
-# 2. Install financial reports module
-./odoo-bin -d odoo_enterprise_accounting -i account_financial_report_ce --stop-after-init
+# 7. Create database user (if not exists)
+sudo -u postgres createuser --createdb --no-superuser --no-createrole odoo 2>/dev/null || true
+sudo -u postgres psql -c "ALTER USER odoo WITH PASSWORD 'odoo';" 2>/dev/null || true
+
+# 8. Create the test database
+sudo -u postgres createdb -O odoo odoo_test 2>/dev/null || true
 ```
 
-### Running Odoo Server
+### 6.5 Module Installation
 
 ```bash
-# Development mode
-./odoo-bin -d odoo_enterprise_accounting --addons-path=addons -u account_financial_report_ce
+# 9. Install both Phase 1 modules
+cd /tmp/blitzy/blitzy-odoo/blitzyebbf6c961
+source venv/bin/activate
 
-# With specific port
-./odoo-bin -d odoo_enterprise_accounting --addons-path=addons --http-port=8069
+python odoo-bin server --stop-after-init --no-http \
+  --addons-path=addons,odoo/addons \
+  --database=odoo_test \
+  --db_host=localhost --db_port=5432 --db_user=odoo --db_password=odoo \
+  -i account_financial_report_ce,account_bank_reconciliation_ce
+
+# Expected output (last lines):
+# INFO odoo_test odoo.modules.loading: 45 modules loaded in ~2s
+# INFO odoo_test odoo.modules.loading: Modules loaded.
+# INFO odoo_test odoo.service.server: Initiating shutdown
 ```
 
-### Running Tests
+### 6.6 Running Tests
 
 ```bash
-# Run financial reports module tests
-./odoo-bin -d odoo_enterprise_accounting --test-enable --stop-after-init -i account_financial_report_ce
+# 10. Run Financial Reporting test suite (210 tests)
+python odoo-bin server --stop-after-init --no-http \
+  --addons-path=addons,odoo/addons \
+  --database=odoo_test \
+  --db_host=localhost --db_port=5432 --db_user=odoo --db_password=odoo \
+  -u account_financial_report_ce \
+  --test-enable --test-tags=account_financial_report_ce
 
-# Run with coverage (requires pytest-odoo)
-pip install pytest-odoo coverage
-coverage run --source=addons/account_financial_report_ce ./odoo-bin -d test_db --test-enable --stop-after-init -i account_financial_report_ce
-coverage report
+# Expected: 0 failed, 0 error(s) of 210 tests
+
+# 11. Run Bank Reconciliation test suite (141 tests)
+python odoo-bin server --stop-after-init --no-http \
+  --addons-path=addons,odoo/addons \
+  --database=odoo_test \
+  --db_host=localhost --db_port=5432 --db_user=odoo --db_password=odoo \
+  -u account_bank_reconciliation_ce \
+  --test-enable --test-tags=account_bank_reconciliation_ce
+
+# Expected: 0 failed, 0 error(s) of 141 tests
 ```
 
-### Verification Steps
+### 6.7 Starting the Application
 
-1. **Module Installation**: Navigate to Apps → Search "Financial Reports" → Verify module appears
-2. **Menu Access**: Navigate to Invoicing → Reporting → OCA Accounting Reports
-3. **Report Generation**: Select Balance Sheet → Configure dates → Generate → Verify PDF output
-4. **Test Execution**: Run test suite and verify all tests pass
+```bash
+# 12. Start Odoo HTTP server
+python odoo-bin server \
+  --addons-path=addons,odoo/addons \
+  --database=odoo_test \
+  --db_host=localhost --db_port=5432 --db_user=odoo --db_password=odoo \
+  --http-port=8069
 
-### Example Usage
-
-```python
-# Generate Balance Sheet report via code
-wizard = env['financial.report.wizard'].create({
-    'report_type': 'balance_sheet',
-    'date_to': '2024-12-31',
-    'company_id': env.company.id,
-    'target_move': 'posted',
-})
-action = wizard.button_generate_report()
+# Expected: HTTP service (werkzeug) running on localhost:8069
 ```
+
+### 6.8 Verification Steps
+
+```bash
+# 13. Verify HTTP server is responding (in a separate terminal)
+curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:8069/web/login
+# Expected: HTTP 200
+
+# 14. Verify modules are installed (via Odoo shell)
+python odoo-bin shell \
+  --addons-path=addons,odoo/addons \
+  --database=odoo_test \
+  --db_host=localhost --db_port=5432 --db_user=odoo --db_password=odoo \
+  -c "print(env['ir.module.module'].search([('name','in',['account_financial_report_ce','account_bank_reconciliation_ce']),('state','=','installed')]).mapped('name'))"
+# Expected: ['account_bank_reconciliation_ce', 'account_financial_report_ce']
+```
+
+### 6.9 Accessing Features
+
+1. **Financial Reports**: Navigate to `Accounting → Reporting → Financial Reports` in the Odoo web interface
+2. **Bank Statement Import**: Navigate to `Accounting → Bank Reconciliation → Import Statements`
+3. **Reconciliation**: Navigate to `Accounting → Bank Reconciliation → Reconciliation`
+4. **Reconciliation Rules**: Navigate to `Accounting → Bank Reconciliation → Reconciliation Rules`
+
+### 6.10 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `ModuleNotFoundError: ofxparse` | Run `pip install ofxparse==0.21` in the virtual environment |
+| `FATAL: role "odoo" does not exist` | Run `sudo -u postgres createuser --createdb odoo` |
+| `Module not found in addons path` | Verify `--addons-path` includes the `addons` directory |
+| Port 8069 already in use | Use `--http-port=8070` or kill existing Odoo processes |
+| `Database "odoo_test" does not exist` | Run `sudo -u postgres createdb -O odoo odoo_test` |
 
 ---
 
-## Risk Assessment
+## 7. Risk Assessment
 
-### Technical Risks
+### 7.1 Technical Risks
 
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| Module scaffold requires full implementation | High | Certain | Follow user stories for implementation guidance |
-| Multi-currency complexity in reports | Medium | Likely | Reference OCA account_financial_report patterns |
-| Performance with large datasets | Medium | Likely | Implement lazy loading and SQL optimization |
-| Odoo version compatibility (18.0 vs 19.0) | Low | Possible | Module written version-agnostic where possible |
+| Risk | Severity | Likelihood | Impact | Mitigation |
+|------|----------|-----------|--------|------------|
+| Financial report performance degrades beyond 100K transactions | Medium | Medium | High | Profile `read_group` queries with EXPLAIN ANALYZE; add database indexes on `account_move_line(account_id, date, company_id)` if needed |
+| Matching engine accuracy below 95% target on real bank data | Medium | Low | Medium | Current tests validate algorithmic accuracy; real-world testing with diverse bank formats will confirm. Tune scoring weights via `reconciliation_data.xml` |
+| openpyxl/XlsxWriter memory issues on very large Excel exports | Low | Low | Medium | Implement streaming write mode for exports exceeding 50K rows |
+| Odoo 19.0 API changes in future point releases | Low | Low | Low | Code uses stable ORM APIs (`read_group`, `search_read`, `fields.Command`); no private API usage |
 
-### Security Risks
+### 7.2 Security Risks
 
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| Report data access control | Medium | Likely | Implement proper ir.model.access and record rules |
-| SQL injection in custom queries | High | Unlikely | Use Odoo ORM methods exclusively |
-| Sensitive financial data exposure | High | Possible | Implement proper security groups |
+| Risk | Severity | Likelihood | Impact | Mitigation |
+|------|----------|-----------|--------|------------|
+| Multi-company data leakage in financial reports | High | Low | Critical | Record rules enforced in `account_financial_report_security.xml`; validate with multi-company test scenarios |
+| Malicious file upload via statement import wizard | Medium | Low | High | File parsing uses `ofxparse`, `lxml`, and `csv` with proper error handling; add file size limits and content-type validation |
+| SQL injection via custom report domain filters | Low | Low | Critical | All queries use ORM methods (`read_group`, `search_read`) — no raw SQL with user input |
 
-### Operational Risks
+### 7.3 Operational Risks
 
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| Missing monitoring/logging | Medium | Certain | Add comprehensive logging in production |
-| No automated backups | High | Possible | Configure database backup strategy |
-| Cron job failures (depreciation) | Medium | Possible | Add error notification mechanisms |
+| Risk | Severity | Likelihood | Impact | Mitigation |
+|------|----------|-----------|--------|------------|
+| No production monitoring configured | High | High | Medium | Task #8: Configure logging, alerting, and health checks before go-live |
+| No CI/CD pipeline exists | High | High | Medium | Task #2: Set up automated testing pipeline before merging to main |
+| No backup strategy for accounting data | Medium | Medium | High | Task #12: Configure PostgreSQL backup schedule and test restore procedures |
+| TransientModel vacuum not configured | Low | Medium | Low | Odoo's autovacuum handles TransientModel cleanup; verify cron job is active |
 
-### Integration Risks
+### 7.4 Integration Risks
 
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| OCA module conflicts | Medium | Possible | Test with common OCA modules installed |
-| Third-party addon conflicts | Low | Possible | Document known incompatibilities |
-| Database migration complexity | Medium | Likely | Provide migration scripts |
+| Risk | Severity | Likelihood | Impact | Mitigation |
+|------|----------|-----------|--------|------------|
+| Core `account` module API changes in Odoo updates | Medium | Low | High | Pin to Odoo 19.0; test with each point release before upgrading |
+| Bank statement format variations not covered by parsers | Medium | Medium | Medium | Task #6: Test with real bank files from target financial institutions |
+| Reconciliation rule conflicts with existing `account.reconcile.model` records | Low | Low | Medium | Rules use `_inherit` extension; existing rules remain unaffected; priority ordering prevents conflicts |
 
 ---
 
-## Git Statistics
+## 8. Architecture Overview
+
+### 8.1 Module Structure
+
+```
+addons/account_financial_report_ce/     (FEATURE-001: 40 files, ~22K lines)
+├── models/                             (8 Python modules: abstract base + 6 reports)
+│   ├── financial_report.py             (891 lines — shared base with query optimization)
+│   ├── balance_sheet.py                (1,286 lines — Assets=L+E validation)
+│   ├── profit_loss.py                  (1,051 lines — revenue/expense aggregation)
+│   ├── cash_flow.py                    (1,185 lines — indirect method)
+│   ├── general_ledger.py               (614 lines — per-account transactions)
+│   ├── trial_balance.py                (1,047 lines — debit/credit validation)
+│   └── aged_partner_balance.py         (616 lines — 30/60/90/120+ aging)
+├── report/                             (6 QWeb templates + 6 parsers + actions)
+├── wizard/                             (unified report wizard)
+├── views/                              (menu items)
+├── security/                           (groups, ACLs, record rules)
+├── tests/                              (8 test modules, 210 test methods)
+├── static/src/scss/                    (interactive + print styling)
+└── data/ + demo/                       (paper formats, demo data)
+
+addons/account_bank_reconciliation_ce/  (FEATURE-002: 33 files, ~16K lines)
+├── models/                             (4 Python modules)
+│   ├── bank_statement_import.py        (1,379 lines — CSV/OFX/QIF/CAMT.053)
+│   ├── reconciliation_matching_engine.py (909 lines — scoring algorithm)
+│   ├── reconciliation_rule.py          (668 lines — extends account.reconcile.model)
+│   └── partial_reconcile_ext.py        (802 lines — split/write-off handling)
+├── wizard/                             (import wizard + reconciliation wizard)
+├── views/                              (menu items + reconciliation views)
+├── security/                           (groups, ACLs, record rules)
+├── tests/                              (5 test modules + common fixtures + test files)
+├── report/                             (reconciliation status report)
+├── static/src/scss/                    (reconciliation UI styling)
+└── data/ + demo/                       (default rules, demo data)
+```
+
+### 8.2 Integration Pattern
+
+Both modules integrate with the core `account` module exclusively through:
+- **`_inherit` mechanism**: Extending existing models without modifying core tables
+- **`read_group` / `search_read`**: Read-only access to `account.move.line` for report data
+- **`ir.actions.act_window`**: Drill-down navigation from reports to source transactions
+- **Security group inheritance**: New groups implied by existing `account.group_account_*`
+
+---
+
+## 9. Git Statistics
 
 | Metric | Value |
 |--------|-------|
-| Total Commits | 47 |
-| Files Created | 81 |
-| Lines Added | 27,707 |
-| Documentation Files | 43 |
-| Module Source Files | 36 |
-| Python LOC | 3,763 |
-| XML LOC | 2,292 |
-| SCSS LOC | 596 |
-
----
-
-## File Inventory
-
-### Documentation Files (tickets/)
-
-```
-tickets/
-├── README.md
-├── EPIC-001-enterprise-accounting.md
-├── features/
-│   ├── FEATURE-001-financial-reporting.md
-│   ├── FEATURE-002-bank-reconciliation.md
-│   ├── FEATURE-003-budget-management.md
-│   ├── FEATURE-004-asset-management.md
-│   ├── FEATURE-005-deferred-revenue.md
-│   └── FEATURE-006-payment-followups.md
-├── stories/
-│   ├── financial-reporting/ (7 stories)
-│   ├── bank-reconciliation/ (5 stories)
-│   ├── budget-management/ (5 stories)
-│   ├── asset-management/ (6 stories)
-│   ├── deferred-revenue/ (4 stories)
-│   └── payment-followups/ (5 stories)
-└── templates/
-    ├── epic-template.md
-    ├── feature-template.md
-    └── story-template.md
-```
-
-### Module Files (addons/account_financial_report_ce/)
-
-```
-account_financial_report_ce/
-├── __init__.py
-├── __manifest__.py
-├── models/
-│   ├── __init__.py
-│   ├── financial_report.py
-│   ├── balance_sheet.py
-│   ├── profit_loss.py
-│   ├── cash_flow.py
-│   ├── general_ledger.py
-│   ├── trial_balance.py
-│   └── aged_partner_balance.py
-├── wizard/
-│   ├── __init__.py
-│   ├── financial_report_wizard.py
-│   └── financial_report_wizard_views.xml
-├── report/
-│   ├── __init__.py
-│   ├── report_*.py (6 files)
-│   ├── report_templates.xml
-│   └── *_report.xml (6 files)
-├── security/
-│   ├── account_financial_report_security.xml
-│   └── ir.model.access.csv
-├── views/
-│   └── menuitem.xml
-├── static/src/scss/
-│   ├── report.scss
-│   └── report_print.scss
-├── tests/
-│   ├── __init__.py
-│   └── test_financial_reports.py
-├── data/
-│   └── report_paperformat.xml
-└── demo/
-    └── demo_data.xml
-```
-
----
-
-## Recommendations
-
-### Immediate Actions (Week 1)
-1. Review and approve documentation structure
-2. Assign development team for module implementation
-3. Set up development environment with Odoo 19.0
-
-### Short-term Actions (Weeks 2-8)
-1. Complete Financial Reports module implementation (HT-001)
-2. Begin Bank Reconciliation module development (HT-002)
-3. Establish CI/CD pipeline for automated testing
-
-### Medium-term Actions (Weeks 9-16)
-1. Complete remaining modules (HT-003 through HT-006)
-2. Conduct integration testing (HT-007)
-3. Performance optimization and security hardening
-
-### Long-term Actions (Weeks 17-20)
-1. Deployment configuration (HT-008)
-2. User acceptance testing
-3. Documentation finalization
-4. Production deployment
-
----
-
-## Conclusion
-
-The Enterprise Accounting Epic documentation project has successfully delivered:
-
-1. **Complete Documentation Set**: 43 files providing comprehensive user stories with BDD acceptance criteria for 6 major features
-2. **Functional Module Scaffold**: A working prototype for the Financial Reports module demonstrating OCA-compliant patterns
-3. **Zero Blocking Issues**: All code compiles successfully with no critical errors
-
-The remaining 530 hours of work primarily involves:
-- Implementing full business logic in the Financial Reports module
-- Creating 5 additional modules following the documented user stories
-- Integration testing and deployment configuration
-
-The project is well-positioned for developer handoff with clear requirements, validated code structure, and comprehensive acceptance criteria for all features.
+| Branch | `blitzy-ebbf6c96-1347-4c7f-bd3d-8b4d79737619` |
+| Total commits | 115 |
+| Files added | 40 |
+| Files modified | 36 |
+| Total files changed | 76 |
+| Lines added | 33,687 |
+| Lines removed | 2,222 |
+| Net new lines | 31,465 |
+| Python files changed | 47 (+27,437 / -1,436) |
+| XML files changed | 21 (+4,987 / -766) |
+| SCSS files changed | 3 (+1,108 / -5) |

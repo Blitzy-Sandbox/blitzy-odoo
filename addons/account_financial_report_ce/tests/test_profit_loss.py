@@ -7,7 +7,7 @@ Maps test methods to FR-002 user-story acceptance scenarios:
   - FR-002 Scenario 1: Complete P&L for a given date range
   - FR-002 Scenario 2: Revenue / expense classification
   - FR-002 Scenario 3: Operating-expense breakdown
-  - FR-002 Scenario 4: Gross Profit = Revenue − COGS
+  - FR-002 Scenario 4: Gross Profit = Revenue - COGS
   - FR-002 Scenario 5: Net Income fully computed
   - FR-002 Scenario 6: Comparative period with variance analysis
 
@@ -21,7 +21,6 @@ from datetime import date, timedelta
 from freezegun import freeze_time
 from psycopg2 import IntegrityError
 
-from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tools import mute_logger
 
@@ -634,11 +633,11 @@ class TestProfitLoss(AccountTestInvoicingCommon):
     @freeze_time('2024-06-30')
     def test_fr002_gross_profit(self):
         """
-        FR-002 Scenario 4: Gross Profit = Revenue − COGS.
+        FR-002 Scenario 4: Gross Profit = Revenue - COGS.
 
         Given   total_revenue = 53 333, total_cogs = 20 000
         When    P&L is computed
-        Then    gross_profit = 53 333 − 20 000 = 33 333.
+        Then    gross_profit = 53 333 - 20 000 = 33 333.
         """
         report = self._create_and_compute()
         expected_gross = report.total_revenue - report.total_cogs
@@ -692,11 +691,11 @@ class TestProfitLoss(AccountTestInvoicingCommon):
     @freeze_time('2024-06-30')
     def test_fr002_operating_income(self):
         """
-        FR-002 Scenario 5: Operating Income = Gross Profit − OpEx.
+        FR-002 Scenario 5: Operating Income = Gross Profit - OpEx.
 
         Given   gross_profit = 33 333, total_operating_expenses = 15 000
         When    P&L is computed
-        Then    operating_income = 33 333 − 15 000 = 18 333.
+        Then    operating_income = 33 333 - 15 000 = 18 333.
         """
         report = self._create_and_compute()
         expected_oi = report.gross_profit - report.total_operating_expenses
@@ -723,7 +722,7 @@ class TestProfitLoss(AccountTestInvoicingCommon):
         When    P&L is computed
         Then    total_other_income  = 3 000
                 total_other_expenses = 0.0
-                total_other = 3 000 − 0 = 3 000
+                total_other = 3 000 - 0 = 3 000
         """
         report = self._create_and_compute()
         self.assertAlmostEqual(
@@ -748,12 +747,12 @@ class TestProfitLoss(AccountTestInvoicingCommon):
         """
         FR-002 Scenario 5: Net Income — full P&L bottom line.
 
-        Net Income = Operating Income + Other Income − Other Expenses
-                   = 18 333 + 3 000 − 0 = 21 333.
+        Net Income = Operating Income + Other Income - Other Expenses
+                   = 18 333 + 3 000 - 0 = 21 333.
 
         Also verifiable as:
-        Net Income = Revenue − COGS − OpEx + Other
-                   = 53 333 − 20 000 − 15 000 + 3 000 = 21 333
+        Net Income = Revenue - COGS - OpEx + Other
+                   = 53 333 - 20 000 - 15 000 + 3 000 = 21 333
         """
         report = self._create_and_compute()
         expected_ni = (
@@ -897,7 +896,7 @@ class TestProfitLoss(AccountTestInvoicingCommon):
         )
         # Check that comparison amounts are populated on total lines
         revenue_total_line = report.line_ids.filtered(
-            lambda l: l.section == 'revenue' and l.is_total
+            lambda ln: ln.section == 'revenue' and ln.is_total,
         )
         if revenue_total_line:
             # Comparison revenue should be 30 000
@@ -907,7 +906,7 @@ class TestProfitLoss(AccountTestInvoicingCommon):
             )
 
         net_income_line = report.line_ids.filtered(
-            lambda l: l.section == 'net_income' and l.is_total
+            lambda ln: ln.section == 'net_income' and ln.is_total,
         )
         if net_income_line:
             # Comparison net income = 30000 - 12000 - 8000 + 1500 = 11 500
@@ -919,12 +918,12 @@ class TestProfitLoss(AccountTestInvoicingCommon):
     @freeze_time('2024-06-30')
     def test_fr002_variance_analysis(self):
         """
-        FR-002 Scenario 6: Variance = Current − Comparison.
+        FR-002 Scenario 6: Variance = Current - Comparison.
 
         Given   current net income = 21 333
                 comparison net income = 11 500
         When    P&L is computed with enable_comparison
-        Then    variance on net income line = 21 333 − 11 500 = 9 833.
+        Then    variance on net income line = 21 333 - 11 500 = 9 833.
         """
         report = self._create_and_compute(
             enable_comparison=True,
@@ -932,7 +931,7 @@ class TestProfitLoss(AccountTestInvoicingCommon):
             comparison_date_to=self.comp_date_to,
         )
         net_line = report.line_ids.filtered(
-            lambda l: l.section == 'net_income' and l.is_total
+            lambda ln: ln.section == 'net_income' and ln.is_total,
         )
         if net_line:
             current_amount = net_line[0].amount
@@ -1044,9 +1043,9 @@ class TestProfitLoss(AccountTestInvoicingCommon):
         # (the template renders it statically).  Verify it carries the
         # correct monetary amount.
         rev_header = report.line_ids.filtered(
-            lambda l: l.is_group and l.is_total and l.level == 0
-            and 'REVENUE' in (l.name or '').upper()
-            and 'OTHER' not in (l.name or '').upper()
+            lambda ln: ln.is_group and ln.is_total and ln.level == 0
+            and 'REVENUE' in (ln.name or '').upper()
+            and 'OTHER' not in (ln.name or '').upper(),
         )
         if rev_header:
             self.assertAlmostEqual(
@@ -1057,8 +1056,8 @@ class TestProfitLoss(AccountTestInvoicingCommon):
         # Net Income total line: rendered as a group line with
         # is_total=True at level 0, name containing 'NET INCOME'.
         ni_total = report.line_ids.filtered(
-            lambda l: l.is_group and l.is_total and l.level == 0
-            and 'NET INCOME' in (l.name or '').upper()
+            lambda ln: ln.is_group and ln.is_total and ln.level == 0
+            and 'NET INCOME' in (ln.name or '').upper(),
         )
         if ni_total:
             self.assertAlmostEqual(

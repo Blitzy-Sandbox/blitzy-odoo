@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 """
@@ -27,6 +26,7 @@ from freezegun import freeze_time
 from odoo import Command
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import tagged
+
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 
 
@@ -42,7 +42,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
     section classification, comparative periods, and drill-down.
 
     Expected posted account balances as of 2024-06-30
-    (on TEST accounts only, Odoo balance = debit − credit):
+    (on TEST accounts only, Odoo balance = debit - credit):
 
     ============================================  ============
     Account (type)                                Balance
@@ -50,10 +50,10 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
     test_receivable  (asset_receivable)           +5,000
     test_cash        (asset_cash)                 +77,000
     test_fixed_asset (asset_fixed)                +20,000
-    test_payable     (liability_payable)          −2,000
-    test_non_current_liability (liability_non_current) −15,000
-    test_equity      (equity)                     −80,000
-    test_revenue     (income, 2024 fiscal year)   −10,000
+    test_payable     (liability_payable)          -2,000
+    test_non_current_liability (liability_non_current) -15,000
+    test_equity      (equity)                     -80,000
+    test_revenue     (income, 2024 fiscal year)   -10,000
     test_expense     (expense, 2024 fiscal year)  +5,000
     ============================================  ============
 
@@ -66,7 +66,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
     * Total Non-Current Liabilities = 15,000
     * Total Liabilities     = 17,000
     * Equity (accounts)     = 80,000
-    * Current Year Earnings = 5,000  (10,000 − 5,000)
+    * Current Year Earnings = 5,000  (10,000 - 5,000)
     * Total Equity          = 85,000
     * CHECK: 102,000 = 17,000 + 85,000  ✓
     """
@@ -503,7 +503,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         except (UserError, ValidationError) as exc:
             self.fail(
                 f"Report creation should not raise an error with valid "
-                f"parameters, but got: {exc}"
+                f"parameters, but got: {exc}",
             )
         self.assertTrue(report, "Balance Sheet report record should be created")
         self.assertEqual(
@@ -529,7 +529,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
 
         # Verify the accounting equation: A = L + E
         difference = abs(
-            report.total_assets - (report.total_liabilities + report.total_equity)
+            report.total_assets - (report.total_liabilities + report.total_equity),
         )
         self.assertLess(
             difference, 0.01,
@@ -754,7 +754,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         # Our prior-year entry has cash/equity, so at least some lines
         # should have non-zero comparison_amount.
         lines_with_comparison = report.line_ids.filtered(
-            lambda l: l.comparison_amount and l.comparison_amount != 0
+            lambda ln: ln.comparison_amount and ln.comparison_amount != 0,
         )
         self.assertTrue(
             lines_with_comparison,
@@ -782,15 +782,15 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
 
         # Find lines where both current and comparison amounts exist
         lines_with_variance = report.line_ids.filtered(
-            lambda l: l.amount and l.comparison_amount
+            lambda ln: ln.amount and ln.comparison_amount,
         )
         for line in lines_with_variance:
             expected_abs_variance = line.amount - line.comparison_amount
             self.assertAlmostEqual(
                 line.variance_absolute, expected_abs_variance, places=2,
                 msg=f"Line '{line.name}': variance_absolute should equal "
-                    f"amount − comparison_amount "
-                    f"({line.amount} − {line.comparison_amount})",
+                    f"amount - comparison_amount "
+                    f"({line.amount} - {line.comparison_amount})",
             )
             # Percentage variance
             if line.comparison_amount:
@@ -882,7 +882,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
 
         # Verify top-level section headers (level 0)
         section_headers = [
-            l.name for l in lines if l.level == 0 and l.is_total
+            ln.name for ln in lines if ln.level == 0 and ln.is_total
         ]
         self.assertIn('ASSETS', section_headers)
         self.assertIn('LIABILITIES', section_headers)
@@ -890,7 +890,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
 
         # Verify subsection headers (level 1)
         subsections = [
-            l.name for l in lines if l.level == 1 and l.is_total
+            ln.name for ln in lines if ln.level == 1 and ln.is_total
         ]
         self.assertIn('Current Assets', subsections)
         self.assertIn('Non-Current Assets', subsections)
@@ -898,7 +898,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         self.assertIn('Non-Current Liabilities', subsections)
 
         # Verify detail lines exist (level 2, with account_ids)
-        detail_lines = [l for l in lines if l.level == 2 and l.account_ids]
+        detail_lines = [ln for ln in lines if ln.level == 2 and ln.account_ids]
         self.assertTrue(
             detail_lines,
             "Report should contain detail lines at level 2 "
@@ -907,8 +907,8 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
 
         # Verify TOTAL LIABILITIES AND EQUITY line exists
         total_le_line = [
-            l for l in lines
-            if 'TOTAL LIABILITIES AND EQUITY' in (l.name or '')
+            ln for ln in lines
+            if 'TOTAL LIABILITIES AND EQUITY' in (ln.name or '')
         ]
         self.assertTrue(
             total_le_line,
@@ -1089,7 +1089,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         # Company 1's report.  If it did, assets would be inflated.
         # We check that no single line has that amount.
         c2_amounts = report_c1.line_ids.filtered(
-            lambda l: abs(l.amount - 999999.0) < 0.01
+            lambda ln: abs(ln.amount - 999999.0) < 0.01,
         )
         self.assertFalse(
             c2_amounts,

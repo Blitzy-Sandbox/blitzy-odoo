@@ -269,7 +269,7 @@ class FinancialReportWizard(models.TransientModel):
             if (wizard.date_from and wizard.date_to
                     and wizard.date_from > wizard.date_to):
                 raise UserError(
-                    _("From Date must be before To Date.")
+                    _("From Date must be before To Date."),
                 )
             if (wizard.enable_comparison
                     and wizard.comparison_date_from
@@ -278,7 +278,7 @@ class FinancialReportWizard(models.TransientModel):
                     > wizard.comparison_date_to):
                 raise UserError(
                     _("Comparison From Date must be before "
-                      "Comparison To Date.")
+                      "Comparison To Date."),
                 )
 
     # -------------------------------------------------------------------------
@@ -401,9 +401,9 @@ class FinancialReportWizard(models.TransientModel):
             raise UserError(
                 _("Could not create %(report_type)s report: %(error)s",
                   report_type=dict(
-                      self._fields['report_type'].selection
+                      self._fields['report_type'].selection,
                   ).get(self.report_type, self.report_type),
-                  error=str(exc))
+                  error=str(exc)),
             ) from exc
         return report.action_generate_report()
 
@@ -422,17 +422,17 @@ class FinancialReportWizard(models.TransientModel):
                 raise UserError(
                     _("From Date is required for %s reports.",
                       dict(self._fields['report_type'].selection).get(
-                          self.report_type, self.report_type))
+                          self.report_type, self.report_type)),
                 )
         if self.report_type == 'cash_flow' and not self.cash_flow_method:
             raise UserError(
                 _("Cash Flow Method must be selected for "
-                  "Cash Flow Statement reports.")
+                  "Cash Flow Statement reports."),
             )
         if (self.report_type in ('aged_receivable', 'aged_payable')
                 and not self.date_to):
             raise UserError(
-                _("As of Date is required for Aged Partner Balance reports.")
+                _("As of Date is required for Aged Partner Balance reports."),
             )
 
     # Mapping of wizard report_type to ir.actions.report XML IDs
@@ -492,11 +492,11 @@ class FinancialReportWizard(models.TransientModel):
                     pass  # XML-ID not found — fall through to error
 
         report_label = dict(
-            self._fields['report_type'].selection
+            self._fields['report_type'].selection,
         ).get(self.report_type, self.report_type)
         raise UserError(
             _("PDF export is not available for the '%s' report type.",
-              report_label)
+              report_label),
         )
 
     def action_export_xlsx(self):
@@ -528,13 +528,13 @@ class FinancialReportWizard(models.TransientModel):
                 return report.action_export_xlsx()
 
         report_label = dict(
-            self._fields['report_type'].selection
+            self._fields['report_type'].selection,
         ).get(self.report_type, self.report_type)
         raise UserError(
             _("Excel export is not available for the '%s' report type. "
               "Please ensure the report model implements "
               "action_export_xlsx.",
-              report_label)
+              report_label),
         )
 
     def action_preview(self):

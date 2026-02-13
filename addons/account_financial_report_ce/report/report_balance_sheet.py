@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -85,13 +84,13 @@ class ReportBalanceSheet(models.AbstractModel):
         if docs:
             first_doc = docs[0]
             asset_lines = first_doc.line_ids.filtered(
-                lambda l: l.section == 'asset'
+                lambda ln: ln.section == 'asset',
             )
             liability_lines = first_doc.line_ids.filtered(
-                lambda l: l.section == 'liability'
+                lambda ln: ln.section == 'liability',
             )
             equity_lines = first_doc.line_ids.filtered(
-                lambda l: l.section == 'equity'
+                lambda ln: ln.section == 'equity',
             )
         else:
             asset_lines = ReportLine
@@ -110,7 +109,7 @@ class ReportBalanceSheet(models.AbstractModel):
         if docs:
             has_comparison = bool(
                 getattr(docs[0], 'compare_period', False)
-                or getattr(docs[0], 'enable_comparison', False)
+                or getattr(docs[0], 'enable_comparison', False),
             )
             if has_comparison:
                 # Comparison date range — resolve updated or abstract names

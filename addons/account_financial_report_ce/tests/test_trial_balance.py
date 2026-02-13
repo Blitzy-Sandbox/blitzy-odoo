@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -313,7 +312,7 @@ class TestTrialBalance(AccountTestInvoicingCommon):
             account.trial.balance.report.line record or empty recordset.
         """
         return report.line_ids.filtered(
-            lambda line: line.account_id.id == account.id
+            lambda line: line.account_id.id == account.id,
         )
 
     # -------------------------------------------------------------------------
@@ -390,12 +389,12 @@ class TestTrialBalance(AccountTestInvoicingCommon):
             difference, 0.01,
             "Trial Balance total debits (%.2f) should equal total credits "
             "(%.2f); difference=%.2f" % (
-                report.total_debit, report.total_credit, difference
-            )
+                report.total_debit, report.total_credit, difference,
+            ),
         )
         self.assertTrue(
             report.is_balanced,
-            "Trial Balance is_balanced flag should be True when balanced"
+            "Trial Balance is_balanced flag should be True when balanced",
         )
 
     @freeze_time('2024-06-30')
@@ -423,11 +422,11 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         self.assertTrue(recv_line, "Receivable account should appear in report")
         self.assertAlmostEqual(
             recv_line.debit, 3000.0, places=2,
-            msg="Receivable debit should be 3000.00"
+            msg="Receivable debit should be 3000.00",
         )
         self.assertAlmostEqual(
             recv_line.credit, 0.0, places=2,
-            msg="Receivable credit should be 0.00"
+            msg="Receivable credit should be 0.00",
         )
 
         # Revenue account
@@ -435,11 +434,11 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         self.assertTrue(rev_line, "Revenue account should appear in report")
         self.assertAlmostEqual(
             rev_line.debit, 0.0, places=2,
-            msg="Revenue debit should be 0.00"
+            msg="Revenue debit should be 0.00",
         )
         self.assertAlmostEqual(
             rev_line.credit, 3000.0, places=2,
-            msg="Revenue credit should be 3000.00"
+            msg="Revenue credit should be 3000.00",
         )
 
         # Expense account
@@ -447,11 +446,11 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         self.assertTrue(exp_line, "Expense account should appear in report")
         self.assertAlmostEqual(
             exp_line.debit, 800.0, places=2,
-            msg="Expense debit should be 800.00"
+            msg="Expense debit should be 800.00",
         )
         self.assertAlmostEqual(
             exp_line.credit, 0.0, places=2,
-            msg="Expense credit should be 0.00"
+            msg="Expense credit should be 0.00",
         )
 
         # Payable account
@@ -459,11 +458,11 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         self.assertTrue(pay_line, "Payable account should appear in report")
         self.assertAlmostEqual(
             pay_line.debit, 0.0, places=2,
-            msg="Payable debit should be 0.00"
+            msg="Payable debit should be 0.00",
         )
         self.assertAlmostEqual(
             pay_line.credit, 800.0, places=2,
-            msg="Payable credit should be 800.00"
+            msg="Payable credit should be 800.00",
         )
 
     @freeze_time('2024-06-30')
@@ -496,7 +495,7 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         self.assertTrue(recv_line, "Receivable should be in period report")
         self.assertAlmostEqual(
             recv_line.debit, 2000.0, places=2,
-            msg="Receivable period debit should be 2000.00 (in-period only)"
+            msg="Receivable period debit should be 2000.00 (in-period only)",
         )
 
         # Revenue in-period: credit=2000
@@ -504,7 +503,7 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         self.assertTrue(rev_line, "Revenue should be in period report")
         self.assertAlmostEqual(
             rev_line.credit, 2000.0, places=2,
-            msg="Revenue period credit should be 2000.00 (in-period only)"
+            msg="Revenue period credit should be 2000.00 (in-period only)",
         )
 
     @freeze_time('2024-06-30')
@@ -533,11 +532,11 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         self.assertTrue(exp_line, "Expense should be in period report")
         self.assertAlmostEqual(
             exp_line.debit, 800.0, places=2,
-            msg="Expense period debit should be 800.00"
+            msg="Expense period debit should be 800.00",
         )
         self.assertAlmostEqual(
             exp_line.credit, 0.0, places=2,
-            msg="Expense period credit should be 0.00"
+            msg="Expense period credit should be 0.00",
         )
 
         # Payable: only in-period credits (500 + 300 = 800)
@@ -545,7 +544,7 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         self.assertTrue(pay_line, "Payable should be in period report")
         self.assertAlmostEqual(
             pay_line.credit, 800.0, places=2,
-            msg="Payable period credit should be 800.00"
+            msg="Payable period credit should be 800.00",
         )
 
     @freeze_time('2024-06-30')
@@ -585,13 +584,13 @@ class TestTrialBalance(AccountTestInvoicingCommon):
 
         # Verify closing = opening + period for receivable
         recv_cumul = self._find_line_for_account(
-            report_cumul, self.account_receivable
+            report_cumul, self.account_receivable,
         )
         recv_period = self._find_line_for_account(
-            report_period, self.account_receivable
+            report_period, self.account_receivable,
         )
         recv_opening = self._find_line_for_account(
-            report_opening, self.account_receivable
+            report_opening, self.account_receivable,
         )
 
         if recv_cumul and recv_period and recv_opening:
@@ -604,18 +603,18 @@ class TestTrialBalance(AccountTestInvoicingCommon):
                     "Closing balance (%.2f) should equal opening (%.2f) "
                     "+ period (%.2f) for receivable"
                     % (closing_balance, opening_balance, period_balance)
-                )
+                ),
             )
 
         # Verify for revenue
         rev_cumul = self._find_line_for_account(
-            report_cumul, self.account_revenue
+            report_cumul, self.account_revenue,
         )
         rev_period = self._find_line_for_account(
-            report_period, self.account_revenue
+            report_period, self.account_revenue,
         )
         rev_opening = self._find_line_for_account(
-            report_opening, self.account_revenue
+            report_opening, self.account_revenue,
         )
 
         if rev_cumul and rev_period and rev_opening:
@@ -628,7 +627,7 @@ class TestTrialBalance(AccountTestInvoicingCommon):
                     "Closing balance (%.2f) should equal opening (%.2f) "
                     "+ period (%.2f) for revenue"
                     % (closing_balance, opening_balance, period_balance)
-                )
+                ),
             )
 
     @freeze_time('2024-06-30')
@@ -646,21 +645,21 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         report.action_compute()
 
         zero_line = self._find_line_for_account(
-            report, self.account_zero_balance
+            report, self.account_zero_balance,
         )
         self.assertFalse(
             zero_line,
             "Zero-balance account should be excluded when "
-            "show_balance_zero=False"
+            "show_balance_zero=False",
         )
 
         # Accounts WITH activity should still be present
         recv_line = self._find_line_for_account(
-            report, self.account_receivable
+            report, self.account_receivable,
         )
         self.assertTrue(
             recv_line,
-            "Receivable account with activity should be included"
+            "Receivable account with activity should be included",
         )
 
     @freeze_time('2024-06-30')
@@ -678,27 +677,27 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         report.action_compute()
 
         zero_line = self._find_line_for_account(
-            report, self.account_zero_balance
+            report, self.account_zero_balance,
         )
         self.assertTrue(
             zero_line,
             "Zero-balance account should be included when "
-            "show_balance_zero=True"
+            "show_balance_zero=True",
         )
 
         # Verify the zero-balance line has zero amounts
         if zero_line:
             self.assertAlmostEqual(
                 zero_line.debit, 0.0, places=2,
-                msg="Zero-balance account debit should be 0.00"
+                msg="Zero-balance account debit should be 0.00",
             )
             self.assertAlmostEqual(
                 zero_line.credit, 0.0, places=2,
-                msg="Zero-balance account credit should be 0.00"
+                msg="Zero-balance account credit should be 0.00",
             )
             self.assertAlmostEqual(
                 zero_line.balance, 0.0, places=2,
-                msg="Zero-balance account balance should be 0.00"
+                msg="Zero-balance account balance should be 0.00",
             )
 
     @freeze_time('2024-06-30')
@@ -723,11 +722,11 @@ class TestTrialBalance(AccountTestInvoicingCommon):
                          "Report with hierarchy should compute successfully")
         self.assertTrue(
             report.show_hierarchy,
-            "show_hierarchy flag should be True on the report"
+            "show_hierarchy flag should be True on the report",
         )
         self.assertTrue(
             len(report.line_ids) > 0,
-            "Hierarchical report should have lines"
+            "Hierarchical report should have lines",
         )
 
     @freeze_time('2024-06-30')
@@ -750,19 +749,19 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         report.action_compute()
 
         recv_line = self._find_line_for_account(
-            report, self.account_receivable
+            report, self.account_receivable,
         )
         self.assertTrue(recv_line)
         self.assertAlmostEqual(
             recv_line.debit, 3000.0, places=2,
-            msg="Posted-only receivable debit should be 3000 (no draft 750)"
+            msg="Posted-only receivable debit should be 3000 (no draft 750)",
         )
 
         rev_line = self._find_line_for_account(report, self.account_revenue)
         self.assertTrue(rev_line)
         self.assertAlmostEqual(
             rev_line.credit, 3000.0, places=2,
-            msg="Posted-only revenue credit should be 3000 (no draft 750)"
+            msg="Posted-only revenue credit should be 3000 (no draft 750)",
         )
 
     @freeze_time('2024-06-30')
@@ -785,26 +784,26 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         report.action_compute()
 
         recv_line = self._find_line_for_account(
-            report, self.account_receivable
+            report, self.account_receivable,
         )
         self.assertTrue(recv_line)
         self.assertAlmostEqual(
             recv_line.debit, 3750.0, places=2,
-            msg="All-moves receivable debit should be 3750 (incl. draft 750)"
+            msg="All-moves receivable debit should be 3750 (incl. draft 750)",
         )
 
         rev_line = self._find_line_for_account(report, self.account_revenue)
         self.assertTrue(rev_line)
         self.assertAlmostEqual(
             rev_line.credit, 3750.0, places=2,
-            msg="All-moves revenue credit should be 3750 (incl. draft 750)"
+            msg="All-moves revenue credit should be 3750 (incl. draft 750)",
         )
 
         # Debit/credit equality must still hold with all entries
         difference = abs(report.total_debit - report.total_credit)
         self.assertLessEqual(
             difference, 0.01,
-            "Trial Balance should be balanced even with draft entries"
+            "Trial Balance should be balanced even with draft entries",
         )
 
     @freeze_time('2024-06-30')
@@ -831,7 +830,7 @@ class TestTrialBalance(AccountTestInvoicingCommon):
                          "Comparative report should compute successfully")
         self.assertTrue(
             report.enable_comparison,
-            "enable_comparison should be True"
+            "enable_comparison should be True",
         )
 
     @freeze_time('2024-06-30')
@@ -856,14 +855,14 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         # Cumulative expense: 500 (Jan) + 300 (Jun 30) = 800
         self.assertAlmostEqual(
             exp_line.debit, 800.0, places=2,
-            msg="Expense debit should include boundary-date entry (800.00)"
+            msg="Expense debit should include boundary-date entry (800.00)",
         )
 
         pay_line = self._find_line_for_account(report, self.account_payable)
         self.assertTrue(pay_line, "Payable account should be in report")
         self.assertAlmostEqual(
             pay_line.credit, 800.0, places=2,
-            msg="Payable credit should include boundary-date entry (800.00)"
+            msg="Payable credit should include boundary-date entry (800.00)",
         )
 
     @freeze_time('2024-06-30')
@@ -939,8 +938,8 @@ class TestTrialBalance(AccountTestInvoicingCommon):
             difference, 0.01,
             "Trial Balance should remain balanced after adding new entries; "
             "total_debit=%.2f, total_credit=%.2f" % (
-                report.total_debit, report.total_credit
-            )
+                report.total_debit, report.total_credit,
+            ),
         )
         self.assertTrue(report.is_balanced,
                         "is_balanced should be True with new entries")
@@ -950,7 +949,7 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         self.assertTrue(extra_line, "Extra account should appear in report")
         self.assertAlmostEqual(
             extra_line.debit, 1234.56, places=2,
-            msg="Extra account debit should be 1234.56"
+            msg="Extra account debit should be 1234.56",
         )
 
     @freeze_time('2024-06-30')
@@ -1004,25 +1003,25 @@ class TestTrialBalance(AccountTestInvoicingCommon):
 
         # Company 1's receivable account should NOT be in company 2's report
         c1_recv_line = report_c2.line_ids.filtered(
-            lambda l: l.account_id.id == self.account_receivable.id
+            lambda ln: ln.account_id.id == self.account_receivable.id,
         )
         self.assertFalse(
             c1_recv_line,
-            "Company 1 receivable should not appear in Company 2 report"
+            "Company 1 receivable should not appear in Company 2 report",
         )
 
         # Company 2's receivable should be present
         c2_recv_line = report_c2.line_ids.filtered(
-            lambda l: l.account_id.id == company_2_receivable.id
+            lambda ln: ln.account_id.id == company_2_receivable.id,
         )
         self.assertTrue(
             c2_recv_line,
-            "Company 2 receivable should appear in Company 2 report"
+            "Company 2 receivable should appear in Company 2 report",
         )
         if c2_recv_line:
             self.assertAlmostEqual(
                 c2_recv_line.debit, 5000.0, places=2,
-                msg="Company 2 receivable debit should be 5000.00"
+                msg="Company 2 receivable debit should be 5000.00",
             )
 
         # Also verify company 1 report is unaffected
@@ -1032,10 +1031,10 @@ class TestTrialBalance(AccountTestInvoicingCommon):
         report_c1.action_compute()
 
         c1_recv_in_c1 = self._find_line_for_account(
-            report_c1, self.account_receivable
+            report_c1, self.account_receivable,
         )
         self.assertTrue(c1_recv_in_c1)
         self.assertAlmostEqual(
             c1_recv_in_c1.debit, 3000.0, places=2,
-            msg="Company 1 receivable should still show 3000.00 in C1 report"
+            msg="Company 1 receivable should still show 3000.00 in C1 report",
         )

@@ -463,7 +463,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
                 report_nodate.action_generate_report()
         finally:
             # Remove rows with NULL date_from before restoring the
-            # NOT NULL constraint – otherwise PostgreSQL rejects the
+            # NOT NULL constraint - otherwise PostgreSQL rejects the
             # ALTER TABLE because the column still contains NULLs.
             self.env.cr.execute(
                 "DELETE FROM %s WHERE date_from IS NULL" % table,
@@ -573,7 +573,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         Expected receivable data in the period:
             opening  = 1 000  (move_before_1)
             Jan 15  +2 000 debit  → running 3 000
-            Apr 10  −1 500 credit → running 1 500
+            Apr 10  -1 500 credit → running 1 500
             Jun 15  +3 000 debit  → running 4 500
         """
         report = self._create_gl_report(
@@ -582,7 +582,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         report.action_compute()
 
         acct_line = report.account_line_ids.filtered(
-            lambda l: l.account_id == self.account_receivable
+            lambda ln: ln.account_id == self.account_receivable,
         )
         self.assertTrue(acct_line,
                         "Receivable account must appear in the GL report.")
@@ -617,7 +617,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         report.action_compute()
 
         acct_line = report.account_line_ids.filtered(
-            lambda l: l.account_id == self.account_receivable
+            lambda ln: ln.account_id == self.account_receivable,
         )
         self.assertTrue(acct_line)
         acct_line = acct_line[0]
@@ -632,7 +632,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         )
 
     def test_fr004_closing_balance(self):
-        """FR-004 Scenario 3: Closing = opening + debit − credit.
+        """FR-004 Scenario 3: Closing = opening + debit - credit.
 
         Validate the fundamental ledger equation for the receivable
         account section.
@@ -643,7 +643,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         report.action_compute()
 
         acct_line = report.account_line_ids.filtered(
-            lambda l: l.account_id == self.account_receivable
+            lambda ln: ln.account_id == self.account_receivable,
         )
         self.assertTrue(acct_line)
         acct_line = acct_line[0]
@@ -656,7 +656,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         self.assertAlmostEqual(
             acct_line.closing_balance, expected_closing, places=2,
             msg=(
-                "Closing balance must equal opening + debit − credit.  "
+                "Closing balance must equal opening + debit - credit.  "
                 "Expected %.2f, got %.2f."
                 % (expected_closing, acct_line.closing_balance)
             ),
@@ -665,7 +665,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
     def test_fr004_date_filtering(self):
         """FR-004 Scenario 1: Entries outside the date range are excluded.
 
-        Narrow the window to Feb–Apr and confirm that only transactions
+        Narrow the window to Feb-Apr and confirm that only transactions
         dated within that range appear.
         """
         narrow_from = date(2024, 2, 1)
@@ -833,7 +833,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         report.action_compute()
 
         acct_line = report.account_line_ids.filtered(
-            lambda l: l.account_id == self.account_receivable
+            lambda ln: ln.account_id == self.account_receivable,
         )
         self.assertTrue(acct_line,
                         "Receivable section must exist for drill-down test.")
@@ -852,7 +852,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
 
         # Transaction-level drill-down → journal entry form
         txn_lines = acct_line.line_ids.filtered(
-            lambda t: t.move_id and not t.is_partner_subtotal
+            lambda t: t.move_id and not t.is_partner_subtotal,
         )
         if txn_lines:
             txn_result = txn_lines[0].action_open_move()
@@ -955,7 +955,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         report_hidden.action_compute()
 
         empty_in_hidden = report_hidden.account_line_ids.filtered(
-            lambda l: l.account_id == empty_account
+            lambda ln: ln.account_id == empty_account,
         )
         self.assertFalse(
             empty_in_hidden,
@@ -973,7 +973,7 @@ class TestGeneralLedger(AccountTestInvoicingCommon):
         report_shown.action_compute()
 
         empty_in_shown = report_shown.account_line_ids.filtered(
-            lambda l: l.account_id == empty_account
+            lambda ln: ln.account_id == empty_account,
         )
         self.assertTrue(
             empty_in_shown,

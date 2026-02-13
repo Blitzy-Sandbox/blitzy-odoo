@@ -10,7 +10,7 @@ criteria with a target of **≥ 95 %** matching accuracy.  Covers:
   - Individual scoring dimensions (amount, reference, partner, date)
   - Weighted confidence score computation
     (amount=0.40, reference=0.25, partner=0.20, date=0.15)
-  - Confidence-level classification (High ≥ 90 %, Medium 70–89 %, Low 50–69 %)
+  - Confidence-level classification (High ≥ 90 %, Medium 70-89 %, Low 50-69 %)
   - End-to-end ``find_matches`` workflow
   - Multi-match resolution (one-to-many, many-to-one, combination matching)
   - Confirm / reject match actions
@@ -19,7 +19,7 @@ criteria with a target of **≥ 95 %** matching accuracy.  Covers:
 
 from datetime import date, timedelta
 
-from odoo import fields, Command
+from odoo import Command, fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import tagged
 
@@ -148,7 +148,7 @@ class TestMatchingScoring(BankReconciliationTestCommon):
         self.assertGreaterEqual(score, 40.0)
         self.assertLessEqual(
             score, 60.0,
-            "Token-overlap reference should score in 40–60 range.",
+            "Token-overlap reference should score in 40-60 range.",
         )
 
     def test_br002_score_reference_no_match(self):
@@ -257,7 +257,7 @@ class TestMatchingConfidence(BankReconciliationTestCommon):
     """Tests for confidence-level classification and weighted score computation.
 
     Confidence thresholds:
-        High ≥ 90, Medium 70–89, Low 50–69, None < 50.
+        High ≥ 90, Medium 70-89, Low 50-69, None < 50.
     Weights:
         amount=0.40, reference=0.25, partner=0.20, date=0.15.
     """
@@ -289,7 +289,7 @@ class TestMatchingConfidence(BankReconciliationTestCommon):
         )
 
     def test_br002_confidence_medium(self):
-        """Score 70–89 → confidence_level = 'medium'."""
+        """Score 70-89 → confidence_level = 'medium'."""
         match = self._create_matching(78.0)
         self.assertEqual(
             match.confidence_level, 'medium',
@@ -297,7 +297,7 @@ class TestMatchingConfidence(BankReconciliationTestCommon):
         )
 
     def test_br002_confidence_low(self):
-        """Score 50–69 → confidence_level = 'low'."""
+        """Score 50-69 → confidence_level = 'low'."""
         match = self._create_matching(55.0)
         self.assertEqual(
             match.confidence_level, 'low',
@@ -327,7 +327,7 @@ class TestMatchingConfidence(BankReconciliationTestCommon):
             ref='TEST-WEIGHT-001', date=test_date,
         )
         recv_line = invoice.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda ln: ln.account_id.account_type == 'asset_receivable',
         )
         self.assertTrue(recv_line, "Invoice must have a receivable line.")
 
@@ -359,7 +359,7 @@ class TestMatchingEngine(BankReconciliationTestCommon):
         """find_matches on fixture data should produce proposed matches.
 
         The setUp provides st_line_1 (+1000, ref=INV/2024/001) against
-        test_invoice (1000) and st_line_2 (−500, ref=BILL/2024/001)
+        test_invoice (1000) and st_line_2 (-500, ref=BILL/2024/001)
         against test_bill (500).
         """
         MatchModel = self.env['account.reconciliation.matching']
@@ -384,11 +384,11 @@ class TestMatchingEngine(BankReconciliationTestCommon):
 
         # The test_invoice (1000) should appear as candidate for st_line_1
         inv_match = matches.filtered(
-            lambda m: m.move_line_id.move_id == self.test_invoice
+            lambda m: m.move_line_id.move_id == self.test_invoice,
         )
         # The test_bill (500) should appear as candidate for st_line_2
         bill_match = matches.filtered(
-            lambda m: m.move_line_id.move_id == self.test_bill
+            lambda m: m.move_line_id.move_id == self.test_bill,
         )
         self.assertTrue(
             inv_match or bill_match,
@@ -418,8 +418,8 @@ class TestMatchingEngine(BankReconciliationTestCommon):
         """Multiple candidate invoices are scored and ranked by confidence."""
         MatchModel = self.env['account.reconciliation.matching']
 
-        # Three invoices with close amounts — the one with exact ref wins
-        inv_exact = self.create_posted_invoice(
+        # Three invoices with close amounts - the one with exact ref wins
+        _inv_exact = self.create_posted_invoice(
             1000.0, partner=self.partner_a, ref='MULTI-INV-001',
         )
         self.create_posted_invoice(
@@ -577,7 +577,7 @@ class TestMatchingMultiMatch(BankReconciliationTestCommon):
         if matches:
             best = matches[0]
             exact_recv = inv_exact.line_ids.filtered(
-                lambda l: l.account_id.account_type == 'asset_receivable'
+                lambda ln: ln.account_id.account_type == 'asset_receivable',
             )
             # The exact-amount + exact-reference match should rank first
             self.assertEqual(
@@ -675,7 +675,7 @@ class TestMatchingMultiMatch(BankReconciliationTestCommon):
         })
         large_inv.action_post()
         large_recv = large_inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda ln: ln.account_id.account_type == 'asset_receivable',
         )
 
         # Three statement lines (1000 each = 3000 total)
@@ -743,10 +743,10 @@ class TestMatchingMultiMatch(BankReconciliationTestCommon):
         inv_d.action_post()
 
         recv_c = inv_c.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda ln: ln.account_id.account_type == 'asset_receivable',
         )
         recv_d = inv_d.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda ln: ln.account_id.account_type == 'asset_receivable',
         )
 
         # Statement line for the exact combined amount
@@ -814,7 +814,7 @@ class TestMatchingActions(BankReconciliationTestCommon):
         })
         entry.action_post()
         suspense_line = entry.line_ids.filtered(
-            lambda l: l.account_id == self.suspense_account
+            lambda ln: ln.account_id == self.suspense_account,
         )
         self.assertTrue(suspense_line, "Entry should have a suspense line.")
 
@@ -972,7 +972,7 @@ class TestMatchingAccuracy(BankReconciliationTestCommon):
                 amount, self.partner_a, ref, test_date,
             )
             recv = inv.line_ids.filtered(
-                lambda l: l.account_id.account_type == 'asset_receivable'
+                lambda ln: ln.account_id.account_type == 'asset_receivable',
             )
             self.assertTrue(recv, f"Invoice {ref} must have a receivable line.")
             st_line = self.create_bank_statement_line(
@@ -996,7 +996,7 @@ class TestMatchingAccuracy(BankReconciliationTestCommon):
                 amount, self.partner_b, ref, test_date,
             )
             payable = bill.line_ids.filtered(
-                lambda l: l.account_id.account_type == 'liability_payable'
+                lambda ln: ln.account_id.account_type == 'liability_payable',
             )
             self.assertTrue(payable, f"Bill {ref} must have a payable line.")
             # Verify single payable line with exact amount (no splitting).

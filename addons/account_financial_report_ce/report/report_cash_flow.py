@@ -77,7 +77,7 @@ class ReportCashFlow(models.AbstractModel):
         for name in field_names:
             try:
                 value = getattr(record, name, None)
-            except Exception:
+            except (AttributeError, ValueError, KeyError):
                 # Protect against edge-case attribute access errors on
                 # new-mode or partial records.
                 continue
@@ -189,7 +189,7 @@ class ReportCashFlow(models.AbstractModel):
             and (
                 getattr(doc, 'compare_period', False)
                 or getattr(doc, 'enable_comparison', False)
-            )
+            ),
         )
 
         return {

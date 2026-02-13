@@ -473,8 +473,8 @@ class ReconciliationMatching(models.Model):
         # Compare absolute magnitudes only — sign is irrelevant because in
         # standard Odoo bank reconciliation the expected case is *same-sign*
         # matching: a positive bank deposit (+) matches a positive receivable
-        # line (+) from a customer invoice, and a negative bank payment (−)
-        # matches a negative payable line (−) from a vendor bill.
+        # line (+) from a customer invoice, and a negative bank payment (-)
+        # matches a negative payable line (-) from a vendor bill.
         diff = abs(abs_st - abs_ml)
         max_val = max(abs_st, abs_ml)
         pct_diff = diff / max_val

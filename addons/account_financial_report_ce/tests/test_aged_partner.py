@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -240,7 +239,7 @@ class TestAgedPartner(AccountTestInvoicingCommon):
     def _get_partner_line(self, report, partner):
         """Return the partner line record for *partner* in *report*, or False."""
         return report.partner_line_ids.filtered(
-            lambda l: l.partner_id == partner
+            lambda ln: ln.partner_id == partner,
         )
 
     # -------------------------------------------------------------------------
@@ -669,7 +668,7 @@ class TestAgedPartner(AccountTestInvoicingCommon):
 
         # Fully reconcile / pay the invoice
         receivable_line = invoice.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda ln: ln.account_id.account_type == 'asset_receivable',
         )
         payment = self.env['account.payment'].create({
             'payment_type': 'inbound',
@@ -684,7 +683,7 @@ class TestAgedPartner(AccountTestInvoicingCommon):
         # Reconcile payment line with invoice line
         # In Odoo 19, account.payment uses move_id.line_ids (not line_ids)
         payment_receivable = payment.move_id.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda ln: ln.account_id.account_type == 'asset_receivable',
         )
         (receivable_line + payment_receivable).reconcile()
 

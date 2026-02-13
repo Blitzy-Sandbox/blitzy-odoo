@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 """
@@ -31,13 +30,16 @@ OCA Coding Standards:
 - Deterministic dates via @freeze_time
 """
 
+import contextlib
 from datetime import date, timedelta
 
 from freezegun import freeze_time
+
 from odoo import Command
-from odoo.tests import tagged
-from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.exceptions import UserError
+from odoo.tests import tagged
+
+from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 
 
 @tagged('post_install', '-at_install')
@@ -551,15 +553,11 @@ class TestCashFlow(AccountTestInvoicingCommon):
             date_from=self.date_to,
             date_to=self.date_from,
         )
-        try:
+        with contextlib.suppress(UserError):
             self._compute_report(invalid_report)
             # If the model does not raise, verify it at least detects
             # the invalid range gracefully (no assertion failure needed
             # if model handles silently by convention)
-        except UserError:
-            # Expected: model correctly raises UserError for
-            # reversed date range
-            pass
 
     def test_fr003_cash_flow_computation(self):
         """

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -108,15 +107,15 @@ class ReportGeneralLedger(models.AbstractModel):
 
         Each dict in the returned list contains:
 
-        * ``account`` – the ``account.account`` record.
-        * ``account_line`` – the ``account.general.ledger.report.account``
+        * ``account`` - the ``account.account`` record.
+        * ``account_line`` - the ``account.general.ledger.report.account``
           record (gives direct ORM access if needed).
-        * ``opening_debit``, ``opening_credit``, ``opening_balance`` –
+        * ``opening_debit``, ``opening_credit``, ``opening_balance`` -
           opening figures with the net balance split into columns.
-        * ``period_lines`` – a *sorted* recordset of
+        * ``period_lines`` - a *sorted* recordset of
           ``account.general.ledger.report.line`` transaction records.
-        * ``period_debit``, ``period_credit`` – period movement totals.
-        * ``closing_debit``, ``closing_credit``, ``closing_balance`` –
+        * ``period_debit``, ``period_credit`` - period movement totals.
+        * ``closing_debit``, ``closing_credit``, ``closing_balance`` -
           closing figures with the net balance split into columns.
 
         Args:
@@ -268,7 +267,7 @@ class ReportGeneralLedger(models.AbstractModel):
         }
 
     # ------------------------------------------------------------------
-    # Public API – called by the Odoo report engine
+    # Public API - called by the Odoo report engine
     # ------------------------------------------------------------------
 
     @api.model
@@ -298,17 +297,17 @@ class ReportGeneralLedger(models.AbstractModel):
         Returns:
             dict: Complete template context containing:
 
-            - ``doc_ids``, ``doc_model``, ``docs``, ``data`` –
+            - ``doc_ids``, ``doc_model``, ``docs``, ``data`` -
               standard Odoo report values.
-            - ``company``, ``currency_id`` – company and currency
+            - ``company``, ``currency_id`` - company and currency
               context for monetary formatting.
-            - ``accounts_data`` – pre-built per-account data list for
+            - ``accounts_data`` - pre-built per-account data list for
               template iteration and XLSX export.
-            - ``grand_opening_debit`` … ``grand_closing_balance`` –
+            - ``grand_opening_debit`` … ``grand_closing_balance`` -
               aggregated grand totals.
             - ``date_from``, ``date_to``, ``target_move``,
               ``hide_account_at_0``, ``show_details``,
-              ``filter_accounts``, ``filter_partners`` –
+              ``filter_accounts``, ``filter_partners`` -
               filter context for the report header.
         """
         docs = self.env['account.general.ledger.report'].browse(docids)

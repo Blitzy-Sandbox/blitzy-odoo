@@ -58,10 +58,10 @@ class ReportProfitLoss(models.AbstractModel):
             Dictionary consumed by the QWeb template with the following
             notable keys beyond the standard ``doc_ids`` / ``docs``:
 
-            * ``company`` / ``currency_id`` – reporting entity context
-            * ``has_comparison`` – boolean flag for comparative columns
-            * ``total_revenue`` … ``net_income`` – section subtotals
-            * ``gross_margin`` … ``net_margin`` – percentage margins
+            * ``company`` / ``currency_id`` - reporting entity context
+            * ``has_comparison`` - boolean flag for comparative columns
+            * ``total_revenue`` … ``net_income`` - section subtotals
+            * ``gross_margin`` … ``net_margin`` - percentage margins
         """
         docs = self.env['account.profit.loss.report'].browse(docids)
 

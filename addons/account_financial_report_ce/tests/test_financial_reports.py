@@ -23,7 +23,8 @@ Test classes are mapped to specific user-story acceptance criteria:
 Target: ≥80% test coverage per EPIC-001 requirements.
 """
 
-from datetime import date, timedelta
+import contextlib
+from datetime import date
 
 from freezegun import freeze_time
 
@@ -32,7 +33,6 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
-
 
 # =============================================================================
 # Frozen reference date used across all test classes.  Using a mid-month date
@@ -576,7 +576,7 @@ class TestBalanceSheetReport(TestFinancialReportsBase):
 
         difference = abs(
             report.total_assets
-            - (report.total_liabilities + report.total_equity)
+            - (report.total_liabilities + report.total_equity),
         )
         self.assertLess(
             difference, 0.01,
@@ -1291,7 +1291,7 @@ class TestReportComparison(TestFinancialReportsBase):
         # At minimum the report should still be balanced
         difference = abs(
             report.total_assets
-            - (report.total_liabilities + report.total_equity)
+            - (report.total_liabilities + report.total_equity),
         )
         self.assertLess(difference, 0.01)
 
@@ -1425,7 +1425,7 @@ class TestReportFiltering(TestFinancialReportsBase):
         # The computed report must include a line for the receivable account
         # used in our posted entries.
         acct_lines = report.line_ids.filtered(
-            lambda l: hasattr(l, 'account_id') and l.account_id == acct
+            lambda ln: hasattr(ln, 'account_id') and ln.account_id == acct,
         )
         self.assertTrue(
             acct_lines,
@@ -1548,9 +1548,7 @@ class TestReportSecurity(TestFinancialReportsBase):
 
         # User from company 2 should not be able to read it
         # (record rules should prevent cross-company access)
-        try:
+        with contextlib.suppress(AccessError):
             report_c1.with_user(user_c2).read(['total_assets'])
             # If no error, the record rule might not be in place yet;
             # that's acceptable at the module's current maturity.
-        except AccessError:
-            pass  # Expected: cross-company access denied

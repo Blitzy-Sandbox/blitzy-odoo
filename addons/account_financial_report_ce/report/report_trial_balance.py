@@ -200,15 +200,15 @@ class ReportTrialBalance(models.AbstractModel):
             # Exclude group header lines from account counts — they are
             # subtotal rows, not real accounts.
             detail_lines = docs[0].line_ids.filtered(
-                lambda line: not line.is_group_line
+                lambda line: not line.is_group_line,
             )
             total_accounts = len(detail_lines)
             # An account "has balance" when its closing net position
-            # (debit_balance − credit_balance) is non-zero.
+            # (debit_balance - credit_balance) is non-zero.
             accounts_with_balance = len(detail_lines.filtered(
                 lambda line: not currency_id.is_zero(
-                    line.debit_balance - line.credit_balance
-                )
+                    line.debit_balance - line.credit_balance,
+                ),
             ))
 
         net_position = total_closing_debit - total_closing_credit
@@ -296,7 +296,7 @@ class ReportTrialBalance(models.AbstractModel):
         # Filter to detail lines only (exclude group subtotal headers
         # that were already created by the model's hierarchy builder).
         detail_lines = doc.line_ids.filtered(
-            lambda line: not line.is_group_line
+            lambda line: not line.is_group_line,
         )
 
         # Partition lines by account_type.

@@ -256,10 +256,10 @@ class BalanceSheetReport(models.TransientModel):
             # Cumulative balance (no date_from) per Balance Sheet convention.
             # ----------------------------------------------------------------
             current_asset_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.ASSET_CURRENT_TYPES)
+                report._get_account_domain(report.ASSET_CURRENT_TYPES),
             )
             non_current_asset_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.ASSET_NON_CURRENT_TYPES)
+                report._get_account_domain(report.ASSET_NON_CURRENT_TYPES),
             )
 
             current_asset_balances = report._compute_account_balance(
@@ -285,10 +285,10 @@ class BalanceSheetReport(models.TransientModel):
             # negate to present as positive figures in the report.
             # ----------------------------------------------------------------
             current_liability_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.LIABILITY_CURRENT_TYPES)
+                report._get_account_domain(report.LIABILITY_CURRENT_TYPES),
             )
             non_current_liability_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.LIABILITY_NON_CURRENT_TYPES)
+                report._get_account_domain(report.LIABILITY_NON_CURRENT_TYPES),
             )
 
             current_liability_balances = report._compute_account_balance(
@@ -312,10 +312,10 @@ class BalanceSheetReport(models.TransientModel):
             # ----------------------------------------------------------------
             # COMPUTE EQUITY BALANCES (Scenario 4)
             # Equity carries credit-normal balance (negative in Odoo).
-            # Current-year earnings = Income − Expenses for the fiscal year.
+            # Current-year earnings = Income - Expenses for the fiscal year.
             # ----------------------------------------------------------------
             equity_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.EQUITY_TYPES)
+                report._get_account_domain(report.EQUITY_TYPES),
             )
             equity_balances = report._compute_account_balance(
                 equity_accounts, date_to=report.date_to,
@@ -327,10 +327,10 @@ class BalanceSheetReport(models.TransientModel):
 
             # Fetch Income / Expense balances for current-year earnings
             income_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.INCOME_TYPES)
+                report._get_account_domain(report.INCOME_TYPES),
             )
             expense_accounts = self.env['account.account'].search(
-                report._get_account_domain(report.EXPENSE_TYPES)
+                report._get_account_domain(report.EXPENSE_TYPES),
             )
 
             income_balances = report._compute_account_balance(
@@ -658,7 +658,7 @@ class BalanceSheetReport(models.TransientModel):
                 balances: Dict mapping account ID → balance dict.
                 level: Indentation level (2 = account detail).
                 sign: Balance multiplier (1 for debit-normal assets,
-                    −1 for credit-normal liabilities/equity).
+                    -1 for credit-normal liabilities/equity).
                 comp_balances: Optional comparison balance dict.
 
             Returns:

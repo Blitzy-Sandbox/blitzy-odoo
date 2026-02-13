@@ -204,9 +204,9 @@ class ProfitLossReport(models.TransientModel):
 
         1. Operating Revenue aggregation ('income' accounts only)
         2. COGS computation ('expense_direct_cost' accounts)
-        3. Gross Profit derivation (Revenue − COGS)
+        3. Gross Profit derivation (Revenue - COGS)
         4. Operating Expenses with depreciation breakdown
-        5. Operating Income (Gross Profit − Operating Expenses)
+        5. Operating Income (Gross Profit - Operating Expenses)
         6. Non-operating Other Income ('income_other' accounts)
         7. Non-operating Other Expenses (reserved for custom types)
         8. Net Income final calculation
@@ -220,7 +220,7 @@ class ProfitLossReport(models.TransientModel):
 
         Per FR-002 Acceptance Criteria:
           - Scenario 1: Complete P&L for date range
-          - Scenario 4: Gross profit = Revenue − COGS
+          - Scenario 4: Gross profit = Revenue - COGS
           - Scenario 5: Net income fully computed
           - Scenario 6: Comparative period with variance
         """
@@ -777,7 +777,7 @@ class ProfitLossReport(models.TransientModel):
         self.ensure_one()
         if not self.date_from or not self.date_to:
             raise UserError(
-                _("Please specify the date range for the P&L report.")
+                _("Please specify the date range for the P&L report."),
             )
 
         self._compute_report_data()
@@ -814,7 +814,7 @@ class ProfitLossReport(models.TransientModel):
         """
         self.ensure_one()
         return self.env.ref(
-            'account_financial_report_ce.action_report_profit_loss'
+            'account_financial_report_ce.action_report_profit_loss',
         ).report_action(self, config=False)
 
     def action_export_xlsx(self):

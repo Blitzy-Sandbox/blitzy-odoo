@@ -28,7 +28,7 @@ Technical Notes:
   (delegates to ``odoo.tools.date_utils.subtract``).
 """
 
-from odoo import _, api, fields, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 from odoo.fields import Command
 
@@ -555,21 +555,16 @@ class CashFlowReport(models.TransientModel):
             report.cash_from_financing = 0.0
             return
 
-        # Account-type sets used for counterpart classification
-        operating_types = set(
-            report.INCOME_TYPES + report.EXPENSE_TYPES
-            + report.RECEIVABLE_TYPES + report.PAYABLE_TYPES
-            + report.INVENTORY_TYPES
-            + ['liability_current', 'liability_credit_card',
-               'asset_prepayments', 'liability_payable',
-               'asset_receivable']
-        )
+        # Account-type sets used for counterpart classification.
+        # Operating types (income, expense, receivable, payable, inventory,
+        # current liabilities, prepayments) are handled as the default
+        # fallback when a counterpart does not match investing or financing.
         investing_types = set(
-            report.FIXED_ASSET_TYPES + report.NON_CURRENT_ASSET_TYPES
+            report.FIXED_ASSET_TYPES + report.NON_CURRENT_ASSET_TYPES,
         )
         financing_types = set(
             report.LIABILITY_TYPES + report.EQUITY_TYPES
-            + report.EQUITY_UNAFFECTED_TYPES
+            + report.EQUITY_UNAFFECTED_TYPES,
         )
 
         # Build domain to fetch journal items on cash accounts in the period
@@ -592,8 +587,8 @@ class CashFlowReport(models.TransientModel):
 
             # Find counterpart lines on the same journal entry
             counterpart_lines = line.move_id.line_ids.filtered(
-                lambda l: l.id != line.id
-                and l.account_id.id not in cash_accounts.ids
+                lambda ml: ml.id != line.id
+                and ml.account_id.id not in cash_accounts.ids,
             )
 
             if not counterpart_lines:
@@ -603,7 +598,7 @@ class CashFlowReport(models.TransientModel):
 
             # Classify by the dominant counterpart account type
             counterpart_types = set(
-                counterpart_lines.mapped('account_id.account_type')
+                counterpart_lines.mapped('account_id.account_type'),
             )
 
             if counterpart_types & investing_types:
@@ -986,7 +981,7 @@ class CashFlowReport(models.TransientModel):
         if self.date_from > self.date_to:
             raise UserError(_(
                 "The start date (%s) must be before or equal to the "
-                "end date (%s)."
+                "end date (%s).",
             ) % (self.date_from, self.date_to))
 
         self._compute_report_data()
@@ -1016,7 +1011,7 @@ class CashFlowReport(models.TransientModel):
         """
         self.ensure_one()
         return self.env.ref(
-            'account_financial_report_ce.action_report_cash_flow'
+            'account_financial_report_ce.action_report_cash_flow',
         ).report_action(self, config=False)
 
     def action_export_xlsx(self):

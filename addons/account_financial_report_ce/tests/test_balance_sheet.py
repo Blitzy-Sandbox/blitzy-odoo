@@ -84,6 +84,26 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         """
         super().setUpClass()
 
+        # Grant the test user access to financial reports.
+        # ``AccountTestInvoicingCommon`` creates users with the core
+        # accounting groups but NOT the module-specific groups from
+        # ``account_financial_report_ce``.  The ACLs require at least
+        # ``group_financial_report_user`` for create/read/write on
+        # report transient models.
+        fr_user_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_user',
+            raise_if_not_found=False,
+        )
+        fr_manager_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_manager',
+            raise_if_not_found=False,
+        )
+        groups_to_add = (fr_user_group | fr_manager_group).filtered(bool)
+        if groups_to_add:
+            cls.env.user.write({
+                'group_ids': [Command.link(g.id) for g in groups_to_add],
+            })
+
         AccountAccount = cls.env['account.account']
 
         # ==================================================================
@@ -413,8 +433,13 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         """
         Find the report line corresponding to a specific account.
 
-        Searches ``report.line_ids`` for a line whose ``account_ids``
-        contains the given account.
+        Searches ``report.line_ids`` for a line whose ``account_id``
+        Many2one matches the given account.  We intentionally use the
+        Many2one ``account_id`` field rather than the Many2many
+        ``account_ids`` field because ``line_ids`` is a non-stored
+        computed One2many — its records exist only as virtual/NewId
+        objects in the ORM cache, and Many2many relationships cannot
+        be resolved on such records.
 
         Args:
             report: ``account.balance.sheet.report`` record
@@ -424,7 +449,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
             First matching report line, or empty recordset.
         """
         for line in report.line_ids:
-            if account in line.account_ids:
+            if line.account_id and line.account_id.id == account.id:
                 return line
         return self.env['account.balance.sheet.report.line']
 
@@ -435,6 +460,12 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         Iterates ``report.line_ids`` sorted by sequence and tracks the
         most recent level-1 section header.  Returns the section name
         when the target account is found.
+
+        Uses the ``account_id`` Many2one field on detail lines because
+        ``line_ids`` is a non-stored computed One2many whose records
+        exist only as virtual/NewId objects in the ORM cache — the
+        Many2many ``account_ids`` field cannot be resolved on such
+        records.
 
         Args:
             report: ``account.balance.sheet.report`` record
@@ -447,7 +478,7 @@ class TestBalanceSheet(AccountTestInvoicingCommon):
         for line in report.line_ids.sorted('sequence'):
             if line.level == 1 and line.is_total:
                 current_section = line.name
-            if account in line.account_ids:
+            if line.account_id and line.account_id.id == account.id:
                 return current_section
         return None
 

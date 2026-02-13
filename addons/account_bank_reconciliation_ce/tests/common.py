@@ -24,6 +24,7 @@ class to obtain consistent, reusable test data and avoid fixture duplication.
 
 import base64
 import hashlib
+import os
 from datetime import date, timedelta
 
 from odoo import fields, Command
@@ -69,7 +70,7 @@ class BankReconciliationTestCommon(AccountTestInvoicingCommon):
         # Search for an expense account to avoid reusing the main expense
         # account from company_data (keeps write-off amounts isolated).
         cls.write_off_account = cls.env['account.account'].search([
-            ('company_id', '=', cls.env.company.id),
+            ('company_ids', 'in', cls.env.company.ids),
             ('account_type', '=', 'expense'),
         ], limit=1)
 
@@ -157,6 +158,35 @@ class BankReconciliationTestCommon(AccountTestInvoicingCommon):
         cls.bill_payable_line = cls.test_bill.line_ids.filtered(
             lambda l: l.account_id.account_type == 'liability_payable'
         )
+
+    # ------------------------------------------------------------------
+    # Helper Methods — File Loading
+    # ------------------------------------------------------------------
+
+    def _load_test_file(self, filename):
+        """Load a sample file from the ``test_files/`` directory.
+
+        Reads the raw bytes of the file located at
+        ``<module>/tests/test_files/<filename>`` and returns them as
+        base64-encoded bytes suitable for assignment to Odoo ``Binary``
+        fields (e.g. the import wizard's ``data_file`` field).
+
+        Args:
+            filename (str): Name of the file inside the ``test_files/``
+                directory (e.g. ``'sample.csv'``).
+
+        Returns:
+            bytes: Base64-encoded file content.
+
+        Raises:
+            FileNotFoundError: If the requested file does not exist.
+        """
+        test_files_dir = os.path.join(
+            os.path.dirname(__file__), 'test_files',
+        )
+        filepath = os.path.join(test_files_dir, filename)
+        with open(filepath, 'rb') as fh:
+            return base64.b64encode(fh.read())
 
     # ------------------------------------------------------------------
     # Helper Methods — Statement Lines

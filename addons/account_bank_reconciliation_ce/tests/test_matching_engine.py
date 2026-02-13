@@ -88,8 +88,8 @@ class TestMatchingEngineScoring(BankReconciliationTestCommon):
         """BR-002: Exact partner match should score highly."""
         MatchModel = self.env['account.reconciliation.matching']
         score = MatchModel._score_partner(
-            self.partner_customer, self.partner_customer.name,
-            self.partner_customer)
+            self.partner_a, self.partner_a.name,
+            self.partner_a)
         self.assertGreaterEqual(score, 80,
                                 "Exact partner match should score ≥ 80.")
 
@@ -99,7 +99,7 @@ class TestMatchingEngineScoring(BankReconciliationTestCommon):
         score = MatchModel._score_partner(
             self.env['res.partner'],
             'Reconciliation Test',  # partial name
-            self.partner_customer,
+            self.partner_a,
         )
         self.assertGreaterEqual(score, 0,
                                 "Fuzzy partner name match should score ≥ 0.")

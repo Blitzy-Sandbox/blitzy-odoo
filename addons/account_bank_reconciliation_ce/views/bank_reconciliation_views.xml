@@ -261,7 +261,7 @@
                             name="selected"
                             domain="[('is_selected', '=', True)]"/>
                     <!-- Group-by options -->
-                    <group expand="0" string="Group By">
+                    <group>
                         <filter string="State"
                                 name="group_state"
                                 context="{'group_by': 'state'}"/>

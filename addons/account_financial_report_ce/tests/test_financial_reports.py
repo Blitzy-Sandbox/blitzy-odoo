@@ -160,11 +160,10 @@ class TestFinancialReportWizard(TestFinancialReportsBase):
     def test_wizard_aged_receivable(self):
         """Test Aged Receivable report generation."""
         wizard = self.env['account.financial.report.wizard'].create({
-            'report_type': 'aged_partner_balance',
-            'date_at': self.date_end,
+            'report_type': 'aged_receivable',
+            'date_to': self.date_end,
             'company_id': self.company.id,
             'target_move': 'posted',
-            'partner_type': 'customer',
         })
 
         result = wizard.action_print_pdf()
@@ -173,11 +172,10 @@ class TestFinancialReportWizard(TestFinancialReportsBase):
     def test_wizard_aged_payable(self):
         """Test Aged Payable report generation."""
         wizard = self.env['account.financial.report.wizard'].create({
-            'report_type': 'aged_partner_balance',
-            'date_at': self.date_end,
+            'report_type': 'aged_payable',
+            'date_to': self.date_end,
             'company_id': self.company.id,
             'target_move': 'posted',
-            'partner_type': 'supplier',
         })
 
         result = wizard.action_print_pdf()
@@ -487,8 +485,8 @@ class TestReportFiltering(TestFinancialReportsBase):
     def test_filter_by_partner(self):
         """Test filtering reports by partner."""
         wizard = self.env['account.financial.report.wizard'].create({
-            'report_type': 'aged_partner_balance',
-            'date_at': self.date_end,
+            'report_type': 'aged_receivable',
+            'date_to': self.date_end,
             'company_id': self.company.id,
             'target_move': 'posted',
             'partner_type': 'customer',
@@ -504,10 +502,10 @@ class TestReportFiltering(TestFinancialReportsBase):
             'date_to': self.date_end,
             'company_id': self.company.id,
             'target_move': 'posted',
-            'hide_account_at_0': True,
+            'hide_zero_balance': True,
         })
 
-        self.assertTrue(wizard.hide_account_at_0)
+        self.assertTrue(wizard.hide_zero_balance)
 
 
 @tagged('post_install', '-at_install')

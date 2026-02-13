@@ -41,7 +41,8 @@ class FinancialReportWizard(models.TransientModel):
             ('cash_flow', 'Cash Flow Statement'),
             ('general_ledger', 'General Ledger'),
             ('trial_balance', 'Trial Balance'),
-            ('aged_partner_balance', 'Aged Partner Balance'),
+            ('aged_receivable', 'Aged Receivable'),
+            ('aged_payable', 'Aged Payable'),
         ],
         string='Report Type',
         required=True,
@@ -71,12 +72,6 @@ class FinancialReportWizard(models.TransientModel):
         help="End date or as-of date for the report.",
     )
 
-    date_at = fields.Date(
-        string='As At Date',
-        default=fields.Date.context_today,
-        help="Point-in-time date for Aged Partner Balance reports.",
-    )
-
     target_move = fields.Selection(
         selection=[
             ('posted', 'All Posted Entries'),
@@ -91,17 +86,20 @@ class FinancialReportWizard(models.TransientModel):
     # COMPARISON OPTIONS
     # -------------------------------------------------------------------------
 
-    compare_period = fields.Boolean(
+    enable_comparison = fields.Boolean(
         string='Enable Comparison',
         default=False,
+        help="Enable period comparison for reports that support it.",
     )
 
-    compare_date_from = fields.Date(
+    comparison_date_from = fields.Date(
         string='Comparison From',
+        help="Start date for the comparison period.",
     )
 
-    compare_date_to = fields.Date(
+    comparison_date_to = fields.Date(
         string='Comparison To',
+        help="End date for the comparison period.",
     )
 
     # -------------------------------------------------------------------------
@@ -147,7 +145,7 @@ class FinancialReportWizard(models.TransientModel):
     # DISPLAY OPTIONS
     # -------------------------------------------------------------------------
 
-    hide_account_at_0 = fields.Boolean(
+    hide_zero_balance = fields.Boolean(
         string='Hide Zero Balances',
         default=False,
         help="Hide accounts/partners with zero balance.",
@@ -212,7 +210,8 @@ class FinancialReportWizard(models.TransientModel):
         Handles:
         - Date field defaults (fiscal year start for period reports,
           cleared for structural/as-of reports).
-        - Partner type auto-selection for aged balance reports.
+        - Partner type auto-selection for aged balance reports
+          (customer for aged_receivable, supplier for aged_payable).
         - Report-specific option resets when switching between types
           to avoid stale configuration carrying over.
 
@@ -220,7 +219,11 @@ class FinancialReportWizard(models.TransientModel):
             None. Modifies wizard fields in-place via onchange.
         """
         # --- Date handling ---
-        if self.report_type in ('balance_sheet', 'trial_balance'):
+        if self.report_type in (
+            'balance_sheet', 'trial_balance',
+            'aged_receivable', 'aged_payable',
+        ):
+            # Structural and as-of-date reports do not need date_from
             self.date_from = False
         elif self.report_type in ('profit_loss', 'cash_flow', 'general_ledger'):
             if not self.date_from:
@@ -233,11 +236,10 @@ class FinancialReportWizard(models.TransientModel):
                     self.date_from = fiscal_year.get('date_from')
 
         # --- Partner type auto-set for aged balance ---
-        if self.report_type == 'aged_partner_balance':
-            # Preserve existing partner_type if already set,
-            # default to 'customer' (receivables) if not
-            if not self.partner_type:
-                self.partner_type = 'customer'
+        if self.report_type == 'aged_receivable':
+            self.partner_type = 'customer'
+        elif self.report_type == 'aged_payable':
+            self.partner_type = 'supplier'
         else:
             # Clear partner_type when not on aged balance report
             self.partner_type = False
@@ -245,19 +247,20 @@ class FinancialReportWizard(models.TransientModel):
         # --- Reset report-specific fields when switching types ---
         if self.report_type != 'cash_flow':
             self.cash_flow_method = 'indirect'
-        if self.report_type != 'aged_partner_balance':
+        if self.report_type not in ('aged_receivable', 'aged_payable'):
             self.show_move_lines = False
         if self.report_type != 'general_ledger':
             self.show_details = True
 
-    @api.constrains('date_from', 'date_to', 'compare_date_from', 'compare_date_to')
+    @api.constrains('date_from', 'date_to', 'comparison_date_from',
+                     'comparison_date_to')
     def _check_dates(self):
         """Validate date field consistency.
 
         Checks:
         - Primary date range: date_from must precede date_to.
         - Comparison date range (when comparison is enabled):
-          compare_date_from must precede compare_date_to.
+          comparison_date_from must precede comparison_date_to.
 
         Raises:
             UserError: If any date range is inverted.
@@ -268,10 +271,11 @@ class FinancialReportWizard(models.TransientModel):
                 raise UserError(
                     _("From Date must be before To Date.")
                 )
-            if (wizard.compare_period
-                    and wizard.compare_date_from
-                    and wizard.compare_date_to
-                    and wizard.compare_date_from > wizard.compare_date_to):
+            if (wizard.enable_comparison
+                    and wizard.comparison_date_from
+                    and wizard.comparison_date_to
+                    and wizard.comparison_date_from
+                    > wizard.comparison_date_to):
                 raise UserError(
                     _("Comparison From Date must be before "
                       "Comparison To Date.")
@@ -304,14 +308,17 @@ class FinancialReportWizard(models.TransientModel):
         """
         self.ensure_one()
 
-        # Map report type to ORM model name
+        # Map report type to ORM model name.
+        # Both aged_receivable and aged_payable map to the same model;
+        # the distinction is handled by the 'report_type' field on that model.
         report_models = {
             'balance_sheet': 'account.balance.sheet.report',
             'profit_loss': 'account.profit.loss.report',
             'cash_flow': 'account.cash.flow.report',
             'general_ledger': 'account.general.ledger.report',
             'trial_balance': 'account.trial.balance.report',
-            'aged_partner_balance': 'account.aged.partner.balance.report',
+            'aged_receivable': 'account.aged.partner.balance.report',
+            'aged_payable': 'account.aged.partner.balance.report',
         }
 
         model_name = report_models.get(self.report_type)
@@ -325,15 +332,12 @@ class FinancialReportWizard(models.TransientModel):
         vals = {
             'company_id': self.company_id.id,
             'target_move': self.target_move,
-            'enable_comparison': self.compare_period,
-            'hide_zero_balance': self.hide_account_at_0,
+            'enable_comparison': self.enable_comparison,
+            'hide_zero_balance': self.hide_zero_balance,
         }
 
-        # Date handling: date_to for most reports, date_at → date_to for aged
-        if self.report_type == 'aged_partner_balance':
-            vals['date_to'] = self.date_at
-        else:
-            vals['date_to'] = self.date_to
+        # date_to is always the end/as-of date for all report types
+        vals['date_to'] = self.date_to
 
         # Add date_from for period-based reports
         if self.report_type in ('profit_loss', 'cash_flow', 'general_ledger'):
@@ -344,9 +348,9 @@ class FinancialReportWizard(models.TransientModel):
             vals['date_from'] = self.date_from
 
         # --- Comparison dates ---
-        if self.compare_period:
-            vals['comparison_date_from'] = self.compare_date_from
-            vals['comparison_date_to'] = self.compare_date_to
+        if self.enable_comparison:
+            vals['comparison_date_from'] = self.comparison_date_from
+            vals['comparison_date_to'] = self.comparison_date_to
 
         # --- Common filter pass-through ---
         # Only pass Many2many fields when the target model declares them;
@@ -375,16 +379,16 @@ class FinancialReportWizard(models.TransientModel):
             vals['show_details'] = self.show_details
 
         if self.report_type == 'trial_balance':
-            vals['show_balance_zero'] = not self.hide_account_at_0
+            vals['show_balance_zero'] = not self.hide_zero_balance
             if self.account_ids:
                 vals['account_ids'] = [(6, 0, self.account_ids.ids)]
 
         if self.report_type == 'cash_flow':
             vals['method'] = self.cash_flow_method
 
-        if self.report_type == 'aged_partner_balance':
+        if self.report_type in ('aged_receivable', 'aged_payable'):
             vals['report_type'] = (
-                'receivable' if self.partner_type == 'customer'
+                'receivable' if self.report_type == 'aged_receivable'
                 else 'payable'
             )
             vals['partner_ids'] = [(6, 0, self.partner_ids.ids)]
@@ -425,9 +429,10 @@ class FinancialReportWizard(models.TransientModel):
                 _("Cash Flow Method must be selected for "
                   "Cash Flow Statement reports.")
             )
-        if self.report_type == 'aged_partner_balance' and not self.date_at:
+        if (self.report_type in ('aged_receivable', 'aged_payable')
+                and not self.date_to):
             raise UserError(
-                _("As At Date is required for Aged Partner Balance reports.")
+                _("As of Date is required for Aged Partner Balance reports.")
             )
 
     # Mapping of wizard report_type to ir.actions.report XML IDs
@@ -443,7 +448,9 @@ class FinancialReportWizard(models.TransientModel):
             'account_financial_report_ce.action_report_general_ledger',
         'trial_balance':
             'account_financial_report_ce.action_report_trial_balance',
-        'aged_partner_balance':
+        'aged_receivable':
+            'account_financial_report_ce.action_report_aged_partner_balance',
+        'aged_payable':
             'account_financial_report_ce.action_report_aged_partner_balance',
     }
 

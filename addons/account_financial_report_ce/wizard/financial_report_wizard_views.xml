@@ -93,7 +93,7 @@
                                 <field name="account_ids"
                                        widget="many2many_tags"
                                        options="{'no_create': True}"
-                                       domain="[('company_id', '=', company_id)]"/>
+                                       domain="[('company_ids', 'in', company_id)]"/>
                                 <field name="journal_ids"
                                        widget="many2many_tags"
                                        options="{'no_create': True}"

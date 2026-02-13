@@ -1004,15 +1004,20 @@ class CashFlowReport(models.TransientModel):
         """Generate a PDF version of the Cash Flow Statement.
 
         Delegates to the ``ir.actions.report`` action registered for the
-        cash flow report QWeb template.
+        cash flow report QWeb template.  ``config=False`` prevents Odoo
+        from redirecting to the document-layout configurator when the
+        company has no external report layout set, which would otherwise
+        return an ``ir.actions.act_window`` instead of the expected
+        ``ir.actions.report`` action.
 
         Returns:
-            ``dict`` — report action.
+            ``dict`` — ``ir.actions.report`` action dictionary for PDF
+            generation.
         """
         self.ensure_one()
         return self.env.ref(
             'account_financial_report_ce.action_report_cash_flow'
-        ).report_action(self)
+        ).report_action(self, config=False)
 
     def action_export_xlsx(self):
         """Export Cash Flow Statement to Excel format.

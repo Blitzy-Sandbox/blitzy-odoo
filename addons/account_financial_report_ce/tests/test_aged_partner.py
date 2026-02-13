@@ -71,6 +71,28 @@ class TestAgedPartner(AccountTestInvoicingCommon):
         """
         super().setUpClass()
 
+        # -- Grant financial report module security groups to the test user ---
+        # The parent AccountTestInvoicingCommon creates an 'accountman' test
+        # user with only core accounting groups (group_account_manager,
+        # group_account_user). Our module's ACL requires the custom groups
+        # group_financial_report_user / group_financial_report_manager for
+        # create/read/write/unlink access on all financial report models.
+        fr_manager_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_manager',
+            raise_if_not_found=False,
+        )
+        fr_user_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_user',
+            raise_if_not_found=False,
+        )
+        groups_to_add = cls.env['res.groups']
+        if fr_manager_group:
+            groups_to_add |= fr_manager_group
+        if fr_user_group:
+            groups_to_add |= fr_user_group
+        if groups_to_add:
+            cls.env.user.group_ids += groups_to_add
+
         # -- Partner C: additional partner for 120+ bucket isolation ----------
         cls.partner_c = cls.env['res.partner'].create({
             'name': 'partner_c',
@@ -192,11 +214,15 @@ class TestAgedPartner(AccountTestInvoicingCommon):
 
     def _create_report(self, **kwargs):
         """
-        Instantiate an Aged Partner Balance report with sensible defaults.
+        Instantiate an Aged Partner Balance report with sensible defaults,
+        then trigger report data computation.
 
         Returns a *browseable* ``account.aged.partner.balance.report`` record
-        whose computed fields (``partner_line_ids``, totals, etc.) are
-        triggered on first access.
+        with ``partner_line_ids`` and totals fully populated.
+
+        The ``_compute_report_data()`` pipeline is called automatically after
+        record creation because it is not a stored computed field but an
+        imperative method invoked by ``action_generate_report()``.
 
         Any keyword argument overrides the corresponding field value.
         """
@@ -207,7 +233,9 @@ class TestAgedPartner(AccountTestInvoicingCommon):
             'report_type': 'receivable',
         }
         vals.update(kwargs)
-        return self.env[self.REPORT_MODEL].create(vals)
+        report = self.env[self.REPORT_MODEL].create(vals)
+        report._compute_report_data()
+        return report
 
     def _get_partner_line(self, report, partner):
         """Return the partner line record for *partner* in *report*, or False."""
@@ -654,7 +682,8 @@ class TestAgedPartner(AccountTestInvoicingCommon):
         payment.action_post()
 
         # Reconcile payment line with invoice line
-        payment_receivable = payment.line_ids.filtered(
+        # In Odoo 19, account.payment uses move_id.line_ids (not line_ids)
+        payment_receivable = payment.move_id.line_ids.filtered(
             lambda l: l.account_id.account_type == 'asset_receivable'
         )
         (receivable_line + payment_receivable).reconcile()

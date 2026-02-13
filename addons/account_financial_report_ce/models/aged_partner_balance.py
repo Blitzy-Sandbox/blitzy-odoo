@@ -212,17 +212,30 @@ class AgedPartnerBalanceReport(models.TransientModel):
     total_balance = fields.Monetary(string='Total', currency_field='currency_id')
 
     def _compute_report_data(self):
-        """
-        Compute Aged Partner Balance report data.
+        """Compute Aged Partner Balance report data with aging bucket classification.
 
-        For each partner:
-        1. Find all open receivable/payable items
-        2. Calculate age based on due date vs report date
-        3. Categorize into aging buckets
-        4. Sum totals
+        Implements the FR-006 aging computation pipeline:
+
+        1. Identify all open (unreconciled) receivable/payable move lines up to
+           the report date, scoped by company and optional partner filter.
+        2. For each move line, compute days overdue from ``date_maturity`` (with
+           fallback to ``date``) relative to ``date_to``.
+        3. Classify each line into configurable aging buckets (Current, 1-30,
+           31-60, 61-90, 91-120, 120+ days by default).
+        4. Aggregate bucket totals per partner and create
+           :class:`AgedPartnerBalanceReportPartner` records with nested
+           :class:`AgedPartnerBalanceReportLine` detail records enabling
+           invoice-level drill-down (FR-006 Scenario 4).
+        5. Sort partner entries per the selected ``sort_by`` criterion and
+           accumulate grand totals across all partners.
 
         Uses ``fields.Command`` operations for ORM-safe persistence of
         One2many records on stored TransientModel records.
+
+        Performance notes:
+            Uses ``search_read`` with an explicit field list and a pre-fetched
+            account-type map to minimise ORM overhead on large datasets.
+            Target: < 30 s for 100 000 move lines.
         """
         for report in self:
             report.currency_id = report.company_id.currency_id
@@ -234,13 +247,15 @@ class AgedPartnerBalanceReport(models.TransientModel):
             if report.report_type in ('payable', 'both'):
                 account_types.extend(report.PAYABLE_TYPES)
 
-            # Get accounts (Odoo 19.0: company_ids Many2many)
+            # Fetch matching accounts and build a fast type-lookup map to
+            # avoid N+1 ORM queries when classifying individual move lines.
             accounts = self.env['account.account'].search([
                 ('company_ids', 'in', report.company_id.ids),
                 ('account_type', 'in', account_types),
             ])
+            account_type_map = {a.id: a.account_type for a in accounts}
 
-            # Get open (unreconciled) move lines
+            # ---- Build domain for open (unreconciled) move lines ----
             domain = [
                 ('company_id', '=', report.company_id.id),
                 ('account_id', 'in', accounts.ids),
@@ -248,23 +263,35 @@ class AgedPartnerBalanceReport(models.TransientModel):
                 ('reconciled', '=', False),
                 ('amount_residual', '!=', 0),
             ]
-
             if report.target_move == 'posted':
                 domain.append(('parent_state', '=', 'posted'))
-
             if report.partner_ids:
                 domain.append(('partner_id', 'in', report.partner_ids.ids))
 
-            move_lines = self.env['account.move.line'].search(domain)
+            # Fetch with search_read for performance: a single SQL round-trip
+            # returns only the columns we need, avoiding full ORM record
+            # instantiation for potentially 100 000+ rows.
+            _ML_FIELDS = [
+                'partner_id', 'date_maturity', 'date', 'amount_residual',
+                'account_id', 'move_id', 'ref', 'balance',
+            ]
+            ml_rows = self.env['account.move.line'].search_read(
+                domain, fields=_ML_FIELDS,
+                order='partner_id, date_maturity, date',
+            )
 
-            # Group by partner
+            # ---- Group by partner and classify into aging buckets ----
             partner_data = {}
-            for ml in move_lines:
-                partner = ml.partner_id or self.env['res.partner']
-                if partner.id not in partner_data:
-                    partner_data[partner.id] = {
-                        'partner': partner,
-                        'lines': [],
+            for ml in ml_rows:
+                p_raw = ml.get('partner_id')
+                partner_id = p_raw[0] if p_raw else False
+                partner_name = p_raw[1] if p_raw else ''
+
+                if partner_id not in partner_data:
+                    partner_data[partner_id] = {
+                        'partner_id': partner_id,
+                        'partner_name': partner_name or _('Unknown Partner'),
+                        'detail_lines': [],
                         'not_due': 0.0,
                         'bucket_1': 0.0,
                         'bucket_2': 0.0,
@@ -274,104 +301,114 @@ class AgedPartnerBalanceReport(models.TransientModel):
                         'total': 0.0,
                     }
 
-                # Calculate age
-                due_date = ml.date_maturity or ml.date
+                # Compute age using date_maturity with fallback to accounting date
+                due_date = ml.get('date_maturity') or ml.get('date')
                 days_overdue = (report.date_to - due_date).days
 
-                # Get residual amount (positive for receivable, negative for payable)
-                amount = ml.amount_residual
-                if ml.account_id.account_type in report.PAYABLE_TYPES:
+                # Sign convention: show positive amounts for both AR and AP.
+                amount = ml['amount_residual']
+                acct_raw = ml.get('account_id')
+                acct_id = acct_raw[0] if acct_raw else False
+                is_payable = account_type_map.get(acct_id) in report.PAYABLE_TYPES
+                if is_payable:
                     amount = -amount
 
-                # Skip not-due items if option selected
+                # Exclude not-yet-due items when the flag is set
                 if report.show_only_overdue and days_overdue <= 0:
                     continue
 
-                # Categorize into buckets
+                # Classify into the appropriate aging bucket and determine
+                # the human-readable label for the detail line record.
                 if days_overdue <= 0:
-                    partner_data[partner.id]['not_due'] += amount
+                    bucket_key = 'not_due'
+                    bucket_label = _('Not Due')
                 elif days_overdue <= report.bucket_1_days:
-                    partner_data[partner.id]['bucket_1'] += amount
+                    bucket_key = 'bucket_1'
+                    bucket_label = _('1-%d') % report.bucket_1_days
                 elif days_overdue <= report.bucket_2_days:
-                    partner_data[partner.id]['bucket_2'] += amount
+                    bucket_key = 'bucket_2'
+                    bucket_label = _('%d-%d') % (
+                        report.bucket_1_days + 1, report.bucket_2_days,
+                    )
                 elif days_overdue <= report.bucket_3_days:
-                    partner_data[partner.id]['bucket_3'] += amount
+                    bucket_key = 'bucket_3'
+                    bucket_label = _('%d-%d') % (
+                        report.bucket_2_days + 1, report.bucket_3_days,
+                    )
                 elif days_overdue <= report.bucket_4_days:
-                    partner_data[partner.id]['bucket_4'] += amount
+                    bucket_key = 'bucket_4'
+                    bucket_label = _('%d-%d') % (
+                        report.bucket_3_days + 1, report.bucket_4_days,
+                    )
                 else:
-                    partner_data[partner.id]['bucket_5'] += amount
+                    bucket_key = 'bucket_5'
+                    bucket_label = _('%d+') % (report.bucket_4_days + 1)
 
-                partner_data[partner.id]['total'] += amount
-                partner_data[partner.id]['lines'].append(ml)
+                partner_data[partner_id][bucket_key] += amount
+                partner_data[partner_id]['total'] += amount
 
-            # Sorting
+                # Collect detail line data for invoice-level drill-down
+                # (FR-006 Scenario 4).
+                mv_raw = ml.get('move_id')
+                partner_data[partner_id]['detail_lines'].append({
+                    'ml_id': ml['id'],
+                    'move_id': mv_raw[0] if mv_raw else False,
+                    'date': ml.get('date'),
+                    'date_due': due_date,
+                    'ref': ml.get('ref') or (mv_raw[1] if mv_raw else '') or '',
+                    'days_overdue': max(days_overdue, 0),
+                    'original_amount': abs(ml.get('balance', 0.0)),
+                    'residual_amount': amount,
+                    'bucket_label': bucket_label,
+                })
+
+            # ---- Sort partner entries ----
             partners_sorted = list(partner_data.values())
             if report.sort_by == 'partner':
-                partners_sorted.sort(key=lambda x: x['partner'].name or '')
+                partners_sorted.sort(key=lambda x: x['partner_name'])
             elif report.sort_by == 'total':
                 partners_sorted.sort(key=lambda x: -abs(x['total']))
             elif report.sort_by == 'oldest':
-                partners_sorted.sort(key=lambda x: -(x['bucket_5'] + x['bucket_4']))
+                partners_sorted.sort(
+                    key=lambda x: -(x['bucket_5'] + x['bucket_4']),
+                )
 
-            # Build partner lines using Command operations and accumulate totals
+            # ---- Build partner lines with nested detail lines ----
+            # Command.clear() removes existing records; Command.create() adds
+            # new ones so the One2many is fully refreshed on every computation.
             partner_cmds = [Command.clear()]
-            total_not_due = 0.0
-            total_bucket_1 = 0.0
-            total_bucket_2 = 0.0
-            total_bucket_3 = 0.0
-            total_bucket_4 = 0.0
-            total_bucket_5 = 0.0
-            total_balance = 0.0
+            grand_not_due = 0.0
+            grand_bucket_1 = 0.0
+            grand_bucket_2 = 0.0
+            grand_bucket_3 = 0.0
+            grand_bucket_4 = 0.0
+            grand_bucket_5 = 0.0
+            grand_total = 0.0
 
             for pd in partners_sorted:
                 if pd['total'] == 0:
                     continue
 
-                # Build nested detail line commands for each partner
+                # Build nested detail line Command.create dicts so that each
+                # partner line ships with its full invoice-level breakdown.
                 detail_cmds = []
-                for ml in pd['lines']:
-                    due_date = ml.date_maturity or ml.date
-                    days_ov = (report.date_to - due_date).days
-                    # Determine bucket label
-                    if days_ov <= 0:
-                        bucket_label = _('Not Due')
-                    elif days_ov <= report.bucket_1_days:
-                        bucket_label = _('1-%d') % report.bucket_1_days
-                    elif days_ov <= report.bucket_2_days:
-                        bucket_label = _('%d-%d') % (
-                            report.bucket_1_days + 1, report.bucket_2_days,
-                        )
-                    elif days_ov <= report.bucket_3_days:
-                        bucket_label = _('%d-%d') % (
-                            report.bucket_2_days + 1, report.bucket_3_days,
-                        )
-                    elif days_ov <= report.bucket_4_days:
-                        bucket_label = _('%d-%d') % (
-                            report.bucket_3_days + 1, report.bucket_4_days,
-                        )
-                    else:
-                        bucket_label = _('%d+') % (report.bucket_4_days + 1)
-
-                    residual = ml.amount_residual
-                    if ml.account_id.account_type in report.PAYABLE_TYPES:
-                        residual = -residual
-
+                for dl in pd['detail_lines']:
                     detail_cmds.append(Command.create({
-                        'move_line_id': ml.id,
-                        'move_id': ml.move_id.id,
-                        'date': ml.date,
-                        'date_due': due_date,
-                        'ref': ml.ref or ml.move_id.ref or '',
-                        'days_overdue': max(days_ov, 0),
-                        'original_amount': abs(ml.balance),
-                        'residual_amount': residual,
-                        'bucket': bucket_label,
+                        'move_line_id': dl['ml_id'],
+                        'move_id': dl['move_id'],
+                        'date': dl['date'],
+                        'date_due': dl['date_due'],
+                        'ref': dl['ref'],
+                        'days_overdue': dl['days_overdue'],
+                        'original_amount': dl['original_amount'],
+                        'residual_amount': dl['residual_amount'],
+                        'bucket': dl['bucket_label'],
                         'currency_id': report.currency_id.id,
                     }))
 
                 partner_cmds.append(Command.create({
-                    'partner_id': pd['partner'].id,
-                    'name': pd['partner'].name or _('Unknown Partner'),
+                    'partner_id': pd['partner_id'],
+                    'name': pd['partner_name'],
                     'not_due': pd['not_due'],
                     'bucket_1': pd['bucket_1'],
                     'bucket_2': pd['bucket_2'],
@@ -383,25 +420,37 @@ class AgedPartnerBalanceReport(models.TransientModel):
                     'line_ids': detail_cmds,
                 }))
 
-                total_not_due += pd['not_due']
-                total_bucket_1 += pd['bucket_1']
-                total_bucket_2 += pd['bucket_2']
-                total_bucket_3 += pd['bucket_3']
-                total_bucket_4 += pd['bucket_4']
-                total_bucket_5 += pd['bucket_5']
-                total_balance += pd['total']
+                grand_not_due += pd['not_due']
+                grand_bucket_1 += pd['bucket_1']
+                grand_bucket_2 += pd['bucket_2']
+                grand_bucket_3 += pd['bucket_3']
+                grand_bucket_4 += pd['bucket_4']
+                grand_bucket_5 += pd['bucket_5']
+                grand_total += pd['total']
 
             report.partner_line_ids = partner_cmds
-            report.total_not_due = total_not_due
-            report.total_bucket_1 = total_bucket_1
-            report.total_bucket_2 = total_bucket_2
-            report.total_bucket_3 = total_bucket_3
-            report.total_bucket_4 = total_bucket_4
-            report.total_bucket_5 = total_bucket_5
-            report.total_balance = total_balance
+            report.total_not_due = grand_not_due
+            report.total_bucket_1 = grand_bucket_1
+            report.total_bucket_2 = grand_bucket_2
+            report.total_bucket_3 = grand_bucket_3
+            report.total_bucket_4 = grand_bucket_4
+            report.total_bucket_5 = grand_bucket_5
+            report.total_balance = grand_total
 
     def action_generate_report(self):
-        """Generate and display the Aged Partner Balance report."""
+        """Trigger report computation and display the result inline.
+
+        Validates that the ``date_to`` (As of Date) field is filled, runs the
+        full aging computation pipeline via :meth:`_compute_report_data`, and
+        returns an ``ir.actions.act_window`` action that opens the current
+        report record in an inline form view.
+
+        Raises:
+            UserError: If ``date_to`` is not set.
+
+        Returns:
+            dict: An ``ir.actions.act_window`` action dictionary.
+        """
         self.ensure_one()
         if not self.date_to:
             raise UserError(_("Please specify the As of Date."))
@@ -465,7 +514,25 @@ class AgedPartnerBalanceReportPartner(models.TransientModel):
     )
 
     def action_drilldown(self):
-        """Open partner's open items."""
+        """Open the partner's unreconciled journal items in a list view.
+
+        Constructs a domain that mirrors the report-generation filters so that
+        the user sees exactly the move lines that contributed to this partner's
+        aging row.  The domain includes:
+
+        * ``partner_id`` — restricted to the current partner record.
+        * ``account_id`` — limited to receivable/payable accounts matching the
+          report type.
+        * ``date <= date_to`` — only items posted on or before the report's
+          as-of date (FR-006 Scenario 4 drill-down consistency).
+        * ``reconciled = False`` and ``amount_residual != 0`` — open items
+          only.
+        * ``parent_state = 'posted'`` — when the report was generated with
+          *Posted Entries* target move filter.
+
+        Returns:
+            dict: An ``ir.actions.act_window`` action dictionary.
+        """
         self.ensure_one()
 
         # Determine account types based on report type
@@ -483,9 +550,12 @@ class AgedPartnerBalanceReportPartner(models.TransientModel):
         domain = [
             ('partner_id', '=', self.partner_id.id),
             ('account_id', 'in', accounts.ids),
+            ('date', '<=', self.report_id.date_to),
             ('reconciled', '=', False),
             ('amount_residual', '!=', 0),
         ]
+        if self.report_id.target_move == 'posted':
+            domain.append(('parent_state', '=', 'posted'))
 
         return {
             'name': _('Open Items - %s') % self.name,
@@ -521,7 +591,15 @@ class AgedPartnerBalanceReportLine(models.TransientModel):
     currency_id = fields.Many2one('res.currency', string='Currency')
 
     def action_open_move(self):
-        """Open source invoice/bill."""
+        """Navigate to the source journal entry (invoice or bill).
+
+        Returns an ``ir.actions.act_window`` action that opens the related
+        ``account.move`` record in a form view, enabling the user to inspect
+        the full document behind an aged line item (FR-006 Scenario 4).
+
+        Returns:
+            dict: An ``ir.actions.act_window`` action dictionary.
+        """
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',

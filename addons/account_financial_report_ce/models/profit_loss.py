@@ -556,7 +556,8 @@ class ProfitLossReport(models.TransientModel):
         def _line_vals(name, amount, level=0, is_total=False,
                        account_ids=None, comp_amount=None,
                        is_group=False, account_id=None,
-                       account_code='', account_name=''):
+                       account_code='', account_name='',
+                       section=None):
             """Return a dict of column values for one report line.
 
             Args:
@@ -570,6 +571,8 @@ class ProfitLossReport(models.TransientModel):
                 account_id: Single account record ID for template drill-down.
                 account_code: Account code string for template display.
                 account_name: Account name string for template display.
+                section: P&L section identifier ('revenue', 'cogs',
+                    'expense', 'other') for QWeb template filtering.
             """
             vals = {
                 'sequence': seq[0],
@@ -580,6 +583,8 @@ class ProfitLossReport(models.TransientModel):
                 'is_group': is_group,
                 'currency_id': self.currency_id.id,
             }
+            if section:
+                vals['section'] = section
             if account_id:
                 vals['account_id'] = account_id
             if account_code:
@@ -597,8 +602,19 @@ class ProfitLossReport(models.TransientModel):
 
         # -- helper: add per-account detail lines for a section --------------
         def _account_lines(accounts, balances, level, sign=1,
-                           comp_balances=None):
-            """Append account-level detail lines to *line_commands*."""
+                           comp_balances=None, section=None):
+            """Append account-level detail lines to *line_commands*.
+
+            Args:
+                accounts: Recordset of account.account records.
+                balances: Per-account balance dict from
+                    ``_compute_account_balance``.
+                level: Indentation level for these detail lines.
+                sign: Multiplier for balance sign normalisation
+                    (-1 for credit-normal accounts like revenue).
+                comp_balances: Optional comparison-period balance dict.
+                section: P&L section identifier for QWeb filtering.
+            """
             for account in accounts.sorted(key=lambda a: a.code):
                 bal = balances.get(account.id, {})
                 amount = bal.get('balance', 0.0) * sign
@@ -619,10 +635,15 @@ class ProfitLossReport(models.TransientModel):
                     account_id=account.id,
                     account_code=account.code,
                     account_name=account.name,
+                    section=section,
                 )))
 
         # =================================================================
         # REVENUE SECTION
+        # The template creates its own static "REVENUE" section header,
+        # so the section-level header line is intentionally left without
+        # a ``section`` value.  Only account detail lines receive
+        # ``section='revenue'`` for the template's filter.
         # =================================================================
         seq[0] = 100
         line_commands.append(Command.create(_line_vals(
@@ -637,6 +658,7 @@ class ProfitLossReport(models.TransientModel):
             revenue_accounts, revenue_balances,
             level=1, sign=-1,
             comp_balances=comp.get('revenue_balances'),
+            section='revenue',
         )
 
         # =================================================================
@@ -655,6 +677,7 @@ class ProfitLossReport(models.TransientModel):
             cogs_accounts, cogs_balances,
             level=1, sign=1,
             comp_balances=comp.get('cogs_balances'),
+            section='cogs',
         )
 
         # =================================================================
@@ -684,6 +707,8 @@ class ProfitLossReport(models.TransientModel):
         )))
 
         # -- General & Administrative subsection --
+        # Subsection headers receive ``section='expense'`` so they
+        # appear inside the template's OPERATING EXPENSES block.
         seq[0] = 410
         line_commands.append(Command.create(_line_vals(
             _('General & Administrative'),
@@ -692,11 +717,13 @@ class ProfitLossReport(models.TransientModel):
             is_total=True,
             is_group=True,
             comp_amount=comp.get('total_general_expenses'),
+            section='expense',
         )))
         _account_lines(
             general_expense_accounts, general_expense_balances,
             level=2, sign=1,
             comp_balances=comp.get('general_expense_balances'),
+            section='expense',
         )
 
         # -- Depreciation & Amortization subsection --
@@ -708,11 +735,13 @@ class ProfitLossReport(models.TransientModel):
             is_total=True,
             is_group=True,
             comp_amount=comp.get('total_depreciation'),
+            section='expense',
         )))
         _account_lines(
             depreciation_accounts, depreciation_balances,
             level=2, sign=1,
             comp_balances=comp.get('depreciation_balances'),
+            section='expense',
         )
 
         # =================================================================
@@ -743,6 +772,7 @@ class ProfitLossReport(models.TransientModel):
             other_income_accounts, other_income_balances,
             level=1, sign=-1,
             comp_balances=comp.get('other_income_balances'),
+            section='other',
         )
 
         # Other Expenses line (0.0 under standard Odoo chart)
@@ -924,10 +954,22 @@ class ProfitLossReportLine(models.TransientModel):
     # -----------------------------------------------------------------
     # TEMPLATE-FACING FIELDS
     # QWeb ``profit_loss_report.xml`` references these names for
-    # group-vs-detail rendering, drill-down links, and monetary display.
-    # They complement the canonical fields above and are populated by
-    # ``_generate_report_lines``.
+    # section filtering, group-vs-detail rendering, drill-down links,
+    # and monetary display.  They complement the canonical fields
+    # above and are populated by ``_generate_report_lines``.
     # -----------------------------------------------------------------
+
+    section = fields.Selection(
+        selection=[
+            ('revenue', 'Revenue'),
+            ('cogs', 'Cost of Goods Sold'),
+            ('expense', 'Operating Expenses'),
+            ('other', 'Other Income/Expenses'),
+        ],
+        string='Report Section',
+        help="P&L section this line belongs to. Used by the QWeb "
+             "template to filter lines into the correct section block.",
+    )
 
     is_group = fields.Boolean(
         string='Is Group Header',

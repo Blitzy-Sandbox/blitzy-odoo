@@ -373,16 +373,17 @@
                                     <t t-set="total_other_compare" t-value="total_other_compare + (line.balance_compare or 0)"/>
                                 </t>
                                 <!-- Other Income/Expenses Section Total -->
+                                <!-- Uses model-computed doc.total_other for consistency -->
                                 <tr class="table-info">
                                     <td><strong>Total Other Income/Expenses</strong></td>
                                     <td class="text-end">
-                                        <strong t-esc="doc.total_other_income - doc.total_other_expenses" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        <strong t-esc="doc.total_other" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                     </td>
                                     <t t-if="doc.compare_period">
                                         <td class="text-end">
                                             <strong t-esc="total_other_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
-                                        <t t-set="other_var" t-value="(doc.total_other_income - doc.total_other_expenses) - total_other_compare"/>
+                                        <t t-set="other_var" t-value="doc.total_other - total_other_compare"/>
                                         <td t-att-class="'text-end ' + ('text-success' if other_var &gt;= 0 else 'text-danger')">
                                             <strong t-esc="other_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>

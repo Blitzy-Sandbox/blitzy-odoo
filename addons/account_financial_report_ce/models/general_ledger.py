@@ -96,6 +96,28 @@ class GeneralLedgerReport(models.TransientModel):
         help="Specific partners to include. Leave empty for all partners.",
     )
 
+    show_details = fields.Boolean(
+        string='Show Transaction Details',
+        default=True,
+        help="When enabled, individual journal entry lines are "
+             "displayed under each account. When disabled, only "
+             "account-level summaries are shown.",
+    )
+
+    # -----------------------------------------------------------------
+    # TEMPLATE-FACING ALIAS FIELDS
+    # QWeb ``general_ledger_report.xml`` references ``doc.hide_account_at_0``
+    # as an alias of the abstract ``hide_zero_balance`` flag.
+    # -----------------------------------------------------------------
+
+    hide_account_at_0 = fields.Boolean(
+        related='hide_zero_balance',
+        string='Hide Empty Accounts',
+        readonly=True,
+        help="Alias of 'hide_zero_balance' for QWeb template "
+             "compatibility.",
+    )
+
     # -------------------------------------------------------------------------
     # COMPUTED REPORT DATA
     # -------------------------------------------------------------------------

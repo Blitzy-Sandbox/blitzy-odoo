@@ -220,6 +220,26 @@ class CashFlowReport(models.TransientModel):
         help="Alias for closing_cash.",
     )
 
+    # -----------------------------------------------------------------
+    # TEMPLATE-FACING COMPARISON FIELDS
+    # QWeb ``cash_flow_report.xml`` references ``doc.beginning_cash_compare``
+    # and ``doc.net_income_compare`` for comparison column display in the
+    # report header / summary rows.  These are populated by
+    # ``_compute_report_data`` when comparison is enabled.
+    # -----------------------------------------------------------------
+
+    beginning_cash_compare = fields.Monetary(
+        string='Beginning Cash (Comparison)',
+        currency_field='currency_id',
+        help="Opening cash balance for the comparison period.",
+    )
+
+    net_income_compare = fields.Monetary(
+        string='Net Income (Comparison)',
+        currency_field='currency_id',
+        help="Net income for the comparison period.",
+    )
+
     line_ids = fields.One2many(
         comodel_name='account.cash.flow.report.line',
         inverse_name='report_id',
@@ -314,6 +334,18 @@ class CashFlowReport(models.TransientModel):
             if report.enable_comparison and report.comparison_date_from \
                     and report.comparison_date_to:
                 comparison_data = report._compute_comparison_data()
+
+            # Populate template-facing comparison doc-level fields
+            if comparison_data:
+                report.beginning_cash_compare = comparison_data.get(
+                    'opening_cash', 0.0,
+                )
+                report.net_income_compare = comparison_data.get(
+                    'net_income', 0.0,
+                )
+            else:
+                report.beginning_cash_compare = 0.0
+                report.net_income_compare = 0.0
 
             # -----------------------------------------------------------------
             # GENERATE REPORT LINES
@@ -1072,6 +1104,21 @@ class CashFlowReportLine(models.TransientModel):
         string='Activity Type',
     )
     is_total = fields.Boolean(string='Is Total', default=False)
+
+    # -----------------------------------------------------------------
+    # TEMPLATE-FACING FIELDS
+    # QWeb ``cash_flow_report.xml`` references ``line.amount_compare``
+    # for comparison column display.  This is an alias for the canonical
+    # ``comparison_amount`` field.
+    # -----------------------------------------------------------------
+
+    amount_compare = fields.Monetary(
+        related='comparison_amount',
+        string='Amount Compare',
+        readonly=True,
+        help="Alias of 'comparison_amount' for QWeb template "
+             "compatibility.",
+    )
 
     def action_drilldown(self):
         """Drill down to the journal items underlying this report line.

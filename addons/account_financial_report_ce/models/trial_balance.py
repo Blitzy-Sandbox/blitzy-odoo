@@ -117,6 +117,27 @@ class TrialBalanceReport(models.TransientModel):
         help="Show analytic account breakdown.",
     )
 
+    show_partner_details = fields.Boolean(
+        string='Show Partner Details',
+        default=False,
+        help="When enabled, display partner-level breakdown for "
+             "receivable and payable accounts.",
+    )
+
+    # -----------------------------------------------------------------
+    # TEMPLATE-FACING ALIAS FIELDS
+    # QWeb ``trial_balance_report.xml`` references ``doc.hide_account_at_0``
+    # as an alias of the abstract ``hide_zero_balance`` flag.
+    # -----------------------------------------------------------------
+
+    hide_account_at_0 = fields.Boolean(
+        related='hide_zero_balance',
+        string='Hide Accounts at 0',
+        readonly=True,
+        help="Alias of 'hide_zero_balance' for QWeb template "
+             "compatibility.",
+    )
+
     display_type = fields.Selection(
         selection=[
             ('balance', 'Balance Only'),
@@ -393,13 +414,15 @@ class TrialBalanceReport(models.TransientModel):
 
         # Core line values (always populated regardless of display_type)
         is_real_account = account and not is_group_line
+        acct_code = account.code if is_real_account else ''
+        acct_name = (
+            account.name if is_real_account
+            else (account if isinstance(account, str) else '')
+        )
         vals = {
             'account_id': account.id if is_real_account else False,
-            'code': account.code if is_real_account else '',
-            'name': (
-                account.name if is_real_account
-                else (account if isinstance(account, str) else '')
-            ),
+            'code': acct_code,
+            'name': acct_name,
             'account_type': (
                 account.account_type if is_real_account else ''
             ),
@@ -414,6 +437,12 @@ class TrialBalanceReport(models.TransientModel):
             'is_group_line': is_group_line,
             'sequence': sequence,
             'currency_id': self.currency_id.id,
+            # Template-facing alias fields
+            'account_code': acct_code,
+            'account_name': acct_name,
+            'period_debit': period_debit,
+            'period_credit': period_credit,
+            'closing_balance': closing_balance,
         }
 
         # Comparison and variance (FR-005 Scenario 6)
@@ -942,6 +971,42 @@ class TrialBalanceReportLine(models.TransientModel):
     )
 
     currency_id = fields.Many2one('res.currency', string='Currency')
+
+    # -----------------------------------------------------------------
+    # TEMPLATE-FACING FIELDS
+    # QWeb ``trial_balance_report.xml`` references these names.
+    # They are aliases / computed values populated by
+    # ``_prepare_line_values``.
+    # -----------------------------------------------------------------
+
+    account_code = fields.Char(
+        string='Account Code',
+        help="Alias of 'code' for QWeb template compatibility.",
+    )
+
+    account_name = fields.Char(
+        string='Account Name (Template)',
+        help="Alias of 'name' for QWeb template compatibility.",
+    )
+
+    period_debit = fields.Monetary(
+        string='Period Debit (Template)',
+        currency_field='currency_id',
+        help="Alias of 'debit' for QWeb template compatibility.",
+    )
+
+    period_credit = fields.Monetary(
+        string='Period Credit (Template)',
+        currency_field='currency_id',
+        help="Alias of 'credit' for QWeb template compatibility.",
+    )
+
+    closing_balance = fields.Monetary(
+        string='Closing Balance',
+        currency_field='currency_id',
+        help="Net closing balance (opening + period). Positive = net "
+             "debit, negative = net credit.",
+    )
 
     def action_drilldown(self):
         """Drill down to journal items underlying this trial balance line.

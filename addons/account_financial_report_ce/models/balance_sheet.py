@@ -650,7 +650,7 @@ class BalanceSheetReport(models.TransientModel):
 
         # -- Account-detail line helper ----------------------------------------
         def add_account_lines(accounts, balances, level, sign=1,
-                              comp_balances=None):
+                              comp_balances=None, section='asset'):
             """Create account-level detail lines for a section.
 
             Args:
@@ -660,6 +660,8 @@ class BalanceSheetReport(models.TransientModel):
                 sign: Balance multiplier (1 for debit-normal assets,
                     -1 for credit-normal liabilities/equity).
                 comp_balances: Optional comparison balance dict.
+                section: Section identifier ('asset', 'liability',
+                    'equity') for template-side filtering.
 
             Returns:
                 list: ``fields.Command.create()`` tuples for the
@@ -691,6 +693,11 @@ class BalanceSheetReport(models.TransientModel):
                     'variance_percentage': v_pct,
                     'account_ids': [fields.Command.set([account.id])],
                     'currency_id': self.currency_id.id,
+                    'section': section,
+                    'is_group': False,
+                    'account_id': account.id,
+                    'account_code': account.code,
+                    'account_name': account.name,
                 }))
             return result
 
@@ -706,6 +713,8 @@ class BalanceSheetReport(models.TransientModel):
             'name': _('ASSETS'),
             'level': 0,
             'is_total': True,
+            'is_group': True,
+            'section': 'asset',
             'amount': self.total_assets,
             'comparison_amount': ca_ta,
             'variance_absolute': va_ta,
@@ -723,6 +732,8 @@ class BalanceSheetReport(models.TransientModel):
             'name': _('Current Assets'),
             'level': 1,
             'is_total': True,
+            'is_group': True,
+            'section': 'asset',
             'amount': self.total_current_assets,
             'comparison_amount': ca_tca,
             'variance_absolute': va_tca,
@@ -736,6 +747,7 @@ class BalanceSheetReport(models.TransientModel):
                 comparison.get('current_asset_balances')
                 if comparison else None
             ),
+            section='asset',
         ))
 
         # Non-Current Assets subsection
@@ -752,6 +764,8 @@ class BalanceSheetReport(models.TransientModel):
             'name': _('Non-Current Assets'),
             'level': 1,
             'is_total': True,
+            'is_group': True,
+            'section': 'asset',
             'amount': self.total_non_current_assets,
             'comparison_amount': ca_tnca,
             'variance_absolute': va_tnca,
@@ -765,6 +779,7 @@ class BalanceSheetReport(models.TransientModel):
                 comparison.get('non_current_asset_balances')
                 if comparison else None
             ),
+            section='asset',
         ))
 
         # =====================================================================
@@ -779,6 +794,8 @@ class BalanceSheetReport(models.TransientModel):
             'name': _('LIABILITIES'),
             'level': 0,
             'is_total': True,
+            'is_group': True,
+            'section': 'liability',
             'amount': self.total_liabilities,
             'comparison_amount': ca_tl,
             'variance_absolute': va_tl,
@@ -800,6 +817,8 @@ class BalanceSheetReport(models.TransientModel):
             'name': _('Current Liabilities'),
             'level': 1,
             'is_total': True,
+            'is_group': True,
+            'section': 'liability',
             'amount': self.total_current_liabilities,
             'comparison_amount': ca_tcl,
             'variance_absolute': va_tcl,
@@ -813,6 +832,7 @@ class BalanceSheetReport(models.TransientModel):
                 comparison.get('current_liability_balances')
                 if comparison else None
             ),
+            section='liability',
         ))
 
         # Non-Current Liabilities subsection
@@ -830,6 +850,8 @@ class BalanceSheetReport(models.TransientModel):
             'name': _('Non-Current Liabilities'),
             'level': 1,
             'is_total': True,
+            'is_group': True,
+            'section': 'liability',
             'amount': self.total_non_current_liabilities,
             'comparison_amount': ca_tncl,
             'variance_absolute': va_tncl,
@@ -843,6 +865,7 @@ class BalanceSheetReport(models.TransientModel):
                 comparison.get('non_current_liability_balances')
                 if comparison else None
             ),
+            section='liability',
         ))
 
         # =====================================================================
@@ -857,6 +880,8 @@ class BalanceSheetReport(models.TransientModel):
             'name': _('EQUITY'),
             'level': 0,
             'is_total': True,
+            'is_group': True,
+            'section': 'equity',
             'amount': self.total_equity,
             'comparison_amount': ca_te,
             'variance_absolute': va_te,
@@ -869,6 +894,7 @@ class BalanceSheetReport(models.TransientModel):
             comp_balances=(
                 comparison.get('equity_balances') if comparison else None
             ),
+            section='equity',
         ))
 
         # Current Year Earnings line
@@ -882,6 +908,7 @@ class BalanceSheetReport(models.TransientModel):
             'sequence': sequence,
             'name': _('Current Year Earnings'),
             'level': 1,
+            'section': 'equity',
             'amount': self.current_year_earnings,
             'comparison_amount': ca_cye,
             'variance_absolute': va_cye,
@@ -905,6 +932,7 @@ class BalanceSheetReport(models.TransientModel):
             'name': _('TOTAL LIABILITIES AND EQUITY'),
             'level': 0,
             'is_total': True,
+            'is_group': True,
             'amount': total_l_and_e,
             'comparison_amount': ca_tle,
             'variance_absolute': va_tle,
@@ -1094,7 +1122,7 @@ class BalanceSheetReportLine(models.TransientModel):
     )
 
     amount = fields.Monetary(
-        string='Balance',
+        string='Amount',
         currency_field='currency_id',
     )
 
@@ -1125,6 +1153,63 @@ class BalanceSheetReportLine(models.TransientModel):
     is_total = fields.Boolean(
         string='Is Total',
         default=False,
+    )
+
+    # -----------------------------------------------------------------
+    # TEMPLATE-FACING FIELDS
+    # QWeb ``balance_sheet_report.xml`` references these names for
+    # section filtering, group-vs-detail rendering, drill-down links,
+    # and monetary display.  They complement the canonical fields
+    # above and are populated by ``_generate_report_lines``.
+    # -----------------------------------------------------------------
+
+    section = fields.Selection(
+        selection=[
+            ('asset', 'Assets'),
+            ('liability', 'Liabilities'),
+            ('equity', 'Equity'),
+        ],
+        string='Report Section',
+        help="Balance Sheet section this line belongs to.",
+    )
+
+    is_group = fields.Boolean(
+        string='Is Group Header',
+        default=False,
+        help="True for section/sub-section header rows, False for "
+             "individual account detail lines.",
+    )
+
+    account_id = fields.Many2one(
+        comodel_name='account.account',
+        string='Account',
+        help="Primary account for drill-down (first element of "
+             "account_ids when the line represents a single account).",
+    )
+
+    account_code = fields.Char(
+        string='Account Code',
+        help="Account code for display in the report template.",
+    )
+
+    account_name = fields.Char(
+        string='Account Name',
+        help="Account name for display in the report template.",
+    )
+
+    balance = fields.Monetary(
+        related='amount',
+        string='Balance',
+        readonly=True,
+        help="Alias of 'amount' for QWeb template compatibility.",
+    )
+
+    balance_compare = fields.Monetary(
+        related='comparison_amount',
+        string='Balance Compare',
+        readonly=True,
+        help="Alias of 'comparison_amount' for QWeb template "
+             "compatibility.",
     )
 
     def action_drilldown(self):

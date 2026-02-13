@@ -116,6 +116,34 @@ class FinancialReportAbstract(models.AbstractModel):
     )
 
     # -------------------------------------------------------------------------
+    # TEMPLATE-FACING ALIASES
+    # QWeb report templates reference ``compare_period``,
+    # ``compare_date_from``, and ``compare_date_to`` while the canonical
+    # field names use the ``enable_comparison`` / ``comparison_*`` prefix.
+    # These ``related`` aliases ensure the QWeb directives
+    # (``t-if="doc.compare_period"``, ``t-field="doc.compare_date_to"``)
+    # resolve correctly without duplicating data.
+    # -------------------------------------------------------------------------
+
+    compare_period = fields.Boolean(
+        related='enable_comparison',
+        string='Compare Period',
+        readonly=False,
+    )
+
+    compare_date_from = fields.Date(
+        related='comparison_date_from',
+        string='Compare Date From',
+        readonly=False,
+    )
+
+    compare_date_to = fields.Date(
+        related='comparison_date_to',
+        string='Compare Date To',
+        readonly=False,
+    )
+
+    # -------------------------------------------------------------------------
     # DISPLAY OPTIONS
     # -------------------------------------------------------------------------
 

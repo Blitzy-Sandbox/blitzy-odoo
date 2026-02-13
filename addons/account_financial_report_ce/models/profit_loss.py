@@ -554,16 +554,38 @@ class ProfitLossReport(models.TransientModel):
 
         # -- helper: build value dict for a single line ----------------------
         def _line_vals(name, amount, level=0, is_total=False,
-                       account_ids=None, comp_amount=None):
-            """Return a dict of column values for one report line."""
+                       account_ids=None, comp_amount=None,
+                       is_group=False, account_id=None,
+                       account_code='', account_name=''):
+            """Return a dict of column values for one report line.
+
+            Args:
+                name: Display label for the line.
+                amount: Monetary amount for the line.
+                level: Indentation level (0=section, 1=subsection, 2=detail).
+                is_total: Whether this line is a total / summary row.
+                account_ids: List of account record IDs for drill-down.
+                comp_amount: Comparison period amount (or None).
+                is_group: True for section / sub-section headers.
+                account_id: Single account record ID for template drill-down.
+                account_code: Account code string for template display.
+                account_name: Account name string for template display.
+            """
             vals = {
                 'sequence': seq[0],
                 'name': name,
                 'level': level,
                 'amount': amount,
                 'is_total': is_total,
+                'is_group': is_group,
                 'currency_id': self.currency_id.id,
             }
+            if account_id:
+                vals['account_id'] = account_id
+            if account_code:
+                vals['account_code'] = account_code
+            if account_name:
+                vals['account_name'] = account_name
             if account_ids:
                 vals['account_ids'] = [(6, 0, account_ids)]
             if has_comparison and comp_amount is not None:
@@ -593,6 +615,10 @@ class ProfitLossReport(models.TransientModel):
                     level=level,
                     account_ids=[account.id],
                     comp_amount=comp_amt,
+                    is_group=False,
+                    account_id=account.id,
+                    account_code=account.code,
+                    account_name=account.name,
                 )))
 
         # =================================================================
@@ -604,6 +630,7 @@ class ProfitLossReport(models.TransientModel):
             self.total_revenue,
             level=0,
             is_total=True,
+            is_group=True,
             comp_amount=comp.get('total_revenue'),
         )))
         _account_lines(
@@ -621,6 +648,7 @@ class ProfitLossReport(models.TransientModel):
             self.total_cogs,
             level=0,
             is_total=True,
+            is_group=True,
             comp_amount=comp.get('total_cogs'),
         )))
         _account_lines(
@@ -638,6 +666,7 @@ class ProfitLossReport(models.TransientModel):
             self.gross_profit,
             level=0,
             is_total=True,
+            is_group=True,
             comp_amount=comp.get('gross_profit'),
         )))
 
@@ -650,6 +679,7 @@ class ProfitLossReport(models.TransientModel):
             self.total_operating_expenses,
             level=0,
             is_total=True,
+            is_group=True,
             comp_amount=comp.get('total_operating_expenses'),
         )))
 
@@ -660,6 +690,7 @@ class ProfitLossReport(models.TransientModel):
             self.total_general_expenses,
             level=1,
             is_total=True,
+            is_group=True,
             comp_amount=comp.get('total_general_expenses'),
         )))
         _account_lines(
@@ -675,6 +706,7 @@ class ProfitLossReport(models.TransientModel):
             self.total_depreciation,
             level=1,
             is_total=True,
+            is_group=True,
             comp_amount=comp.get('total_depreciation'),
         )))
         _account_lines(
@@ -692,6 +724,7 @@ class ProfitLossReport(models.TransientModel):
             self.operating_income,
             level=0,
             is_total=True,
+            is_group=True,
             comp_amount=comp.get('operating_income'),
         )))
 
@@ -703,6 +736,7 @@ class ProfitLossReport(models.TransientModel):
             _('OTHER INCOME'),
             self.total_other_income,
             level=0,
+            is_group=True,
             comp_amount=comp.get('total_other_income'),
         )))
         _account_lines(
@@ -717,6 +751,7 @@ class ProfitLossReport(models.TransientModel):
             _('OTHER EXPENSES'),
             self.total_other_expenses,
             level=0,
+            is_group=True,
             comp_amount=comp.get('total_other_expenses'),
         )))
 
@@ -734,6 +769,7 @@ class ProfitLossReport(models.TransientModel):
             net_other,
             level=0,
             is_total=True,
+            is_group=True,
             comp_amount=comp_net_other,
         )))
 
@@ -746,6 +782,7 @@ class ProfitLossReport(models.TransientModel):
             self.net_income,
             level=0,
             is_total=True,
+            is_group=True,
             comp_amount=comp.get('net_income'),
         )))
 
@@ -883,6 +920,53 @@ class ProfitLossReportLine(models.TransientModel):
     currency_id = fields.Many2one('res.currency', string='Currency')
     account_ids = fields.Many2many('account.account', string='Accounts')
     is_total = fields.Boolean(string='Is Total', default=False)
+
+    # -----------------------------------------------------------------
+    # TEMPLATE-FACING FIELDS
+    # QWeb ``profit_loss_report.xml`` references these names for
+    # group-vs-detail rendering, drill-down links, and monetary display.
+    # They complement the canonical fields above and are populated by
+    # ``_generate_report_lines``.
+    # -----------------------------------------------------------------
+
+    is_group = fields.Boolean(
+        string='Is Group Header',
+        default=False,
+        help="True for section/sub-section header rows, False for "
+             "individual account detail lines.",
+    )
+
+    account_id = fields.Many2one(
+        comodel_name='account.account',
+        string='Account',
+        help="Primary account for drill-down (first element of "
+             "account_ids when the line represents a single account).",
+    )
+
+    account_code = fields.Char(
+        string='Account Code',
+        help="Account code for display in the report template.",
+    )
+
+    account_name = fields.Char(
+        string='Account Name',
+        help="Account name for display in the report template.",
+    )
+
+    balance = fields.Monetary(
+        related='amount',
+        string='Balance',
+        readonly=True,
+        help="Alias of 'amount' for QWeb template compatibility.",
+    )
+
+    balance_compare = fields.Monetary(
+        related='comparison_amount',
+        string='Balance Compare',
+        readonly=True,
+        help="Alias of 'comparison_amount' for QWeb template "
+             "compatibility.",
+    )
 
     def action_drilldown(self):
         """

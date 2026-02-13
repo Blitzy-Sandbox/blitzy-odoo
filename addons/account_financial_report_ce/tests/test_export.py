@@ -63,6 +63,28 @@ class TestExport(AccountTestInvoicingCommon):
         """
         super().setUpClass()
 
+        # Grant financial report module security groups to the test user.
+        # The parent AccountTestInvoicingCommon creates an 'accountman' test
+        # user with only core accounting groups (group_account_manager,
+        # group_account_user). Our module's ACL requires the custom groups
+        # group_financial_report_user / group_financial_report_manager for
+        # create/read/write/unlink access on all financial report models.
+        fr_manager_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_manager',
+            raise_if_not_found=False,
+        )
+        fr_user_group = cls.env.ref(
+            'account_financial_report_ce.group_financial_report_user',
+            raise_if_not_found=False,
+        )
+        groups_to_add = cls.env['res.groups']
+        if fr_manager_group:
+            groups_to_add |= fr_manager_group
+        if fr_user_group:
+            groups_to_add |= fr_user_group
+        if groups_to_add:
+            cls.env.user.group_ids += groups_to_add
+
         # Store commonly used references from company_data fixtures
         cls.company = cls.company_data['company']
         cls.currency = cls.company_data['currency']
@@ -124,7 +146,7 @@ class TestExport(AccountTestInvoicingCommon):
         # Simulates a cash receipt from the customer to exercise the
         # Cash Flow Statement's operating activities section.
         bank_account = cls.env['account.account'].search([
-            ('company_id', '=', cls.company.id),
+            ('company_ids', 'in', cls.company.ids),
             ('account_type', '=', 'asset_cash'),
         ], limit=1)
         if bank_account and cls.journal_bank:

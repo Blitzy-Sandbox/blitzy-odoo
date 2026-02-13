@@ -27,7 +27,7 @@ fixtures.
 
 from datetime import date, timedelta
 
-from odoo import fields, Command
+from odoo import Command, fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import tagged
 
@@ -35,10 +35,10 @@ from odoo.addons.account_bank_reconciliation_ce.tests.common import (
     BankReconciliationTestCommon,
 )
 
-
 # =========================================================================
 # Helper: quick journal-entry candidate creation
 # =========================================================================
+
 
 def _make_candidate(test_case, amount, partner=None, move_date=None):
     """Create a posted journal entry and return its receivable move line.
@@ -80,7 +80,7 @@ def _make_candidate(test_case, amount, partner=None, move_date=None):
     })
     move.action_post()
     return move.line_ids.filtered(
-        lambda l: l.account_id == test_case.company_data['default_account_receivable']
+        lambda line: line.account_id == test_case.company_data['default_account_receivable'],
     )
 
 
@@ -574,7 +574,6 @@ class TestRuleEvaluation(BankReconciliationTestCommon):
 
     def test_br004_evaluate_rule_basic(self):
         """Basic evaluation: matching rule returns filtered candidates."""
-        today = fields.Date.today()
         rule = self.env['account.reconcile.model'].create({
             'name': 'Basic Eval Rule',
             'trigger': 'manual',
@@ -701,7 +700,7 @@ class TestRuleEvaluation(BankReconciliationTestCommon):
             ref='INV/2024/AUTOTEST',
         )
         receivable = invoice.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         result = rule.evaluate_rule(self.st_line_1, receivable)
 
@@ -884,7 +883,7 @@ class TestRuleOrdering(BankReconciliationTestCommon):
             date=fields.Date.today(),
         )
         candidate = bill.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'liability_payable'
+            lambda line: line.account_id.account_type == 'liability_payable',
         )
         for rule in test_ordered:
             result = rule.evaluate_rule(self.st_line_1, candidate)

@@ -62,9 +62,9 @@ class BankStatementLineExt(models.Model):
         readonly=True,
         copy=False,
         help=(
-            'Best matching confidence score (0–100) assigned by the '
-            'reconciliation engine.  Values ≥90 are "High", 70–89 are '
-            '"Medium", and 50–69 are "Low" confidence.'
+            'Best matching confidence score (0-100) assigned by the '
+            'reconciliation engine.  Values ≥90 are "High", 70-89 are '
+            '"Medium", and 50-69 are "Low" confidence.'
         ),
     )
 
@@ -342,19 +342,50 @@ class PartialReconcileHelper(models.TransientModel):
         converted_amounts = self._handle_multi_currency(st_line, move_lines)
 
         # --- Determine the suspense / counterpart lines on the statement --
+        # Following the standard Odoo pattern from
+        # addons/account/tests/common.py  pay_with_statement_line():
+        #   1. Get suspense lines from the statement move
+        #   2. Change their account to the counterpart account (receivable /
+        #      payable) so both sides share the same reconcilable account
+        #   3. Call reconcile() on the combined set
         _liquidity_lines, suspense_lines, other_lines = st_line._seek_for_lines()
-        lines_to_reconcile = suspense_lines | other_lines
+        counterpart_lines = suspense_lines | other_lines
 
-        # If the statement's move has no reconcilable counterpart lines we
-        # cannot proceed.
-        reconcilable_lines = lines_to_reconcile.filtered(
-            lambda line: line.account_id.reconcile,
-        )
-        if not reconcilable_lines:
+        if not counterpart_lines:
             raise UserError(_(
-                "The statement line journal entry has no reconcilable "
-                "counterpart lines.  Please verify the journal configuration.",
+                "The statement line journal entry has no counterpart lines. "
+                "Please verify the journal configuration.",
             ))
+
+        # Determine the target reconcilable account from the journal items
+        # we are matching against.  Prefer a receivable/payable account if
+        # available; otherwise fall back to the first reconcilable account.
+        target_account = False
+        for ml in move_lines:
+            if ml.account_id.account_type in ('asset_receivable', 'liability_payable'):
+                target_account = ml.account_id
+                break
+        if not target_account:
+            for ml in move_lines:
+                if ml.account_id.reconcile:
+                    target_account = ml.account_id
+                    break
+
+        if not target_account:
+            raise UserError(_(
+                "None of the selected journal items have a reconcilable "
+                "account.  Please verify the journal entries.",
+            ))
+
+        # Re-assign the counterpart (suspense) lines' account to match the
+        # target account.  This is the standard Odoo reconciliation pattern
+        # that makes both sides share the same reconcilable account.
+        counterpart_lines.with_context(
+            skip_account_move_synchronization=True,
+        ).write({'account_id': target_account.id})
+
+        # After the account switch the lines are now reconcilable.
+        reconcilable_lines = counterpart_lines
 
         # --- Exact / tolerance match path ---------------------------------
         currency = self.currency_id or self.env.company.currency_id
@@ -363,8 +394,8 @@ class PartialReconcileHelper(models.TransientModel):
         if currency.is_zero(difference) or (
             self.is_within_tolerance and not self.write_off_account_id
         ):
-            # Direct reconciliation - absorb any tiny rounding difference
-            # within the partial reconcile amounts.
+            # Direct reconciliation -- use ORM reconcile() on the combined
+            # set of statement counterpart + matching journal items.
             self._reconcile_lines(reconcilable_lines, move_lines, converted_amounts)
             new_status = 'reconciled'
             _logger.info(
@@ -372,13 +403,11 @@ class PartialReconcileHelper(models.TransientModel):
                 st_line.id,
             )
         elif self.write_off_account_id:
-            # Write-off path - create a journal entry for the difference,
+            # Write-off path -- create a journal entry for the difference,
             # then reconcile everything together.
             write_off_move = self._create_write_off_entry(difference)
-            # The write-off entry's reconcilable line(s) are included in the
-            # reconciliation set.
             wo_lines = write_off_move.line_ids.filtered(
-                lambda line: line.account_id.reconcile,
+                lambda line: line.account_id == target_account,
             )
             self._reconcile_lines(
                 reconcilable_lines, move_lines | wo_lines, converted_amounts,
@@ -392,7 +421,7 @@ class PartialReconcileHelper(models.TransientModel):
                 difference,
             )
         else:
-            # Partial reconciliation - the amounts don't match and no
+            # Partial reconciliation -- the amounts don't match and no
             # write-off was requested.
             self._reconcile_lines(reconcilable_lines, move_lines, converted_amounts)
             new_status = 'partially'
@@ -410,82 +439,51 @@ class PartialReconcileHelper(models.TransientModel):
     def _reconcile_lines(self, st_move_lines, counterpart_lines, converted_amounts):
         """Reconcile statement move lines against the provided counterpart lines.
 
-        For each pair of (debit, credit) lines that share a reconcilable account
-        or can be partially matched, this method creates an
-        ``account.partial.reconcile`` record.
+        Uses Odoo's standard ORM ``reconcile()`` method which internally creates
+        ``account.partial.reconcile`` and ``account.full.reconcile`` records as
+        appropriate.  At this point the statement's counterpart lines already
+        share the same reconcilable account as the matching journal items (the
+        account was reassigned in ``action_reconcile``).
 
         :param st_move_lines: recordset of ``account.move.line`` from the
-            statement line's journal entry (typically the suspense lines).
+            statement line's journal entry (the former suspense lines whose
+            account has been changed to the target reconcilable account).
         :param counterpart_lines: recordset of ``account.move.line`` from the
             open invoices / bills / other journal entries (and optionally
             write-off entries).
         :param converted_amounts: dict returned by ``_handle_multi_currency``
             containing currency conversion context, or empty dict.
         """
-        # Group all lines by account to find matching debit/credit pairs.
         all_lines = st_move_lines | counterpart_lines
-        reconcile_plan = []
 
-        # Identify debit and credit lines among the set.
-        for line in st_move_lines:
-            if not line.account_id.reconcile:
-                continue
-            # Find counterpart lines with compatible accounts or any
-            # reconcilable line with residual.
-            for cp_line in counterpart_lines:
-                if not cp_line.account_id.reconcile:
-                    continue
-                if cp_line.reconciled:
-                    continue
-
-                # Determine the amount to reconcile — the minimum of the
-                # two absolute residuals.
-                line_residual = abs(line.amount_residual)
-                cp_residual = abs(cp_line.amount_residual)
-                amount = min(line_residual, cp_residual)
-
-                if amount <= 0:
-                    continue
-
-                # Determine debit / credit orientation.
-                if line.balance >= 0 and cp_line.balance < 0:
-                    debit_line = line
-                    credit_line = cp_line
-                elif line.balance < 0 and cp_line.balance >= 0:
-                    debit_line = cp_line
-                    credit_line = line
-                elif line.amount_residual > 0:
-                    debit_line = line
-                    credit_line = cp_line
-                else:
-                    debit_line = cp_line
-                    credit_line = line
-
-                reconcile_plan.append((debit_line, credit_line, amount))
-
-        # Execute planned reconciliations.
-        for debit_line, credit_line, amount in reconcile_plan:
-            self._create_partial_reconcile(debit_line, credit_line, amount)
-
-        # Attempt to group partials into a full reconcile where all residuals
-        # are cleared.  Odoo handles full reconcile detection automatically
-        # when the matching number logic is applied (via the create override
-        # on account.partial.reconcile), but we explicitly call
-        # ``reconcile()`` on the combined lines to let the ORM run its full
-        # reconciliation check.
-        try:
-            reconcilable = all_lines.filtered(lambda line: line.account_id.reconcile and not line.reconciled)
-            if reconcilable:
-                reconcilable.reconcile()
-        except Exception:
-            # If automatic full-reconcile fails (e.g., due to residual
-            # rounding), partial reconciliation records have already been
-            # created and the user can complete reconciliation manually.
+        # Filter to only lines that are not yet reconciled and whose account
+        # allows reconciliation.
+        to_reconcile = all_lines.filtered(
+            lambda line: line.account_id.reconcile and not line.reconciled,
+        )
+        if not to_reconcile:
             _logger.debug(
-                "Automatic full reconciliation could not be completed; "
-                "partial reconciliation records were created.",
+                "No reconcilable unreconciled lines found; nothing to do.",
+            )
+            return
+
+        # Use Odoo's standard reconcile() which handles:
+        # - account.partial.reconcile creation
+        # - account.full.reconcile detection when residuals are cleared
+        # - Multi-currency exchange difference entries
+        # - Cash-basis tax entries
+        try:
+            to_reconcile.reconcile()
+        except Exception:
+            # If the ORM reconcile() fails (e.g. due to account mismatch
+            # or residual rounding), fall back to manual partial reconcile
+            # creation so the user can complete reconciliation later.
+            _logger.warning(
+                "Standard ORM reconcile() failed; falling back to manual "
+                "partial reconcile creation.",
                 exc_info=True,
             )
+            self._create_partial_reconcile_fallback(st_move_lines, counterpart_lines)
 
     def action_unreconcile(self):
         """Reverse reconciliation for the current statement line.
@@ -698,6 +696,39 @@ class PartialReconcileHelper(models.TransientModel):
         )
 
         return partial
+
+    def _create_partial_reconcile_fallback(self, st_move_lines, counterpart_lines):
+        """Fallback reconciliation when ORM ``reconcile()`` cannot be used.
+
+        Iterates over the statement move lines and counterpart lines to create
+        ``account.partial.reconcile`` records manually.  This is only invoked
+        when the standard ORM reconcile raises an unexpected error.
+
+        :param st_move_lines: recordset of ``account.move.line`` from the
+            statement's journal entry.
+        :param counterpart_lines: recordset of ``account.move.line`` from
+            matching journal entries.
+        """
+        for line in st_move_lines:
+            if not line.account_id.reconcile:
+                continue
+            for cp_line in counterpart_lines:
+                if not cp_line.account_id.reconcile or cp_line.reconciled:
+                    continue
+                line_residual = abs(line.amount_residual)
+                cp_residual = abs(cp_line.amount_residual)
+                amount = min(line_residual, cp_residual)
+                if amount <= 0:
+                    continue
+                if line.balance >= 0 and cp_line.balance < 0:
+                    debit_line, credit_line = line, cp_line
+                elif line.balance < 0 and cp_line.balance >= 0:
+                    debit_line, credit_line = cp_line, line
+                elif line.amount_residual > 0:
+                    debit_line, credit_line = line, cp_line
+                else:
+                    debit_line, credit_line = cp_line, line
+                self._create_partial_reconcile(debit_line, credit_line, amount)
 
     def _handle_multi_currency(self, st_line, move_lines):
         """Handle currency conversion when statement and journal items differ.

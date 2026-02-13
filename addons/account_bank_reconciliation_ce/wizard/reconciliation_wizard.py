@@ -287,7 +287,7 @@ class ReconciliationWizard(models.TransientModel):
                     and wizard.date_from > wizard.date_to):
                 raise ValidationError(
                     _("The start date must be earlier than or equal to "
-                      "the end date.")
+                      "the end date."),
                 )
 
     @api.onchange('journal_id')
@@ -325,7 +325,7 @@ class ReconciliationWizard(models.TransientModel):
         self.ensure_one()
         if not self.journal_id:
             raise UserError(
-                _("Please select a bank journal before searching for matches.")
+                _("Please select a bank journal before searching for matches."),
             )
 
         MatchingModel = self.env['account.reconciliation.matching']
@@ -348,7 +348,7 @@ class ReconciliationWizard(models.TransientModel):
 
         # 2. Run the algorithmic matching engine
         unreconciled = self.statement_line_ids.filtered(
-            lambda l: not l.is_reconciled
+            lambda line: not line.is_reconciled,
         )
         new_matches = MatchingModel.browse()  # empty recordset default
         if unreconciled:
@@ -401,7 +401,7 @@ class ReconciliationWizard(models.TransientModel):
             raise UserError(_("Please select a statement line first."))
         if not self.selected_match_ids:
             raise UserError(
-                _("Please select at least one matching journal entry.")
+                _("Please select at least one matching journal entry."),
             )
 
         st_line = self.selected_line_id
@@ -424,7 +424,7 @@ class ReconciliationWizard(models.TransientModel):
             raise UserError(
                 _("A write-off is required but no Write-Off Account is set. "
                   "Please configure a Write-Off Account or use "
-                  "'Partial Match' instead.")
+                  "'Partial Match' instead."),
             )
 
         self._execute_reconciliation(st_line, match_records)
@@ -467,7 +467,7 @@ class ReconciliationWizard(models.TransientModel):
         self.ensure_one()
         if not self.selected_line_id:
             raise UserError(
-                _("Please select a statement line to unmatch.")
+                _("Please select a statement line to unmatch."),
             )
 
         st_line = self.selected_line_id
@@ -528,7 +528,7 @@ class ReconciliationWizard(models.TransientModel):
         self.ensure_one()
         if not self.selected_line_id:
             raise UserError(
-                _("Please select a statement line for partial matching.")
+                _("Please select a statement line for partial matching."),
             )
 
         PartialHelper = self.env['account.reconciliation.partial.helper']
@@ -583,14 +583,14 @@ class ReconciliationWizard(models.TransientModel):
 
         high_confidence_matches = self.match_ids.filtered(
             lambda m: (m.confidence_score >= high_threshold
-                       and m.state == 'proposed')
+                       and m.state == 'proposed'),
         )
 
         if not high_confidence_matches:
             raise UserError(
                 _("No high-confidence matches (score >= %(threshold)s%%) "
                   "found for batch confirmation.")
-                % {'threshold': int(high_threshold)}
+                % {'threshold': int(high_threshold)},
             )
 
         # Group matches by statement line for proper reconciliation
@@ -637,7 +637,7 @@ class ReconciliationWizard(models.TransientModel):
 
         # Update wizard state based on remaining work
         remaining = self.match_ids.filtered(
-            lambda m: m.state == 'proposed'
+            lambda m: m.state == 'proposed',
         )
         self.state = 'done' if not remaining else 'in_progress'
 
@@ -686,7 +686,7 @@ class ReconciliationWizard(models.TransientModel):
             raise UserError(
                 _("Statement line '%(line)s' has no associated journal "
                   "entry.")
-                % {'line': st_line.display_name}
+                % {'line': st_line.display_name},
             )
 
         counterpart_lines = match_records.mapped('move_line_id')
@@ -694,7 +694,7 @@ class ReconciliationWizard(models.TransientModel):
             raise UserError(
                 _("No counterpart journal entry lines found in the "
                   "selected matches for statement line '%(line)s'.")
-                % {'line': st_line.display_name}
+                % {'line': st_line.display_name},
             )
 
         # Determine write-off configuration
@@ -793,7 +793,7 @@ class ReconciliationWizard(models.TransientModel):
 
         MatchingModel = self.env['account.reconciliation.matching']
 
-        for st_line in statement_lines.filtered(lambda l: not l.is_reconciled):
+        for st_line in statement_lines.filtered(lambda line: not line.is_reconciled):
             # Retrieve existing match suggestions for this line
             existing_matches = MatchingModel.search([
                 ('statement_line_id', '=', st_line.id),
@@ -831,7 +831,7 @@ class ReconciliationWizard(models.TransientModel):
 
                 # Apply confidence adjustments to matching records
                 matched_candidates = result.get(
-                    'candidates', self.env['account.move.line']
+                    'candidates', self.env['account.move.line'],
                 )
                 adjustment = result.get('confidence_adjustment', 0.0)
 

@@ -859,7 +859,7 @@ class ReconciliationMatching(models.Model):
 
                 _logger.info(
                     "Confirmed reconciliation for statement line %s with %d "
-                    "journal items (score range %.1f–%.1f).",
+                    "journal items (score range %.1f-%.1f).",
                     st_line.id, len(matched_move_lines),
                     min(matches.mapped('confidence_score')),
                     max(matches.mapped('confidence_score')),

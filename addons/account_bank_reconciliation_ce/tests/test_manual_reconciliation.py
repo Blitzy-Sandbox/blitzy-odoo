@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -24,17 +23,17 @@ traceability per Section 0.7.2 BDD alignment requirements.
 from datetime import date, timedelta
 
 from odoo import Command, fields
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import tagged
 
 from odoo.addons.account_bank_reconciliation_ce.tests.common import (
     BankReconciliationTestCommon,
 )
 
-
 # ---------------------------------------------------------------------------
 # 1. TestReconciliationWizard — Wizard creation and state management
 # ---------------------------------------------------------------------------
+
 
 @tagged('post_install', '-at_install')
 class TestReconciliationWizard(BankReconciliationTestCommon):
@@ -139,7 +138,7 @@ class TestReconciliationWizard(BankReconciliationTestCommon):
             partner=self.partner_reconcile,
         )
         inv_receivable = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         # Perform reconciliation through the helper
         helper = self.env['account.reconciliation.partial.helper'].create({
@@ -300,7 +299,12 @@ class TestManualMatch(BankReconciliationTestCommon):
         Constructs a matching proposal directly in the database without
         going through the scoring engine, giving tests precise control
         over confidence scores and matched amounts.
+
+        ``move_line`` may be a recordset with multiple records; in that
+        case the first record is used (ensures singleton for field access).
         """
+        if len(move_line) > 1:
+            move_line = move_line[0]
         MatchModel = self.env['account.reconciliation.matching']
         return MatchModel.create({
             'company_id': self.env.company.id,
@@ -383,7 +387,7 @@ class TestManualMatch(BankReconciliationTestCommon):
             ref='EXACT-MATCH-INV-001',
         )
         inv_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         self.assertTrue(inv_line, "Invoice should have a receivable line.")
 
@@ -444,24 +448,28 @@ class TestManualMatch(BankReconciliationTestCommon):
         When the audit trail is inspected,
         Then account.partial.reconcile records link the statement line's
         move lines with the matched journal entry lines.
+
+        Note: Uses a *customer invoice* (receivable) with a positive bank
+        amount, matching the standard "cash receipt" pattern.  Vendor bill
+        scenarios use negative amounts (money going out).
         """
         st_line = self.create_bank_statement_line(
             amount=500.0,
             payment_ref='Audit Trail Test',
-            partner=self.partner_b,
+            partner=self.partner_a,
             journal=self.bank_journal,
         )
-        bill = self.create_posted_bill(
+        inv = self.create_posted_invoice(
             amount=500.0,
-            partner=self.partner_b,
-            ref='AUDIT-TRAIL-BILL-001',
+            partner=self.partner_a,
+            ref='AUDIT-TRAIL-INV-001',
         )
-        bill_line = bill.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'liability_payable'
+        inv_line = inv.line_ids.filtered(
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
 
         matching = self._create_matching_record(
-            st_line, bill_line, score=92.0, amount=500.0,
+            st_line, inv_line, score=92.0, amount=500.0,
         )
 
         wizard = self.env['account.reconciliation.wizard'].create({
@@ -474,9 +482,10 @@ class TestManualMatch(BankReconciliationTestCommon):
         wizard.action_confirm_selected()
 
         # Inspect the audit trail: partial reconcile records should link
-        # the statement move's counterpart lines with the bill's payable line.
+        # the statement move's counterpart lines with the invoice's
+        # receivable line.
         st_move_lines = st_line.move_id.line_ids.filtered(
-            lambda l: l.account_id.reconcile
+            lambda line: line.account_id.reconcile,
         )
         partials = (
             st_move_lines.mapped('matched_debit_ids')
@@ -493,7 +502,7 @@ class TestManualMatch(BankReconciliationTestCommon):
         all_linked_moves = linked_debit_moves | linked_credit_moves
 
         # The audit trail should reference both the statement's move and
-        # the bill's move (or intermediary write-off moves).
+        # the invoice's move (or intermediary write-off moves).
         move_ids_involved = all_linked_moves.ids
         self.assertTrue(
             len(move_ids_involved) >= 1,
@@ -523,7 +532,7 @@ class TestManualMatch(BankReconciliationTestCommon):
             ref='UNMATCH-INV-001',
         )
         inv_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         matching = self._create_matching_record(
             st_line, inv_line, score=93.0, amount=300.0,
@@ -558,7 +567,7 @@ class TestManualMatch(BankReconciliationTestCommon):
         # should no longer have matched entries on its suspense/reconcilable
         # lines.
         st_line.invalidate_recordset(
-            ['is_reconciled', 'reconciliation_status', 'matching_confidence']
+            ['is_reconciled', 'reconciliation_status', 'matching_confidence'],
         )
         st_move_lines = st_line.move_id.line_ids
         remaining_partials = (
@@ -603,7 +612,7 @@ class TestManualMatch(BankReconciliationTestCommon):
             ref='PRESERVE-INV-001',
         )
         inv_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         matching = self._create_matching_record(
             st_line, inv_line, score=91.0, amount=450.0,
@@ -667,7 +676,7 @@ class TestManualMatch(BankReconciliationTestCommon):
             ref='PARTIAL-INV-001',
         )
         inv_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         matching = self._create_matching_record(
             st_line, inv_line, score=80.0, amount=750.0,
@@ -701,7 +710,7 @@ class TestManualMatch(BankReconciliationTestCommon):
 
         # Verify the helper is pre-populated
         helper = self.env['account.reconciliation.partial.helper'].browse(
-            result['res_id']
+            result['res_id'],
         )
         self.assertEqual(
             helper.statement_line_id, st_line,
@@ -727,7 +736,13 @@ class TestBatchReconciliation(BankReconciliationTestCommon):
 
     def _create_matching_record(self, statement_line, move_line, score=95.0,
                                 amount=None, state='proposed'):
-        """Helper to create a matching record for batch tests."""
+        """Helper to create a matching record for batch tests.
+
+        ``move_line`` may be a recordset with multiple records; in that
+        case the first record is used (ensures singleton for field access).
+        """
+        if len(move_line) > 1:
+            move_line = move_line[0]
         MatchModel = self.env['account.reconciliation.matching']
         return MatchModel.create({
             'company_id': self.env.company.id,
@@ -764,7 +779,7 @@ class TestBatchReconciliation(BankReconciliationTestCommon):
             ref='BATCH-HIGH-A',
         )
         inv_line_a = inv_a.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
 
         st_line_b = self.create_bank_statement_line(
@@ -779,7 +794,7 @@ class TestBatchReconciliation(BankReconciliationTestCommon):
             ref='BATCH-HIGH-B',
         )
         inv_line_b = inv_b.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
 
         # Create high-confidence matching records
@@ -844,9 +859,9 @@ class TestBatchReconciliation(BankReconciliationTestCommon):
             ref='BATCH-SKIP-HIGH',
         )
         inv_line_high = inv_high.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
-        match_high = self._create_matching_record(
+        self._create_matching_record(
             st_line_high, inv_line_high, score=95.0, amount=350.0,
         )
 
@@ -863,7 +878,7 @@ class TestBatchReconciliation(BankReconciliationTestCommon):
             ref='BATCH-SKIP-LOW',
         )
         inv_line_low = inv_low.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         match_low = self._create_matching_record(
             st_line_low, inv_line_low, score=55.0, amount=250.0,
@@ -916,7 +931,7 @@ class TestBatchReconciliation(BankReconciliationTestCommon):
             ref='BATCH-SUMMARY-INV',
         )
         inv_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         self._create_matching_record(
             st_line, inv_line, score=96.0, amount=900.0,
@@ -959,7 +974,13 @@ class TestReconciliationAuditTrail(BankReconciliationTestCommon):
 
     def _create_matching_record(self, statement_line, move_line, score=95.0,
                                 amount=None, state='proposed'):
-        """Helper to create a matching record."""
+        """Helper to create a matching record.
+
+        ``move_line`` may be a recordset with multiple records; in that
+        case the first record is used (ensures singleton for field access).
+        """
+        if len(move_line) > 1:
+            move_line = move_line[0]
         MatchModel = self.env['account.reconciliation.matching']
         return MatchModel.create({
             'company_id': self.env.company.id,
@@ -1007,7 +1028,7 @@ class TestReconciliationAuditTrail(BankReconciliationTestCommon):
             ref='AUDIT-MATCH-INV',
         )
         inv_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         matching = self._create_matching_record(
             st_line, inv_line, score=94.0, amount=700.0,
@@ -1017,14 +1038,14 @@ class TestReconciliationAuditTrail(BankReconciliationTestCommon):
 
         # Inspect partial reconcile records
         st_move_lines = st_line.move_id.line_ids.filtered(
-            lambda l: l.account_id.reconcile
+            lambda line: line.account_id.reconcile,
         )
         partials = (
             st_move_lines.mapped('matched_debit_ids')
             | st_move_lines.mapped('matched_credit_ids')
         )
         self.assertTrue(
-            partials, "Partial reconcile records should exist after match."
+            partials, "Partial reconcile records should exist after match.",
         )
 
         # Verify debit and credit line references
@@ -1072,7 +1093,7 @@ class TestReconciliationAuditTrail(BankReconciliationTestCommon):
             ref='AUDIT-UNMATCH-INV',
         )
         inv_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         matching = self._create_matching_record(
             st_line, inv_line, score=93.0, amount=550.0,
@@ -1132,7 +1153,7 @@ class TestReconciliationAuditTrail(BankReconciliationTestCommon):
             ref='FULL-RECONCILE-INV',
         )
         inv_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         matching = self._create_matching_record(
             st_line, inv_line, score=98.0, amount=1500.0,
@@ -1192,7 +1213,7 @@ class TestReconciliationAuditTrail(BankReconciliationTestCommon):
             ref='SEQUENCE-INV-001',
         )
         inv_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
 
         # --- Step 1: Match ---
@@ -1224,7 +1245,7 @@ class TestReconciliationAuditTrail(BankReconciliationTestCommon):
         unmatch_wizard.action_unmatch()
 
         st_line.invalidate_recordset(
-            ['is_reconciled', 'reconciliation_status', 'matching_confidence']
+            ['is_reconciled', 'reconciliation_status', 'matching_confidence'],
         )
         self.assertEqual(
             st_line.reconciliation_status, 'unreconciled',
@@ -1298,7 +1319,7 @@ class TestReconciliationSecurity(BankReconciliationTestCommon):
 
         # Create a statement line in company_2
         other_line = self.env['account.bank.statement.line'].with_company(
-            company_2
+            company_2,
         ).create({
             'date': fields.Date.today(),
             'payment_ref': 'Company 2 Payment',
@@ -1348,16 +1369,16 @@ class TestReconciliationSecurity(BankReconciliationTestCommon):
         # Switch to the test user and attempt to create a wizard
         # This should not raise UserError or AccessError
         WizardModel = self.env['account.reconciliation.wizard'].with_user(
-            test_user
+            test_user,
         )
         try:
             wizard = WizardModel.create({
                 'journal_id': self.bank_journal.id,
             })
-        except (UserError, Exception) as exc:
+        except (UserError, AccessError) as exc:
             self.fail(
                 "User with group_account_user should be able to create "
-                "the reconciliation wizard without error: %s" % exc
+                "the reconciliation wizard without error: %s" % exc,
             )
         self.assertTrue(
             wizard.exists(),

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -23,11 +22,9 @@ class to obtain consistent, reusable test data and avoid fixture duplication.
 """
 
 import base64
-import hashlib
 import os
-from datetime import date, timedelta
 
-from odoo import fields, Command
+from odoo import Command, fields
 from odoo.tests import tagged
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
@@ -113,10 +110,10 @@ class BankReconciliationTestCommon(AccountTestInvoicingCommon):
             ],
         })
         cls.st_line_1 = cls.bank_statement.line_ids.filtered(
-            lambda l: l.amount > 0
+            lambda line: line.amount > 0,
         )
         cls.st_line_2 = cls.bank_statement.line_ids.filtered(
-            lambda l: l.amount < 0
+            lambda line: line.amount < 0,
         )
 
         # ==== Sample Posted Invoice (Matching Candidate for st_line_1) ====
@@ -136,7 +133,7 @@ class BankReconciliationTestCommon(AccountTestInvoicingCommon):
         })
         cls.test_invoice.action_post()
         cls.invoice_receivable_line = cls.test_invoice.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
 
         # ==== Sample Posted Bill (Matching Candidate for st_line_2) ====
@@ -156,7 +153,7 @@ class BankReconciliationTestCommon(AccountTestInvoicingCommon):
         })
         cls.test_bill.action_post()
         cls.bill_payable_line = cls.test_bill.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'liability_payable'
+            lambda line: line.account_id.account_type == 'liability_payable',
         )
 
     # ------------------------------------------------------------------
@@ -308,8 +305,8 @@ class BankReconciliationTestCommon(AccountTestInvoicingCommon):
 
         Produces three transaction lines:
         1. Customer payment   +1 000.00
-        2. Supplier payment     −500.00
-        3. Bank fee              −25.00
+        2. Supplier payment     -500.00
+        3. Bank fee              -25.00
 
         Args:
             delimiter (str): Column separator (default ``','``).
@@ -345,7 +342,7 @@ class BankReconciliationTestCommon(AccountTestInvoicingCommon):
 
         Contains two transactions matching the CSV sample:
         * CREDIT  +1 000.00  (TXN001)
-        * DEBIT     −500.00  (TXN002)
+        * DEBIT     -500.00  (TXN002)
 
         Returns:
             bytes: Base64-encoded OFX content.
@@ -393,7 +390,7 @@ class BankReconciliationTestCommon(AccountTestInvoicingCommon):
 
         Contains two transactions:
         * 01/15/2024  +1 000.00  Payment INV/2024/001  (REF001)
-        * 01/16/2024    −500.00  Supplier Payment       (REF002)
+        * 01/16/2024    -500.00  Supplier Payment       (REF002)
 
         Returns:
             bytes: Base64-encoded QIF content.

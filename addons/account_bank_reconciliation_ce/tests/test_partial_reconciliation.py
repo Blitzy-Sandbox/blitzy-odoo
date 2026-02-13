@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -31,7 +30,7 @@ fixture data.
 
 from datetime import date, timedelta
 
-from odoo import fields, Command
+from odoo import Command, fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import tagged
 
@@ -39,10 +38,10 @@ from odoo.addons.account_bank_reconciliation_ce.tests.common import (
     BankReconciliationTestCommon,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers reused across multiple test classes
 # ---------------------------------------------------------------------------
+
 
 def _make_invoice_line(env, amount, partner, company_data, tax_free=True):
     """Create and post an invoice, returning the receivable move line.
@@ -82,7 +81,7 @@ def _make_invoice_line(env, amount, partner, company_data, tax_free=True):
     move = env['account.move'].create(move_vals)
     move.action_post()
     receivable = move.line_ids.filtered(
-        lambda l: l.account_id.account_type == 'asset_receivable'
+        lambda line: line.account_id.account_type == 'asset_receivable',
     )
     return move, receivable
 
@@ -118,7 +117,7 @@ def _make_bill_line(env, amount, partner, company_data, tax_free=True):
     move = env['account.move'].create(move_vals)
     move.action_post()
     payable = move.line_ids.filtered(
-        lambda l: l.account_id.account_type == 'liability_payable'
+        lambda line: line.account_id.account_type == 'liability_payable',
     )
     return move, payable
 
@@ -539,7 +538,7 @@ class TestPartialReconciliation(BankReconciliationTestCommon):
         )
         # The write-off line amount (debit or credit) should equal the
         # absolute difference.
-        wo_amounts = [max(l.debit, l.credit) for l in wo_lines]
+        wo_amounts = [max(wo.debit, wo.credit) for wo in wo_lines]
         self.assertTrue(
             any(
                 self.env.company.currency_id.compare_amounts(a, diff) == 0
@@ -558,7 +557,7 @@ class TestPartialReconciliation(BankReconciliationTestCommon):
         # Use create_posted_invoice() helper from BankReconciliationTestCommon
         inv = self.create_posted_invoice(1000.0, partner=self.partner_reconcile)
         rec_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         past_date = date.today() - timedelta(days=5)
         st_line = _create_st_line(
@@ -859,13 +858,13 @@ class TestUnreconciliation(BankReconciliationTestCommon):
     def test_br005_unreconcile_basic(self):
         """BR-005: After reconciliation, call action_unreconcile and verify
         partial reconcile records are removed."""
-        helper, st_line, rec_line = self._reconcile_and_get_helper(
+        _helper, st_line, rec_line = self._reconcile_and_get_helper(
             1000.0, 1000.0,
         )
         st_ml_ids = st_line.move_id.line_ids.ids
 
         # Verify some reconciliation exists
-        partials_before = self.env['account.partial.reconcile'].search([
+        self.env['account.partial.reconcile'].search([
             '|',
             ('debit_move_id', 'in', st_ml_ids + rec_line.ids),
             ('credit_move_id', 'in', st_ml_ids + rec_line.ids),
@@ -901,7 +900,7 @@ class TestUnreconciliation(BankReconciliationTestCommon):
             750.0, partner=self.partner_reconcile,
         )
         rec_line = inv.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable',
         )
         st_line = _create_st_line(
             self.env, self.bank_journal, 750.0,
@@ -937,7 +936,7 @@ class TestUnreconciliation(BankReconciliationTestCommon):
     def test_br005_unreconcile_with_writeoff(self):
         """BR-005: Unreconcile a transaction that had a write-off → verify
         reconciliation is reversed and status reset."""
-        helper, st_line, _rec = self._reconcile_and_get_helper(
+        _helper, st_line, _rec = self._reconcile_and_get_helper(
             1050.0, 1000.0, wo=True,
         )
 
@@ -1052,7 +1051,7 @@ class TestMultiCurrency(BankReconciliationTestCommon):
         move.action_post()
 
         eur_rec_line = move.line_ids.filtered(
-            lambda l: l.account_id == receivable_acct
+            lambda line: line.account_id == receivable_acct,
         )
 
         # Statement in company currency
@@ -1117,7 +1116,7 @@ class TestMultiCurrency(BankReconciliationTestCommon):
         move.action_post()
 
         eur_rec_line = move.line_ids.filtered(
-            lambda l: l.account_id == receivable_acct
+            lambda line: line.account_id == receivable_acct,
         )
 
         # Statement for 500 (slightly more than the 490 debit)

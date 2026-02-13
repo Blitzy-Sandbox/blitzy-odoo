@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -21,7 +20,7 @@ import base64
 import io
 import logging
 
-from odoo import _, api, fields, models, Command
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -297,7 +296,7 @@ class BankStatementImportWizard(models.TransientModel):
                     self.filename, val_exc,
                 )
                 validation_warning = str(
-                    val_exc.args[0] if val_exc.args else val_exc
+                    val_exc.args[0] if val_exc.args else val_exc,
                 )
             else:
                 validation_warning = ''
@@ -319,9 +318,7 @@ class BankStatementImportWizard(models.TransientModel):
                 ref = (row.get('ref', '') or '')[:20]
                 partner = (row.get('partner_name', '') or '')[:20]
                 preview_parts.append(
-                    '{:<12} {:<40} {:>14.2f} {:<20} {:<20}'.format(
-                        date_str, label, amount, ref, partner,
-                    ),
+                    f'{date_str:<12} {label:<40} {amount:>14.2f} {ref:<20} {partner:<20}',
                 )
 
             preview_parts.append('')
@@ -357,10 +354,7 @@ class BankStatementImportWizard(models.TransientModel):
         finally:
             # Clean up the temporary import record if it was created.
             if import_rec:
-                try:
-                    import_rec.unlink()
-                except Exception:
-                    pass
+                import_rec.unlink()
 
         return self._reopen_wizard()
 
@@ -389,7 +383,7 @@ class BankStatementImportWizard(models.TransientModel):
             # Use a database savepoint so that any failure during import
             # (parsing, validation, or line creation) rolls back all
             # partially-created records, leaving the DB in a clean state.
-            flush_uid = self.env.uid  # noqa: F841  – keep ref alive
+            flush_uid = self.env.uid  # noqa: F841  - keep ref alive
             with self.env.cr.savepoint():
                 import_rec = import_model.create(import_vals)
 

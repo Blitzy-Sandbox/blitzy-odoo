@@ -82,7 +82,7 @@ class ReconciliationRuleExtension(models.Model):
         string='Min Confidence Threshold',
         default=70.0,
         digits=(5, 2),
-        help='Minimum matching-engine confidence score (0–100) required '
+        help='Minimum matching-engine confidence score (0-100) required '
              'for this rule to apply.  Statement-line matches below this '
              'threshold will be ignored by this rule.',
     )

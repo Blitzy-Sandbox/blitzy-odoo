@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -101,22 +100,22 @@ class ReportReconciliationStatus(models.AbstractModel):
         Returns:
             Dictionary with report data for the QWeb template including:
 
-            - ``doc_ids``                 – list of record IDs
-            - ``doc_model``               – ``'account.reconciliation.wizard'``
-            - ``docs``                    – browse recordset of wizard records
-            - ``data``                    – pass-through of *data*
-            - ``reconciliation_summary``  – per-journal/statement aggregated
+            - ``doc_ids``                 - list of record IDs
+            - ``doc_model``               - ``'account.reconciliation.wizard'``
+            - ``docs``                    - browse recordset of wizard records
+            - ``data``                    - pass-through of *data*
+            - ``reconciliation_summary``  - per-journal/statement aggregated
                                             match statistics (list of dicts)
-            - ``unreconciled_lines``      – statement lines still unreconciled
+            - ``unreconciled_lines``      - statement lines still unreconciled
                                             with aging info (list of dicts)
-            - ``confidence_distribution`` – count of matches by confidence
+            - ``confidence_distribution`` - count of matches by confidence
                                             level (dict)
-            - ``total_stats``             – overall totals: total_lines,
+            - ``total_stats``             - overall totals: total_lines,
                                             matched, unmatched, match_rate
                                             (dict)
-            - ``today``                   – context-aware today date for
+            - ``today``                   - context-aware today date for
                                             aging calculations
-            - ``datetime``                – stdlib ``datetime`` module
+            - ``datetime``                - stdlib ``datetime`` module
                                             reference for template timestamps
         """
         docs = self.env['account.reconciliation.wizard'].browse(docids)
@@ -228,7 +227,7 @@ class ReportReconciliationStatus(models.AbstractModel):
             - ``matched_count``: int
             - ``unmatched_count``: int
             - ``partially_count``: int
-            - ``match_rate``: float (0.0 – 100.0, rounded to 1 decimal)
+            - ``match_rate``: float (0.0 - 100.0, rounded to 1 decimal)
             - ``total_amount``: float
             - ``reconciled_amount``: float
             - ``unreconciled_amount``: float
@@ -256,17 +255,17 @@ class ReportReconciliationStatus(models.AbstractModel):
 
             # Classify using the CE extension field reconciliation_status
             matched = len(lines.filtered(
-                lambda l: l.reconciliation_status in ('reconciled', 'manual')
+                lambda line: line.reconciliation_status in ('reconciled', 'manual'),
             ))
             partial = len(lines.filtered(
-                lambda l: l.reconciliation_status == 'partially'
+                lambda line: line.reconciliation_status == 'partially',
             ))
             unmatched = total - matched - partial
 
             # Amount aggregation
             total_amount = sum(lines.mapped('amount'))
             reconciled_amount = sum(lines.filtered(
-                lambda l: l.reconciliation_status in ('reconciled', 'manual')
+                lambda line: line.reconciliation_status in ('reconciled', 'manual'),
             ).mapped('amount'))
             unreconciled_amount = total_amount - reconciled_amount
 
@@ -307,9 +306,9 @@ class ReportReconciliationStatus(models.AbstractModel):
         the statement line date (``today_date - line.date``) and assigns
         an aging bucket label matching the QWeb template's classification:
 
-        - **Recent** : 0 – 30 days
-        - **Aging**  : 31 – 60 days
-        - **Overdue**: 61 – 90 days
+        - **Recent** : 0 - 30 days
+        - **Aging**  : 31 - 60 days
+        - **Overdue**: 61 - 90 days
         - **Critical**: 90+ days
 
         Args:
@@ -330,11 +329,11 @@ class ReportReconciliationStatus(models.AbstractModel):
               ``'90_plus'``)
             - ``aging_label``: str (``'Recent'``, ``'Aging'``,
               ``'Overdue'``, ``'Critical'``)
-            - ``matching_confidence``: float (0 – 100, from CE extension)
+            - ``matching_confidence``: float (0 - 100, from CE extension)
             - ``reconciliation_status``: str (selection value)
         """
         unreconciled = statement_lines.filtered(
-            lambda l: l.reconciliation_status == 'unreconciled'
+            lambda line: line.reconciliation_status == 'unreconciled',
         )
         if not unreconciled:
             return []
@@ -345,7 +344,7 @@ class ReportReconciliationStatus(models.AbstractModel):
 
         result = []
         for line in unreconciled.sorted(
-            key=lambda l: l.date or date.min,
+            key=lambda line: line.date or date.min,
         ):
             line_date = line.date
             days = (ref_date - line_date).days if line_date else 0
@@ -401,7 +400,7 @@ class ReportReconciliationStatus(models.AbstractModel):
             - ``low``: int
             - ``none``: int — below threshold
             - ``total``: int — sum of all levels
-            - ``high_pct``: float (0.0 – 100.0)
+            - ``high_pct``: float (0.0 - 100.0)
             - ``medium_pct``: float
             - ``low_pct``: float
             - ``none_pct``: float
@@ -490,12 +489,12 @@ class ReportReconciliationStatus(models.AbstractModel):
             - ``total_matched``: int — fully reconciled + manually matched
             - ``total_unmatched``: int — unreconciled lines
             - ``total_partial``: int — partially reconciled lines
-            - ``match_rate``: float (0.0 – 100.0) — line-count based
+            - ``match_rate``: float (0.0 - 100.0) — line-count based
             - ``total_amount``: float — sum of all line amounts
             - ``reconciled_amount``: float — sum of reconciled line amounts
             - ``unreconciled_amount``: float — sum of unreconciled amounts
             - ``partial_amount``: float — sum of partially reconciled amounts
-            - ``amount_match_rate``: float (0.0 – 100.0) — amount-based
+            - ``amount_match_rate``: float (0.0 - 100.0) — amount-based
             - ``statement_count``: int — number of unique statements
         """
         total_lines = len(statement_lines)
@@ -517,13 +516,13 @@ class ReportReconciliationStatus(models.AbstractModel):
 
         # Classify lines by reconciliation_status (CE extension field)
         matched_lines = statement_lines.filtered(
-            lambda l: l.reconciliation_status in ('reconciled', 'manual')
+            lambda line: line.reconciliation_status in ('reconciled', 'manual'),
         )
         partial_lines = statement_lines.filtered(
-            lambda l: l.reconciliation_status == 'partially'
+            lambda line: line.reconciliation_status == 'partially',
         )
         unmatched_lines = statement_lines.filtered(
-            lambda l: l.reconciliation_status == 'unreconciled'
+            lambda line: line.reconciliation_status == 'unreconciled',
         )
 
         total_matched = len(matched_lines)

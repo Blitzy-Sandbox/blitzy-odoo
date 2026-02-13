@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
@@ -17,9 +18,10 @@ Performance target: import <10 seconds for 500 statement lines.
 """
 
 import base64
+import io
 import logging
 
-from odoo import _, api, fields, models
+from odoo import _, api, fields, models, Command
 from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -259,8 +261,9 @@ class BankStatementImportWizard(models.TransientModel):
         """Parse the uploaded file and display a preview without importing.
 
         Decodes the base64 file content, delegates to the import model's
-        ``_parse_file`` method to extract the first N rows, and formats
-        the result as readable text in the ``preview_data`` field.
+        ``_parse_file`` method to extract rows, runs
+        ``_validate_imported_data`` to verify structural correctness, and
+        formats the first N rows as readable text in ``preview_data``.
 
         Returns:
             dict: A window-action dict that re-opens this wizard to show
@@ -269,13 +272,35 @@ class BankStatementImportWizard(models.TransientModel):
         self.ensure_one()
         self._validate_before_action()
 
-        # Validate file can be decoded (early-fail before delegating)
-        base64.b64decode(self.data_file)
+        # Early-fail: ensure the binary payload can be decoded.
+        raw_bytes = base64.b64decode(self.data_file)
+        if not raw_bytes:
+            raise UserError(_('The uploaded file is empty.'))
 
+        import_rec = None
         try:
             import_model = self.env['account.bank.statement.import']
             import_rec = import_model.create(self._prepare_import_vals())
+
+            # Delegate parsing to the import model.
             parsed_lines = import_rec._parse_file()
+
+            # Run validation on parsed data so the preview reflects any
+            # issues the user should address before the real import.
+            try:
+                import_rec._validate_imported_data(parsed_lines)
+            except ValidationError as val_exc:
+                # Validation errors during preview are non-fatal — we still
+                # show the preview but include the warning in the log.
+                _logger.warning(
+                    'Validation warning during preview for %r: %s',
+                    self.filename, val_exc,
+                )
+                validation_warning = str(
+                    val_exc.args[0] if val_exc.args else val_exc
+                )
+            else:
+                validation_warning = ''
 
             # Build human-readable preview from first 10 rows.
             preview_limit = 10
@@ -294,23 +319,33 @@ class BankStatementImportWizard(models.TransientModel):
                 ref = (row.get('ref', '') or '')[:20]
                 partner = (row.get('partner_name', '') or '')[:20]
                 preview_parts.append(
-                    f'{date_str:<12} {label:<40} {amount:>14.2f} {ref:<20} {partner:<20}',
+                    '{:<12} {:<40} {:>14.2f} {:<20} {:<20}'.format(
+                        date_str, label, amount, ref, partner,
+                    ),
                 )
 
             preview_parts.append('')
             preview_parts.append(
                 _('Total lines in file: %d') % len(parsed_lines),
             )
+            if validation_warning:
+                preview_parts.append('')
+                preview_parts.append(_('Validation warnings:'))
+                preview_parts.append(validation_warning)
+
+            log_msg = _('Preview generated successfully for %d lines.') % len(parsed_lines)
+            if validation_warning:
+                log_msg += '\n' + _('Note: validation warnings detected — see preview.')
 
             self.write({
                 'preview_data': '\n'.join(preview_parts),
                 'preview_line_count': len(parsed_lines),
                 'state': 'preview',
-                'import_log': _('Preview generated successfully for %d lines.') % len(parsed_lines),
+                'import_log': log_msg,
             })
-            # Clean up the temporary import record.
-            import_rec.unlink()
 
+        except (UserError, ValidationError):
+            raise
         except Exception as exc:
             _logger.exception('Error generating preview for file %r', self.filename)
             self.write({
@@ -319,6 +354,13 @@ class BankStatementImportWizard(models.TransientModel):
                 'state': 'error',
                 'import_log': _('Preview failed: %s') % str(exc),
             })
+        finally:
+            # Clean up the temporary import record if it was created.
+            if import_rec:
+                try:
+                    import_rec.unlink()
+                except Exception:
+                    pass
 
         return self._reopen_wizard()
 
@@ -327,8 +369,8 @@ class BankStatementImportWizard(models.TransientModel):
 
         Validates input, creates an ``account.bank.statement.import`` record
         with all wizard configuration, calls its ``action_import`` method,
-        and populates result fields.  Uses a database savepoint to rollback
-        partial records on failure.
+        and populates result fields.  Uses a database savepoint so that
+        partial records are rolled back cleanly on failure.
 
         Returns:
             dict: A window-action dict that re-opens this wizard to show
@@ -339,29 +381,39 @@ class BankStatementImportWizard(models.TransientModel):
 
         self.write({'state': 'importing', 'import_log': ''})
 
+        import_rec = None
         try:
             import_model = self.env['account.bank.statement.import']
-            import_rec = import_model.create(self._prepare_import_vals())
+            import_vals = self._prepare_import_vals()
 
-            # Execute import - the model handles parsing, validation,
-            # duplicate detection, and statement line creation.
-            import_rec.action_import()
+            # Use a database savepoint so that any failure during import
+            # (parsing, validation, or line creation) rolls back all
+            # partially-created records, leaving the DB in a clean state.
+            flush_uid = self.env.uid  # noqa: F841  – keep ref alive
+            with self.env.cr.savepoint():
+                import_rec = import_model.create(import_vals)
 
-            # Collect results from the import record.
-            statements = import_rec.statement_ids
-            total_lines = import_rec.line_count
+                # Execute import — the model handles parsing, validation,
+                # duplicate detection, and batch statement line creation.
+                import_rec.action_import()
 
+                # Collect results from the import record.
+                statements = import_rec.statement_ids
+                total_lines = import_rec.line_count
+                import_log_detail = import_rec.import_log or ''
+
+            # If we reach here the savepoint committed successfully.
             log_parts = [
                 _('Import completed successfully.'),
-                _('Statements created: %d') % len(statements),
+                _('Statements created/updated: %d') % len(statements),
                 _('Total lines imported: %d') % total_lines,
             ]
-            if import_rec.import_log:
+            if import_log_detail:
                 log_parts.append('')
-                log_parts.append(import_rec.import_log)
+                log_parts.append(import_log_detail)
 
             self.write({
-                'statement_ids': [(6, 0, statements.ids)],
+                'statement_ids': Command.set(statements.ids),
                 'line_count': total_lines,
                 'state': 'done',
                 'import_log': '\n'.join(log_parts),
@@ -377,8 +429,12 @@ class BankStatementImportWizard(models.TransientModel):
 
         except (UserError, ValidationError):
             # Re-raise Odoo business exceptions so users see proper messages.
+            # The savepoint has already been rolled back automatically.
             raise
         except Exception as exc:
+            # The savepoint context-manager rolls back all DB changes made
+            # inside the ``with`` block on any unhandled exception, so
+            # partially-created statement lines are cleaned up.
             _logger.exception(
                 'Import failed for file %r on journal %r',
                 self.filename,
@@ -398,11 +454,45 @@ class BankStatementImportWizard(models.TransientModel):
     def _detect_format(self):
         """Detect the file format from filename extension and content.
 
+        Uses a two-tier approach:
+        1. Local heuristics based on filename extension and binary content
+           signatures for immediate feedback (e.g. during onchange).
+        2. Delegation to ``account.bank.statement.import._detect_file_format``
+           when a full import record is available, which provides more
+           thorough detection including all CAMT.053 namespace versions.
+
         Returns:
             str or False: Detected format key (csv, ofx, qif, camt053)
             or False if detection fails.
         """
         self.ensure_one()
+
+        # --- Attempt delegation to the import model's robust detector ---
+        # Build a temporary in-memory record with enough data for detection.
+        if self.data_file:
+            try:
+                ImportModel = self.env['account.bank.statement.import']
+                # Use new() to avoid persisting a record just for detection.
+                temp_rec = ImportModel.new({
+                    'journal_id': self.journal_id.id or False,
+                    'data_file': self.data_file,
+                    'filename': self.filename or '',
+                })
+                detected = temp_rec._detect_file_format()
+                if detected:
+                    _logger.debug(
+                        'Format detected via import model delegate: %r', detected,
+                    )
+                    return detected
+            except Exception:
+                _logger.debug(
+                    'Delegation to _detect_file_format failed; '
+                    'falling back to local heuristics for %r',
+                    self.filename,
+                    exc_info=True,
+                )
+
+        # --- Fallback: local heuristics ---
 
         # 1. Extension-based detection.
         if self.filename:
@@ -417,17 +507,21 @@ class BankStatementImportWizard(models.TransientModel):
                 # Could be CAMT.053 — verify via content sniffing below.
                 pass
 
-        # 2. Content-based detection.
+        # 2. Content-based detection using in-memory streams.
         if self.data_file:
             try:
                 raw = base64.b64decode(self.data_file)
-                # Inspect first 4096 bytes for signatures.
-                header = raw[:4096]
+                # Wrap in BytesIO for uniform stream-based inspection.
+                stream = io.BytesIO(raw)
+                header = stream.read(4096)
 
                 if b'OFXHEADER' in header or b'<OFX>' in header:
                     return 'ofx'
 
-                text_header = header.decode('utf-8', errors='replace')
+                # Decode header to text for string-based checks.
+                text_stream = io.StringIO(header.decode('utf-8', errors='replace'))
+                text_header = text_stream.read()
+
                 if text_header.lstrip().startswith('!Type:'):
                     return 'qif'
 
@@ -435,7 +529,7 @@ class BankStatementImportWizard(models.TransientModel):
                 if 'urn:iso:std:iso:20022:tech:xsd:camt.053' in text_header:
                     return 'camt053'
 
-                # If XML file, check for CAMT namespace in first bytes.
+                # If XML file by extension, default to CAMT.053.
                 if self.filename and self.filename.lower().endswith('.xml'):
                     return 'camt053'
 
@@ -451,6 +545,9 @@ class BankStatementImportWizard(models.TransientModel):
     def _prepare_import_vals(self):
         """Build vals dict for ``account.bank.statement.import`` creation.
 
+        Maps all wizard-level configuration fields onto the corresponding
+        fields of the ``account.bank.statement.import`` model.
+
         Returns:
             dict: Field values for the import model record.
         """
@@ -458,13 +555,14 @@ class BankStatementImportWizard(models.TransientModel):
 
         vals = {
             'journal_id': self.journal_id.id,
-            'company_id': self.company_id.id,
             'data_file': self.data_file,
             'filename': self.filename or '',
-            'file_format': self.file_format or 'csv',
+            'file_format': self.file_format or '',
+            'auto_detect_format': self.auto_detect_format,
         }
 
-        # Include CSV-specific settings when format is CSV.
+        # Include CSV-specific settings when format is CSV or when
+        # auto-detection might fall back to CSV.
         if self.file_format == 'csv' or (
             not self.file_format and self.auto_detect_format
         ):
@@ -477,7 +575,7 @@ class BankStatementImportWizard(models.TransientModel):
                 'csv_amount_column': self.csv_amount_column,
                 'csv_ref_column': self.csv_ref_column,
                 'csv_partner_column': self.csv_partner_column,
-                # Note: csv_skip_header lives only on the wizard; the
+                # Note: csv_skip_header lives only on the wizard UI; the
                 # import model always skips the first row by design.
             })
 

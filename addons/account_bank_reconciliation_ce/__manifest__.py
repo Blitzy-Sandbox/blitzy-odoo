@@ -18,6 +18,7 @@
         'security/bank_reconciliation_security.xml',
         'security/ir.model.access.csv',
         'data/reconciliation_data.xml',
+        'report/reconciliation_report.xml',
         'wizard/bank_statement_import_wizard_views.xml',
         'wizard/reconciliation_wizard_views.xml',
         'views/bank_reconciliation_views.xml',

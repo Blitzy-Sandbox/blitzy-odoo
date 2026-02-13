@@ -17,15 +17,15 @@
         <field name="name">Reconciliation Status Report</field>
         <field name="model">account.reconciliation.wizard</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">account_bank_reconciliation_ce.report_reconciliation_status</field>
-        <field name="report_file">account_bank_reconciliation_ce.report_reconciliation_status</field>
+        <field name="report_name">account_bank_reconciliation_ce.reconciliation_status</field>
+        <field name="report_file">account_bank_reconciliation_ce.reconciliation_status</field>
         <field name="print_report_name">'Reconciliation Status - %s to %s' % (object.date_from, object.date_to)</field>
         <field name="binding_model_id" ref="model_account_reconciliation_wizard"/>
         <field name="binding_type">report</field>
     </record>
 
     <!-- Reconciliation Status QWeb Report Template -->
-    <template id="report_reconciliation_status">
+    <template id="reconciliation_status">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">

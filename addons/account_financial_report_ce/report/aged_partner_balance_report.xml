@@ -24,12 +24,24 @@
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <div class="page">
-                        <!-- Report Header -->
+                        <!-- Report Header with AR/AP visual distinction -->
                         <div class="text-center">
                             <h2>
-                                <t t-if="doc.report_type == 'receivable'">Aged Receivable Balance</t>
-                                <t t-if="doc.report_type == 'payable'">Aged Payable Balance</t>
-                                <t t-if="doc.report_type == 'both'">Aged Partner Balance</t>
+                                <t t-if="doc.report_type == 'receivable'">
+                                    <i class="fa fa-arrow-circle-down text-success me-2"
+                                       title="Accounts Receivable (AR)"/>
+                                    Aged Receivable Balance
+                                </t>
+                                <t t-if="doc.report_type == 'payable'">
+                                    <i class="fa fa-arrow-circle-up text-danger me-2"
+                                       title="Accounts Payable (AP)"/>
+                                    Aged Payable Balance
+                                </t>
+                                <t t-if="doc.report_type == 'both'">
+                                    <i class="fa fa-exchange text-primary me-2"
+                                       title="Accounts Receivable &amp; Payable"/>
+                                    Aged Partner Balance
+                                </t>
                             </h2>
                             <p>
                                 <strong>As of: </strong>
@@ -89,13 +101,20 @@
                             <thead>
                                 <tr class="bg-primary text-white">
                                     <th style="width: 25%">Partner</th>
-                                    <th class="text-end" style="width: 10%">Not Due</th>
-                                    <th class="text-end" style="width: 10%">1-30</th>
-                                    <th class="text-end" style="width: 10%">31-60</th>
-                                    <th class="text-end" style="width: 10%">61-90</th>
-                                    <th class="text-end" style="width: 10%">91-120</th>
-                                    <th class="text-end" style="width: 10%">120+</th>
-                                    <th class="text-end" style="width: 15%">Total</th>
+                                    <th class="text-end" style="width: 10%"
+                                        title="Not yet due — payment date has not passed">Not Due</th>
+                                    <th class="text-end" style="width: 10%"
+                                        t-att-title="'Overdue 1 to %d days' % doc.bucket_1_days">1-30</th>
+                                    <th class="text-end" style="width: 10%"
+                                        t-att-title="'Overdue %d to %d days' % (doc.bucket_1_days + 1, doc.bucket_2_days)">31-60</th>
+                                    <th class="text-end" style="width: 10%"
+                                        t-att-title="'Overdue %d to %d days' % (doc.bucket_2_days + 1, doc.bucket_3_days)">61-90</th>
+                                    <th class="text-end" style="width: 10%"
+                                        t-att-title="'Overdue %d to %d days' % (doc.bucket_3_days + 1, doc.bucket_4_days)">91-120</th>
+                                    <th class="text-end" style="width: 10%"
+                                        t-att-title="'Overdue more than %d days' % doc.bucket_4_days">120+</th>
+                                    <th class="text-end" style="width: 15%"
+                                        title="Total outstanding balance across all aging periods">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -107,12 +126,13 @@
                                 -->
                                 <t t-foreach="doc.partner_line_ids" t-as="pline">
 
-                                    <!-- Partner Summary Row -->
+                                    <!-- Partner Summary Row — drill-down opens filtered receivable/payable journal items -->
                                     <tr class="table-light">
                                         <td>
                                             <strong>
-                                                <a t-att-href="'/web#model=res.partner&amp;id=%s&amp;view_type=form' % pline.partner_id.id"
-                                                   class="text-primary">
+                                                <a t-att-href="'/web#model=account.move.line&amp;view_type=list&amp;domain=[[&quot;partner_id&quot;,&quot;=&quot;,%d],[&quot;reconciled&quot;,&quot;=&quot;,false],[&quot;parent_state&quot;,&quot;=&quot;,&quot;posted&quot;]]' % pline.partner_id.id"
+                                                   class="text-primary"
+                                                   t-att-title="'Total outstanding: %s' % pline.total">
                                                     <span t-esc="pline.name"/>
                                                 </a>
                                             </strong>
@@ -178,9 +198,14 @@
                                             <tr class="small">
                                                 <td class="ps-4">
                                                     <a t-att-href="'/web#model=account.move&amp;id=%s&amp;view_type=form' % dline.move_id.id"
-                                                       class="text-muted">
+                                                       class="text-muted"
+                                                       t-att-title="'View journal entry %s' % (dline.move_id.name or '')">
                                                         <span t-esc="dline.ref or dline.move_id.name"/>
                                                     </a>
+                                                    <!-- Invoice date provides additional context alongside due date -->
+                                                    <span class="text-muted ms-2" t-if="dline.move_id.invoice_date">
+                                                        Inv: <span t-field="dline.move_id.invoice_date"/>
+                                                    </span>
                                                     <span class="text-muted ms-2">
                                                         Due: <span t-field="dline.date_due"/>
                                                     </span>
@@ -229,10 +254,18 @@
                                                               t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                                     </t>
                                                 </td>
-                                                <!-- Total column (always show) -->
+                                                <!-- Total column — residual with original amount for partial payment visibility -->
                                                 <td class="text-end">
                                                     <span t-esc="dline.residual_amount"
                                                           t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    <t t-if="dline.original_amount and dline.original_amount != dline.residual_amount">
+                                                        <br/>
+                                                        <small class="text-muted"
+                                                               title="Original invoice amount before partial payments">
+                                                            of <span t-esc="dline.original_amount"
+                                                                     t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </small>
+                                                    </t>
                                                 </td>
                                             </tr>
                                         </t>
@@ -270,7 +303,7 @@
                                                 t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                     </td>
                                     <td class="text-end">
-                                        <strong class="text-danger"
+                                        <strong class="text-danger fw-bold"
                                                 t-esc="doc.total_bucket_5"
                                                 t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                     </td>
@@ -297,36 +330,52 @@
                         <div class="mt-4">
                             <h5>Aging Distribution</h5>
                             <t t-if="doc.total_balance">
+                                <!--
+                                    Pre-compute segment percentages to avoid repeated
+                                    division inside each progress-bar element.
+                                -->
+                                <t t-set="pct_not_due" t-value="doc.total_not_due / doc.total_balance * 100"/>
+                                <t t-set="pct_b1" t-value="doc.total_bucket_1 / doc.total_balance * 100"/>
+                                <t t-set="pct_b2" t-value="doc.total_bucket_2 / doc.total_balance * 100"/>
+                                <t t-set="pct_b3" t-value="doc.total_bucket_3 / doc.total_balance * 100"/>
+                                <t t-set="pct_b4" t-value="doc.total_bucket_4 / doc.total_balance * 100"/>
+                                <t t-set="pct_b5" t-value="doc.total_bucket_5 / doc.total_balance * 100"/>
                                 <div class="progress" style="height: 30px;">
+                                    <!-- Not Due segment -->
                                     <div class="progress-bar bg-success" role="progressbar"
-                                         t-att-style="'width: %s%%' % (doc.total_not_due / doc.total_balance * 100)"
-                                         t-att-title="'Not Due: ' + str(doc.total_not_due)">
-                                        Not Due
+                                         t-att-style="'width: %s%%' % pct_not_due"
+                                         t-att-title="'Not Due: %s (%.1f%%)' % (doc.total_not_due, pct_not_due)">
+                                        <t t-if="pct_not_due &gt; 5"><span t-esc="'%.1f%%' % pct_not_due"/></t>
                                     </div>
+                                    <!-- 1-30 days segment -->
                                     <div class="progress-bar bg-info" role="progressbar"
-                                         t-att-style="'width: %s%%' % (doc.total_bucket_1 / doc.total_balance * 100)"
-                                         t-att-title="'1-30: ' + str(doc.total_bucket_1)">
-                                        1-30
+                                         t-att-style="'width: %s%%' % pct_b1"
+                                         t-att-title="'1-30 days: %s (%.1f%%)' % (doc.total_bucket_1, pct_b1)">
+                                        <t t-if="pct_b1 &gt; 5"><span t-esc="'%.1f%%' % pct_b1"/></t>
                                     </div>
+                                    <!-- 31-60 days segment -->
                                     <div class="progress-bar bg-primary" role="progressbar"
-                                         t-att-style="'width: %s%%' % (doc.total_bucket_2 / doc.total_balance * 100)"
-                                         t-att-title="'31-60: ' + str(doc.total_bucket_2)">
-                                        31-60
+                                         t-att-style="'width: %s%%' % pct_b2"
+                                         t-att-title="'31-60 days: %s (%.1f%%)' % (doc.total_bucket_2, pct_b2)">
+                                        <t t-if="pct_b2 &gt; 5"><span t-esc="'%.1f%%' % pct_b2"/></t>
                                     </div>
+                                    <!-- 61-90 days segment -->
                                     <div class="progress-bar bg-secondary" role="progressbar"
-                                         t-att-style="'width: %s%%' % (doc.total_bucket_3 / doc.total_balance * 100)"
-                                         t-att-title="'61-90: ' + str(doc.total_bucket_3)">
-                                        61-90
+                                         t-att-style="'width: %s%%' % pct_b3"
+                                         t-att-title="'61-90 days: %s (%.1f%%)' % (doc.total_bucket_3, pct_b3)">
+                                        <t t-if="pct_b3 &gt; 5"><span t-esc="'%.1f%%' % pct_b3"/></t>
                                     </div>
+                                    <!-- 91-120 days segment -->
                                     <div class="progress-bar bg-warning" role="progressbar"
-                                         t-att-style="'width: %s%%' % (doc.total_bucket_4 / doc.total_balance * 100)"
-                                         t-att-title="'91-120: ' + str(doc.total_bucket_4)">
-                                        91-120
+                                         t-att-style="'width: %s%%' % pct_b4"
+                                         t-att-title="'91-120 days: %s (%.1f%%)' % (doc.total_bucket_4, pct_b4)">
+                                        <t t-if="pct_b4 &gt; 5"><span t-esc="'%.1f%%' % pct_b4"/></t>
                                     </div>
+                                    <!-- 120+ days segment -->
                                     <div class="progress-bar bg-danger" role="progressbar"
-                                         t-att-style="'width: %s%%' % (doc.total_bucket_5 / doc.total_balance * 100)"
-                                         t-att-title="'120+: ' + str(doc.total_bucket_5)">
-                                        120+
+                                         t-att-style="'width: %s%%' % pct_b5"
+                                         t-att-title="'120+ days: %s (%.1f%%)' % (doc.total_bucket_5, pct_b5)">
+                                        <t t-if="pct_b5 &gt; 5"><span t-esc="'%.1f%%' % pct_b5"/></t>
                                     </div>
                                 </div>
                             </t>

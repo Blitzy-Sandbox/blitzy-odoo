@@ -349,16 +349,23 @@ class FinancialReportWizard(models.TransientModel):
             vals['comparison_date_to'] = self.compare_date_to
 
         # --- Common filter pass-through ---
-        if self.journal_ids:
+        # Only pass Many2many fields when the target model declares them;
+        # Odoo 19.0 raises ValueError for unknown field names in create().
+        target_model = self.env[model_name]
+        if self.journal_ids and 'journal_ids' in target_model._fields:
             vals['journal_ids'] = [(6, 0, self.journal_ids.ids)]
-        if self.analytic_account_ids:
+        if (self.analytic_account_ids
+                and 'analytic_account_ids' in target_model._fields):
             vals['analytic_account_ids'] = [
                 (6, 0, self.analytic_account_ids.ids),
             ]
 
-        # Common display options
-        vals['show_hierarchy'] = self.show_hierarchy
-        vals['show_partner_details'] = self.show_partner_details
+        # Display options — only pass to models that define the fields,
+        # since Odoo 19.0 ORM rejects unknown field names on create().
+        if 'show_hierarchy' in target_model._fields:
+            vals['show_hierarchy'] = self.show_hierarchy
+        if 'show_partner_details' in target_model._fields:
+            vals['show_partner_details'] = self.show_partner_details
 
         # --- Report-specific values ---
         if self.report_type == 'general_ledger':

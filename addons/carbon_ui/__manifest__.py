@@ -28,6 +28,7 @@ cascade — zero modifications to Odoo core.
     'depends': ['web'],
     'data': [
         'views/webclient_templates.xml',
+        'views/carbon_assets.xml',
     ],
     'assets': {
         'web._assets_primary_variables': [

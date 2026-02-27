@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================================================
+         Carbon UI — Supplementary Asset Registration
+         ================================================================
+
+         This file provides supplementary XML-based asset configurations
+         for the Carbon UI module. The primary asset bundle definitions
+         are declared in __manifest__.py. This file contains:
+
+           1. carbon_ui.carbon_font_preload — Standalone QWeb template
+              that emits <link rel="preload"> elements for IBM Plex
+              WOFF2 font files. Can be called via t-call from any
+              server-side template to enable early font loading.
+
+           2. carbon_ui.carbon_theme_data — Utility template that emits
+              Carbon Design System theme-related data attributes for
+              runtime theme switching integration.
+
+         Module Isolation Rule:
+           This file defines NEW standalone templates only — it does NOT
+           inherit or modify any templates from addons/web/ or other
+           modules. Template inheritance is handled exclusively in
+           addons/carbon_ui/views/webclient_templates.xml.
+
+         IBM Plex Typography Rule:
+           Fonts are self-hosted in static/lib/ibm-plex/ — no external
+           CDN dependencies. Preload links use WOFF2 format for optimal
+           compression and browser support.
+    -->
+
+    <data noupdate="0">
+
+        <!-- ============================================================
+             1. Carbon Font Preload Template
+             ============================================================
+
+             Emits <link rel="preload"> elements for the three most
+             critical IBM Plex font files used in the Carbon Productive
+             theme:
+
+               - IBMPlexSans-Regular (400) — body text, default weight
+               - IBMPlexSans-SemiBold (600) — headings, emphasis
+               - IBMPlexMono-Regular (400) — code snippets, technical text
+
+             These preload hints instruct the browser to start fetching
+             font files early in the page load waterfall, before the CSS
+             @font-face declarations are parsed. This eliminates the
+             flash of invisible text (FOIT) or flash of unstyled text
+             (FOUT) that would otherwise occur while the browser discovers
+             the fonts through the normal CSS cascade.
+
+             Usage:
+               <t t-call="carbon_ui.carbon_font_preload"/>
+
+             The template can be called from any server-rendered page
+             template (e.g., webclient_bootstrap, login_layout, or
+             frontend_layout) to add font preloading for that page.
+        -->
+        <template id="carbon_ui.carbon_font_preload"
+                  name="Carbon Font Preload">
+            <!-- IBM Plex Sans Regular (400) — primary body typeface -->
+            <link rel="preload"
+                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexSans-Regular.woff2"
+                  as="font"
+                  type="font/woff2"
+                  crossorigin=""/>
+            <!-- IBM Plex Sans SemiBold (600) — headings and emphasis -->
+            <link rel="preload"
+                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexSans-SemiBold.woff2"
+                  as="font"
+                  type="font/woff2"
+                  crossorigin=""/>
+            <!-- IBM Plex Mono Regular (400) — code and technical content -->
+            <link rel="preload"
+                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexMono-Regular.woff2"
+                  as="font"
+                  type="font/woff2"
+                  crossorigin=""/>
+        </template>
+
+        <!-- ============================================================
+             2. Carbon Theme Data Attribute Template
+             ============================================================
+
+             Utility template that provides Carbon Design System theme
+             metadata. This template outputs a data attribute value
+             indicating the currently active Carbon theme.
+
+             Carbon's CSS custom property system uses theme classes
+             (cds_theme_white, cds_theme_g10, cds_theme_g90,
+             cds_theme_g100 with double-hyphen separators) to scope
+             token values. The data attribute below provides a
+             complementary mechanism for JavaScript-based theme
+             detection and switching.
+
+             The runtime theme toggle (carbon_theme_toggle.js) reads
+             this attribute to determine the initial theme and updates
+             it when the user switches between light and dark modes.
+
+             Usage:
+               <t t-call="carbon_ui.carbon_theme_data"/>
+        -->
+        <template id="carbon_ui.carbon_theme_data"
+                  name="Carbon Theme Data">
+            <t t-set="carbon_theme"
+               t-value="'g90' if color_scheme == 'dark' else 'white'"/>
+            <meta name="carbon-theme"
+                  t-att-content="carbon_theme"/>
+        </template>
+
+    </data>
+</odoo>

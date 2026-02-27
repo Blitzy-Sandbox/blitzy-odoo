@@ -2,7 +2,7 @@
 
 {
     'name': 'Carbon UI',
-    'version': '1.0',
+    'version': '19.0.1.0.0',
     'category': 'Hidden',
     'description': """
 IBM Carbon Design System v11 integration for Odoo 19.0 backend UI.
@@ -31,21 +31,45 @@ Zero modifications to Odoo core source code under addons/web/ or odoo/.
     ],
     'assets': {
         # -----------------------------------------------------------------
-        # PRIMARY BACKEND BUNDLE
+        # VARIABLE SUB-BUNDLES — Correct Sass Cascade Position
         # -----------------------------------------------------------------
-        # All Carbon SCSS and OWL components load AFTER Odoo's existing
-        # variable pipeline (primary_variables.scss, secondary_variables.scss,
-        # bootstrap_overridden.scss) to properly cascade and override.
-        'web.assets_backend': [
-            # 1. Vendored pre-compiled CSS (load first as pre-compiled)
-            'carbon_ui/static/lib/carbon-charts/carbon-charts.min.css',
-
-            # 2. SCSS token bridge (load after Odoo's variable pipeline)
-            'carbon_ui/static/src/scss/carbon_tokens.scss',
-            'carbon_ui/static/src/scss/carbon_font_face.scss',
+        # Token and override SCSS files are placed in Odoo's variable
+        # sub-bundles so they are processed BEFORE Bootstrap derives
+        # $primary, $secondary, etc. from the $o-* variables.
+        #
+        # Load order within _assets_helpers:
+        #   1. Bootstrap functions/mixins
+        #   2. Odoo utils.scss
+        #   3. web._assets_primary_variables
+        #      → carbon_tokens.scss (prepended — defines $cds-* first)
+        #      → primary_variables.scss (Odoo, !default guarded)
+        #      → *.variables.scss (Odoo component vars)
+        #      → carbon_primary_overrides.scss (overrides $o-* explicitly)
+        #   4. web._assets_secondary_variables
+        #      → secondary_variables.scss (Odoo, !default guarded)
+        #      → carbon_secondary_overrides.scss (overrides $o-* explicitly)
+        #      → carbon_bootstrap_bridge.scss (maps to Bootstrap $vars)
+        #   5. pre_variables.scss → Bootstrap _variables.scss (reads final values)
+        'web._assets_primary_variables': [
+            ('prepend', 'carbon_ui/static/src/scss/carbon_tokens.scss'),
             'carbon_ui/static/src/scss/carbon_primary_overrides.scss',
+        ],
+        'web._assets_secondary_variables': [
             'carbon_ui/static/src/scss/carbon_secondary_overrides.scss',
             'carbon_ui/static/src/scss/carbon_bootstrap_bridge.scss',
+        ],
+
+        # -----------------------------------------------------------------
+        # PRIMARY BACKEND BUNDLE
+        # -----------------------------------------------------------------
+        # Font faces, utilities, component style overrides, and OWL
+        # components. These load AFTER the variable pipeline and Bootstrap
+        # have been processed, which is correct for CSS rules and classes.
+        'web.assets_backend': [
+            # 1. Font face declarations (CSS @font-face — no variable deps)
+            'carbon_ui/static/src/scss/carbon_font_face.scss',
+
+            # 2. Utility classes (spacing, typography, grid)
             'carbon_ui/static/src/scss/carbon_utilities.scss',
 
             # 3. Component style overrides (load after token bridge)
@@ -84,10 +108,6 @@ Zero modifications to Odoo core source code under addons/web/ or odoo/.
             'carbon_ui/static/src/webclient/carbon_switcher.xml',
             'carbon_ui/static/src/webclient/carbon_theme_toggle.js',
             'carbon_ui/static/src/webclient/carbon_theme_toggle.xml',
-
-            # 5. Remove dark mode files from light bundle
-            ('remove', 'carbon_ui/static/src/scss/carbon_dark_theme.scss'),
-            ('remove', 'carbon_ui/static/src/scss/carbon_dark_components.scss'),
         ],
 
         # -----------------------------------------------------------------
@@ -101,9 +121,12 @@ Zero modifications to Odoo core source code under addons/web/ or odoo/.
         # -----------------------------------------------------------------
         # LAZY-LOADED BUNDLE (Graph/Pivot views)
         # -----------------------------------------------------------------
-        # Vendored D3.js and Carbon Charts JS plus Carbon graph renderer
+        # Vendored D3.js, Carbon Charts CSS/JS, and Carbon graph renderer
         # components are loaded lazily alongside Odoo's graph/pivot views.
+        # Carbon Charts CSS is included here (not in the main backend bundle)
+        # because it is only needed when graph views are displayed.
         'web.assets_backend_lazy': [
+            'carbon_ui/static/lib/carbon-charts/carbon-charts.min.css',
             'carbon_ui/static/lib/d3/d3.min.js',
             'carbon_ui/static/lib/carbon-charts/carbon-charts.min.js',
             'carbon_ui/static/src/views/graph/carbon_graph_renderer.js',

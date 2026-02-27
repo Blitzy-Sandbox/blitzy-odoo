@@ -2,9 +2,10 @@
 // Overrides Odoo $o-* primary design tokens with Carbon equivalents
 // Overrides: addons/web/static/src/scss/primary_variables.scss
 //
-// Load order: Loaded in web._assets_primary_variables AFTER carbon_tokens.scss
-// (prepended) and AFTER Odoo's primary_variables.scss. Explicit declarations
-// (without !default) override Odoo's !default-guarded values.
+// Load order: Loaded in web._assets_primary_variables (appended) AFTER
+// carbon_tokens.scss (prepended), Odoo's primary_variables.scss, and
+// *.variables.scss. Explicit declarations (without !default) override
+// Odoo's !default-guarded values at compile time.
 //
 // All values trace to specific Carbon Design System v11 tokens:
 // - Color: IBM Design Language palette ($cds-gray-*, $cds-blue-*, etc.)
@@ -194,10 +195,10 @@ $o-action: $cds-blue-60;                 // #0f62fe — follows $o-brand-primary
 // Runtime equivalents: --cds-support-success, --cds-support-info,
 // --cds-support-warning, --cds-support-error (from carbon_tokens.scss :root)
 
-$o-success: #24a148;   // Carbon $support-success — Green 50 (was #28a745)
-$o-info: #0043ce;      // Carbon $support-info — Blue 70 (was #17a2b8)
-$o-warning: #f1c21b;   // Carbon $support-warning — Yellow 30 (was #ffac00)
-$o-danger: #da1e28;    // Carbon $support-error — Red 60 (was #dc3545)
+$o-success: $cds-green-50;    // #24a148 — Carbon $support-success (was #28a745)
+$o-info: $cds-blue-70;       // #0043ce — Carbon $support-info (was #17a2b8)
+$o-warning: $cds-yellow-30;  // #f1c21b — Carbon $support-warning (was #ffac00)
+$o-danger: $cds-red-60;      // #da1e28 — Carbon $support-error (was #dc3545)
 
 
 // ============================================================================
@@ -208,10 +209,10 @@ $o-danger: #da1e28;    // Carbon $support-error — Red 60 (was #dc3545)
 // Values derived from IBM Design Language palette at appropriate darkness levels.
 
 $o-theme-text-colors: (
-    "success": #198038,   // Carbon Green 60 — 4.65:1 contrast on white
-    "info": #0043ce,      // Carbon Blue 70 — 7.08:1 contrast on white
-    "warning": #b28600,   // Carbon Yellow 50 — 4.52:1 contrast on white
-    "danger": #da1e28,    // Carbon Red 60 — 4.62:1 contrast on white
+    "success": $cds-green-60,   // #198038 — 4.65:1 contrast on white
+    "info": $cds-blue-70,       // #0043ce — 7.08:1 contrast on white
+    "warning": $cds-yellow-50,  // #b28600 — 4.52:1 contrast on white
+    "danger": $cds-red-60,      // #da1e28 — 4.62:1 contrast on white
 );
 
 
@@ -251,9 +252,9 @@ $o-main-headings-color: $cds-gray-100;  // #161616 (was $o-black)
 // Link text — Carbon $link-primary (Blue 60)
 $o-main-link-color: $cds-blue-60;       // #0f62fe (was darken($o-brand-primary, 5%))
 // Favorite star — Carbon Yellow 30
-$o-main-favorite-color: #f1c21b;        // Carbon Yellow 30 (was #f3cc00)
+$o-main-favorite-color: $cds-yellow-30;  // #f1c21b (was #f3cc00)
 // Code text — Carbon Purple 50
-$o-main-code-color: #a56eff;            // Carbon Purple 50 (was #d2317b)
+$o-main-code-color: $cds-purple-50;      // #a56eff (was #d2317b)
 
 
 // ============================================================================
@@ -408,42 +409,42 @@ $o-touch-btn-with-icon-padding: 11px 12px;     // Carbon with icon (was 7px 10px
 
 $o-btns-bs-override: (
     "primary": (
-        background: $cds-blue-60,         // #0f62fe — Carbon $button-primary
-        border: $cds-blue-60,             // #0f62fe
-        color: #ffffff,                    // Carbon $text-on-color
+        background: $cds-blue-60,                   // #0f62fe — Carbon $button-primary
+        border: $cds-blue-60,                       // #0f62fe
+        color: $o-white,                             // #ffffff — Carbon $text-on-color
 
-        hover-background: #0353e9,         // Carbon $button-primary-hover
-        hover-border: #0353e9,
-        hover-color: #ffffff,
+        hover-background: $cds-button-primary-hover, // #0353e9
+        hover-border: $cds-button-primary-hover,     // #0353e9
+        hover-color: $o-white,                       // #ffffff
 
-        active-background: #002d9c,        // Carbon $button-primary-active (Blue 80)
-        active-border: #002d9c,
-        active-color: #ffffff,
+        active-background: $cds-button-primary-active, // #002d9c (Blue 80)
+        active-border: $cds-button-primary-active,     // #002d9c
+        active-color: $o-white,                        // #ffffff
     ),
     "secondary": (
-        background: $cds-gray-80,         // #393939 — Carbon $button-secondary
-        border: $cds-gray-80,             // #393939
-        color: #ffffff,                    // Carbon $text-on-color
+        background: $cds-gray-80,                      // #393939 — Carbon $button-secondary
+        border: $cds-gray-80,                          // #393939
+        color: $o-white,                               // #ffffff — Carbon $text-on-color
 
-        hover-background: #4c4c4c,         // Carbon $button-secondary-hover
-        hover-border: #4c4c4c,
-        hover-color: #ffffff,
+        hover-background: $cds-button-secondary-hover, // #4c4c4c
+        hover-border: $cds-button-secondary-hover,     // #4c4c4c
+        hover-color: $o-white,                         // #ffffff
 
-        active-background: $cds-gray-60,   // #6f6f6f — Carbon $button-secondary-active
-        active-border: $cds-gray-60,
-        active-color: #ffffff,
+        active-background: $cds-button-secondary-active, // #6f6f6f (Gray 60)
+        active-border: $cds-button-secondary-active,     // #6f6f6f
+        active-color: $o-white,                          // #ffffff
     ),
     "light": (
-        background: $cds-gray-20,         // #e0e0e0 — Carbon layer-accent
-        border: $cds-gray-20,             // #e0e0e0
-        color: $cds-gray-100,             // #161616 — Carbon $text-primary
+        background: $cds-gray-20,                        // #e0e0e0 — Carbon layer-accent
+        border: $cds-gray-20,                            // #e0e0e0
+        color: $cds-gray-100,                            // #161616 — Carbon $text-primary
 
-        hover-background: #d1d1d1,         // Carbon $layer-selected-hover-01
-        hover-border: #d1d1d1,
-        hover-color: $cds-gray-100,        // #161616
+        hover-background: $cds-layer-selected-hover-01,  // #d1d1d1
+        hover-border: $cds-layer-selected-hover-01,      // #d1d1d1
+        hover-color: $cds-gray-100,                      // #161616
 
-        active-background: $cds-gray-30,   // #c6c6c6 — Carbon $layer-active
-        active-border: $cds-gray-30,
-        active-color: $cds-gray-100,       // #161616
+        active-background: $cds-gray-30,                 // #c6c6c6 — Carbon $layer-active
+        active-border: $cds-gray-30,                     // #c6c6c6
+        active-color: $cds-gray-100,                     // #161616
     ),
 );

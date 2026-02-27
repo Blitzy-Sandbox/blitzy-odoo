@@ -469,13 +469,17 @@
 // The Sass compiler passes var() through as-is into the generated CSS, so
 // these values resolve at runtime in the browser when the dark bundle loads.
 
-// Core surface and text colors — tied to Carbon dark tokens via var()
-$o-webclient-background-color: var(--cds-background) !default;
-$o-view-background-color: var(--cds-layer-01) !default;
-$o-main-text-color: var(--cds-text-primary) !default;
-$o-main-color-muted: var(--cds-text-secondary) !default;
-$o-main-headings-color: var(--cds-text-primary) !default;
-$o-main-link-color: var(--cds-link-primary) !default;
+// Core surface and text colors — tied to Carbon dark tokens via var().
+// These override the light-mode Sass values set in carbon_primary_overrides.scss
+// and carbon_secondary_overrides.scss. The var() expressions pass through the
+// Sass compiler and resolve at runtime in the browser, picking up the G90 dark
+// token values from the :root re-declarations above.
+$o-webclient-background-color: var(--cds-background);
+$o-view-background-color: var(--cds-layer-01);
+$o-main-text-color: var(--cds-text-primary);
+$o-main-color-muted: var(--cds-text-secondary);
+$o-main-headings-color: var(--cds-text-primary);
+$o-main-link-color: var(--cds-link-primary);
 
 
 // ============================================================================

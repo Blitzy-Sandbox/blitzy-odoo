@@ -2,9 +2,9 @@
 // Overrides Odoo $o-* secondary variables with Carbon token values
 // Overrides: addons/web/static/src/scss/secondary_variables.scss
 //
-// Load order: Loaded in web.assets_backend AFTER carbon_primary_overrides.scss
-// and AFTER Odoo's secondary_variables.scss. Explicit declarations (without
-// !default) take precedence over Odoo's !default-guarded values.
+// Load order: Loaded in web._assets_secondary_variables (appended) AFTER
+// Odoo's secondary_variables.scss. Explicit declarations (without !default)
+// take precedence over Odoo's !default-guarded values.
 //
 // Dependencies (loaded before this file via asset bundle ordering):
 //   carbon_tokens.scss     — $cds-* Sass variables, --cds-* CSS custom properties
@@ -37,7 +37,7 @@
 // Runtime equivalent: var(--cds-background)
 // CHANGED from Odoo default $o-gray-100 (#f8f9fa → #f4f4f4 after primary
 // overrides) to pure white per AAP §0.5.3 token mapping table.
-$o-webclient-background-color: #ffffff;
+$o-webclient-background-color: $o-white;
 
 // View background — Carbon $layer-01 (Gray 10: #f4f4f4)
 // Runtime equivalent: var(--cds-layer-01)
@@ -87,24 +87,23 @@ $o-form-separator-color: $cds-gray-20;
 // $text-on-color (#ffffff), every combination meets or exceeds the 4.5:1
 // contrast ratio for normal text (AAP §0.8.4).
 //
-// Orange swatch values (#ff832b, #eb6200, #ba4e00) are sourced from the IBM
+// Orange swatch values ($cds-orange-40/50/60) are sourced from the IBM
 // Design Language Orange palette and the Carbon --cds-support-caution-major
-// token. No $cds-orange-* Sass variables are defined in carbon_tokens.scss,
-// so hex literals are used with this explanatory annotation.
-// /* BLITZY [DESIGN_SYSTEM_GAP]: Orange swatch Sass variables not available
-//    in carbon_tokens.scss. Using IBM Design Language hex values directly.
-//    Alternative: Define $cds-orange-* variables in carbon_tokens.scss. */
+// token. Custom $cds-orange-* Sass variables are defined in carbon_tokens.scss
+// Section 5d to maintain single-source-of-truth for these non-standard tokens.
+// BLITZY [DESIGN_SYSTEM_GAP]: Carbon Design System does not include an Orange
+// swatch in its standard palette. $cds-orange-* are custom extensions.
 
 // Primary UI colors — 12 values (same count as Odoo original)
 // Each color maps to a specific IBM Design Language swatch and step.
 $o-colors:
     $cds-gray-40,       // #a8a8a8 — Gray 40 (neutral)
     $cds-red-60,        // #da1e28 — Red 60 (error / $support-error)
-    #ff832b,            // Orange 40 (caution / $support-caution-major)
+    $cds-orange-40,     // #ff832b — Orange 40 (caution / $support-caution-major)
     $cds-yellow-30,     // #f1c21b — Yellow 30 ($support-warning)
     $cds-blue-50,       // #4589ff — Blue 50 (info)
     $cds-purple-50,     // #a56eff — Purple 50
-    #ff832b,            // Orange 40 (repeat — mirrors original pattern)
+    $cds-orange-40,     // #ff832b — Orange 40 (repeat — mirrors original pattern)
     $cds-teal-40,       // #08bdba — Teal 40
     $cds-blue-60,       // #0f62fe — Blue 60 ($interactive)
     $cds-magenta-50,    // #ee5396 — Magenta 50
@@ -141,12 +140,12 @@ $o-colors-secondary:
     $cds-blue-60,       // #0f62fe — Blue 60
     $cds-purple-50,     // #a56eff — Purple 50
     $cds-red-60,        // #da1e28 — Red 60
-    #ff832b,            // Orange 40 ($support-caution-major)
+    $cds-orange-40,     // #ff832b — Orange 40 ($support-caution-major)
     $cds-cyan-60,       // #0072c3 — Cyan 60
     $cds-blue-40,       // #78a9ff — Blue 40
     $cds-blue-70,       // #0043ce — Blue 70
     $cds-magenta-40,    // #ff7eb6 — Magenta 40
-    #eb6200,            // Orange 50 (IBM Design Language)
+    $cds-orange-50,     // #eb6200 — Orange 50 (IBM Design Language)
     $cds-teal-40,       // #08bdba — Teal 40
     $cds-cyan-30,       // #82cfff — Cyan 30
     $cds-blue-30,       // #a6c8ff — Blue 30
@@ -155,7 +154,7 @@ $o-colors-secondary:
     $cds-green-70,      // #0e6027 — Green 70
     $cds-cyan-70,       // #00539a — Cyan 70
     $cds-teal-30,       // #3ddbd9 — Teal 30
-    #ba4e00,            // Orange 60 (IBM Design Language)
+    $cds-orange-60,     // #ba4e00 — Orange 60 (IBM Design Language)
     $cds-red-30,        // #ffb3b8 — Red 30
     $cds-cool-gray-60,  // #697077 — Cool Gray 60
     $cds-purple-30,     // #d4bbff — Purple 30

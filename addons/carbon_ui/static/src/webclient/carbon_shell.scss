@@ -1,0 +1,553 @@
+// ==========================================================================
+// Carbon UI Shell — Layout Styles
+// ==========================================================================
+//
+// Transforms the Odoo webclient from a vertical stack layout
+// (NavBar on top → content below) to Carbon's three-zone layout:
+//   1. Fixed header (48px) at top
+//   2. Collapsible side-rail (256px / 48px) on left
+//   3. Main content area on right
+//
+// All color values use Carbon CSS custom properties (--cds-*).
+// All spacing follows Carbon's spacing scale tokens.
+// Responsive breakpoints follow Carbon's grid system:
+//   sm = 320px, md = 672px, lg = 1056px, xlg = 1312px, max = 1584px
+//
+// z-index hierarchy:
+//   Content:  0       (base level)
+//   SideNav:  6000    (below header, above content)
+//   Header:   8000    (above side-nav)
+//   Overlay:  7000    (between sidenav and header for mobile overlay)
+//   Modals:   9000+   (above everything — managed by Odoo dialog system)
+// ==========================================================================
+
+
+// --------------------------------------------------------------------------
+// 1. Root Shell Container
+// --------------------------------------------------------------------------
+
+.cds--ui-shell {
+    display: flex;
+    flex-direction: column;
+    block-size: 100vh;
+    block-size: 100dvh; // Progressive enhancement for mobile viewports
+    inline-size: 100%;
+    overflow: hidden;
+    background-color: var(--cds-background);
+    color: var(--cds-text-primary);
+}
+
+
+// --------------------------------------------------------------------------
+// 2. Skip-to-Content Link (Accessibility)
+// --------------------------------------------------------------------------
+
+.cds--skip-to-content {
+    position: absolute;
+    overflow: hidden;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+
+    &:focus-visible {
+        position: fixed;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        z-index: 9999;
+        inline-size: auto;
+        block-size: auto;
+        padding: var(--cds-spacing-03) var(--cds-spacing-05);
+        margin: 0;
+        clip: auto;
+        overflow: visible;
+        background-color: var(--cds-background-brand);
+        color: var(--cds-text-on-color);
+        font-size: var(--cds-body-compact-01-font-size);
+        font-weight: 600;
+        line-height: var(--cds-body-compact-01-line-height);
+        letter-spacing: var(--cds-body-compact-01-letter-spacing);
+        text-decoration: none;
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+    }
+}
+
+
+// --------------------------------------------------------------------------
+// 3. Header — Fixed Top Bar (48px)
+// --------------------------------------------------------------------------
+
+.cds--header {
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    block-size: 48px;
+    z-index: 8000;
+    display: flex;
+    align-items: center;
+    background-color: var(--cds-background);
+    border-block-end: 1px solid var(--cds-border-subtle);
+    color: var(--cds-text-primary);
+}
+
+// Header action utility buttons (notifications, user, company, etc.)
+.cds--header__action {
+    inline-size: 48px;
+    block-size: 48px;
+    min-inline-size: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--cds-icon-secondary);
+    padding: 0;
+
+    @media (hover: hover) {
+        &:hover {
+            background-color: var(--cds-background-hover);
+            color: var(--cds-text-primary);
+        }
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+    }
+
+    &:active {
+        background-color: var(--cds-background-active);
+    }
+
+    &[aria-expanded="true"] {
+        background-color: var(--cds-layer-01);
+    }
+
+    // Icon sizing within action buttons
+    svg,
+    .cds--header__action-icon {
+        fill: currentColor;
+        inline-size: 20px;
+        block-size: 20px;
+        pointer-events: none;
+    }
+}
+
+// Hamburger menu trigger button
+.cds--header__menu-trigger {
+    inline-size: 48px;
+    block-size: 48px;
+    min-inline-size: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--cds-icon-secondary);
+    padding: 0;
+
+    @media (hover: hover) {
+        &:hover {
+            background-color: var(--cds-background-hover);
+            color: var(--cds-text-primary);
+        }
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+    }
+
+    &:active {
+        background-color: var(--cds-background-active);
+    }
+
+    &[aria-expanded="true"] {
+        background-color: var(--cds-layer-01);
+    }
+
+    svg {
+        fill: currentColor;
+        inline-size: 20px;
+        block-size: 20px;
+        pointer-events: none;
+    }
+}
+
+// Product / application name area
+.cds--header__name {
+    display: flex;
+    align-items: center;
+    block-size: 100%;
+    padding-inline: var(--cds-spacing-05);
+    font-size: var(--cds-body-compact-01-font-size);
+    font-weight: 600;
+    line-height: var(--cds-body-compact-01-line-height);
+    letter-spacing: var(--cds-body-compact-01-letter-spacing);
+    text-decoration: none;
+    color: var(--cds-text-primary);
+    white-space: nowrap;
+    user-select: none;
+    border: 2px solid transparent;
+
+    &:focus-visible {
+        outline: none;
+        border-color: var(--cds-focus);
+    }
+}
+
+// Separator between product prefix and name text
+.cds--header__name--prefix {
+    font-weight: 400;
+}
+
+.cds--header__name--separator {
+    padding-inline-end: var(--cds-spacing-02);
+}
+
+// Search area (positioned center of header)
+.cds--header__search {
+    flex: 1 1 auto;
+    max-inline-size: 480px;
+    margin-inline: auto;
+    display: flex;
+    align-items: center;
+    block-size: 100%;
+    padding-inline: var(--cds-spacing-03);
+}
+
+// Right-side global utility area (notifications, user menu, company switcher)
+.cds--header__global {
+    display: flex;
+    align-items: center;
+    margin-inline-start: auto;
+    block-size: 100%;
+}
+
+// Notification badge on header action buttons
+.cds--header__action-badge {
+    position: absolute;
+    inset-block-start: 8px;
+    inset-inline-end: 8px;
+    inline-size: 8px;
+    block-size: 8px;
+    border-radius: 50%;
+    background-color: var(--cds-support-error);
+    pointer-events: none;
+}
+
+// Wrapper for action buttons with badges
+.cds--header__action-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+// --------------------------------------------------------------------------
+// 4. Header Panel / Switcher Panel
+// --------------------------------------------------------------------------
+
+.cds--header__panel {
+    position: fixed;
+    inset-block-start: 48px;
+    inset-inline-end: 0;
+    inset-block-end: 0;
+    inline-size: 256px;
+    z-index: 7000;
+    background-color: var(--cds-layer-01);
+    border-inline-start: 1px solid var(--cds-border-subtle);
+    overflow-y: auto;
+    transform: translateX(100%);
+
+    @media (prefers-reduced-motion: no-preference) {
+        transition: transform 200ms ease;
+    }
+
+    &--expanded {
+        transform: translateX(0);
+    }
+}
+
+// Panel overlay backdrop for mobile
+.cds--header__panel-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 6500;
+    background-color: var(--cds-overlay);
+    opacity: 0;
+    pointer-events: none;
+
+    @media (prefers-reduced-motion: no-preference) {
+        transition: opacity 200ms ease;
+    }
+
+    &--active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+
+// --------------------------------------------------------------------------
+// 5. Content Area — Main Content Zone
+// --------------------------------------------------------------------------
+
+.cds--content {
+    margin-block-start: 48px;
+    margin-inline-start: 256px;
+    block-size: calc(100vh - 48px);
+    block-size: calc(100dvh - 48px); // Progressive enhancement
+    overflow: auto;
+    flex: 1 1 auto;
+    background-color: var(--cds-background);
+
+    @media (prefers-reduced-motion: no-preference) {
+        transition: margin-inline-start 200ms ease;
+    }
+}
+
+// Content when side-nav is in rail mode (48px collapsed rail)
+.cds--content--rail {
+    margin-inline-start: 48px;
+}
+
+// Content when side-nav is hidden (mobile or fullscreen mode)
+.cds--content--full {
+    margin-inline-start: 0;
+}
+
+// Content area inner wrapper for Odoo's action container
+.cds--content__inner {
+    display: flex;
+    flex-direction: column;
+    block-size: 100%;
+    inline-size: 100%;
+    overflow: hidden;
+}
+
+
+// --------------------------------------------------------------------------
+// 6. Responsive Layout — Carbon Breakpoints
+// --------------------------------------------------------------------------
+
+// Small breakpoint: below Carbon md (< 672px) — sidenav fully hidden
+@media (max-width: 671px) {
+    .cds--content {
+        margin-inline-start: 0;
+    }
+
+    // Collapse search to icon-only at small viewports
+    .cds--header__search {
+        flex: 0 0 auto;
+        max-inline-size: none;
+        margin-inline: 0;
+        padding-inline: 0;
+    }
+
+    // Hide app name details, show prefix only
+    .cds--header__name--separator,
+    .cds--header__name span:last-child {
+        display: none;
+    }
+
+    // Header panel takes full width on mobile
+    .cds--header__panel {
+        inline-size: 100%;
+    }
+}
+
+// Medium breakpoint: Carbon md (672px – 1055px) — rail mode
+@media (min-width: 672px) and (max-width: 1055px) {
+    .cds--content {
+        margin-inline-start: 48px;
+    }
+
+    // Constrain search bar at medium viewport
+    .cds--header__search {
+        max-inline-size: 320px;
+    }
+}
+
+// Large breakpoint: Carbon lg (≥ 1056px) — full expanded sidenav
+@media (min-width: 1056px) {
+    .cds--content {
+        margin-inline-start: 256px;
+    }
+
+    .cds--header__search {
+        max-inline-size: 480px;
+    }
+}
+
+// X-Large breakpoint: Carbon xlg (≥ 1312px) — wider search
+@media (min-width: 1312px) {
+    .cds--header__search {
+        max-inline-size: 576px;
+    }
+}
+
+// Max breakpoint: Carbon max (≥ 1584px) — maximum search width
+@media (min-width: 1584px) {
+    .cds--header__search {
+        max-inline-size: 640px;
+    }
+}
+
+
+// --------------------------------------------------------------------------
+// 7. Print Media — Hide All Navigation
+// --------------------------------------------------------------------------
+
+@media print {
+    .cds--header,
+    .cds--header__panel,
+    .cds--header__panel-overlay {
+        display: none;
+    }
+
+    // Side navigation (class names used by carbon_sidenav.scss)
+    .cds--side-nav,
+    .cds--side-rail {
+        display: none;
+    }
+
+    .cds--content,
+    .cds--content--rail,
+    .cds--content--full {
+        margin-block-start: 0;
+        margin-inline-start: 0;
+        block-size: auto;
+        overflow: visible;
+        transition: none;
+    }
+
+    // Ensure Odoo's original print behavior is preserved
+    .cds--ui-shell {
+        block-size: auto;
+        overflow: visible;
+    }
+
+    .cds--skip-to-content {
+        display: none;
+    }
+}
+
+
+// --------------------------------------------------------------------------
+// 8. Integration with Odoo's Existing Layout
+// --------------------------------------------------------------------------
+
+// Hide the original Odoo navbar — Carbon Header + SideNav replaces it.
+// Scoped under .cds--ui-shell for specificity without !important.
+// If template inheritance is also used (preferred), this acts as a safe
+// CSS fallback to ensure the old navbar never renders visually.
+.cds--ui-shell .o_main_navbar {
+    position: absolute;
+    overflow: hidden;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+// Odoo webclient container within Carbon shell content area
+// Preserves the original flex-column layout from webclient_layout.scss:
+//   .o_web_client: display: flex, flex-flow: column nowrap, overflow: hidden
+.cds--content .o_web_client {
+    display: flex;
+    flex-flow: column nowrap;
+    block-size: 100%;
+    overflow: hidden;
+}
+
+// Odoo action manager fills the content area
+// Preserves original: flex: 1 1 auto, height: 100%, overflow: hidden
+.cds--content .o_action_manager {
+    flex: 1 1 auto;
+    block-size: 100%;
+    overflow: hidden;
+}
+
+// Ensure Odoo action views fill available space within Carbon content
+.cds--content .o_action {
+    display: flex;
+    flex-direction: column;
+    block-size: 100%;
+    overflow: hidden;
+}
+
+// Control panel styling within Carbon layout
+.cds--content .o_control_panel {
+    flex: 0 0 auto;
+}
+
+// View content fills remaining space below control panel
+.cds--content .o_content {
+    flex: 1 1 auto;
+    overflow: auto;
+}
+
+// Mobile scroll delegation (matching Odoo's original breakpoint pattern)
+// At small viewports, delegate scrolling to individual view content areas
+@media (max-width: 671px) {
+    .cds--content .o_action_manager {
+        overflow: visible;
+    }
+
+    .cds--content .o_action {
+        overflow: visible;
+        block-size: auto;
+        min-block-size: 100%;
+    }
+}
+
+
+// --------------------------------------------------------------------------
+// 9. Reduced Motion Support
+// --------------------------------------------------------------------------
+
+@media (prefers-reduced-motion: reduce) {
+    .cds--content,
+    .cds--header__panel,
+    .cds--header__panel-overlay {
+        transition: none;
+    }
+}
+
+
+// --------------------------------------------------------------------------
+// 10. High Contrast Mode Support
+// --------------------------------------------------------------------------
+
+@media screen and (forced-colors: active) {
+    .cds--header {
+        border-block-end: 1px solid ButtonText;
+    }
+
+    .cds--header__action,
+    .cds--header__menu-trigger {
+        &:focus-visible {
+            outline: 2px solid Highlight;
+        }
+    }
+
+    .cds--header__panel {
+        border-inline-start: 1px solid ButtonText;
+    }
+
+    .cds--skip-to-content:focus-visible {
+        outline: 2px solid Highlight;
+    }
+}

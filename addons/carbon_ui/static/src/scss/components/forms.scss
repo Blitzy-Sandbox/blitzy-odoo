@@ -1,1 +1,771 @@
-// Placeholder - to be implemented by assigned agent
+// Carbon Design System v11 — Form Controls Component Override
+// Applies Carbon TextInput, NumberInput, TextArea, Select styling to Odoo forms
+//
+// Targets: .o_form_view, .o_field_widget, .o_input, .o_form_sheet, .o_inner_group
+// Depends on: carbon_tokens.scss for --cds-* CSS custom properties
+//
+// Carbon Form Pattern:
+//   - Label-above: Labels positioned ABOVE fields (not inline left) on small screens
+//   - Bottom border only: Text inputs use bottom border, not full box border
+//   - 40px field height (md size): Standard Carbon TextInput height
+//   - Helper text: Below field, 12px, Gray 60
+//   - Validation states: Red border + error text for invalid, blue for required
+//   - Focus: 2px inset underline using --cds-focus token
+//
+// Token consumption (all from carbon_tokens.scss :root):
+//   --cds-text-primary, --cds-text-secondary, --cds-text-disabled,
+//   --cds-text-error, --cds-field-01, --cds-layer-01,
+//   --cds-border-strong-01, --cds-border-subtle-01, --cds-border-interactive,
+//   --cds-focus, --cds-support-error, --cds-spacing-03, --cds-spacing-05,
+//   --cds-spacing-07
+//
+// Sass Compatibility: libsass-safe — uses only var() for custom property
+// consumption, no @use/@forward or Dart Sass-only features.
+// Sass variables ($cds-*) from carbon_tokens.scss are used for breakpoints
+// and compile-time calculations only.
+
+// ============================================================================
+// SECTION 1: Form View Container — Base Typography
+// ============================================================================
+// Root container for all form views. Applies Carbon Productive body-compact-01
+// typography globally so all descendants inherit the correct type scale.
+
+.o_form_view {
+  color: var(--cds-text-primary);
+  font-size: 0.875rem; // 14px — Carbon body-compact-01
+  line-height: 1.29; // Carbon Productive body-compact-01 (18px / 14px)
+  letter-spacing: 0.16px; // Carbon body-compact-01 letter-spacing
+
+  // Placeholder text should use Carbon placeholder token
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--cds-text-placeholder);
+    opacity: 1; // Override Bootstrap's default placeholder opacity
+  }
+}
+
+// ============================================================================
+// SECTION 2: Form Sheet — Content Area
+// ============================================================================
+// The .o_form_sheet is the main content card within a form view. Carbon uses
+// layer-01 background with generous padding and no decorative borders/shadows.
+
+.o_form_view .o_form_sheet {
+  background-color: var(--cds-layer-01);
+  border: none;
+  box-shadow: none;
+  border-radius: 0; // Carbon default: sharp corners
+
+  // Carbon spacing-07 (32px) padding — generous breathing room for form fields
+  // These override the Odoo CSS custom properties used by the form sheet.
+  --formView-sheet-padding-y: var(--cds-spacing-07);
+  --formView-sheet-padding-x: var(--cds-spacing-07);
+
+  // Override the responsive variants to maintain consistent Carbon spacing
+  --formView-sheet-padding-y-md: var(--cds-spacing-07);
+  --formView-sheet-padding-x-md: var(--cds-spacing-07);
+  --formView-sheet-padding-y-lg: var(--cds-spacing-07);
+  --formView-sheet-padding-x-lg: var(--cds-spacing-07);
+  --formView-sheet-padding-y-xxl: var(--cds-spacing-07);
+  --formView-sheet-padding-x-xxl: var(--cds-spacing-07);
+
+  // Carbon forms have no sheet border — override Odoo's border approach
+  --formView-sheet-border-width: 0;
+  --formView-sheet-border-width-md: 0;
+  --formView-sheet-border-radius: 0;
+  --formView-sheet-border-radius-md: 0;
+}
+
+// Sheet background area adopts Carbon layer token
+.o_form_view .o_form_sheet_bg {
+  background-color: var(--cds-background);
+}
+
+// No-sheet variant (settings forms etc.) — also Carbon styled
+.o_form_view.o_form_nosheet,
+.o_form_view .o_form_nosheet {
+  background-color: var(--cds-background);
+  padding: var(--cds-spacing-07) var(--cds-spacing-05);
+}
+
+// ============================================================================
+// SECTION 3: Inner Group Layout — Carbon Grid Spacing
+// ============================================================================
+// .o_inner_group uses CSS grid. We apply Carbon spacing tokens to the grid gap
+// and ensure consistent column configuration with Carbon breakpoints.
+
+.o_form_view .o_inner_group {
+  gap: var(--cds-spacing-05); // 16px row and column gap — Carbon spacing-05
+  margin-bottom: var(--cds-spacing-05); // 16px bottom margin
+}
+
+// Desktop label-left layout — label column with Carbon-scaled min width
+@media (min-width: $cds-breakpoint-md) {
+  .o_form_view .o_inner_group {
+    grid-template-columns: fit-content(160px) minmax(0, 1fr);
+  }
+}
+
+// Small screens — single column layout for label-above pattern
+@media (max-width: $cds-breakpoint-md - 1) {
+  .o_form_view .o_inner_group {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--cds-spacing-03) 0; // 8px row gap, no column gap
+  }
+}
+
+// ============================================================================
+// SECTION 4: Form Labels — Carbon label-01 Typography
+// ============================================================================
+// Carbon label-01: 12px / 16px / 400 / 0.32px letter-spacing
+// Labels use text-secondary for softer contrast against field values.
+
+.o_form_view .o_form_label,
+.o_form_view .o_wrap_label label {
+  font-size: 0.75rem; // 12px — Carbon label-01
+  line-height: 1.33; // Carbon label-01 (16px / 12px)
+  letter-spacing: 0.32px; // Carbon label-01
+  font-weight: 400; // Carbon label-01 — normal weight
+  color: var(--cds-text-secondary);
+  margin-bottom: var(--cds-spacing-03); // 8px gap below label
+}
+
+// Ensure labels inside .o_group also receive Carbon label-01 weight.
+// Odoo core uses .o_form_view .o_group .o_wrap_label .o_form_label { font-weight: 500/600 }
+// at specificity 0-4-0, so we must match that specificity to override.
+.o_form_view .o_group .o_wrap_label .o_form_label,
+.o_form_view .o_group .o_form_label {
+  font-size: 0.75rem; // Carbon label-01
+  line-height: 1.33;
+  letter-spacing: 0.32px;
+  font-weight: 400; // Carbon label-01 — normal weight, NOT semibold
+  color: var(--cds-text-secondary);
+  margin-bottom: var(--cds-spacing-03); // 8px
+}
+
+// Dimmed labels for empty/false/readonly fields
+.o_form_view .o_form_label.o_form_label_empty,
+.o_form_view .o_form_label.o_form_label_false,
+.o_form_view .o_form_label.o_form_label_readonly {
+  color: var(--cds-text-disabled);
+  font-weight: 400;
+}
+
+// ============================================================================
+// SECTION 5: Text Inputs — Carbon TextInput (Bottom Border Pattern)
+// ============================================================================
+// Carbon TextInput anatomy:
+//   - 40px height (md size)
+//   - field-01 background
+//   - Bottom border only (1px solid border-strong-01)
+//   - 16px horizontal padding (spacing-05)
+//   - body-compact-01 typography
+//   - Focus: 2px inset underline with --cds-focus color
+
+.o_form_view .o_field_widget .o_input,
+.o_form_view .o_field_widget input[type="text"],
+.o_form_view .o_field_widget input[type="number"],
+.o_form_view .o_field_widget input[type="email"],
+.o_form_view .o_field_widget input[type="tel"],
+.o_form_view .o_field_widget input[type="url"],
+.o_form_view .o_field_widget input[type="password"],
+.o_form_view .o_field_widget .o_input_dropdown > input,
+.o_form_view .o_field_widget select.o_input {
+  height: 2.5rem; // 40px — Carbon md field height
+  padding: 0 var(--cds-spacing-05); // 16px horizontal padding
+  font-size: 0.875rem; // 14px — body-compact-01
+  line-height: 1.29; // Carbon Productive body-compact-01
+  letter-spacing: 0.16px;
+  color: var(--cds-text-primary);
+  background-color: var(--cds-field-01);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01); // Carbon bottom-border-only
+  border-radius: 0; // Carbon sharp corners for inputs
+  outline: none;
+  box-shadow: none; // Remove Bootstrap box-shadow
+  transition: border-color $cds-motion-duration-fast-01 $cds-motion-productive,
+              box-shadow $cds-motion-duration-fast-01 $cds-motion-productive;
+
+  // --- Focus State ---
+  // Carbon 2px inset bottom underline using focus token
+  &:focus,
+  &:focus-visible {
+    border-bottom-color: var(--cds-focus);
+    box-shadow: inset 0 -2px 0 0 var(--cds-focus);
+    outline: none;
+  }
+
+  // --- Hover State ---
+  // Inside @media (hover: hover) to prevent sticky hover on touch devices
+  @media (hover: hover) {
+    &:hover:not(:focus):not(:disabled):not([readonly]) {
+      background-color: var(--cds-field-hover-01);
+    }
+  }
+
+  // --- Disabled State ---
+  &:disabled,
+  &[disabled] {
+    background-color: transparent;
+    border-bottom-color: transparent;
+    color: var(--cds-text-disabled);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  // --- Read-only State ---
+  &[readonly] {
+    background-color: transparent;
+    border-bottom-color: transparent;
+    color: var(--cds-text-primary);
+    cursor: default;
+    box-shadow: none;
+  }
+}
+
+// Remove the default Odoo transparent border for non-focused inputs in form view.
+// Carbon always shows the bottom border in edit mode.
+.o_form_view:not(.o_field_highlight) .o_field_widget:not(.o_field_invalid):not(.o_field_highlight) .o_input:not(:hover):not(:focus) {
+  --o-input-border-color: var(--cds-border-strong-01);
+}
+
+// ============================================================================
+// SECTION 6: Textarea — Carbon TextArea
+// ============================================================================
+// TextArea follows the same bottom-border pattern but with auto height,
+// vertical padding, and vertical resize.
+
+.o_form_view .o_field_widget textarea,
+.o_form_view .o_field_widget textarea.o_input {
+  height: auto;
+  min-height: 2.5rem; // 40px minimum
+  padding: var(--cds-spacing-03) var(--cds-spacing-05); // 8px vertical, 16px horizontal
+  resize: vertical;
+  font-size: 0.875rem;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-primary);
+  background-color: var(--cds-field-01);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  transition: border-color $cds-motion-duration-fast-01 $cds-motion-productive,
+              box-shadow $cds-motion-duration-fast-01 $cds-motion-productive;
+
+  &:focus,
+  &:focus-visible {
+    border-bottom-color: var(--cds-focus);
+    box-shadow: inset 0 -2px 0 0 var(--cds-focus);
+    outline: none;
+  }
+
+  @media (hover: hover) {
+    &:hover:not(:focus):not(:disabled):not([readonly]) {
+      background-color: var(--cds-field-hover-01);
+    }
+  }
+
+  &:disabled,
+  &[disabled] {
+    background-color: transparent;
+    border-bottom-color: transparent;
+    color: var(--cds-text-disabled);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  &[readonly] {
+    background-color: transparent;
+    border-bottom-color: transparent;
+    color: var(--cds-text-primary);
+    cursor: default;
+    box-shadow: none;
+  }
+}
+
+// ============================================================================
+// SECTION 7: Validation States — Carbon Error Pattern
+// ============================================================================
+// Carbon error state: red bottom border + 2px inset shadow with support-error.
+// Error helper text renders below the field at 12px in text-error color.
+
+.o_form_view .o_field_invalid .o_input,
+.o_form_view .o_field_invalid input,
+.o_form_view .o_field_invalid textarea,
+.o_form_view .o_field_invalid select {
+  border-bottom-color: var(--cds-support-error);
+  box-shadow: inset 0 -2px 0 0 var(--cds-support-error);
+}
+
+// Error helper text styling — applied to validation messages rendered near fields
+.o_form_view .o_field_invalid .o_field_translate,
+.o_form_view .o_form_label.o_field_invalid {
+  color: var(--cds-text-error);
+}
+
+// ============================================================================
+// SECTION 8: Required Field Indicator — Carbon Interactive Border
+// ============================================================================
+// Required fields in Carbon are indicated with a blue (interactive) bottom
+// border to distinguish them from optional fields with gray borders.
+
+.o_form_view .o_form_required .o_input,
+.o_form_view .o_form_required input,
+.o_form_view .o_form_required textarea,
+.o_form_view .o_form_required select {
+  border-bottom-color: var(--cds-border-interactive);
+}
+
+// When required AND invalid, error state takes precedence
+.o_form_view .o_form_required.o_field_invalid .o_input,
+.o_form_view .o_form_required.o_field_invalid input,
+.o_form_view .o_form_required.o_field_invalid textarea,
+.o_form_view .o_form_required.o_field_invalid select {
+  border-bottom-color: var(--cds-support-error);
+  box-shadow: inset 0 -2px 0 0 var(--cds-support-error);
+}
+
+// ============================================================================
+// SECTION 9: Form Editable Mode — Active Input Styling
+// ============================================================================
+// In edit mode, inputs show their Carbon field-01 background and bottom border
+// so users can clearly identify editable areas.
+
+.o_form_view .o_form_editable .o_field_widget .o_input,
+.o_form_view .o_form_editable .o_field_widget input,
+.o_form_view .o_form_editable .o_field_widget textarea,
+.o_form_view .o_form_editable .o_field_widget select {
+  background-color: var(--cds-field-01);
+  border-bottom: 1px solid var(--cds-border-strong-01);
+}
+
+// ============================================================================
+// SECTION 10: Form Readonly Mode — Clean Read State
+// ============================================================================
+// In readonly mode, fields render as plain text without input affordances.
+
+.o_form_view .o_form_readonly .o_field_widget .o_input,
+.o_form_view .o_form_readonly .o_field_widget input,
+.o_form_view .o_form_readonly .o_field_widget textarea {
+  background-color: transparent;
+  border-bottom-color: transparent;
+  color: var(--cds-text-primary);
+  box-shadow: none;
+  cursor: default;
+}
+
+// ============================================================================
+// SECTION 11: Horizontal Separator — Carbon Divider
+// ============================================================================
+// Carbon uses border-subtle-01 for horizontal rules. Typography follows
+// heading-compact-01 (14px/18px/600).
+
+// Separator styling at base specificity
+.o_form_view .o_horizontal_separator {
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  margin-block-start: var(--cds-spacing-07); // 32px top spacing before section
+  margin-block-end: var(--cds-spacing-05); // 16px bottom spacing after separator
+  padding-bottom: var(--cds-spacing-03); // 8px below text before the line
+  font-size: 0.875rem; // 14px — Carbon heading-compact-01
+  font-weight: 600; // Carbon semibold
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-primary);
+  box-shadow: none; // Remove Odoo's box-shadow separator approach
+
+  // Empty separators act as simple dividers with reduced height
+  &:empty {
+    height: var(--cds-spacing-03); // 8px
+    padding-bottom: 0;
+  }
+}
+
+// Note: Odoo's templates apply Bootstrap utility classes (fw-bolder, mt-4, mb-3)
+// directly on separator elements with !important. Carbon heading-compact-01 targets
+// font-weight: 600 (semibold) but fw-bolder resolves to 700 (bold). The mt-4 class
+// yields 24px margin-top vs our desired spacing-07 (32px). These Bootstrap utility
+// classes cannot be overridden without !important, which is prohibited per DS1
+// guidelines. The visual delta is minimal — 600 vs 700 is a subtle weight difference.
+// This is an acceptable compromise for the standalone-module constraint (no core mods).
+
+// Higher-specificity fallback for separators WITHOUT Bootstrap utility classes
+.o_form_view .o_form_sheet .o_horizontal_separator:not(.fw-bolder):not(.fw-bold),
+.o_form_view .o_notebook .o_horizontal_separator:not(.fw-bolder):not(.fw-bold),
+.o_form_view .tab-pane .o_horizontal_separator:not(.fw-bolder):not(.fw-bold) {
+  font-weight: 600; // Carbon heading-compact-01 — semibold
+  box-shadow: none;
+}
+
+// ============================================================================
+// SECTION 12: Button Box — Carbon Styled Stat Buttons
+// ============================================================================
+// Button box sits at the top of form sheets. Carbon uses subtle borders
+// and consistent spacing tokens.
+
+.o_form_view .o-form-buttonbox,
+.o_form_view .oe_button_box {
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  gap: 0; // No gap between stat buttons — they use adjacent borders
+
+  .oe_stat_button {
+    padding: var(--cds-spacing-05); // 16px padding
+    border-color: var(--cds-border-subtle-01);
+    color: var(--cds-text-primary);
+    transition: background-color $cds-motion-duration-fast-01 $cds-motion-productive;
+
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        background-color: var(--cds-background-hover);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+    }
+
+    // Stat button text — Carbon label typography
+    .o_stat_text {
+      font-size: 0.75rem; // Carbon label-01
+      line-height: 1.33;
+      letter-spacing: 0.32px;
+      color: var(--cds-text-secondary);
+    }
+
+    // Stat button value — Carbon heading-compact-01
+    .o_stat_value {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--cds-interactive);
+    }
+
+    // Stat button icon — Carbon interactive color
+    .o_button_icon {
+      color: var(--cds-interactive);
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 13: Statusbar — Carbon Top Bar Styling
+// ============================================================================
+// The status bar sits above the form sheet. It uses the background token
+// and Carbon border-subtle for the bottom edge.
+
+.o_form_view .o_form_statusbar {
+  background-color: var(--cds-background);
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  padding-block: var(--cds-spacing-03); // 8px vertical padding
+}
+
+// ============================================================================
+// SECTION 14: Form Title Section — Carbon Heading Typography
+// ============================================================================
+// The .oe_title section renders the main record title (h1/h2/h3).
+// Carbon heading-03 (20px) is used for h1, heading-02 (16px) for h2.
+
+.o_form_view .oe_title {
+  color: var(--cds-text-primary);
+
+  > h1, > h2, > h3 {
+    color: var(--cds-text-primary);
+  }
+
+  > h1 {
+    font-size: 1.25rem; // Carbon heading-03
+    line-height: 1.4;
+    font-weight: 400; // Carbon heading-03 uses normal weight
+    letter-spacing: 0;
+  }
+
+  > h2 {
+    font-size: 1rem; // Carbon heading-02
+    line-height: 1.375;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  > h3 {
+    font-size: 0.875rem; // Carbon heading-compact-01
+    line-height: 1.29;
+    font-weight: 600;
+    letter-spacing: 0.16px;
+  }
+}
+
+// ============================================================================
+// SECTION 15: Avatar — Carbon Spacing
+// ============================================================================
+// Avatar images in the form header area. Carbon-styled with spacing tokens.
+
+.o_form_view .oe_avatar {
+  margin-bottom: var(--cds-spacing-03); // 8px
+
+  .img {
+    border: 1px solid var(--cds-border-subtle-01);
+  }
+}
+
+// ============================================================================
+// SECTION 16: Form URI Links — Carbon Link Tokens
+// ============================================================================
+// External links within form fields use Carbon link color tokens.
+
+.o_form_view .o_form_uri {
+  color: var(--cds-link-primary);
+
+  @media (hover: hover) {
+    &:hover {
+      color: var(--cds-link-primary-hover);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+  }
+}
+
+// ============================================================================
+// SECTION 17: Notebook/Tabs Override within Forms
+// ============================================================================
+// Form notebooks get Carbon border tokens for their content area borders.
+
+.o_form_view .o_notebook > .tab-content {
+  border-bottom-color: var(--cds-border-subtle-01);
+}
+
+// ============================================================================
+// SECTION 18: Alerts within Forms — Carbon Notification Tokens
+// ============================================================================
+// Alerts inside form sheets inherit Carbon notification background tokens.
+
+.o_form_view .alert {
+  border-radius: 0; // Carbon sharp corners
+}
+
+// ============================================================================
+// SECTION 19: Select / Dropdown Inputs — Carbon Dropdown Pattern
+// ============================================================================
+// Select elements styled as Carbon dropdowns with the bottom-border pattern
+// and a caret indicator.
+
+.o_form_view .o_field_widget select.o_input,
+.o_form_view .o_field_widget .o_input_dropdown > input {
+  // Carbon select pattern: field background with bottom border
+  // The caret/chevron is handled by the dropdown component CSS
+  padding-inline-end: var(--cds-spacing-07); // 32px — room for dropdown chevron
+}
+
+// ============================================================================
+// SECTION 20: Settings Form — Carbon Styled Settings
+// ============================================================================
+// Settings pages (.o_setting_box) with Carbon tokens for borders and spacing.
+
+.o_setting_box {
+  margin-bottom: var(--cds-spacing-03); // 8px
+  margin-top: var(--cds-spacing-03);
+}
+
+.o_setting_right_pane {
+  border-left-color: var(--cds-border-subtle-01);
+  padding-left: var(--cds-spacing-04); // 12px
+
+  .o_form_label + .fa,
+  .o_form_label + .o_doc_link {
+    margin-left: var(--cds-spacing-03); // 8px
+  }
+}
+
+// Settings container typography
+.o_settings_container {
+  .o_form_label.o_light_label,
+  .o_light_label .o_form_label {
+    font-weight: 400; // Carbon normal weight for light labels
+    color: var(--cds-text-secondary);
+  }
+}
+
+// ============================================================================
+// SECTION 21: Subtotal Footer — Carbon Styled Totals Section
+// ============================================================================
+// The subtotal footer in invoice/order forms uses Carbon border and type tokens.
+
+.o_form_view .o_inner_group.oe_subtotal_footer {
+  border-top-color: var(--cds-border-subtle-01);
+
+  .oe_subtotal_footer_separator {
+    border-top-color: var(--cds-border-subtle-01);
+    font-weight: 600; // Carbon semibold
+    color: var(--cds-text-primary);
+  }
+
+  .o_cell .o_form_label {
+    font-size: 0.75rem; // Carbon label-01
+    color: var(--cds-text-secondary);
+  }
+}
+
+// ============================================================================
+// SECTION 22: One2Many / Many2Many List within Forms
+// ============================================================================
+// Embedded list views within form views inherit Carbon DataTable tokens.
+
+.o_form_view .o_field_widget .o_list_renderer {
+  --ListRenderer-thead-bg-color: var(--cds-layer-01);
+  --ListRenderer-tfoot-bg-color: var(--cds-layer-01);
+  margin-bottom: var(--cds-spacing-03); // 8px
+}
+
+.o_form_view .o_field_widget .o_list_table.table-striped > tfoot > tr {
+  box-shadow: inset 0 1px 0 var(--cds-border-subtle-01);
+}
+
+// ============================================================================
+// SECTION 23: Checkbox Optional Field — Carbon Alignment
+// ============================================================================
+// Checkbox + label rows within form groups.
+
+.o_form_view .o_checkbox_optional_field > .o_form_label {
+  color: var(--cds-text-primary);
+  font-weight: 400; // Carbon label-01 — normal weight
+}
+
+// ============================================================================
+// SECTION 24: Datepicker Within Forms — Carbon Styling
+// ============================================================================
+// The datepicker icon button visibility and Carbon focus.
+
+.o_form_view .o_datepicker {
+  .o_datepicker_button {
+    color: var(--cds-icon-secondary);
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 25: Modal Form Overrides — Carbon Modal Context
+// ============================================================================
+// When form views render inside modal dialogs, reduce padding and adapt
+// to Carbon Modal's constrained space.
+
+.modal .modal-dialog .o_form_view {
+  .o_form_sheet {
+    --formView-sheet-padding-y: var(--cds-spacing-05);
+    --formView-sheet-padding-y-md: var(--cds-spacing-05);
+    --formView-sheet-padding-y-lg: var(--cds-spacing-05);
+    --formView-sheet-padding-y-xxl: var(--cds-spacing-05);
+    --formView-sheet-padding-x: 0;
+    --formView-sheet-padding-x-md: 0;
+    --formView-sheet-padding-x-lg: 0;
+    --formView-sheet-padding-x-xxl: 0;
+    --formView-sheet-border-width: 0;
+    --formView-sheet-border-width-md: 0;
+    --formView-sheet-border-radius: 0;
+    --formView-sheet-border-radius-md: 0;
+  }
+}
+
+// ============================================================================
+// SECTION 26: Responsive Adaptations — Carbon Breakpoints
+// ============================================================================
+// Small screen overrides using Carbon's md breakpoint (672px).
+
+@media (max-width: $cds-breakpoint-md - 1) {
+  .o_form_view {
+    // Labels get slightly more padding on small screens
+    .o_form_label:not(.o_invisible_modifier) {
+      padding-bottom: var(--cds-spacing-02); // 4px
+    }
+
+    // Inner groups stack vertically
+    .o_group .o_inner_group {
+      margin-bottom: 0;
+
+      &:last-child {
+        margin-bottom: var(--cds-spacing-05); // 16px
+      }
+    }
+  }
+}
+
+// Extra-small form views — more compact layout
+.o_form_view.o_xxs_form_view {
+  .o_group .o_form_label {
+    font-size: 0.75rem; // Carbon label-01 even at touch sizes
+    font-weight: 400;
+    color: var(--cds-text-secondary);
+  }
+}
+
+// ============================================================================
+// SECTION 27: Print Styles — Minimal Form Output
+// ============================================================================
+// Print styles strip decorative elements for clean printed forms.
+
+@media print {
+  .o_form_view .o_form_sheet {
+    --formView-sheet-border-width: 0;
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .o_form_view .o_form_statusbar,
+  .oe_button_box,
+  .o-form-buttonbox {
+    border: none;
+  }
+}
+
+// ============================================================================
+// SECTION 28: Accessibility Enhancements
+// ============================================================================
+// Ensure all interactive form elements have visible focus indicators
+// meeting WCAG 2.1 AA requirements. Carbon's focus ring is 2px solid
+// using the --cds-focus token (Blue 60, #0f62fe).
+
+// Generic focus-visible for all form interactive elements
+.o_form_view {
+  a:focus-visible,
+  button:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+// Ensure select elements in forms get the Carbon focus underline
+.o_form_view .o_field_widget select:focus-visible {
+  border-bottom-color: var(--cds-focus);
+  box-shadow: inset 0 -2px 0 0 var(--cds-focus);
+  outline: none;
+}
+
+// ============================================================================
+// SECTION 29: Helper Text Pattern — Carbon Helper Text
+// ============================================================================
+// Helper/description text below form fields follows Carbon helper-text-01
+// token (12px, text-helper color).
+
+.o_form_view .o_field_widget .text-muted,
+.o_form_view .o_field_widget .o_field_helper {
+  font-size: 0.75rem; // Carbon helper-text-01
+  line-height: 1.33;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper);
+}
+
+// Error messages below invalid fields
+.o_form_view .o_field_invalid .text-danger,
+.o_form_view .o_field_invalid .invalid-feedback {
+  font-size: 0.75rem;
+  line-height: 1.33;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-error);
+}

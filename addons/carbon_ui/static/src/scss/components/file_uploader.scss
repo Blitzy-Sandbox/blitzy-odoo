@@ -1,1 +1,419 @@
-// Placeholder - to be implemented by assigned agent
+// Carbon Design System v11 — FileUploader Component Override
+// Applies Carbon FileUploader styling to Odoo's file input and upload components.
+// Targets: .o_file_input, .o_file_upload, .o_file_upload_progress_bar,
+//          .o_file_upload_progress_record
+//
+// Token source: carbon_tokens.scss (--cds-* CSS custom properties on :root)
+// Compatibility: libsass — no @use/@forward, only var() for custom properties.
+//
+// Carbon FileUploader anatomy:
+//   1. Trigger button (tertiary variant) — .o_file_input button
+//   2. Drag-and-drop zone — .o_file_input .o_drop_zone
+//   3. Uploaded file list container — .o_file_upload
+//   4. Individual file record — .o_file_upload_progress_record
+//   5. Progress bar — .o_file_upload_progress_bar
+//   6. Abort/remove action — .o-file-upload-progress-bar-abort
+//   7. File title/name — .o_file_upload_upload_title
+
+// ============================================================================
+// SECTION 1: File Input — Trigger Button (Carbon Tertiary Button)
+// ============================================================================
+// Overrides the default Bootstrap .btn.btn-primary on .o_file_input button
+// with Carbon's tertiary button pattern: transparent background, blue border
+// and text, 0 border-radius, 40px productive height.
+
+.o_file_input {
+  button,
+  .o_select_file_button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem; // 40px — Carbon productive field height
+    padding-block: 0;
+    padding-inline: var(--cds-spacing-05); // 16px
+    background-color: transparent;
+    border: 1px solid var(--cds-button-tertiary);
+    border-radius: 0; // Carbon uses sharp corners
+    color: var(--cds-button-tertiary);
+    font-family: var(--cds-font-family-sans);
+    font-size: 0.875rem; // body-compact-01
+    font-weight: 400;
+    letter-spacing: 0.16px;
+    line-height: 1.28572;
+    cursor: pointer;
+    transition: background-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9),
+                color 70ms cubic-bezier(0.2, 0, 0.38, 0.9),
+                border-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9);
+
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--cds-button-tertiary-hover);
+        color: var(--cds-text-inverse);
+        border-color: var(--cds-button-tertiary-hover);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+    }
+
+    // Disabled state — preserve Carbon disabled pattern
+    &:disabled,
+    &[disabled] {
+      color: var(--cds-text-on-color-disabled, #{rgba(#161616, 0.25)});
+      background-color: transparent;
+      border-color: var(--cds-border-disabled, #c6c6c6);
+      cursor: not-allowed;
+    }
+  }
+
+  // Hidden native file input (Odoo already hides it via d-none, but ensure)
+  .o_input_file {
+    position: absolute;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    border: 0;
+    margin: -1px;
+  }
+}
+
+// ============================================================================
+// SECTION 2: Drag-and-Drop Zone (Carbon FileUploader Drop Area)
+// ============================================================================
+// Carbon's drop target area: dashed border, field background, centered text,
+// with active/dragover state highlighting.
+
+.o_file_input .o_drop_zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 6rem; // Comfortable drop target (≥96px)
+  padding-block: var(--cds-spacing-07); // 32px
+  padding-inline: var(--cds-spacing-05); // 16px
+  border: 1px dashed var(--cds-border-strong-01);
+  border-radius: 0;
+  background-color: var(--cds-field-01);
+  color: var(--cds-text-secondary);
+  font-family: var(--cds-font-family-sans);
+  font-size: 0.875rem; // body-compact-01
+  font-weight: 400;
+  letter-spacing: 0.16px;
+  text-align: center;
+  transition: background-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9),
+              border-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9);
+
+  // Active state (dragover) — highlight with Carbon tokens
+  &.o_drag_over,
+  &.o_dragged,
+  &:active {
+    background-color: var(--cds-highlight);
+    border-color: var(--cds-interactive);
+    border-style: dashed;
+  }
+
+  // Focus for keyboard-driven drop zone activation
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+// ============================================================================
+// SECTION 3: Uploaded File List Container
+// ============================================================================
+// Wraps individual file upload records in a vertical stack layout with
+// consistent Carbon spacing between items.
+
+.o_file_upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-03); // 8px between file items
+  margin-block-start: var(--cds-spacing-03); // 8px top margin
+}
+
+// ============================================================================
+// SECTION 4: Individual File Upload Record
+// ============================================================================
+// Each file in the upload list: horizontal layout with file info, progress
+// indicators, and action buttons. Carbon-styled with subtle bottom border.
+
+.o_file_upload_progress_record {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding-block: var(--cds-spacing-03); // 8px vertical
+  padding-inline: 0;
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+
+  // Last item does not need a bottom border (defensive pattern)
+  &:last-child {
+    border-block-end: none;
+  }
+}
+
+// ============================================================================
+// SECTION 5: File Upload Title / File Name
+// ============================================================================
+// Displays the filename with Carbon body-compact-01 typography. Uses text
+// truncation for long filenames within constrained containers.
+
+.o_file_upload_upload_title {
+  flex: 1;
+  overflow: hidden;
+  color: var(--cds-text-primary);
+  font-family: var(--cds-font-family-sans);
+  font-size: 0.875rem; // body-compact-01
+  font-weight: 500;
+  letter-spacing: 0.16px;
+  line-height: 1.28572;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ============================================================================
+// SECTION 6: Progress Bar (Carbon ProgressBar)
+// ============================================================================
+// Replaces Odoo/Bootstrap progress styling with Carbon's 4px track + fill
+// pattern using interactive token color. The bar sits inside an overlay
+// covering the parent record element.
+
+.o_file_upload_progress_bar {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  block-size: 100%;
+  inline-size: 100%;
+  pointer-events: none;
+
+  // The Bootstrap .progress container override
+  .progress {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    inline-size: 100%;
+    block-size: 4px; // Carbon ProgressBar track height
+    background-color: var(--cds-border-subtle-01);
+    border-radius: 0;
+    overflow: hidden;
+  }
+
+  // The Bootstrap .progress-bar fill override
+  .progress-bar {
+    block-size: 100%;
+    background-color: var(--cds-interactive);
+    border-radius: 0;
+    transition: width 110ms cubic-bezier(0.2, 0, 0.38, 0.9); // Carbon fast-02
+  }
+}
+
+// ============================================================================
+// SECTION 7: Progress Bar Value (Overlay Fill)
+// ============================================================================
+// The .o-file-upload-progress-bar-value div is the actual width-animated fill
+// element used by Odoo's OWL FileUploadProgressBar component. Replaces the
+// original $o-brand-primary background with Carbon interactive token.
+
+.o-file-upload-progress-bar-value {
+  block-size: 100%;
+  background-color: var(--cds-interactive);
+  opacity: 0.15; // Subtle overlay on the record row
+  border-inline-end: none; // Remove original right border
+  transition: width 110ms cubic-bezier(0.2, 0, 0.38, 0.9); // Carbon fast-02
+  pointer-events: none;
+}
+
+// ============================================================================
+// SECTION 8: Abort / Cancel Upload Button
+// ============================================================================
+// Carbon ghost icon button pattern for the cancel (×) action. Visible only
+// on hover of the parent record for cleaner default state. Accessible via
+// keyboard focus regardless of hover state.
+
+.o-file-upload-progress-bar-abort {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: var(--cds-spacing-03); // 8px from edge
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem; // 32px — Carbon icon-only button size (small)
+  block-size: 2rem;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--cds-icon-primary);
+  font-size: 1rem; // 16px icon size
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 70ms cubic-bezier(0.2, 0, 0.38, 0.9),
+              background-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9);
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+    opacity: 1; // Always visible on focus for keyboard accessibility
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--cds-layer-hover-01);
+    }
+  }
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+// Show the abort button when hovering the parent container
+div:hover > .o-file-upload-progress-bar-abort,
+.position-absolute:hover > .o-file-upload-progress-bar-abort {
+  opacity: 1;
+}
+
+// ============================================================================
+// SECTION 9: Progress Text and Status Indicators
+// ============================================================================
+// Status text elements alongside file records: "Uploading... (X%)",
+// "(x/y MB)", "Processing...", success checkmarks, error warnings.
+
+// Left status text (e.g., "Uploading… (45%)")
+.o_file_upload_progress_text_left {
+  color: var(--cds-text-secondary);
+  font-family: var(--cds-font-family-sans);
+  font-size: 0.75rem; // label-01
+  font-weight: 400;
+  letter-spacing: 0.32px;
+  line-height: 1.33333;
+}
+
+// Right status text (e.g., "(1.2/3.5 MB)")
+.o_file_upload_progress_text_right {
+  color: var(--cds-text-helper);
+  font-family: var(--cds-font-family-sans);
+  font-size: 0.75rem; // label-01
+  font-weight: 400;
+  letter-spacing: 0.32px;
+  line-height: 1.33333;
+  margin-inline-start: auto;
+}
+
+// ============================================================================
+// SECTION 10: Upload Status Icon Indicators
+// ============================================================================
+// Carbon-styled status feedback icons for file upload states.
+
+// Success state — checkmark icon
+.o_file_upload_progress_record .fa-check,
+.o_file_upload_progress_record .text-success {
+  color: var(--cds-support-success);
+}
+
+// Error state — warning/error icon
+.o_file_upload_progress_record .fa-warning,
+.o_file_upload_progress_record .fa-exclamation-triangle,
+.o_file_upload_progress_record .text-danger {
+  color: var(--cds-support-error);
+}
+
+// In-progress spinner — uses interactive token
+.o_file_upload_progress_record .fa-spinner,
+.o_file_upload_progress_record .o_spinner {
+  color: var(--cds-interactive);
+}
+
+// ============================================================================
+// SECTION 11: Kanban Progress Card (Carbon Tile Pattern)
+// ============================================================================
+// The kanban variant of file upload progress styled as a Carbon tile with
+// consistent spacing and typography tokens.
+
+.o_kanban_progress_card {
+  background-color: var(--cds-layer-01, #f4f4f4);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0;
+
+  .o_kanban_image_wrapper {
+    opacity: 0.7; // Dimmed preview while uploading
+  }
+
+  // File title within kanban card
+  .fw-bold {
+    color: var(--cds-text-primary);
+    font-family: var(--cds-font-family-sans);
+  }
+}
+
+// ============================================================================
+// SECTION 12: List View Progress Row (Carbon DataTable Row Pattern)
+// ============================================================================
+// The list view variant of file upload progress styled consistently with
+// Carbon DataTable compact row dimensions.
+
+.o_data_row.o_list_progress_card {
+  block-size: 2rem; // 32px — Carbon compact row
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0;
+  position: relative;
+
+  .o_file_upload_upload_title {
+    color: var(--cds-text-primary);
+    font-size: 0.8125rem; // 13px preserved from Odoo spec
+    font-weight: 500;
+  }
+}
+
+// ============================================================================
+// SECTION 13: Helper / Description Text (Carbon label-01)
+// ============================================================================
+// Label and helper text for the file uploader component using Carbon's
+// label-01 type token (12px, 0.32px letter-spacing).
+
+.o_file_input {
+  // Helper text below the trigger or drop zone
+  .o_file_input_description,
+  .form-text,
+  .text-muted {
+    font-size: 0.75rem; // label-01
+    font-weight: 400;
+    letter-spacing: 0.32px;
+    line-height: 1.33333;
+    color: var(--cds-text-helper);
+    margin-block-end: var(--cds-spacing-03); // 8px
+  }
+
+  // Label text above the uploader
+  > label,
+  .o_form_label {
+    display: block;
+    font-size: 0.75rem; // label-01
+    font-weight: 400;
+    letter-spacing: 0.32px;
+    line-height: 1.33333;
+    color: var(--cds-text-secondary);
+    margin-block-end: var(--cds-spacing-03); // 8px
+  }
+}
+
+// ============================================================================
+// SECTION 14: Reduced Motion — Accessibility
+// ============================================================================
+// Disable animations for users who prefer reduced motion.
+
+@media (prefers-reduced-motion: reduce) {
+  .o_file_input button,
+  .o_file_input .o_select_file_button,
+  .o_file_input .o_drop_zone,
+  .o-file-upload-progress-bar-value,
+  .o-file-upload-progress-bar-abort,
+  .o_file_upload_progress_bar .progress-bar {
+    transition: none;
+  }
+}

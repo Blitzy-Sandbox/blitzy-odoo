@@ -1,4 +1,224 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-<!-- Placeholder - to be implemented by assigned agent -->
+
+    <!--
+        Carbon Switcher: App Selector Panel Template
+        ================================================
+        QWeb/OWL template for the CarbonSwitcher component that replaces
+        Odoo's grid-icon AppsMenu dropdown with an IBM Carbon Design
+        System v11 Switcher panel.
+
+        The panel slides in from the right edge of the Carbon Header bar
+        and lists every installed Odoo application in a vertically
+        scrollable list.  It is rendered conditionally by the
+        CarbonHeader parent component via t-if on isSwitcherOpen.
+
+        Layout follows Carbon UI Shell Switcher anatomy:
+          Panel width   : 256 px (matches expanded SideNav)
+          Background    : layer-01 token
+          Position      : fixed, right-aligned below the 48 px header
+          Items         : switcher item elements with icon and text
+
+        Data source:
+          The apps getter delegates to menuService.getApps() which
+          returns the identical app list consumed by the original
+          web.NavBar.AppsMenu template.  Each app object carries:
+            id, name, xmlid, actionID, actionPath, webIconData, webIcon
+
+        Active app:
+          currentApp returns menuService.getCurrentApp(). The active app
+          receives the selected modifier class and an aria-current page
+          attribute.
+
+        Keyboard accessibility (managed by carbon_switcher.js):
+          ArrowDown / ArrowUp : move focus between items
+          Enter               : navigate to focused app
+          Home / End          : jump to first / last item
+          Tab                 : trapped within the panel
+          Escape              : close and return focus to header toggle
+
+        Focus management:
+          Each item carries a data-switcher-index attribute so the JS
+          component can locate the focused element via querySelector
+          and call .focus() plus .scrollIntoView() on it.
+    -->
+    <t t-name="carbon_ui.CarbonSwitcher">
+        <!--
+            Root panel element.
+            aside denotes a complementary section.
+            role navigation marks it as a navigation landmark for
+            assistive technologies.
+            t-ref switcherPanel binds to the useRef in the JS component,
+            used by onOutsideClick and _scrollFocusedIntoView.
+            The expanded modifier triggers the CSS slide-in transition
+            when the panel is open.
+        -->
+        <aside class="cds--switcher"
+               t-ref="switcherPanel"
+               t-att-class="{'cds--switcher--expanded': props.isOpen}"
+               role="navigation"
+               aria-label="App Switcher">
+
+            <!-- ================================================
+                 HEADER: Panel Title and Close Button
+                 ================================================ -->
+            <!--
+                The header provides a visible title for sighted users
+                and a close button for explicit panel dismissal.
+                The title also serves as the accessible name for the
+                app list via aria-labelledby.
+            -->
+            <div class="cds--switcher__header">
+                <span class="cds--switcher__title"
+                      id="carbon-switcher-title">Applications</span>
+                <!--
+                    Close button: dismisses the panel by invoking the
+                    onClose callback prop.  Accessible via keyboard
+                    (Tab plus Enter/Space) and labelled for screen
+                    readers.
+                -->
+                <button class="cds--header__action cds--switcher__close"
+                        aria-label="Close app switcher"
+                        title="Close app switcher"
+                        type="button"
+                        t-on-click="() => this.props.onClose &amp;&amp; this.props.onClose()">
+                    <!--
+                        Carbon Close icon: 20x20 inline SVG
+                        Source: @carbon/icons v11 close.svg
+                        (32 px viewBox scaled to 20 px display)
+                        fill currentColor inherits text color from
+                        the Carbon header utility button token.
+                    -->
+                    <svg focusable="false"
+                         preserveAspectRatio="xMidYMid meet"
+                         xmlns="http://www.w3.org/2000/svg"
+                         fill="currentColor"
+                         width="20"
+                         height="20"
+                         viewBox="0 0 32 32"
+                         aria-hidden="true"
+                         class="cds--switcher__close-icon">
+                        <path d="M24 9.4L22.6 8 16 14.6 9.4 8 8 9.4 14.6 16 8 22.6 9.4 24 16 17.4 22.6 24 24 22.6 17.4 16 24 9.4z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- ================================================
+                 APP LIST: Installed Odoo Applications
+                 ================================================ -->
+            <!--
+                Scrollable container of app items.  Rendered only
+                when at least one app exists.  aria-labelledby ties
+                the list to the Applications heading above.
+            -->
+            <div class="cds--switcher__content"
+                 aria-labelledby="carbon-switcher-title"
+                 t-if="apps.length">
+                <!--
+                    Each installed Odoo app is rendered as a
+                    switcher item containing a navigable link.
+
+                    Data bindings mirror the original AppsMenu:
+                      app.id          : unique menu record ID (t-key)
+                      app.name        : display name
+                      app.xmlid       : XML ID for data tracking
+                      app.webIconData : base64 data URI icon (if set)
+                      app.actionID    : default action ID
+                      app.actionPath  : client-side URL segment
+
+                    Active state:
+                      When the app is the currently active one
+                      (currentApp.id equals app.id), the item receives
+                      the selected modifier and aria-current page on
+                      the link.
+
+                    Focus state:
+                      When state.focusedIndex matches the item
+                      iteration index (app_index), the link gets
+                      tabindex 0 and the focused modifier class.
+                      All other items have tabindex -1 to keep
+                      them out of the default Tab order (keyboard
+                      navigation is via ArrowUp/ArrowDown).
+                -->
+                <div t-foreach="apps" t-as="app" t-key="app.id"
+                     class="cds--switcher__item"
+                     t-att-class="{
+                         'cds--switcher__item--selected': currentApp &amp;&amp; currentApp.id === app.id,
+                     }">
+                    <a class="cds--switcher__item-link"
+                       t-att-class="{
+                           'cds--switcher__item-link--selected': currentApp &amp;&amp; currentApp.id === app.id,
+                           'cds--switcher__item-link--focused': state.focusedIndex === app_index,
+                       }"
+                       t-att-href="getMenuItemHref(app)"
+                       t-on-click.prevent="() => this.onAppSelect(app)"
+                       t-att-data-switcher-index="app_index"
+                       t-att-data-menu-xmlid="app.xmlid"
+                       t-att-data-section="app.id"
+                       t-att-tabindex="state.focusedIndex === app_index ? '0' : '-1'"
+                       t-att-aria-current="currentApp &amp;&amp; currentApp.id === app.id ? 'page' : false">
+
+                        <!-- App Icon: custom uploaded icon -->
+                        <!--
+                            Primary icon: rendered when the app has a
+                            custom icon uploaded (webIconData is a
+                            base64 data URI string).  Explicit width
+                            and height prevent layout shift.
+                        -->
+                        <span class="cds--switcher__item-icon"
+                              t-if="app.webIconData">
+                            <img t-att-src="app.webIconData"
+                                 t-att-alt="app.name + ' icon'"
+                                 class="cds--switcher__item-img"
+                                 width="24"
+                                 height="24"
+                                 loading="lazy"
+                                 decoding="async"/>
+                        </span>
+                        <!-- App Icon: fallback generic icon -->
+                        <!--
+                            Fallback icon: rendered when no custom icon
+                            is available.  Uses a Carbon-style grid
+                            icon (4 square layout) as a generic
+                            application symbol.
+                        -->
+                        <span class="cds--switcher__item-icon cds--switcher__item-icon--fallback"
+                              t-if="!app.webIconData">
+                            <svg focusable="false"
+                                 preserveAspectRatio="xMidYMid meet"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 fill="currentColor"
+                                 width="20"
+                                 height="20"
+                                 viewBox="0 0 32 32"
+                                 aria-hidden="true"
+                                 class="cds--switcher__item-fallback-icon">
+                                <path d="M8 4v8H4V4h4m2-2H2v12h10V2zm14 2v8h-4V4h4m2-2H14v12h12V2zM8 18v8H4v-8h4m2-2H2v12h10V16zm14 2v8h-4v-8h4m2-2H14v12h12V16z"/>
+                            </svg>
+                        </span>
+
+                        <!-- App Name -->
+                        <span class="cds--switcher__item-text"
+                              t-esc="app.name"/>
+                    </a>
+                </div>
+            </div>
+
+            <!-- ================================================
+                 EMPTY STATE: No Applications Available
+                 ================================================ -->
+            <!--
+                Defensive rendering when the app list is empty.
+                Handles edge cases such as a freshly initialised
+                database with no modules installed beyond base, or
+                a user with extremely restricted menu access.
+            -->
+            <div class="cds--switcher__empty"
+                 t-if="!apps.length">
+                <p class="cds--switcher__empty-text">No applications available</p>
+            </div>
+
+        </aside>
+    </t>
+
 </templates>

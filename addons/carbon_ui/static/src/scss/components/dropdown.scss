@@ -1,1 +1,422 @@
-// Placeholder - to be implemented by assigned agent
+// Carbon Design System v11 — Dropdown Component Override
+// Applies Carbon Dropdown and OverflowMenu styling to Odoo dropdowns
+// Targets: .o-dropdown, .o_dropdown_menu, .dropdown-menu, .dropdown-item, .o-dropdown-item
+//
+// Token dependency: addons/carbon_ui/static/src/scss/carbon_tokens.scss
+// All color, spacing, and motion values are expressed through Carbon CSS
+// custom properties (--cds-*) and Sass variables ($cds-*) defined in that file.
+//
+// Compatibility: libsass-safe — no @use, @forward, or Dart Sass features.
+// All runtime theming goes through var(--cds-*) for light ↔ dark switching.
+
+// ============================================================================
+// SECTION 1: Dropdown Trigger — .o-dropdown
+// ============================================================================
+// Override the Odoo dropdown trigger to align with Carbon's Dropdown pattern.
+// Carbon uses a chevron-down indicator instead of Bootstrap's caret.
+// Retains OWL JavaScript behavior; only restyling the visual presentation.
+
+.o-dropdown {
+  // Remove the default Bootstrap dropdown caret (▾) from toggle buttons.
+  // Carbon Dropdown does not use Bootstrap's border-based triangle caret.
+  &.dropdown-toggle::after {
+    content: none;
+    border: none;
+  }
+
+  // Restyle the Odoo caret system (FontAwesome-based chevron indicator).
+  // Retain the flex layout and rotation behavior from OWL; apply Carbon
+  // token values for spacing and transition timing.
+  &.o-dropdown-caret:not(.o-dropdown-no-caret),
+  .o-dropdown-caret:not(.o-dropdown-no-caret) {
+    gap: var(--cds-spacing-03); // 8px — Carbon standard icon-to-label gap
+
+    &::after {
+      // Preserve FontAwesome icon; apply Carbon icon color token
+      color: var(--cds-icon-secondary);
+      font-size: 0.75rem; // 12px — compact chevron size for dropdown triggers
+      transition: transform $cds-motion-duration-fast-02 $cds-motion-productive;
+    }
+  }
+
+  // Carbon-styled hover state for secondary/outline trigger buttons.
+  // Uses Carbon's interactive background token for hover affordance.
+  &.btn-secondary,
+  &.btn-outline-secondary {
+    transition: background-color $cds-motion-duration-fast-02 $cds-motion-productive,
+                border-color $cds-motion-duration-fast-02 $cds-motion-productive;
+  }
+}
+
+// ============================================================================
+// SECTION 2: Menu Container — .o_dropdown_menu, .dropdown-menu, .o-dropdown--menu
+// ============================================================================
+// Carbon Dropdown menu: flat white surface with subtle border, sharp corners,
+// and a consistent drop shadow. Padding is removed from the container; each
+// menu item manages its own internal padding.
+
+.o_dropdown_menu,
+.dropdown-menu,
+.o-dropdown--menu {
+  background-color: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0; // Carbon uses sharp corners on dropdown menus
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); // Carbon dropdown elevation shadow
+  padding-block: 0;
+  padding-inline: 0;
+  min-inline-size: 10rem; // 160px — Carbon minimum dropdown width
+  overflow-y: auto;
+
+  // Reset Bootstrap's default font-size override on .dropdown-menu so
+  // menu items inherit Carbon's body-compact-01 type style uniformly.
+  font-size: inherit;
+}
+
+// Odoo-specific positioned menu variant. Preserve the RTL-safe left/right
+// auto clearing from the source while adding Carbon visual tokens.
+.o-dropdown--menu {
+  margin-block-start: var(--cds-spacing-02); // 4px gap between trigger and menu
+  margin-block-end: var(--cds-spacing-02);
+
+  // Submenu offset: align flush with parent menu edge
+  &.o-dropdown--menu-submenu {
+    margin-block-start: calc(-1px); // Overlap border by 1px per Carbon flyout pattern
+    margin-block-end: calc(-1px);
+  }
+}
+
+// ============================================================================
+// SECTION 3: Menu Items — .dropdown-item, .o-dropdown-item, .o_menu_item
+// ============================================================================
+// Carbon menu items: 40px compact height, flush padding, Carbon typography
+// (body-compact-01: 14px/1.29), and full-bleed hover/active backgrounds.
+// States follow Carbon's precedence: disabled > active > focus > hover > default.
+
+.dropdown-item,
+.o-dropdown-item,
+.o_menu_item {
+  display: flex;
+  align-items: center;
+  block-size: 2.5rem; // 40px — Carbon compact menu item height
+  padding-block: 0;
+  padding-inline: var(--cds-spacing-05); // 16px horizontal padding
+  font-size: 0.875rem; // 14px — Carbon body-compact-01
+  line-height: 1.29; // Carbon body-compact-01 line-height
+  letter-spacing: 0.16px; // Carbon body-compact-01 tracking
+  color: var(--cds-text-secondary);
+  background-color: transparent;
+  border: none;
+  border-radius: 0; // Override any Bootstrap rounding on .dropdown-item
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background-color $cds-motion-duration-fast-01 $cds-motion-productive;
+  // Ensure clean box model for consistent 40px height
+  box-sizing: border-box;
+
+  // ---------------------------------------------------------------------------
+  // Hover state — Carbon layer-hover-01 background with primary text
+  // Wrapped in @media(hover:hover) to prevent sticky hover on touch devices.
+  // ---------------------------------------------------------------------------
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--cds-layer-hover-01);
+      color: var(--cds-text-primary);
+      text-decoration: none;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Active / Pressed state — Carbon layer-active-01
+  // ---------------------------------------------------------------------------
+  &:active {
+    background-color: var(--cds-layer-active-01);
+    color: var(--cds-text-primary);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Keyboard focus state — Carbon 2px inset focus ring
+  // Uses :focus-visible to show ring only for keyboard navigation,
+  // not mouse clicks (WCAG 2.1 AA requirement).
+  // ---------------------------------------------------------------------------
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px; // Carbon inset focus ring pattern
+    background-color: transparent;
+    color: var(--cds-text-primary);
+  }
+
+  // Legacy :focus for browsers without :focus-visible support.
+  // Scoped with a feature query to avoid double outlines.
+  &:focus:not(:focus-visible) {
+    outline: none;
+    background-color: transparent;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Selected / Active item state — visually distinguish the current selection
+  // Carbon uses a selected background with semibold text weight.
+  // ---------------------------------------------------------------------------
+  &.selected,
+  &.active,
+  &.focus, // Odoo uses .focus class for current keyboard-highlighted item
+  &.o-dropdown-item--active {
+    background-color: var(--cds-layer-selected-01);
+    color: var(--cds-text-primary);
+    font-weight: 600; // Carbon semibold for selected state
+  }
+
+  // ---------------------------------------------------------------------------
+  // Disabled state — highest precedence per Carbon state hierarchy
+  // Uses text-disabled token; interaction is fully suppressed.
+  // ---------------------------------------------------------------------------
+  &.disabled,
+  &:disabled,
+  &[aria-disabled="true"] {
+    color: var(--cds-text-disabled);
+    cursor: not-allowed;
+    pointer-events: none;
+    background-color: transparent;
+
+    // Ensure icons within disabled items also appear disabled
+    i,
+    .fa {
+      color: var(--cds-text-disabled);
+    }
+  }
+
+  // Ensure anchor-based items don't show underline on any state
+  &:where(a) {
+    text-decoration: none;
+
+    &:hover,
+    &:focus,
+    &:active {
+      text-decoration: none;
+    }
+  }
+
+  // Odoo indent variant for nested sub-items
+  &.o-dropdopwn-item-indent {
+    padding-inline-start: calc(var(--cds-spacing-05) * 1.5); // 24px indent
+  }
+}
+
+// Ensure labels within menu items are also clickable (Odoo span/label pattern)
+.o-dropdown--menu .dropdown-item:not(.disabled):not(:disabled) {
+  &,
+  label {
+    cursor: pointer;
+  }
+}
+
+// ============================================================================
+// SECTION 4: Dividers — .dropdown-divider
+// ============================================================================
+// Carbon uses a 1px subtle border with zero margin — a clean separator
+// between logical groups of menu items.
+
+.dropdown-divider {
+  border-block-start: 1px solid var(--cds-border-subtle-01);
+  border-block-end: none;
+  margin-block: 0;
+  margin-inline: 0;
+  padding: 0;
+  opacity: 1; // Override Bootstrap's 0.1 opacity on hr-based dividers
+}
+
+// ============================================================================
+// SECTION 5: Icons in Menu Items — .dropdown-item i, .dropdown-item .fa
+// ============================================================================
+// Carbon menu item icons: secondary color, 16px size, 8px gap from label text.
+// Icons should inherit the hover/active color shift from their parent item.
+
+.dropdown-item,
+.o-dropdown-item,
+.o_menu_item {
+  i,
+  .fa {
+    color: var(--cds-icon-secondary);
+    margin-inline-end: var(--cds-spacing-03); // 8px gap between icon and label
+    font-size: 1rem; // 16px — Carbon standard menu icon size
+    line-height: 1; // Prevent line-height from affecting icon vertical alignment
+    flex-shrink: 0; // Prevent icon from collapsing when text is long
+  }
+
+  // On hover/active, icons inherit the primary color from the text context
+  @media (hover: hover) {
+    &:hover i,
+    &:hover .fa {
+      color: var(--cds-text-primary);
+    }
+  }
+
+  &:active i,
+  &:active .fa {
+    color: var(--cds-text-primary);
+  }
+
+  // Selected items show primary-colored icons
+  &.selected i,
+  &.selected .fa,
+  &.active i,
+  &.active .fa,
+  &.focus i,
+  &.focus .fa {
+    color: var(--cds-text-primary);
+  }
+}
+
+// ============================================================================
+// SECTION 6: SelectMenu Overlay — .o_select_menu_dropdown, .o_select_menu_item
+// ============================================================================
+// Odoo's SelectMenu uses its own class names for the dropdown overlay.
+// Apply identical Carbon Dropdown styling for visual consistency.
+
+.o_select_menu_dropdown,
+.o_select_menu_menu {
+  background-color: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  padding-block: 0;
+  padding-inline: 0;
+  min-inline-size: 10rem;
+
+  // SelectMenu searchbox — style the sticky search input at the top
+  .o_select_menu_searchbox {
+    background-color: var(--cds-layer-01);
+    border-block-end: 1px solid var(--cds-border-subtle-01);
+    padding: var(--cds-spacing-02); // 4px padding around search input
+
+    input {
+      block-size: 2rem; // 32px compact search input
+      padding-inline-start: var(--cds-spacing-05);
+      font-size: 0.875rem;
+      line-height: 1.29;
+      letter-spacing: 0.16px;
+      color: var(--cds-text-primary);
+      background-color: var(--cds-field-01);
+      border: none;
+      border-block-end: 1px solid var(--cds-border-strong-01);
+
+      &:focus {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+      }
+    }
+  }
+
+  // SelectMenu group headers — styled as Carbon list section headers
+  .o_select_menu_group {
+    background-color: var(--cds-layer-01);
+    font-size: 0.75rem; // Carbon label-01 for group headings
+    line-height: 1.34;
+    letter-spacing: 0.32px;
+    font-weight: 600;
+    color: var(--cds-text-secondary);
+    padding-block: var(--cds-spacing-02);
+    padding-inline: var(--cds-spacing-05);
+  }
+}
+
+// SelectMenu items get the same Carbon menu item styling
+.o_select_menu_item {
+  display: flex;
+  align-items: center;
+  block-size: 2.5rem; // 40px compact
+  padding-block: 0;
+  padding-inline: var(--cds-spacing-05);
+  font-size: 0.875rem;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-secondary);
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background-color $cds-motion-duration-fast-01 $cds-motion-productive;
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--cds-layer-hover-01);
+      color: var(--cds-text-primary);
+    }
+  }
+
+  &:active {
+    background-color: var(--cds-layer-active-01);
+    color: var(--cds-text-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  // Selected state for SelectMenu items
+  &.o_select_active,
+  &[aria-selected="true"] {
+    background-color: var(--cds-layer-selected-01);
+    color: var(--cds-text-primary);
+    font-weight: 600;
+  }
+
+  // Disabled SelectMenu items
+  &.disabled,
+  &:disabled,
+  &[aria-disabled="true"] {
+    color: var(--cds-text-disabled);
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+// ============================================================================
+// SECTION 7: Unstyled Button Items & Bottom Sheet Variant
+// ============================================================================
+// Odoo uses .o-dropdown-item-unstyled-button for inline buttons within
+// dropdown items. Ensure Carbon styling flows through the button reset.
+
+.o-dropdown-item-unstyled-button {
+  button,
+  button:hover,
+  button:disabled {
+    all: unset;
+    display: inline-block;
+    inline-size: 100%;
+    color: inherit;
+    cursor: inherit;
+  }
+}
+
+// Bottom sheet variant — when a dropdown is rendered inside a bottom sheet
+// (mobile), remove the border and shadow since the sheet provides its own
+// container styling.
+.o_bottom_sheet .o_bottom_sheet_body.dropdown-menu {
+  border: none;
+  box-shadow: none;
+  position: static;
+  background-color: var(--cds-layer-01);
+}
+
+// ============================================================================
+// SECTION 8: Reduced Motion Preference
+// ============================================================================
+// Respect the user's motion preference by disabling transitions on
+// dropdown items when prefers-reduced-motion is set.
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown-item,
+  .o-dropdown-item,
+  .o_menu_item,
+  .o_select_menu_item {
+    transition: none;
+  }
+}

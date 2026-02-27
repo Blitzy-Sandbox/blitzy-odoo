@@ -234,10 +234,10 @@
 // Notification badge on header action buttons
 .cds--header__action-badge {
     position: absolute;
-    inset-block-start: 8px;
-    inset-inline-end: 8px;
-    inline-size: 8px;
-    block-size: 8px;
+    inset-block-start: var(--cds-spacing-03);
+    inset-inline-end: var(--cds-spacing-03);
+    inline-size: var(--cds-spacing-03);
+    block-size: var(--cds-spacing-03);
     border-radius: 50%;
     background-color: var(--cds-support-error);
     pointer-events: none;

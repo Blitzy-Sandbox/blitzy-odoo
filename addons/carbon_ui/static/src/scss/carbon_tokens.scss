@@ -186,6 +186,18 @@
   --cds-notification-background-warning: #fdf6dd;
   --cds-notification-background-error: #fff1f1;
 
+  // --- Font-family tokens ---
+  // IBM Plex font stacks for runtime consumption. These are the single
+  // source of truth for font-family values across the Carbon-themed UI.
+  // Sass variable equivalents are defined in Section 4a below.
+  --cds-font-family-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont,
+      'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --cds-font-family-mono: 'IBM Plex Mono', SFMono-Regular, Menlo, Monaco,
+      Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --cds-font-family-serif: 'IBM Plex Serif', Georgia, 'Times New Roman',
+      Times, serif;
+
   // --- Skeleton tokens ---
   --cds-skeleton-background: #e8e8e8;
   --cds-skeleton-element: #c6c6c6;
@@ -252,7 +264,25 @@ $cds-grid-margin-max: 24px !default;
 $cds-grid-gutter: 32px !default;
 
 // ============================================================================
-// SECTION 4: Sass Variables — Typography Tokens (Productive)
+// SECTION 4a: Sass Variables — Font Family Stacks
+// ============================================================================
+// Compile-time Sass variable equivalents of the --cds-font-family-* CSS
+// custom properties defined in the :root block above. Use these when a
+// Sass variable is needed at compile time (e.g., inside Sass functions,
+// interpolation, or map values) rather than the runtime var() form.
+
+$cds-font-family-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol' !default;
+
+$cds-font-family-mono: 'IBM Plex Mono', SFMono-Regular, Menlo, Monaco,
+    Consolas, 'Liberation Mono', 'Courier New', monospace !default;
+
+$cds-font-family-serif: 'IBM Plex Serif', Georgia, 'Times New Roman',
+    Times, serif !default;
+
+// ============================================================================
+// SECTION 4b: Sass Variables — Typography Tokens (Productive)
 // ============================================================================
 // IBM Plex Sans, Productive type scale, 14px base.
 // Each token is a Sass map: (font-size, line-height, font-weight, letter-spacing).

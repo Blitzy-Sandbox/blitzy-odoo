@@ -61,19 +61,19 @@
                   name="Carbon Font Preload">
             <!-- IBM Plex Sans Regular (400) — primary body typeface -->
             <link rel="preload"
-                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexSans-Regular.woff2"
+                  href="/carbon_ui/static/lib/ibm-plex/sans/IBMPlexSans-Regular.woff2"
                   as="font"
                   type="font/woff2"
                   crossorigin=""/>
             <!-- IBM Plex Sans SemiBold (600) — headings and emphasis -->
             <link rel="preload"
-                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexSans-SemiBold.woff2"
+                  href="/carbon_ui/static/lib/ibm-plex/sans/IBMPlexSans-SemiBold.woff2"
                   as="font"
                   type="font/woff2"
                   crossorigin=""/>
             <!-- IBM Plex Mono Regular (400) — code and technical content -->
             <link rel="preload"
-                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexMono-Regular.woff2"
+                  href="/carbon_ui/static/lib/ibm-plex/mono/IBMPlexMono-Regular.woff2"
                   as="font"
                   type="font/woff2"
                   crossorigin=""/>

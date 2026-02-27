@@ -5,7 +5,9 @@
 //
 // IBM Plex Sans: weights 300 (Light), 400 (Regular), 500 (Medium), 600 (SemiBold)
 // IBM Plex Mono: weights 400 (Regular), 600 (SemiBold)
-// Each weight declares normal and italic styles.
+// Normal style declared for all weights; italic only for vendored files
+// (Regular 400 italic for Sans). Non-vendored italic weights are omitted
+// — the browser will synthesize italic from the normal variant when needed.
 //
 // Typography Rule (§0.8.7): IBM Plex Sans is the primary body typeface.
 // IBM Plex Mono is used for code snippets and technical content.
@@ -28,13 +30,10 @@
     src: url('../../lib/ibm-plex/sans/IBMPlexSans-Light.woff2') format('woff2');
 }
 
-@font-face {
-    font-family: 'IBM Plex Sans';
-    font-style: italic;
-    font-weight: 300;
-    font-display: swap;
-    src: url('../../lib/ibm-plex/sans/IBMPlexSans-LightItalic.woff2') format('woff2');
-}
+// NOTE: IBMPlexSans-LightItalic (300 italic) @font-face removed —
+// font file not vendored. Browser will synthesize italic for weight 300
+// from the normal variant when needed. The Productive theme primarily
+// uses regular and semi-bold weights; light italic is rarely required.
 
 // ============================================================================
 // IBM Plex Sans — Regular (400)
@@ -72,13 +71,9 @@
     src: url('../../lib/ibm-plex/sans/IBMPlexSans-Medium.woff2') format('woff2');
 }
 
-@font-face {
-    font-family: 'IBM Plex Sans';
-    font-style: italic;
-    font-weight: 500;
-    font-display: swap;
-    src: url('../../lib/ibm-plex/sans/IBMPlexSans-MediumItalic.woff2') format('woff2');
-}
+// NOTE: IBMPlexSans-MediumItalic (500 italic) @font-face removed —
+// font file not vendored. Browser will synthesize italic for weight 500
+// from the normal variant when needed.
 
 // ============================================================================
 // IBM Plex Sans — SemiBold (600)
@@ -95,13 +90,9 @@
     src: url('../../lib/ibm-plex/sans/IBMPlexSans-SemiBold.woff2') format('woff2');
 }
 
-@font-face {
-    font-family: 'IBM Plex Sans';
-    font-style: italic;
-    font-weight: 600;
-    font-display: swap;
-    src: url('../../lib/ibm-plex/sans/IBMPlexSans-SemiBoldItalic.woff2') format('woff2');
-}
+// NOTE: IBMPlexSans-SemiBoldItalic (600 italic) @font-face removed —
+// font file not vendored. Browser will synthesize italic for weight 600
+// from the normal variant when needed.
 
 // ============================================================================
 // IBM Plex Mono — Regular (400)
@@ -117,13 +108,9 @@
     src: url('../../lib/ibm-plex/mono/IBMPlexMono-Regular.woff2') format('woff2');
 }
 
-@font-face {
-    font-family: 'IBM Plex Mono';
-    font-style: italic;
-    font-weight: 400;
-    font-display: swap;
-    src: url('../../lib/ibm-plex/mono/IBMPlexMono-Italic.woff2') format('woff2');
-}
+// NOTE: IBMPlexMono-Italic (400 italic) @font-face removed —
+// font file not vendored. Browser will synthesize italic for weight 400
+// from the normal variant when needed.
 
 // ============================================================================
 // IBM Plex Mono — SemiBold (600)
@@ -138,36 +125,16 @@
     src: url('../../lib/ibm-plex/mono/IBMPlexMono-SemiBold.woff2') format('woff2');
 }
 
-@font-face {
-    font-family: 'IBM Plex Mono';
-    font-style: italic;
-    font-weight: 600;
-    font-display: swap;
-    src: url('../../lib/ibm-plex/mono/IBMPlexMono-SemiBoldItalic.woff2') format('woff2');
-}
+// NOTE: IBMPlexMono-SemiBoldItalic (600 italic) @font-face removed —
+// font file not vendored. Browser will synthesize italic for weight 600
+// from the normal variant when needed.
 
 // ============================================================================
-// CSS Custom Properties — Carbon Font Family Stacks
-// Provides fallback chains aligned with Carbon Design System conventions.
-// These custom properties enable consistent font-family references
-// throughout the Carbon-themed Odoo UI.
+// Font Family Tokens — Defined in carbon_tokens.scss
 // ============================================================================
-
-:root {
-    // Primary sans-serif font stack — used for all body text, headings, labels,
-    // and UI elements in the Carbon Productive theme.
-    --cds-font-family-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont,
-        'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-
-    // Monospace font stack — used for code snippets, code editors, technical
-    // fields, and any content requiring fixed-width characters.
-    --cds-font-family-mono: 'IBM Plex Mono', SFMono-Regular, Menlo, Monaco,
-        Consolas, 'Liberation Mono', 'Courier New', monospace;
-
-    // Serif font stack — defined for completeness with Carbon's three-family
-    // type system. IBM Plex Serif is not vendored in this module; system
-    // serif fallbacks are used. Available if a future extension adds Plex Serif.
-    --cds-font-family-serif: 'IBM Plex Serif', Georgia, 'Times New Roman',
-        Times, serif;
-}
+// The --cds-font-family-sans, --cds-font-family-mono, and
+// --cds-font-family-serif CSS custom properties and their corresponding
+// Sass variables ($cds-font-family-sans, $cds-font-family-mono,
+// $cds-font-family-serif) are defined in carbon_tokens.scss as the
+// single source of truth for all design tokens. See Section 1
+// (CSS Custom Properties) and Section 4a (Sass Variables) in that file.

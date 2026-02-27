@@ -113,13 +113,13 @@
              work correctly with the same-origin fetch mode. -->
         <xpath expr="//meta[@name='theme-color']" position="after">
             <link rel="preload"
-                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexSans-Regular.woff2"
+                  href="/carbon_ui/static/lib/ibm-plex/sans/IBMPlexSans-Regular.woff2"
                   as="font" type="font/woff2" crossorigin=""/>
             <link rel="preload"
-                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexSans-SemiBold.woff2"
+                  href="/carbon_ui/static/lib/ibm-plex/sans/IBMPlexSans-SemiBold.woff2"
                   as="font" type="font/woff2" crossorigin=""/>
             <link rel="preload"
-                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexMono-Regular.woff2"
+                  href="/carbon_ui/static/lib/ibm-plex/mono/IBMPlexMono-Regular.woff2"
                   as="font" type="font/woff2" crossorigin=""/>
         </xpath>
 

@@ -38,7 +38,7 @@
     -->
     <t t-name="carbon_ui.CarbonHeader">
         <header class="cds--header"
-                aria-label="IBM Carbon Header"
+                aria-label="Application header"
                 t-ref="headerRoot"
                 data-command-category="disabled">
 

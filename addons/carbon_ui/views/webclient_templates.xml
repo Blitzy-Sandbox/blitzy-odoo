@@ -1,6 +1,182 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Carbon UI Shell template inheritance
-         This file will be populated with QWeb template inheritance
-         definitions by the code agent. -->
+    <!-- ================================================================
+         Carbon UI — Server-Side QWeb Template Inheritance
+         ================================================================
+
+         This file modifies the server-rendered HTML shell that bootstraps
+         the Odoo backend web client. It inherits from templates defined
+         in addons/web/views/webclient_templates.xml using standard Odoo
+         QWeb template inheritance (inherit_id + xpath expressions).
+
+         ARCHITECTURAL NOTE — Two Distinct QWeb Systems in Odoo:
+
+         1. Server-side QWeb (ir.ui.view records):
+            Defined in views/*.xml, rendered on the server using Python,
+            using <template id="..." inherit_id="..."> syntax.
+            THIS FILE operates at this layer. It modifies the initial
+            HTML page served to the browser before any JavaScript runs.
+
+         2. Client-side QWeb (OWL component templates):
+            Defined in static/src/**/*.xml, loaded in the browser as
+            JavaScript modules, using <templates><t t-name="..."> syntax.
+            OWL component template overrides for web.WebClient, web.NavBar,
+            web.Breadcrumbs, and web.SearchBar are handled in the
+            static/src/webclient/*.xml files — NOT in this file.
+
+         This file targets web.webclient_bootstrap — the HTML entry point
+         served when a user navigates to /web to access the Odoo backend.
+
+         Template Inheritance Chain:
+           web.layout (base HTML shell — <!DOCTYPE html>, <html>, <head>, <body>)
+             └── web.webclient_bootstrap (backend bootstrap — session, assets, body class)
+                   └── carbon_ui.webclient_bootstrap_inherit (THIS FILE)
+
+         Module Isolation Rule:
+           All modifications use standard inherit_id + xpath — zero changes
+           to any file under addons/web/ or odoo/. When this module is
+           uninstalled, all changes are automatically reverted.
+
+         Backward Compatibility Rule:
+           The original 'o_web_client' body class is preserved so that all
+           existing CSS selectors in Odoo core and third-party modules
+           that target .o_web_client continue to work unchanged.
+    -->
+
+    <!-- ================================================================
+         1. Inherit web.webclient_bootstrap
+         ================================================================
+
+         Modifications to the HTML bootstrap page:
+
+         (a) Theme-color meta tag:
+             Change from Odoo purple (#71639e) to Carbon Blue 60 (#0f62fe).
+             This controls the browser chrome color on mobile devices,
+             the PWA title bar color, and the tab color in multi-tab
+             views on certain browsers.
+
+         (b) IBM Plex font preloads:
+             Add <link rel="preload"> for the three most critical IBM Plex
+             font weights (Sans Regular, Sans SemiBold, Mono Regular).
+             Preloading ensures these fonts begin downloading before the
+             CSS @font-face rules are parsed, eliminating Flash of
+             Unstyled Text (FOUT) during initial page load.
+
+         (c) Carbon theme body class:
+             Add the Carbon Design System theme scope class alongside
+             Odoo's 'o_web_client' class. Carbon's CSS custom properties
+             (e.g., - -cds-background, - -cds-text-primary) require a
+             theme class on an ancestor element to resolve to correct
+             values. The class is dynamically set based on Odoo's
+             color_scheme variable (from the color_scheme cookie):
+             - Light mode: cds- -theme- -white (Carbon White theme)
+             - Dark mode:  cds- -theme- -g90 (Carbon Gray 90 theme)
+
+         (d) HTML data-carbon-theme attribute:
+             Set a data attribute on the <html> root element indicating
+             the active Carbon theme. This enables runtime theme detection
+             by JavaScript, CSS attribute selectors for theme-specific
+             overrides, and easy DevTools inspection of the active theme.
+    -->
+    <template id="carbon_ui.webclient_bootstrap_inherit"
+              name="Carbon UI - WebClient Bootstrap"
+              inherit_id="web.webclient_bootstrap">
+
+        <!-- (a) Override theme-color meta tag
+             Source: line 279 of web.webclient_bootstrap
+             Original value: #71639e (Odoo Community purple)
+             New value: #0f62fe (Carbon Blue 60 — primary interactive color)
+
+             Carbon Blue 60 is the standard interactive/primary color in
+             the Carbon Design System. It meets WCAG 2.1 AA contrast
+             requirements against white backgrounds (4.65:1 ratio). -->
+        <xpath expr="//meta[@name='theme-color']" position="attributes">
+            <attribute name="content">#0f62fe</attribute>
+        </xpath>
+
+        <!-- (b) Add IBM Plex font preload links
+             Inserted after the theme-color meta tag in <head>.
+
+             Preloaded font weights and their usage:
+             - IBMPlexSans-Regular (400): Body text, form labels, table
+               cells — the most frequently used weight across all views.
+             - IBMPlexSans-SemiBold (600): Headings, navigation labels,
+               button text, emphasis — Carbon's standard bold weight
+               (note: Carbon uses 600/SemiBold, not 700/Bold).
+             - IBMPlexMono-Regular (400): Code snippets, technical IDs,
+               debug output, CodeSnippet components.
+
+             Font format: WOFF2 (best compression, 95%+ browser support).
+             Hosting: Self-hosted in static/lib/ibm-plex/ per the IBM
+             Plex Typography Rule (no external CDN dependencies).
+             Loading: crossorigin="" is required for font preloads to
+             work correctly with the same-origin fetch mode. -->
+        <xpath expr="//meta[@name='theme-color']" position="after">
+            <link rel="preload"
+                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexSans-Regular.woff2"
+                  as="font" type="font/woff2" crossorigin=""/>
+            <link rel="preload"
+                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexSans-SemiBold.woff2"
+                  as="font" type="font/woff2" crossorigin=""/>
+            <link rel="preload"
+                  href="/carbon_ui/static/lib/ibm-plex/IBMPlexMono-Regular.woff2"
+                  as="font" type="font/woff2" crossorigin=""/>
+        </xpath>
+
+        <!-- (c) Add Carbon theme class to <body>
+             Source: line 309 of web.webclient_bootstrap
+             Original: t-value="'o_web_client'"
+             New: t-value="'o_web_client ' + (Carbon theme class)"
+
+             The body class now includes both:
+             1. 'o_web_client' — preserved for backward compatibility with
+                all existing Odoo CSS selectors and third-party modules.
+             2. Carbon theme scope class — enables Carbon CSS custom
+                properties to resolve correctly. All Carbon-styled
+                components reference variables like var(- -cds-background)
+                which are only defined within a theme scope class.
+
+             Dark mode awareness:
+             The color_scheme variable is provided by Odoo's web controller
+             (based on the color_scheme cookie set by user preference).
+             It is used at line 300 of web.webclient_bootstrap to
+             conditionally load dark CSS assets, confirming its availability
+             in this template context. We use it to set the correct
+             initial theme class for first-paint accuracy:
+             - When color_scheme == 'dark': 'cds- -theme- -g90'
+               (Carbon Gray 90 — dark theme with dark gray backgrounds)
+             - Otherwise: 'cds- -theme- -white'
+               (Carbon White — light theme, the default)
+
+             Runtime theme switching (without page reload) is handled by
+             carbon_theme_toggle.js, which swaps the class on <body>
+             dynamically and updates the color_scheme cookie. -->
+        <xpath expr="//t[@t-set='body_classname']" position="attributes">
+            <attribute name="t-value">'o_web_client ' + ('cds--theme--g90' if color_scheme == 'dark' else 'cds--theme--white')</attribute>
+        </xpath>
+
+        <!-- (d) Add data-carbon-theme attribute to <html> root element
+             Sets the html_data variable consumed by web.layout to render
+             as attributes on the <html> tag (line 18: <html t-att="html_data or {}">).
+
+             This enables:
+             - JavaScript theme detection: document.documentElement.dataset.carbonTheme
+             - CSS attribute selectors: html[data-carbon-theme="g90"] { ... }
+             - DevTools inspection of the active Carbon theme
+             - Coordination with the carbon_theme_toggle.js runtime switcher
+
+             Value mapping:
+             - 'white' for light mode (Carbon White theme)
+             - 'g90' for dark mode (Carbon Gray 90 theme)
+
+             Placed after body_classname to keep related theme
+             configuration together in the template. Both t-set directives
+             are consumed by web.layout regardless of declaration order
+             within the t-call scope. -->
+        <xpath expr="//t[@t-set='body_classname']" position="after">
+            <t t-set="html_data" t-value="{'data-carbon-theme': 'g90' if color_scheme == 'dark' else 'white'}"/>
+        </xpath>
+
+    </template>
+
 </odoo>

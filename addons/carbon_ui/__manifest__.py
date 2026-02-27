@@ -100,12 +100,11 @@ cascade — zero modifications to Odoo core.
             'carbon_ui/static/src/views/graph/carbon_graph_renderer.scss',
             'carbon_ui/static/src/views/graph/carbon_graph_view.js',
         ],
-        # Note: Test assets will be registered here once test files are created
-        # 'web.assets_unit_tests': [
-        #     'carbon_ui/static/tests/carbon_shell.test.js',
-        #     'carbon_ui/static/tests/carbon_graph.test.js',
-        #     'carbon_ui/static/tests/carbon_theme.test.js',
-        # ],
+        'web.assets_unit_tests': [
+            'carbon_ui/static/tests/carbon_shell.test.js',
+            'carbon_ui/static/tests/carbon_graph.test.js',
+            'carbon_ui/static/tests/carbon_theme.test.js',
+        ],
     },
     'installable': True,
     'auto_install': False,

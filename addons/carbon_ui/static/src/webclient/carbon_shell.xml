@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!--
+        Carbon UI Shell — Root Layout Template
+        ========================================
+        Defines the three-zone Carbon UI Shell layout that replaces
+        Odoo's default vertical-stack webclient layout:
+          1. Fixed header (48px) at the top
+          2. Collapsible side navigation rail on the left (256px / 48px)
+          3. Scrollable main content area on the right
+
+        This template is rendered by the CarbonShell OWL component
+        (carbon_shell.js). The actual QWeb inheritance that replaces
+        web.WebClient with CarbonShell lives in
+        views/webclient_templates.xml — this file only defines the
+        component's own template.
+
+        Child components:
+          - CarbonHeader:  fixed top bar with hamburger, search, systray
+          - CarbonSideNav: left navigation with app/section menus
+          - ActionContainer: Odoo's action/view renderer (preserved)
+          - MainComponentsContainer: dialogs, notifications, overlays (preserved)
+    -->
+    <t t-name="carbon_ui.CarbonShell">
+        <div class="cds--ui-shell"
+             t-ref="shellRoot"
+             t-att-class="{'cds--ui-shell--fullscreen': state.isFullscreen}">
+
+            <!--
+                Skip-to-content link (WCAG 2.1 AA — keyboard accessibility).
+                First focusable element in the page: pressing Tab reveals this
+                link so keyboard users can bypass the header and side-nav to
+                jump directly to the main content area.
+            -->
+            <a href="#carbon-main-content"
+               class="cds--assistive-text"
+               tabindex="0">Skip to content</a>
+
+            <!--
+                Carbon Header — Fixed 48px top bar
+                Contains: hamburger toggle, product/app name, global search,
+                systray utilities (notifications, user menu, company switcher),
+                theme toggle, and app switcher button.
+                Hidden in fullscreen mode to maximise viewport for content
+                (matches original WebClient behaviour: NavBar hidden when
+                state.fullscreen is true).
+            -->
+            <t t-if="!state.isFullscreen">
+                <CarbonHeader
+                    onToggleSideNav.bind="toggleSideNav"
+                    isSideNavExpanded="state.isSideNavExpanded"/>
+            </t>
+
+            <!--
+                Carbon SideNav — Left navigation rail
+                Renders the current app's section menus as collapsible
+                SideNavMenu / SideNavLink items. Three visual states:
+                  - Expanded (256px): full text labels visible
+                  - Rail     (48px) : icons only, expands on hover
+                  - Hidden          : completely off-screen on mobile
+                Hidden in fullscreen mode to give content the full viewport.
+            -->
+            <t t-if="!state.isFullscreen">
+                <CarbonSideNav
+                    isExpanded="state.isSideNavExpanded"
+                    isMobileOpen="state.isMobileSideNavOpen"
+                    onToggle.bind="toggleSideNav"/>
+            </t>
+
+            <!--
+                Main Content Area
+                Wraps Odoo's ActionContainer (renders views/actions) and
+                MainComponentsContainer (renders modals, notifications,
+                and other overlay components).
+
+                Dynamic CSS classes control the content margin:
+                  Rail mode  : left margin 48px  (collapsed sidenav)
+                  Fullscreen : no margins at all
+                  Default    : left margin 256px (expanded sidenav)
+
+                Accessibility:
+                  role="main" provides an ARIA main landmark
+                  id targets the skip-to-content link above
+            -->
+            <main class="cds--content"
+                  t-att-class="{
+                      'cds--content--rail': !state.isSideNavExpanded &amp;&amp; !state.isFullscreen,
+                      'cds--content--full': state.isFullscreen,
+                  }"
+                  id="carbon-main-content"
+                  role="main"
+                  aria-label="Main content">
+                <!-- Odoo ActionContainer — renders the current action/view -->
+                <ActionContainer/>
+                <!-- MainComponentsContainer — dialogs, notifications, overlays -->
+                <MainComponentsContainer/>
+            </main>
+        </div>
+    </t>
+
+</templates>

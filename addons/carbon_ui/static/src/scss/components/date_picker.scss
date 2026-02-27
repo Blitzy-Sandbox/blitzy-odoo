@@ -1,1 +1,584 @@
-// Placeholder - to be implemented by assigned agent
+// Carbon Design System v11 — DatePicker Component Override
+// Applies Carbon DatePicker styling to Odoo's DateTime picker flyout and calendar grid
+// Targets: .o_datetime_picker, .o_datepicker, .o_datetime_input
+//
+// Token dependency: carbon_tokens.scss (loaded first in asset bundle).
+// All visual values use --cds-* CSS custom properties for runtime theme switching.
+// Compatible with libsass — no Dart Sass features used.
+
+// ============================================================================
+// SECTION 1: DateTime Picker Flyout Container
+// ============================================================================
+// The root container for the calendar popup. Carbon DatePicker uses a clean
+// white panel with subtle border and drop shadow. Zero border-radius per
+// Carbon's default component style.
+
+.o_datetime_picker {
+  background-color: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0;
+  box-shadow: 0 2px 6px var(--cds-shadow);
+  padding: var(--cds-spacing-05);
+  min-width: 280px;
+  font-size: 0.875rem;
+  font-family: var(--cds-font-family-sans);
+  color: var(--cds-text-primary);
+
+  // ============================================================================
+  // SECTION 2: Navigation Header (Month/Year + Arrows)
+  // ============================================================================
+  // Carbon DatePicker header: month/year label centered, chevron navigation
+  // buttons on each side. Separated from calendar grid by a subtle border.
+
+  .o_datetime_picker_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-block-end: var(--cds-spacing-03);
+    margin-block-end: var(--cds-spacing-03);
+    border-block-end: 1px solid var(--cds-border-subtle-01);
+
+    // Navigation buttons (previous/next chevrons) — Carbon icon-button pattern
+    .o_previous,
+    .o_next {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      min-width: 2.5rem;
+      min-height: 2.5rem;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      color: var(--cds-icon-primary);
+      cursor: pointer;
+
+      @media (hover: hover) {
+        &:hover {
+          background-color: var(--cds-layer-hover-01);
+        }
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+      }
+
+      // Ensure icon inherits color
+      .oi,
+      i {
+        color: inherit;
+        font-size: 0.875rem;
+      }
+    }
+
+    // Zoom-out button (month/year label) — Carbon text-button style
+    .o_zoom_out {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 var(--cds-spacing-03);
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      color: var(--cds-text-primary);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      @media (hover: hover) {
+        &:hover {
+          background-color: var(--cds-layer-hover-01);
+          color: var(--cds-text-primary);
+        }
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+      }
+
+      &.disabled {
+        cursor: default;
+        color: var(--cds-text-disabled);
+        background: transparent;
+      }
+
+      .o_header_part {
+        font-weight: 600;
+        color: inherit;
+      }
+    }
+
+    // Range toggler button
+    .o_toggle_range {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      padding: 0;
+      background: transparent;
+      border: 1px solid var(--cds-border-subtle-01);
+      border-radius: 0;
+      color: var(--cds-icon-secondary);
+      cursor: pointer;
+
+      @media (hover: hover) {
+        &:hover {
+          background-color: var(--cds-layer-hover-01);
+        }
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+      }
+
+      &.active {
+        background-color: var(--cds-interactive);
+        color: var(--cds-text-on-color);
+        border-color: var(--cds-interactive);
+      }
+    }
+  }
+
+  // ============================================================================
+  // SECTION 3: Day-of-Week Header Cells
+  // ============================================================================
+  // Carbon uses label-01 typography for day-of-week abbreviations:
+  // 0.75rem, 400 weight, 0.32px letter-spacing, secondary text color.
+
+  .o_day_of_week_cell {
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.32px;
+    color: var(--cds-text-secondary);
+    text-align: center;
+    padding: var(--cds-spacing-02);
+    line-height: 1.33333;
+    min-height: 2.5rem;
+  }
+
+  // ============================================================================
+  // SECTION 4: Date Grid Containers
+  // ============================================================================
+  // Preserve Odoo's CSS Grid layout for the calendar while applying Carbon
+  // spacing. The day grid and item picker grid retain their template vars.
+
+  .o_date_picker {
+    gap: 0;
+  }
+
+  .o_date_item_picker {
+    gap: var(--cds-spacing-02);
+
+    // Month/year/decade cells in the zoomed-out picker
+    .o_datetime_button {
+      border-radius: 0;
+      font-size: 0.875rem;
+      color: var(--cds-text-primary);
+      min-height: 2.5rem;
+
+      @media (hover: hover) {
+        &:hover:not([disabled]) {
+          background-color: var(--cds-layer-hover-01);
+        }
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+      }
+
+      &.o_selected:not(.o_select_start, .o_select_end) {
+        background-color: var(--cds-interactive);
+        color: var(--cds-text-on-color);
+        font-weight: 600;
+      }
+
+      &.o_today {
+        font-weight: 600;
+        color: var(--cds-interactive);
+      }
+    }
+  }
+
+  // ============================================================================
+  // SECTION 5: Individual Date Cells
+  // ============================================================================
+  // Carbon DatePicker day cells: 40×40px circular highlight on hover/select.
+  // Uses aspect-ratio: 1 for consistent square cells, border-radius: 50% for
+  // the circular selected/hover indicator.
+
+  .o_date_item_cell {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--cds-text-primary);
+    cursor: pointer;
+    font-size: 0.875rem;
+    line-height: 1.28572;
+    position: relative;
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: background-color $cds-motion-duration-fast-01 $cds-motion-productive;
+    }
+
+    // Override Odoo's default ::before pseudo-element border with Carbon style
+    &:not([disabled])::before {
+      border-color: transparent;
+      border-radius: 50%;
+    }
+
+    @media (hover: hover) {
+      &:hover:not([disabled]):not(.o_selected):not(.o_select_start):not(.o_select_end) {
+        background-color: var(--cds-layer-hover-01);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+      z-index: 1;
+    }
+
+    &:hover:not([disabled])::before,
+    &:focus:not([disabled])::before {
+      border-color: var(--cds-interactive);
+    }
+
+    // --- Today indicator ---
+    // Carbon today: bold weight + interactive color outline (circle outline,
+    // not filled). The inner div gets the today circle when present.
+    &.o_today {
+      font-weight: 600;
+      color: var(--cds-interactive);
+
+      > div {
+        color: inherit;
+        background-color: transparent;
+        outline: 2px solid var(--cds-interactive);
+        outline-offset: -2px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      // When today is also selected, selected style takes priority
+      &.o_selected,
+      &.o_select_start,
+      &.o_select_end {
+        color: var(--cds-text-on-color);
+
+        > div {
+          outline-color: var(--cds-text-on-color);
+        }
+      }
+    }
+
+    // --- Selected date ---
+    // Carbon selected day: interactive (blue) filled circle with white text
+    &.o_selected {
+      background-color: var(--cds-interactive);
+      color: var(--cds-text-on-color);
+      font-weight: 600;
+      border-radius: 50%;
+
+      // Override Odoo's radial-gradient selection
+      background-image: none;
+
+      &::before {
+        border-color: transparent;
+      }
+    }
+
+    // --- Range start/end ---
+    // Carbon range endpoints: filled interactive circle, same as selected
+    &.o_select_start {
+      background-color: var(--cds-interactive);
+      color: var(--cds-text-on-color);
+      font-weight: 600;
+      border-radius: 50%;
+      background-image: none;
+
+      // Override Odoo's --selected-day-color and radial-gradient
+      --selected-day-color: transparent;
+
+      &::before {
+        border-color: transparent;
+      }
+    }
+
+    &.o_select_end {
+      background-color: var(--cds-interactive);
+      color: var(--cds-text-on-color);
+      font-weight: 600;
+      border-radius: 50%;
+      background-image: none;
+
+      // Override Odoo's --selected-day-color and radial-gradient
+      --selected-day-color: transparent;
+
+      &::before {
+        border-color: transparent;
+      }
+    }
+
+    // --- Range highlight ---
+    // Carbon range: light blue tint between start and end dates.
+    // Rectangular (no border-radius) to form a continuous bar.
+    &.o_highlighted {
+      background-color: var(--cds-highlight);
+      border-radius: 0;
+      color: var(--cds-text-primary);
+    }
+
+    // --- Out-of-range / other-month dates ---
+    // Carbon disabled/muted dates: reduced opacity text, no pointer
+    &.o_out_of_range {
+      color: var(--cds-text-disabled);
+      cursor: default;
+
+      @media (hover: hover) {
+        &:hover {
+          background-color: transparent;
+        }
+      }
+    }
+
+    // --- Disabled dates ---
+    &[disabled] {
+      color: var(--cds-text-disabled);
+      cursor: not-allowed;
+      pointer-events: none;
+      background-color: transparent;
+    }
+  }
+
+  // ============================================================================
+  // SECTION 6: Week Number Column
+  // ============================================================================
+  // Week numbers styled as label-01 with secondary text color.
+
+  .o_week_number_cell {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--cds-text-secondary);
+    font-variant: tabular-nums;
+    padding-inline-end: var(--cds-spacing-03);
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  // ============================================================================
+  // SECTION 7: Time Picker Section
+  // ============================================================================
+  // Carbon TimePicker: separated from calendar by a subtle border. Time input
+  // fields use Carbon's bottom-border-only input pattern (field-01 background,
+  // strong bottom border, no other borders).
+
+  .o_time_picker {
+    padding-block-start: var(--cds-spacing-05);
+    margin-block-start: var(--cds-spacing-03);
+    border-block-start: 1px solid var(--cds-border-subtle-01);
+    width: 4rem;
+
+    input,
+    .o_time_picker_input {
+      height: 2.5rem;
+      background-color: var(--cds-field-01);
+      border: none;
+      border-block-end: 1px solid var(--cds-border-strong-01);
+      border-radius: 0;
+      color: var(--cds-text-primary);
+      font-size: 0.875rem;
+      font-family: var(--cds-font-family-sans);
+      text-align: center;
+      padding: 0 var(--cds-spacing-03);
+      outline: none;
+
+      @media (prefers-reduced-motion: no-preference) {
+        transition: border-color $cds-motion-duration-fast-02 $cds-motion-productive,
+                    background-color $cds-motion-duration-fast-02 $cds-motion-productive;
+      }
+
+      &:focus,
+      &:focus-visible {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+        border-block-end-color: var(--cds-focus);
+      }
+
+      @media (hover: hover) {
+        &:hover:not(:focus) {
+          background-color: var(--cds-field-hover-01);
+        }
+      }
+
+      &::placeholder {
+        color: var(--cds-text-placeholder);
+      }
+
+      &.o_invalid {
+        border-block-end: 2px solid var(--cds-support-error);
+        color: var(--cds-text-error);
+      }
+    }
+  }
+
+  // Time picker dropdown suggestions
+  .o_time_picker_dropdown {
+    background-color: var(--cds-layer-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 0;
+    box-shadow: 0 2px 6px var(--cds-shadow);
+
+    .o_time_picker_option {
+      font-size: 0.875rem;
+      color: var(--cds-text-primary);
+      padding: var(--cds-spacing-03) var(--cds-spacing-05);
+      min-height: 2.5rem;
+      display: flex;
+      align-items: center;
+
+      @media (hover: hover) {
+        &:hover {
+          background-color: var(--cds-layer-hover-01);
+        }
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+      }
+    }
+  }
+
+  // Center utility override for consistent flex placement
+  .o_center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+// ============================================================================
+// SECTION 8: Date Input Trigger (Form Field Context)
+// ============================================================================
+// Carbon DatePicker input: bottom-border-only style with calendar icon.
+// Applied in form view contexts where .o_datepicker wraps the input field.
+
+.o_datepicker {
+  .o_input {
+    height: 2.5rem;
+    background-color: var(--cds-field-01);
+    border: none;
+    border-block-end: 1px solid var(--cds-border-strong-01);
+    border-radius: 0;
+    padding: 0 var(--cds-spacing-05);
+    color: var(--cds-text-primary);
+    font-size: 0.875rem;
+    font-family: var(--cds-font-family-sans);
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: border-color $cds-motion-duration-fast-02 $cds-motion-productive,
+                  background-color $cds-motion-duration-fast-02 $cds-motion-productive;
+    }
+
+    &:focus,
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+      border-block-end-color: var(--cds-focus);
+    }
+
+    @media (hover: hover) {
+      &:hover:not(:focus) {
+        background-color: var(--cds-field-hover-01);
+      }
+    }
+
+    &::placeholder {
+      color: var(--cds-text-placeholder);
+    }
+  }
+
+  // Calendar trigger icon button
+  .o_datepicker_button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    color: var(--cds-icon-secondary);
+    cursor: pointer;
+
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--cds-layer-hover-01);
+        color: var(--cds-icon-primary);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+    }
+
+    .fa,
+    .oi {
+      color: inherit;
+    }
+  }
+}
+
+// Standalone date/time input field (used outside .o_datepicker wrapper)
+.o_datetime_input {
+  height: 2.5rem;
+  background-color: var(--cds-field-01);
+  border: none;
+  border-block-end: 1px solid var(--cds-border-strong-01);
+  border-radius: 0;
+  padding: 0 var(--cds-spacing-05);
+  color: var(--cds-text-primary);
+  font-size: 0.875rem;
+  font-family: var(--cds-font-family-sans);
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: border-color $cds-motion-duration-fast-02 $cds-motion-productive,
+                background-color $cds-motion-duration-fast-02 $cds-motion-productive;
+  }
+
+  &:focus,
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+    border-block-end-color: var(--cds-focus);
+  }
+
+  @media (hover: hover) {
+    &:hover:not(:focus) {
+      background-color: var(--cds-field-hover-01);
+    }
+  }
+
+  &::placeholder {
+    color: var(--cds-text-placeholder);
+  }
+}

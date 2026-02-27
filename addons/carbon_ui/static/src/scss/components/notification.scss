@@ -1,1 +1,436 @@
-// Placeholder - to be implemented by assigned agent
+// Carbon Design System v11 — Notification Component Override
+// Applies Carbon InlineNotification/ToastNotification styling
+// Targets: .o_notification, .o_notification_manager, .o_notification_bar, .o_notification_progress
+//
+// Consumes CSS custom property tokens from carbon_tokens.scss:
+//   --cds-layer-01, --cds-text-primary, --cds-text-secondary,
+//   --cds-icon-primary, --cds-focus, --cds-background-hover, --cds-interactive,
+//   --cds-notification-background-info/success/warning/error,
+//   --cds-support-info/success/warning/error,
+//   --cds-spacing-02, --cds-spacing-03, --cds-spacing-05
+//
+// Compatibility: libsass-safe (no @use, no Dart Sass features).
+// All values expressed as CSS custom properties for automatic dark mode switching.
+
+
+// ============================================================================
+// SECTION 1: NOTIFICATION MANAGER — Positioning Container
+// ============================================================================
+// The .o_notification_manager is the fixed-position container rendered by
+// NotificationContainer. It is positioned below the Carbon header (48px) plus
+// spacing, anchored to the top-right of the viewport.
+
+.o_notification_manager {
+  position: fixed;
+  top: 64px; // 48px Carbon header + 16px spacing
+  inset-inline-end: var(--cds-spacing-05); // 16px right margin (logical property)
+  inset-inline-start: auto;
+  z-index: 1055; // Retain Odoo's notification z-index
+  width: 352px; // Carbon ToastNotification standard width
+  max-width: calc(100vw - 2 * 1rem); // Prevent overflow on narrow screens
+  display: flex;
+  flex-direction: column;
+  pointer-events: none; // Allow click-through on empty space
+
+  // Ensure notifications themselves are interactive
+  > * {
+    pointer-events: auto;
+  }
+}
+
+
+// ============================================================================
+// SECTION 2: NOTIFICATION BASE — Toast Notification Pattern
+// ============================================================================
+// The .o_notification element is the root of each notification toast.
+// Carbon ToastNotification: elevated, 3px left border colored by kind,
+// kind-specific subtle background, no border-radius, drop shadow.
+//
+// NOTE: The Odoo template adds Bootstrap utility classes (rounded, shadow-lg,
+// d-flex, mb-2) directly in the QWeb template. Where these utilities use
+// !important (Bootstrap convention), we must use !important to override them.
+// This is documented as a necessary cascade override for Bootstrap utility classes.
+
+.o_notification {
+  background-color: var(--cds-layer-01);
+  border: none;
+  border-inline-start: 3px solid transparent; // Colored per kind variant below
+  border-radius: 0 !important; // Override Bootstrap .rounded utility (!important)
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important; // Carbon elevated shadow, overrides .shadow-lg
+  padding: 0; // Reset — inner div controls padding
+  margin-block-end: var(--cds-spacing-03); // 8px gap between notifications
+  color: var(--cds-text-primary);
+  font-size: 0.875rem; // Carbon body-compact-01: 14px
+  line-height: 1.29; // Carbon Productive line-height
+  letter-spacing: 0.16px; // Carbon body-compact-01
+  position: relative;
+  overflow: hidden;
+
+  // Override Bootstrap .d-flex is fine (display: flex is desired)
+  // Override Bootstrap .mb-2 with Carbon spacing
+  &.mb-2 {
+    margin-bottom: var(--cds-spacing-03) !important; // 8px, override Bootstrap mb-2
+  }
+
+  // Inner content wrapper — the div with .border and .rounded-end classes
+  // Override Bootstrap border utilities baked into the template
+  > div.border {
+    border: none !important; // Remove Bootstrap .border utility
+    border-radius: 0 !important; // Remove Bootstrap .rounded-end utility
+    padding: var(--cds-spacing-05); // 16px all sides (Carbon notification padding)
+    padding-inline-start: var(--cds-spacing-05); // 16px (bar is handled separately)
+    padding-inline-end: var(--cds-spacing-05); // 16px
+    padding-block-start: var(--cds-spacing-05); // 16px
+    padding-block-end: var(--cds-spacing-05); // 16px
+    width: 100%;
+  }
+
+  // Action link buttons inside notification
+  .o_notification_buttons .btn-link {
+    color: var(--cds-interactive);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: var(--cds-spacing-02) var(--cds-spacing-03);
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: 2px;
+    }
+  }
+}
+
+
+// ============================================================================
+// SECTION 3: KIND VARIANTS — Info, Success, Warning, Error
+// ============================================================================
+// Carbon notifications have kind-specific subtle background colors and a 3px
+// left border in the matching support color. The Odoo template applies type as
+// bg-{type} on child elements. These selectors handle both the schema-required
+// .border-{type} pattern on the parent AND the child bg-{type} pattern.
+//
+// Each variant sets:
+//   - Notification background: --cds-notification-background-{kind}
+//   - Left border color: --cds-support-{kind}
+
+// --- Info (Blue) ---
+.o_notification.border-info,
+.o_notification.text-bg-info {
+  background-color: var(--cds-notification-background-info);
+  border-inline-start-color: var(--cds-support-info);
+}
+
+// --- Success (Green) ---
+.o_notification.border-success,
+.o_notification.text-bg-success {
+  background-color: var(--cds-notification-background-success);
+  border-inline-start-color: var(--cds-support-success);
+}
+
+// --- Warning (Yellow) ---
+.o_notification.border-warning,
+.o_notification.text-bg-warning {
+  background-color: var(--cds-notification-background-warning);
+  border-inline-start-color: var(--cds-support-warning);
+}
+
+// --- Danger / Error (Red) ---
+.o_notification.border-danger,
+.o_notification.text-bg-danger {
+  background-color: var(--cds-notification-background-error);
+  border-inline-start-color: var(--cds-support-error);
+}
+
+// Runtime kind detection: The Odoo template places bg-{type} on the
+// .o_notification_bar child, NOT on the parent .o_notification.
+// We use :has() to propagate kind styling to the parent notification.
+// :has() is supported in Chrome 105+, Firefox 121+, Safari 15.4+ —
+// all modern enterprise browsers. It compiles through libsass as a
+// pass-through CSS selector (no Sass processing needed).
+
+.o_notification:has(.o_notification_bar.bg-info) {
+  background-color: var(--cds-notification-background-info);
+  border-inline-start-color: var(--cds-support-info);
+}
+
+.o_notification:has(.o_notification_bar.bg-success) {
+  background-color: var(--cds-notification-background-success);
+  border-inline-start-color: var(--cds-support-success);
+}
+
+.o_notification:has(.o_notification_bar.bg-warning) {
+  background-color: var(--cds-notification-background-warning);
+  border-inline-start-color: var(--cds-support-warning);
+}
+
+.o_notification:has(.o_notification_bar.bg-danger) {
+  background-color: var(--cds-notification-background-error);
+  border-inline-start-color: var(--cds-support-error);
+}
+
+
+// ============================================================================
+// SECTION 4: NOTIFICATION BAR — Left Indicator Strip
+// ============================================================================
+// Carbon uses a 3px left border for kind indication. In the Odoo template, the
+// .o_notification_bar is a separate <span> element that serves as the left
+// color strip. We restyle it to 3px width to match Carbon's pattern.
+//
+// Specificity: Nested under .o_notification to match Odoo's original
+// .o_notification_manager .o_notification_bar (0,2,0 specificity). Our rule
+// loads after Odoo's in the cascade, so at equal specificity we win.
+
+.o_notification .o_notification_bar {
+  width: 3px; // Carbon left border indicator width (was 0.5rem / 8px in Odoo)
+  min-width: 3px; // Prevent flex shrink
+  flex-shrink: 0;
+  border-radius: 0 !important; // Override Bootstrap .rounded-start utility
+  display: block;
+  align-self: stretch;
+
+  // Kind-specific bar colors via Bootstrap bg-* classes from the template
+  &.bg-info {
+    background-color: var(--cds-support-info) !important; // Override Bootstrap bg-info
+  }
+
+  &.bg-success {
+    background-color: var(--cds-support-success) !important; // Override Bootstrap bg-success
+  }
+
+  &.bg-warning {
+    background-color: var(--cds-support-warning) !important; // Override Bootstrap bg-warning
+  }
+
+  &.bg-danger {
+    background-color: var(--cds-support-error) !important; // Override Bootstrap bg-danger
+  }
+}
+
+// Standalone selector for schema compliance (members_exposed: .o_notification_bar)
+.o_notification_bar {
+  width: 3px;
+  min-width: 3px;
+  flex-shrink: 0;
+  display: block;
+  align-self: stretch;
+}
+
+
+// ============================================================================
+// SECTION 5: NOTIFICATION TITLE — Carbon heading-compact-01
+// ============================================================================
+// Title text within the notification. In the current Odoo template, the title
+// is rendered inline within .o_notification_content. This selector ensures
+// correct styling if a dedicated .o_notification_title wrapper is used.
+
+.o_notification_title {
+  font-size: 0.875rem; // Carbon heading-compact-01: 14px
+  font-weight: 600; // Carbon heading-compact-01 weight
+  line-height: 1.29; // Carbon heading-compact-01 line-height (18px/14px)
+  letter-spacing: 0.16px; // Carbon heading-compact-01
+  color: var(--cds-text-primary);
+  margin-block-end: var(--cds-spacing-02); // 4px gap below title
+  display: block;
+}
+
+
+// ============================================================================
+// SECTION 6: NOTIFICATION CONTENT — Carbon body-compact-01
+// ============================================================================
+// Body text of the notification. Contains the message and optionally the
+// inline title. Uses Carbon body-compact-01 typography with secondary text
+// color for the body content.
+
+.o_notification_content {
+  font-size: 0.875rem; // Carbon body-compact-01: 14px
+  font-weight: 400; // Carbon body-compact-01 weight
+  line-height: 1.43; // Carbon body-01: 20px/14px, slightly more generous for readability
+  letter-spacing: 0.16px;
+  color: var(--cds-text-secondary);
+  overflow-wrap: break-word;
+  word-break: break-word;
+
+  // Title rendered inline (Odoo default pattern): ensure it stands out
+  > b,
+  > strong {
+    color: var(--cds-text-primary);
+    font-weight: 600;
+  }
+}
+
+
+// ============================================================================
+// SECTION 7: CLOSE BUTTON — Carbon Notification Close
+// ============================================================================
+// The close button uses both .btn-close (Bootstrap) and .o_notification_close
+// (Odoo) classes. Carbon notification close buttons are ghost icon buttons:
+// transparent background, icon-primary color, 36×36px touch target, focus ring.
+
+.o_notification .btn-close,
+.o_notification_close {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  // Override Bootstrap .btn-close background-image with icon color
+  background-image: none;
+  border: none;
+  border-radius: 0;
+  color: var(--cds-icon-primary);
+  cursor: pointer;
+  opacity: 1; // Override Bootstrap .btn-close default opacity
+  transition: background-color 70ms ease; // Carbon fast-01 productive motion
+  position: absolute;
+  inset-block-start: var(--cds-spacing-02); // 4px from top
+  inset-inline-end: var(--cds-spacing-02); // 4px from right
+  z-index: 1; // Above notification content
+
+  // Close icon via pseudo-element (Carbon X pattern)
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 1.5px;
+    background-color: var(--cds-icon-primary);
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+  }
+
+  &::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+
+  &::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+  }
+
+  // Hover: subtle background highlight
+  &:hover {
+    background-color: var(--cds-background-hover);
+  }
+
+  // Focus: Carbon 2px focus ring for keyboard accessibility
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px; // Inset per Carbon convention
+  }
+
+  // Fallback for browsers without :focus-visible support
+  &:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+// Prevent duplicate rendering if Bootstrap .btn-close styles are inherited
+.o_notification .btn-close {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  font-size: 0; // Hide Bootstrap's embedded SVG text
+}
+
+
+// ============================================================================
+// SECTION 8: PROGRESS BAR — Auto-close Countdown
+// ============================================================================
+// The .o_notification_progress element shows the remaining auto-close time as
+// a shrinking horizontal bar at the bottom of the notification. Carbon style:
+// 2px height, interactive color, positioned at the bottom edge.
+
+.o_notification_progress {
+  position: absolute;
+  inset-block-end: 0; // bottom: 0
+  inset-inline-start: 0; // left: 0
+  height: 2px; // Carbon: thinner than Odoo's 3px
+  background-color: var(--cds-interactive) !important; // Override Bootstrap bg-{type} utility
+  border-radius: 0;
+  transition: width 100ms linear; // Smooth countdown animation
+  z-index: 1; // Above notification background
+
+  // Override Bootstrap opacity-75 utility from the template
+  &.opacity-75 {
+    opacity: 1 !important; // Full opacity for Carbon progress indicators
+  }
+}
+
+
+// ============================================================================
+// SECTION 9: ANIMATION — Notification Enter/Leave
+// ============================================================================
+// Carbon productive motion: 150ms ease for enter, 110ms ease for exit.
+// The Odoo Transition component applies o_notification_fade-enter-active and
+// o_notification_fade-leave-active classes.
+
+.o_notification_fade-enter-active {
+  animation: cds-notification-enter 150ms ease-out;
+}
+
+.o_notification_fade-leave-active {
+  animation: cds-notification-leave 110ms ease-in forwards;
+}
+
+@keyframes cds-notification-enter {
+  from {
+    opacity: 0;
+    transform: translateX(16px); // Slide in from the right
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes cds-notification-leave {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(16px); // Slide out to the right
+  }
+}
+
+
+// ============================================================================
+// SECTION 10: RESPONSIVE — Mobile Adjustments
+// ============================================================================
+// On small screens, the notification manager spans the full width minus margins
+// to prevent notifications from being clipped or too narrow.
+
+@media (max-width: 671px) {
+  .o_notification_manager {
+    width: auto;
+    inset-inline-start: var(--cds-spacing-05); // 16px left margin on mobile
+    inset-inline-end: var(--cds-spacing-05); // 16px right margin on mobile
+  }
+}
+
+
+// ============================================================================
+// SECTION 11: ACCESSIBILITY ENHANCEMENTS
+// ============================================================================
+// Reduced motion: disable slide animations for users who prefer reduced motion.
+// Carbon requires this per WCAG 2.1 AA §2.3.3.
+
+@media (prefers-reduced-motion: reduce) {
+  .o_notification_fade-enter-active,
+  .o_notification_fade-leave-active {
+    animation: none;
+  }
+
+  .o_notification_progress {
+    transition: none;
+  }
+}

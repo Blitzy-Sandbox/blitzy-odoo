@@ -1,1 +1,485 @@
-// Placeholder - to be implemented by assigned agent
+// Carbon Design System v11 — Checkbox Component Override
+// Applies Carbon Checkbox styling with accessible hit targets and clear states
+// Targets: .o_checkbox, .o-checkbox, input[type="checkbox"], .form-check-input
+//
+// Carbon Checkbox specifications:
+//   Box size:        16×16px (1rem)
+//   Click target:    min-height 24px (1.5rem) — WCAG 2.1 AA accessible
+//   Border-radius:   0 (square — Carbon Design Language for checkboxes)
+//   Checked:         --cds-interactive (#0f62fe) background, white checkmark
+//   Indeterminate:   --cds-interactive background, white horizontal dash
+//   Focus:           2px solid --cds-focus outline, 2px offset
+//   Disabled:        25% opacity
+//   Toggle:          48×24px, rounded, white circle, success-green when on
+//
+// Token Dependencies (from carbon_tokens.scss, loaded earlier in bundle):
+//   --cds-icon-primary, --cds-interactive, --cds-icon-inverse, --cds-focus,
+//   --cds-icon-disabled, --cds-text-primary, --cds-spacing-03,
+//   --cds-toggle-off, --cds-support-success
+//
+// Compatibility: libsass-safe — no @use, @forward, or Dart Sass features.
+// All color/spacing values reference CSS custom properties via var().
+
+// ============================================================================
+// SECTION 1: Base Checkbox Container
+// ============================================================================
+// Odoo's CheckBox OWL component renders:
+//   <div class="o-checkbox form-check">
+//     <input type="checkbox" class="form-check-input">
+//     <label class="form-check-label">…</label>
+//   </div>
+// We override both .o-checkbox and .form-check to apply Carbon's layout.
+
+.o-checkbox {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  min-height: 1.5rem; // 24px — accessible click target area
+  padding-inline-start: 0; // Reset Bootstrap's padding-left
+  margin-block-end: 0; // Reset Bootstrap's margin-bottom
+  cursor: pointer;
+  width: fit-content; // Preserve Odoo's original constraint
+}
+
+// ============================================================================
+// SECTION 2: Checkbox Input — Carbon Box Styling
+// ============================================================================
+// Override Bootstrap's .form-check-input with Carbon's square checkbox.
+// Uses appearance:none to enable full custom styling including ::after
+// pseudo-element for checked/indeterminate state indicators.
+
+.o-checkbox input[type="checkbox"],
+.form-check-input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem; // 16px — Carbon default checkbox size
+  height: 1rem; // 16px
+  min-width: 1rem; // Prevent shrinking in flex layouts
+  margin: 0; // Reset Bootstrap's margin-top calculation
+  border: 1px solid var(--cds-icon-primary);
+  border-radius: 0; // Carbon sharp corners — checkboxes are square
+  background-color: transparent;
+  background-image: none; // Remove Bootstrap's SVG background
+  cursor: pointer;
+  position: relative; // Containing block for ::after checkmark
+  flex-shrink: 0;
+  float: none; // Reset Bootstrap's float: left
+  vertical-align: middle;
+  print-color-adjust: exact;
+
+  // Carbon fast-01 transition (70ms productive motion)
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9),
+                border-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9);
+  }
+
+  // Remove Bootstrap's default box-shadow on all states
+  box-shadow: none;
+
+  // Reset Bootstrap's background-size and position (cleanup)
+  background-size: auto;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  // --------------------------------------------------------------------------
+  // 2a. Checked State — Carbon interactive fill + white checkmark
+  // --------------------------------------------------------------------------
+  &:checked {
+    background-color: var(--cds-interactive);
+    border-color: var(--cds-interactive);
+    background-image: none; // Override Bootstrap's SVG checkmark
+
+    // Carbon checkmark via CSS pseudo-element:
+    // An L-shaped border (right + bottom) rotated 45° to form a checkmark.
+    &::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      inset-inline-start: 5px;
+      width: 5px;
+      height: 9px;
+      border: solid var(--cds-icon-inverse); // White checkmark
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 2b. Indeterminate State — Carbon interactive fill + white dash
+  // --------------------------------------------------------------------------
+  &:indeterminate {
+    background-color: var(--cds-interactive);
+    border-color: var(--cds-interactive);
+    background-image: none; // Override Bootstrap's SVG dash
+
+    // Carbon horizontal dash indicator
+    &::after {
+      content: "";
+      position: absolute;
+      top: 6px;
+      inset-inline-start: 3px;
+      width: 8px;
+      height: 2px;
+      background-color: var(--cds-icon-inverse); // White dash
+      border: none;
+      transform: none;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 2c. Focus State — Carbon 2px outline ring
+  // --------------------------------------------------------------------------
+  // Use :focus-visible for keyboard-only focus rings (UI guideline UI3/UI6).
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+    box-shadow: none; // Override Bootstrap's focus box-shadow
+    border-color: var(--cds-icon-primary);
+  }
+
+  // Hide focus ring for mouse/touch interactions
+  &:focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+
+  // --------------------------------------------------------------------------
+  // 2d. Hover State — Carbon hover feedback
+  // --------------------------------------------------------------------------
+  // Wrapped in @media (hover: hover) to prevent sticky hover on touch devices
+  // per UI guideline UI6.
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      border-color: var(--cds-icon-primary);
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 2e. Active State — Remove Bootstrap's filter
+  // --------------------------------------------------------------------------
+  &:active {
+    filter: none;
+  }
+
+  // --------------------------------------------------------------------------
+  // 2f. Disabled State — Carbon reduced opacity
+  // --------------------------------------------------------------------------
+  &:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    border-color: var(--cds-icon-disabled);
+
+    // Disabled + checked: muted interactive color
+    &:checked,
+    &:indeterminate {
+      background-color: var(--cds-icon-disabled);
+      border-color: var(--cds-icon-disabled);
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 3: Checkbox Label — Carbon body-compact-01 typography
+// ============================================================================
+// Label positioned to the right of the checkbox with Carbon's Productive
+// typography scale: 14px / 1.29 line-height / 0.16px letter-spacing.
+
+.o-checkbox > .form-check-label,
+.o-checkbox > label {
+  font-size: 0.875rem; // 14px — Carbon body-compact-01
+  line-height: 1.29; // Carbon Productive body-compact-01 line-height
+  letter-spacing: 0.16px; // Carbon body-compact-01 tracking
+  color: var(--cds-text-primary);
+  margin-inline-start: var(--cds-spacing-03); // 8px gap from checkbox box
+  cursor: pointer;
+  padding: 0;
+  user-select: none;
+}
+
+// Disabled label styling: when the adjacent input is disabled
+.o-checkbox input[type="checkbox"]:disabled + .form-check-label,
+.o-checkbox input[type="checkbox"]:disabled + label,
+.form-check input[type="checkbox"]:disabled + .form-check-label {
+  cursor: not-allowed;
+  color: var(--cds-text-primary);
+  opacity: 0.25;
+}
+
+// ============================================================================
+// SECTION 4: Toggle / Switch Variant — Carbon Toggle Component
+// ============================================================================
+// Odoo's BooleanToggleField renders CheckBox with additional classes:
+//   <div class="o-checkbox form-check o_field_boolean o_boolean_toggle form-switch">
+// Carbon Toggle: 48×24px, rounded pill, white sliding circle.
+// Off: --cds-toggle-off gray background
+// On:  --cds-support-success green background
+
+.o_boolean_toggle,
+.form-switch {
+  padding-inline-start: 0; // Reset Bootstrap's padding-left
+
+  // Override the checkbox styling for toggle variant
+  .form-check-input,
+  .form-check-input[type="checkbox"] {
+    width: 3rem; // 48px — Carbon Toggle width
+    height: 1.5rem; // 24px — Carbon Toggle height
+    min-width: 3rem;
+    border-radius: 0.75rem; // 12px — toggles DO have border-radius in Carbon
+    border: 1px solid var(--cds-toggle-off);
+    background-color: var(--cds-toggle-off);
+    background-image: none; // Remove Bootstrap's SVG circle
+    cursor: pointer;
+    position: relative;
+    margin-inline-start: 0; // Reset Bootstrap's negative margin
+    float: none;
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: background-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9),
+                  border-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9);
+    }
+
+    // Carbon toggle circle (off position) via pseudo-element
+    &::after {
+      content: "";
+      position: absolute;
+      top: 3px; // Vertically centered: (24 - 2*1 - 16) / 2 = 3px
+      inset-inline-start: 3px;
+      width: 1rem; // 16px circle
+      height: 1rem; // 16px circle
+      border-radius: 50%; // Perfect circle
+      background-color: var(--cds-icon-inverse); // White circle
+      border: none;
+
+      @media (prefers-reduced-motion: no-preference) {
+        transition: transform 70ms cubic-bezier(0.2, 0, 0.38, 0.9);
+      }
+
+      transform: translateX(0); // Off position: circle at left
+    }
+
+    // --------------------------------------------------------------------------
+    // 4a. Toggle Checked (On) — Green background, circle slides right
+    // --------------------------------------------------------------------------
+    &:checked {
+      background-color: var(--cds-support-success); // Green 60
+      border-color: var(--cds-support-success);
+      background-image: none; // Override Bootstrap's checked SVG
+
+      &::after {
+        // Re-specify ALL circle properties to beat the checkmark rule
+        // (.o-checkbox input[type="checkbox"]:checked::after has specificity
+        // (0,3,2) which overrides base toggle ::after at (0,3,1) for shared
+        // properties like width/height/border/top/left). By placing these
+        // in the :checked::after block (0,4,1), toggle always wins.
+        content: "";
+        position: absolute;
+        top: 3px;
+        inset-inline-start: 3px;
+        width: 1rem; // 16px circle — NOT the 5px checkmark
+        height: 1rem; // 16px circle — NOT the 9px checkmark
+        border-radius: 50%; // Circle
+        background-color: var(--cds-icon-inverse); // White circle stays white
+        border: none; // No L-shaped checkmark border
+        // Slide circle to right: inner-width - circle - 2*padding = 46 - 16 - 3 = 27
+        // translateX = 27 - 3 = 24px = 1.5rem
+        transform: translateX(1.5rem);
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 4b. Toggle Focus — Carbon focus ring
+    // --------------------------------------------------------------------------
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+
+    &:focus:not(:focus-visible) {
+      outline: none;
+      box-shadow: none;
+    }
+
+    // --------------------------------------------------------------------------
+    // 4c. Toggle Hover
+    // --------------------------------------------------------------------------
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        border-color: var(--cds-toggle-off);
+      }
+
+      &:checked:hover:not(:disabled) {
+        border-color: var(--cds-support-success);
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 4d. Toggle Disabled
+    // --------------------------------------------------------------------------
+    &:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+    }
+
+    // --------------------------------------------------------------------------
+    // 4e. Toggle Indeterminate — fallback (toggles shouldn't be indeterminate)
+    // --------------------------------------------------------------------------
+    &:indeterminate {
+      background-color: var(--cds-toggle-off);
+      border-color: var(--cds-toggle-off);
+      background-image: none;
+
+      &::after {
+        // Re-specify circle properties to override checkmark indeterminate dash
+        content: "";
+        position: absolute;
+        top: 3px;
+        inset-inline-start: 3px;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background-color: var(--cds-icon-inverse);
+        border: none;
+        transform: translateX(0);
+      }
+    }
+
+    // Reset Bootstrap active filter
+    &:active {
+      filter: none;
+    }
+  }
+
+  // Toggle label: same Carbon typography as checkbox label
+  .form-check-label {
+    margin-inline-start: var(--cds-spacing-03); // 8px gap from toggle
+  }
+}
+
+// ============================================================================
+// SECTION 5: Odoo A/B Switch Toggle Variant
+// ============================================================================
+// .o_switch_toggle is a variant of form-switch used for switching between
+// two options (e.g., month/year) rather than on/off. Applies same Carbon
+// Toggle styling with interactive color instead of success.
+
+.o_switch_toggle {
+  .form-check-input,
+  .form-check-input[type="checkbox"] {
+    border-color: var(--cds-interactive);
+    background-color: var(--cds-interactive);
+
+    &::after {
+      background-color: var(--cds-icon-inverse);
+    }
+
+    &:checked {
+      background-color: var(--cds-interactive);
+      border-color: var(--cds-interactive);
+    }
+
+    // Override Bootstrap's SVG-based circle images
+    &,
+    &:focus,
+    &:checked {
+      background-image: none;
+    }
+
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        border-color: var(--cds-interactive);
+      }
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 6: Odoo Context-Specific Overrides
+// ============================================================================
+// Targeted adjustments for checkboxes appearing in specific Odoo contexts
+// to ensure proper alignment and spacing within existing layouts.
+
+// List view record selector checkboxes — compact, no extra margin
+.o_list_record_selector {
+  .o-checkbox,
+  .form-check {
+    margin-block-end: 0;
+    min-height: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+// Optional columns dropdown checkboxes
+.o_optional_columns_dropdown {
+  .o-checkbox {
+    min-height: auto;
+  }
+}
+
+// Calendar filter checkboxes
+.o_calendar_filter_item {
+  &.o-checkbox {
+    min-height: auto;
+  }
+}
+
+// Boolean field checkboxes in form views — remove default bottom margin
+.o_field_boolean {
+  .o-checkbox {
+    margin-block-end: 0;
+  }
+}
+
+// Settings form toggles — ensure proper inline-start alignment
+.o_setting_right_pane {
+  .form-switch .form-check-input {
+    margin-inline-start: 0;
+  }
+}
+
+// User group privilege checkboxes — preserve disjoint/implied visual states
+.o_is_disjoint:not(.o_is_implied) .o-checkbox > input[type="checkbox"] {
+  border-color: var(--cds-interactive);
+}
+
+.o_is_implied:not(.o_is_disjoint) .o-checkbox > input[type="checkbox"] {
+  opacity: 0.5;
+}
+
+.o_is_implied.o_is_disjoint .o-checkbox > input[type="checkbox"] {
+  opacity: 0.5;
+  border-color: var(--cds-interactive);
+}
+
+// Inline checkbox rendering in formatters (e.g., list view boolean columns)
+.o-checkbox.d-inline-block {
+  min-height: auto;
+}
+
+// ============================================================================
+// SECTION 7: Reduced Motion Support
+// ============================================================================
+// Disables all checkbox and toggle transitions/animations when the user
+// prefers reduced motion, per WCAG 2.1 and Carbon accessibility guidelines.
+
+@media (prefers-reduced-motion: reduce) {
+  .o-checkbox input[type="checkbox"],
+  .form-check-input[type="checkbox"] {
+    transition: none;
+
+    &::after {
+      transition: none;
+    }
+  }
+
+  .form-switch .form-check-input,
+  .o_boolean_toggle .form-check-input {
+    transition: none;
+
+    &::after {
+      transition: none;
+    }
+  }
+}

@@ -1,0 +1,173 @@
+// Carbon Design System v11 — IBM Plex Font Face Declarations
+// @font-face rules for IBM Plex Sans and IBM Plex Mono
+// Fonts vendored in static/lib/ibm-plex/ as WOFF2 files
+// Uses font-display: swap for optimized loading (AAP §0.8.7)
+//
+// IBM Plex Sans: weights 300 (Light), 400 (Regular), 500 (Medium), 600 (SemiBold)
+// IBM Plex Mono: weights 400 (Regular), 600 (SemiBold)
+// Each weight declares normal and italic styles.
+//
+// Typography Rule (§0.8.7): IBM Plex Sans is the primary body typeface.
+// IBM Plex Mono is used for code snippets and technical content.
+// All font files are self-hosted — no external CDN dependencies.
+// WOFF2 format only for optimal compression and broad browser support.
+//
+// Sass Compilation Compatibility (§0.8.6): Standard @font-face rules
+// compatible with libsass (Odoo's SCSS compiler).
+
+// ============================================================================
+// IBM Plex Sans — Light (300)
+// Used for: body light text, captions, secondary content
+// ============================================================================
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/sans/IBMPlexSans-Light.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: italic;
+    font-weight: 300;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/sans/IBMPlexSans-LightItalic.woff2') format('woff2');
+}
+
+// ============================================================================
+// IBM Plex Sans — Regular (400)
+// Used for: body-compact-01 (14px/18px), body-01, labels, primary body text
+// This is the most heavily used weight in the Carbon Productive theme.
+// ============================================================================
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/sans/IBMPlexSans-Regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/sans/IBMPlexSans-Italic.woff2') format('woff2');
+}
+
+// ============================================================================
+// IBM Plex Sans — Medium (500)
+// Used for: emphasis text, medium-weight labels, navigation items
+// Maps to Odoo's $o-font-weight-medium variable.
+// ============================================================================
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/sans/IBMPlexSans-Medium.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: italic;
+    font-weight: 500;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/sans/IBMPlexSans-MediumItalic.woff2') format('woff2');
+}
+
+// ============================================================================
+// IBM Plex Sans — SemiBold (600)
+// Used for: headings (heading-compact-01/02), bold emphasis
+// Carbon Productive theme uses 600 (SemiBold) instead of 700 (Bold).
+// Maps to Odoo's $o-font-weight-bold overridden from 700 to 600.
+// ============================================================================
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/sans/IBMPlexSans-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: italic;
+    font-weight: 600;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/sans/IBMPlexSans-SemiBoldItalic.woff2') format('woff2');
+}
+
+// ============================================================================
+// IBM Plex Mono — Regular (400)
+// Used for: code-01 (12px/16px), code-02 (14px/20px), inline code,
+// CodeEditor component (Ace editor wrapper), technical fields.
+// ============================================================================
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/mono/IBMPlexMono-Regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/mono/IBMPlexMono-Italic.woff2') format('woff2');
+}
+
+// ============================================================================
+// IBM Plex Mono — SemiBold (600)
+// Used for: bold code, emphasized code sections, important identifiers.
+// ============================================================================
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/mono/IBMPlexMono-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: italic;
+    font-weight: 600;
+    font-display: swap;
+    src: url('../../lib/ibm-plex/mono/IBMPlexMono-SemiBoldItalic.woff2') format('woff2');
+}
+
+// ============================================================================
+// CSS Custom Properties — Carbon Font Family Stacks
+// Provides fallback chains aligned with Carbon Design System conventions.
+// These custom properties enable consistent font-family references
+// throughout the Carbon-themed Odoo UI.
+// ============================================================================
+
+:root {
+    // Primary sans-serif font stack — used for all body text, headings, labels,
+    // and UI elements in the Carbon Productive theme.
+    --cds-font-family-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont,
+        'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+
+    // Monospace font stack — used for code snippets, code editors, technical
+    // fields, and any content requiring fixed-width characters.
+    --cds-font-family-mono: 'IBM Plex Mono', SFMono-Regular, Menlo, Monaco,
+        Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+    // Serif font stack — defined for completeness with Carbon's three-family
+    // type system. IBM Plex Serif is not vendored in this module; system
+    // serif fallbacks are used. Available if a future extension adds Plex Serif.
+    --cds-font-family-serif: 'IBM Plex Serif', Georgia, 'Times New Roman',
+        Times, serif;
+}

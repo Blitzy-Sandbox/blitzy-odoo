@@ -1,1 +1,734 @@
-// Placeholder - to be implemented by assigned agent
+// ==========================================================================
+// Carbon SideNav / SideRail Styles
+// ==========================================================================
+//
+// Implements Carbon UI Shell SideNav pattern for the Odoo webclient.
+// Three visual states:
+//   1. Expanded (256px) — full labels, submenus visible
+//   2. Rail (48px) — icons only, hover-to-expand
+//   3. Mobile hidden / overlay
+//
+// All values reference Carbon design tokens via CSS custom properties
+// (--cds-*) for theme compatibility (White, G10, G90, G100).
+// Odoo uses libsass; Carbon SCSS requires Dart Sass, so pre-compiled
+// CSS custom properties are the integration path.
+//
+// Carbon responsive breakpoints used:
+//   sm  = 320px
+//   md  = 672px
+//   lg  = 1056px
+//   xlg = 1312px
+//   max = 1584px
+//
+// ==========================================================================
+
+// ---------------------------------------------------------------------------
+// 1. SideNav Container
+// ---------------------------------------------------------------------------
+
+.cds--side-nav {
+    position: fixed;
+    inset-inline-start: 0;
+    inset-block-start: 48px; // Carbon UI Shell header height
+    z-index: 6000; // Above content, below header (8000) and modals (9000+)
+    display: flex;
+    flex-direction: column;
+    inline-size: 256px;
+    block-size: calc(100vh - 48px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    background-color: var(--cds-background);
+    border-inline-end: 1px solid var(--cds-border-subtle);
+    will-change: inline-size;
+    color: var(--cds-text-secondary);
+
+    // Scrollbar styling — slim profile for dense navigation
+    scrollbar-width: thin;
+    scrollbar-color: var(--cds-border-strong-01, currentColor) transparent;
+
+    &::-webkit-scrollbar {
+        inline-size: var(--cds-spacing-02); // 4px
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: var(--cds-border-strong-01, currentColor);
+        border-radius: var(--cds-spacing-02);
+    }
+
+    &::-webkit-scrollbar-track {
+        background-color: transparent;
+    }
+
+    // Smooth expand/collapse transition (productive motion = 200ms)
+    @media screen and (prefers-reduced-motion: no-preference) {
+        transition: inline-size 200ms cubic-bezier(0.2, 0, 0.38, 0.9);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 2. SideNav — Expanded State
+// ---------------------------------------------------------------------------
+
+.cds--side-nav--expanded {
+    inline-size: 256px;
+}
+
+// ---------------------------------------------------------------------------
+// 3. SideNav — Rail State (Collapsed to 48px)
+// ---------------------------------------------------------------------------
+
+.cds--side-nav--rail {
+    inline-size: 48px;
+
+    // Hide text labels in rail mode
+    .cds--side-nav__item-text {
+        opacity: 0;
+        inline-size: 0;
+        overflow: hidden;
+
+        @media screen and (prefers-reduced-motion: no-preference) {
+            transition: opacity 150ms cubic-bezier(0.2, 0, 0.38, 0.9);
+        }
+    }
+
+    // Hide submenus entirely in rail mode
+    .cds--side-nav__submenu-content {
+        display: none;
+    }
+
+    // Hide submenu chevron in rail mode
+    .cds--side-nav__submenu-chevron {
+        opacity: 0;
+        inline-size: 0;
+        overflow: hidden;
+    }
+
+    // Hide app header details in rail
+    .cds--side-nav__header-detail {
+        opacity: 0;
+        inline-size: 0;
+        overflow: hidden;
+    }
+
+    // Divider between sections — minimal in rail
+    .cds--side-nav__divider {
+        margin-inline: var(--cds-spacing-03);
+    }
+
+    // Rail hover-to-expand behavior
+    @media screen and (prefers-reduced-motion: no-preference) {
+        &:hover {
+            inline-size: 256px;
+
+            .cds--side-nav__item-text {
+                opacity: 1;
+                inline-size: auto;
+                transition-delay: 50ms;
+            }
+
+            .cds--side-nav__submenu-content {
+                display: block;
+            }
+
+            .cds--side-nav__submenu-chevron {
+                opacity: 1;
+                inline-size: auto;
+            }
+
+            .cds--side-nav__header-detail {
+                opacity: 1;
+                inline-size: auto;
+            }
+        }
+    }
+
+    // For users who prefer reduced motion — instant expand on hover
+    @media screen and (prefers-reduced-motion: reduce) {
+        &:hover {
+            inline-size: 256px;
+
+            .cds--side-nav__item-text {
+                opacity: 1;
+                inline-size: auto;
+            }
+
+            .cds--side-nav__submenu-content {
+                display: block;
+            }
+
+            .cds--side-nav__submenu-chevron {
+                opacity: 1;
+                inline-size: auto;
+            }
+
+            .cds--side-nav__header-detail {
+                opacity: 1;
+                inline-size: auto;
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 4. SideNav Header (Current App Section)
+// ---------------------------------------------------------------------------
+
+.cds--side-nav__header {
+    display: flex;
+    align-items: center;
+    min-block-size: 48px;
+    padding-inline: var(--cds-spacing-05); // 16px
+    padding-block: var(--cds-spacing-03); // 8px
+    border-block-end: 1px solid var(--cds-border-subtle);
+}
+
+.cds--side-nav__header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: var(--cds-spacing-07); // 32px
+    block-size: var(--cds-spacing-07);
+    margin-inline-end: var(--cds-spacing-03); // 8px
+    border-radius: var(--cds-spacing-02); // 4px
+    overflow: hidden;
+
+    img {
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+}
+
+.cds--side-nav__header-detail {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    @media screen and (prefers-reduced-motion: no-preference) {
+        transition: opacity 200ms cubic-bezier(0.2, 0, 0.38, 0.9);
+    }
+}
+
+.cds--side-nav__header-title {
+    font-size: var(--cds-heading-compact-01-font-size);
+    font-weight: var(--cds-heading-compact-01-font-weight);
+    line-height: var(--cds-heading-compact-01-line-height);
+    letter-spacing: var(--cds-heading-compact-01-letter-spacing);
+    color: var(--cds-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cds--side-nav__header-subtitle {
+    font-size: var(--cds-caption-01-font-size);
+    font-weight: var(--cds-caption-01-font-weight);
+    line-height: var(--cds-caption-01-line-height);
+    letter-spacing: var(--cds-caption-01-letter-spacing);
+    color: var(--cds-text-helper);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// ---------------------------------------------------------------------------
+// 5. SideNav Item List Container
+// ---------------------------------------------------------------------------
+
+.cds--side-nav__items {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    padding-block-start: var(--cds-spacing-03); // 8px
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+// ---------------------------------------------------------------------------
+// 6. SideNav Item
+// ---------------------------------------------------------------------------
+
+.cds--side-nav__item {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    min-block-size: 0;
+}
+
+// ---------------------------------------------------------------------------
+// 7. SideNav Link (Clickable Navigation Item)
+// ---------------------------------------------------------------------------
+
+.cds--side-nav__link {
+    display: flex;
+    align-items: center;
+    inline-size: 100%;
+    min-block-size: 32px; // Carbon compact density
+    padding-block: var(--cds-spacing-02); // 4px
+    padding-inline: var(--cds-spacing-05); // 16px
+    text-decoration: none;
+    color: var(--cds-text-secondary);
+    background-color: transparent;
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    outline: none;
+    cursor: pointer;
+    font-size: var(--cds-body-compact-01-font-size);
+    font-weight: var(--cds-body-compact-01-font-weight);
+    line-height: var(--cds-body-compact-01-line-height);
+    letter-spacing: var(--cds-body-compact-01-letter-spacing);
+    overflow-wrap: break-word;
+
+    @media screen and (prefers-reduced-motion: no-preference) {
+        transition:
+            background-color 150ms cubic-bezier(0.2, 0, 0.38, 0.9),
+            color 150ms cubic-bezier(0.2, 0, 0.38, 0.9),
+            border-color 150ms cubic-bezier(0.2, 0, 0.38, 0.9);
+    }
+
+    // Hover state
+    @media (hover: hover) {
+        &:hover {
+            background-color: var(--cds-layer-hover);
+            color: var(--cds-text-primary);
+        }
+    }
+
+    // Focus state — Carbon focus ring (WCAG 2.1 AA)
+    &:focus-visible {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+    }
+
+    // Active/pressed state
+    &:active {
+        background-color: var(--cds-layer-active);
+    }
+
+    // Current / Active navigation state
+    &--current,
+    &[aria-current="page"] {
+        background-color: var(--cds-layer-selected);
+        color: var(--cds-text-primary);
+        border-inline-start-color: var(--cds-border-interactive);
+        font-weight: var(--cds-heading-compact-01-font-weight);
+
+        @media (hover: hover) {
+            &:hover {
+                background-color: var(--cds-layer-selected-hover);
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 8. SideNav Icon
+// ---------------------------------------------------------------------------
+
+.cds--side-nav__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: var(--cds-spacing-05); // 16px
+    block-size: var(--cds-spacing-05);
+    margin-inline-end: var(--cds-spacing-03); // 8px
+    color: var(--cds-icon-secondary);
+
+    svg {
+        inline-size: var(--cds-spacing-05);
+        block-size: var(--cds-spacing-05);
+        fill: currentColor;
+    }
+
+    img {
+        inline-size: var(--cds-spacing-05);
+        block-size: var(--cds-spacing-05);
+        object-fit: contain;
+        border-radius: var(--cds-spacing-01); // 2px
+    }
+
+    // When parent link is current, icon uses primary colour
+    .cds--side-nav__link--current &,
+    .cds--side-nav__link[aria-current="page"] & {
+        color: var(--cds-icon-primary);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 9. SideNav Item Text Label
+// ---------------------------------------------------------------------------
+
+.cds--side-nav__item-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 auto;
+
+    @media screen and (prefers-reduced-motion: no-preference) {
+        transition: opacity 200ms cubic-bezier(0.2, 0, 0.38, 0.9);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 10. Submenu / Nested Menu (Section Menus Within Apps)
+// ---------------------------------------------------------------------------
+
+.cds--side-nav__submenu {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+// Submenu title — toggles expand/collapse
+.cds--side-nav__submenu-title {
+    display: flex;
+    align-items: center;
+    inline-size: 100%;
+    min-block-size: 32px;
+    padding-block: var(--cds-spacing-02); // 4px
+    padding-inline: var(--cds-spacing-05); // 16px
+    background-color: transparent;
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    outline: none;
+    cursor: pointer;
+    color: var(--cds-text-secondary);
+    font-size: var(--cds-body-compact-01-font-size);
+    font-weight: var(--cds-heading-compact-01-font-weight);
+    line-height: var(--cds-body-compact-01-line-height);
+    letter-spacing: var(--cds-body-compact-01-letter-spacing);
+    text-align: start;
+
+    @media screen and (prefers-reduced-motion: no-preference) {
+        transition:
+            background-color 150ms cubic-bezier(0.2, 0, 0.38, 0.9),
+            color 150ms cubic-bezier(0.2, 0, 0.38, 0.9);
+    }
+
+    @media (hover: hover) {
+        &:hover {
+            background-color: var(--cds-layer-hover);
+            color: var(--cds-text-primary);
+        }
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--cds-focus);
+        outline-offset: -2px;
+    }
+
+    &:active {
+        background-color: var(--cds-layer-active);
+    }
+
+    // Expanded state marker on the submenu title itself
+    &--expanded {
+        color: var(--cds-text-primary);
+    }
+}
+
+// Submenu chevron icon (expand/collapse indicator)
+.cds--side-nav__submenu-chevron {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-inline-start: auto;
+    inline-size: var(--cds-spacing-05); // 16px
+    block-size: var(--cds-spacing-05);
+    color: var(--cds-icon-secondary);
+
+    @media screen and (prefers-reduced-motion: no-preference) {
+        transition: transform 200ms cubic-bezier(0.2, 0, 0.38, 0.9);
+    }
+
+    svg {
+        inline-size: var(--cds-spacing-05);
+        block-size: var(--cds-spacing-05);
+        fill: currentColor;
+    }
+
+    // Rotate chevron when submenu is expanded
+    .cds--side-nav__submenu-title--expanded & {
+        transform: rotate(180deg);
+    }
+}
+
+// Submenu content — list of child navigation items
+.cds--side-nav__submenu-content {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    background-color: var(--cds-layer-01);
+
+    // Nested items indented for hierarchy clarity
+    .cds--side-nav__link {
+        padding-inline-start: var(--cds-spacing-07); // 32px — indented
+        min-block-size: 32px;
+    }
+
+    // Deeper nesting level (third-level menus)
+    .cds--side-nav__submenu-content .cds--side-nav__link {
+        padding-inline-start: var(--cds-spacing-08); // 40px
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 11. Divider (Separator Between Navigation Groups)
+// ---------------------------------------------------------------------------
+
+.cds--side-nav__divider {
+    block-size: 1px;
+    margin-block: var(--cds-spacing-03); // 8px
+    margin-inline: var(--cds-spacing-05); // 16px
+    background-color: var(--cds-border-subtle);
+    border: 0;
+}
+
+// ---------------------------------------------------------------------------
+// 12. SideNav Footer (Optional — For Version/Help Links)
+// ---------------------------------------------------------------------------
+
+.cds--side-nav__footer {
+    display: flex;
+    align-items: center;
+    padding-block: var(--cds-spacing-03); // 8px
+    padding-inline: var(--cds-spacing-05); // 16px
+    margin-block-start: auto;
+    border-block-start: 1px solid var(--cds-border-subtle);
+    font-size: var(--cds-caption-01-font-size);
+    color: var(--cds-text-helper);
+}
+
+// ---------------------------------------------------------------------------
+// 13. Mobile Overlay Backdrop
+// ---------------------------------------------------------------------------
+
+.cds--side-nav-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5999; // Just below sidenav (6000)
+    background-color: var(--cds-overlay);
+    opacity: 0;
+    pointer-events: none;
+
+    @media screen and (prefers-reduced-motion: no-preference) {
+        transition: opacity 200ms cubic-bezier(0.2, 0, 0.38, 0.9);
+    }
+
+    // When mobile sidenav is open, show the overlay
+    .cds--side-nav--mobile-open ~ & {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 14. Responsive Behaviour
+// ---------------------------------------------------------------------------
+
+// --- Small screens (below Carbon md = 672px) ---
+// SideNav is completely hidden by default; shown only via hamburger toggle
+@media (max-width: 671px) {
+    .cds--side-nav {
+        transform: translateX(-100%);
+        inline-size: 256px;
+        z-index: 7000; // Above overlay, but still below header
+
+        @media screen and (prefers-reduced-motion: no-preference) {
+            transition:
+                transform 200ms cubic-bezier(0.2, 0, 0.38, 0.9),
+                inline-size 200ms cubic-bezier(0.2, 0, 0.38, 0.9);
+        }
+    }
+
+    // RTL: mirror the transform
+    [dir="rtl"] .cds--side-nav {
+        transform: translateX(100%);
+    }
+
+    // Mobile open state — overlay the content
+    .cds--side-nav--mobile-open {
+        transform: translateX(0);
+
+        // Ensure text and submenus are visible in mobile overlay
+        .cds--side-nav__item-text {
+            opacity: 1;
+            inline-size: auto;
+        }
+
+        .cds--side-nav__submenu-content {
+            display: block;
+        }
+
+        .cds--side-nav__submenu-chevron {
+            opacity: 1;
+            inline-size: auto;
+        }
+
+        .cds--side-nav__header-detail {
+            opacity: 1;
+            inline-size: auto;
+        }
+    }
+
+    // Rail modifier is irrelevant on mobile
+    .cds--side-nav--rail {
+        inline-size: 256px;
+    }
+}
+
+// --- Medium screens (Carbon md = 672px to lg − 1 = 1055px) ---
+// SideNav defaults to rail mode (48px), expands on hover
+@media (min-width: 672px) and (max-width: 1055px) {
+    .cds--side-nav {
+        inline-size: 48px;
+    }
+
+    .cds--side-nav--expanded {
+        inline-size: 256px;
+    }
+
+    // In the md range, text is hidden by default (rail behaviour)
+    .cds--side-nav:not(.cds--side-nav--expanded) {
+        .cds--side-nav__item-text {
+            opacity: 0;
+            inline-size: 0;
+            overflow: hidden;
+        }
+
+        .cds--side-nav__submenu-content {
+            display: none;
+        }
+
+        .cds--side-nav__submenu-chevron {
+            opacity: 0;
+            inline-size: 0;
+            overflow: hidden;
+        }
+
+        .cds--side-nav__header-detail {
+            opacity: 0;
+            inline-size: 0;
+            overflow: hidden;
+        }
+
+        // Hover-to-expand in md range
+        @media screen and (prefers-reduced-motion: no-preference) {
+            &:hover {
+                inline-size: 256px;
+
+                .cds--side-nav__item-text {
+                    opacity: 1;
+                    inline-size: auto;
+                    transition-delay: 50ms;
+                }
+
+                .cds--side-nav__submenu-content {
+                    display: block;
+                }
+
+                .cds--side-nav__submenu-chevron {
+                    opacity: 1;
+                    inline-size: auto;
+                }
+
+                .cds--side-nav__header-detail {
+                    opacity: 1;
+                    inline-size: auto;
+                }
+            }
+        }
+
+        @media screen and (prefers-reduced-motion: reduce) {
+            &:hover {
+                inline-size: 256px;
+
+                .cds--side-nav__item-text {
+                    opacity: 1;
+                    inline-size: auto;
+                }
+
+                .cds--side-nav__submenu-content {
+                    display: block;
+                }
+
+                .cds--side-nav__submenu-chevron {
+                    opacity: 1;
+                    inline-size: auto;
+                }
+
+                .cds--side-nav__header-detail {
+                    opacity: 1;
+                    inline-size: auto;
+                }
+            }
+        }
+    }
+}
+
+// --- Large screens and above (Carbon lg = 1056px+) ---
+// SideNav is fully expanded by default; can be toggled to rail
+@media (min-width: 1056px) {
+    .cds--side-nav {
+        inline-size: 256px;
+    }
+
+    // Explicit rail mode at large screen (toggled via hamburger)
+    .cds--side-nav--rail {
+        inline-size: 48px;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 15. Print Styles
+// ---------------------------------------------------------------------------
+
+@media print {
+    .cds--side-nav {
+        display: none;
+    }
+
+    .cds--side-nav-overlay {
+        display: none;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 16. High Contrast / Forced Colors Mode
+// ---------------------------------------------------------------------------
+
+@media screen and (forced-colors: active) {
+    .cds--side-nav {
+        border-inline-end: 1px solid ButtonText;
+    }
+
+    .cds--side-nav__link {
+        &:focus-visible {
+            outline: 2px solid Highlight;
+        }
+
+        &--current,
+        &[aria-current="page"] {
+            border-inline-start-color: Highlight;
+            forced-color-adjust: none;
+        }
+    }
+
+    .cds--side-nav__submenu-title {
+        &:focus-visible {
+            outline: 2px solid Highlight;
+        }
+    }
+
+    .cds--side-nav__divider {
+        background-color: ButtonText;
+    }
+}

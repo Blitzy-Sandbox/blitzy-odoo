@@ -1,1 +1,375 @@
-// Placeholder - to be implemented by assigned agent
+// Carbon Design System v11 — Modal/Dialog Component Override
+// Applies Carbon Modal styling to Odoo dialogs and confirmation dialogs
+// Targets: .o_dialog, .modal, .modal-content, .modal-header, .modal-body, .modal-footer
+//
+// Carbon Modal anatomy:
+//   - Sharp corners (border-radius: 0)
+//   - Header: 48px min-height, heading-03 typography, icon close button (48x48 touch target)
+//   - Body: Scrollable, body-01 typography, Carbon spacing tokens
+//   - Footer: 64px, buttons share width equally, secondary left / primary right
+//   - Backdrop: Semi-transparent overlay using --cds-overlay token
+//   - Focus: 2px solid outline using --cds-focus token
+//
+// Token consumption (all from carbon_tokens.scss :root):
+//   --cds-overlay, --cds-layer-01, --cds-layer-hover-01,
+//   --cds-text-primary, --cds-text-secondary, --cds-text-on-color,
+//   --cds-icon-primary, --cds-focus,
+//   --cds-button-danger-primary, --cds-support-error,
+//   --cds-spacing-05, --cds-spacing-07
+//
+// Sass Compatibility: libsass-safe — uses only var() for custom property
+// consumption, no @use/@forward or Dart Sass-only features.
+
+// ============================================================================
+// SECTION 1: Modal Backdrop
+// ============================================================================
+// Odoo hides .modal-backdrop via display:none (see bootstrap_review.scss)
+// and instead applies the backdrop color directly on the .modal element.
+// We override both approaches for Carbon consistency.
+
+.modal-backdrop {
+  // Carbon overlay: semi-transparent dark scrim
+  // Opacity is baked into the rgba value of --cds-overlay, so we set opacity: 1
+  background-color: var(--cds-overlay);
+  opacity: 1;
+}
+
+// Override Odoo's direct-on-modal background approach to use Carbon overlay
+.modal:not([data-bs-backdrop="false"]) {
+  background-color: var(--cds-overlay);
+}
+
+// ============================================================================
+// SECTION 2: Modal Dialog Container & Content
+// ============================================================================
+// Carbon Modal uses sharp corners, subtle shadow, and layer-01 background.
+
+.modal .modal-dialog {
+  // Carbon sharp corners — no border-radius per Carbon default
+  border-radius: 0;
+  // Carbon modal elevation shadow
+  box-shadow: 0 2px 6px var(--cds-shadow, rgba(0, 0, 0, 0.3));
+}
+
+.modal .modal-content {
+  // Carbon layer-01 background for modal surface
+  background-color: var(--cds-layer-01);
+  // Carbon modals have no visible border
+  border: none;
+  // Sharp corners per Carbon spec
+  border-radius: 0;
+  // Primary text color for all content
+  color: var(--cds-text-primary);
+  // Remove any default box-shadow on content (shadow is on dialog container)
+  box-shadow: none;
+}
+
+// ============================================================================
+// SECTION 3: Modal Header
+// ============================================================================
+// Carbon Modal header: 48px minimum height, Carbon spacing, no bottom border.
+// Title uses heading-03 type token (20px, weight 400, line-height 1.4).
+
+.modal .modal-header {
+  // Carbon spacing-05 (16px) padding on all sides
+  padding: var(--cds-spacing-05);
+  // Same layer background as content for seamless appearance
+  background-color: var(--cds-layer-01);
+  // Carbon modals typically have no header separator
+  border-block-end: none;
+  // Carbon header minimum height (48px = 3rem)
+  min-block-size: 3rem;
+  // Align title to top so multi-line titles flow downward
+  align-items: flex-start;
+  // Flex layout for title and close button positioning
+  display: flex;
+}
+
+// Carbon heading-03 typography for modal title
+.modal .modal-header .modal-title {
+  // heading-03: 20px (1.25rem)
+  font-size: 1.25rem;
+  // heading-03: regular weight
+  font-weight: 400;
+  // heading-03: 1.4 line-height (28px)
+  line-height: 1.4;
+  // heading-03: no letter-spacing
+  letter-spacing: 0;
+  // Primary text color
+  color: var(--cds-text-primary);
+  // Preserve existing Odoo overflow handling for long titles
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Carbon close button: 48x48px touch target, transparent background,
+// accessible focus ring
+.modal .modal-header .btn-close {
+  // Carbon minimum touch target: 48x48px (3rem)
+  inline-size: 3rem;
+  block-size: 3rem;
+  // Remove default padding — icon is centered via flexbox
+  padding: 0;
+  // Center the close icon within the touch target
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  // Transparent resting state
+  background: transparent;
+  // No border on close button
+  border: none;
+  // Carbon icon color
+  color: var(--cds-icon-primary);
+  // Override Bootstrap's background-image approach to close icon
+  // so the Carbon color token controls the icon appearance
+  opacity: 1;
+  // Remove default margin that Bootstrap applies
+  margin: 0;
+  // Smooth transition for hover state
+  transition: background-color 150ms cubic-bezier(0.2, 0, 0.38, 0.9);
+  // Flex-shrink: prevent close button from compressing
+  flex-shrink: 0;
+  // Position adjustment: align close button to top-right of header
+  margin-inline-start: auto;
+
+  @media (hover: hover) {
+    &:hover {
+      // Carbon layer-hover-01 background on hover
+      background-color: var(--cds-layer-hover-01);
+    }
+  }
+
+  // Carbon accessible focus ring: 2px solid outline, inset by 2px
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
+  // Remove default focus styles to avoid double ring
+  &:focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
+// ============================================================================
+// SECTION 4: Modal Body
+// ============================================================================
+// Carbon Modal body: scrollable content area with body-01 typography.
+// Padding: 0 top (content flows from header), spacing-05 sides, spacing-07 bottom.
+
+.modal .modal-body {
+  // Carbon body padding: no top (header handles its own padding),
+  // spacing-05 (16px) on inline sides, spacing-07 (32px) on block end
+  padding-block-start: 0;
+  padding-inline: var(--cds-spacing-05);
+  padding-block-end: var(--cds-spacing-07);
+  // Carbon body-01: secondary text color for body content
+  color: var(--cds-text-secondary);
+  // body-01: 14px (0.875rem)
+  font-size: 0.875rem;
+  // body-01: ~1.43 line-height (20px / 14px)
+  line-height: 1.43;
+  // body-01: 0.16px letter-spacing
+  letter-spacing: 0.16px;
+  // Enable vertical scrolling for content overflow
+  overflow-y: auto;
+}
+
+// ============================================================================
+// SECTION 5: Modal Footer
+// ============================================================================
+// Carbon Modal footer: 64px height, buttons fill the entire footer area.
+// Button order: secondary (cancel) on left, primary (confirm) on right.
+// No padding — buttons themselves extend edge-to-edge.
+
+.modal .modal-footer {
+  // No padding: Carbon footer buttons span the full footer width
+  padding: 0;
+  // No top border separator (Carbon uses button edges as visual separation)
+  border-block-start: none;
+  // Flex layout for button arrangement
+  display: flex;
+  // Buttons fill from the end (right side in LTR)
+  justify-content: flex-end;
+  // Same layer background as the rest of the modal
+  background-color: var(--cds-layer-01);
+  // Carbon modal footer height: 64px (4rem)
+  block-size: 4rem;
+  // Remove any flex-wrap to keep buttons on one line
+  flex-wrap: nowrap;
+  // Reset gap — Carbon buttons are edge-to-edge
+  gap: 0;
+}
+
+// Carbon footer buttons: share width equally, full footer height,
+// no border-radius, no gaps between buttons
+.modal .modal-footer .btn {
+  // Each button expands to share available footer width equally
+  flex: 1;
+  // Full footer height — buttons are the footer
+  block-size: 4rem;
+  // Carbon sharp corners
+  border-radius: 0;
+  // No margin between buttons (edge-to-edge)
+  margin: 0;
+  // No visible border (color distinguishes buttons)
+  border: none;
+  // Carbon body-compact-01: 14px
+  font-size: 0.875rem;
+  // Carbon body-compact-01: regular weight
+  font-weight: 400;
+  // Vertically center button text
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  // Carbon productive transition for interactive states
+  transition: background-color 150ms cubic-bezier(0.2, 0, 0.38, 0.9);
+  // Accessible minimum touch target already satisfied by 64px height
+  min-block-size: 2.75rem;
+  // Truncate long button labels
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ============================================================================
+// SECTION 6: Danger Modal Variant
+// ============================================================================
+// Danger variant: red top border accent, danger-colored primary action button.
+// Applied when the dialog wrapper has the .o_dialog_danger modifier class.
+
+.o_dialog.o_dialog_danger .modal-content {
+  // Red top border accent indicating destructive/danger context
+  border-block-start: 3px solid var(--cds-support-error);
+}
+
+// Danger button within technical modals — Carbon danger-primary styling
+.modal.o_technical_modal .btn-danger {
+  // Carbon danger primary button background
+  background-color: var(--cds-button-danger-primary);
+  // White text on danger background for contrast
+  color: var(--cds-text-on-color);
+  // No border for danger button
+  border: none;
+
+  @media (hover: hover) {
+    &:hover {
+      // Carbon danger hover: darker red
+      background-color: var(--cds-button-danger-hover, #b81921);
+    }
+  }
+
+  &:active {
+    // Carbon danger active: even darker red
+    background-color: var(--cds-button-danger-active, #750e13);
+  }
+
+  // Accessible focus ring for danger button
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+// ============================================================================
+// SECTION 7: Confirmation Dialog Warning
+// ============================================================================
+// Warning/error indicator within confirmation dialogs.
+// Icon and text use Carbon support-error token for visual emphasis.
+
+.o_dialog .o_dialog_warning {
+  // Warning icon color: Carbon support-error (red)
+  color: var(--cds-support-error);
+
+  // Ensure text within warning remains readable
+  span,
+  p {
+    color: var(--cds-text-primary);
+  }
+}
+
+// ============================================================================
+// SECTION 8: Full-Screen Mobile Modal
+// ============================================================================
+// Mobile-optimized full-screen modal: fills entire viewport with no margins.
+// Triggered by .o_modal_full class (Odoo's fullscreen dialog mode).
+
+.o_modal_full .modal-dialog {
+  // Fill entire viewport
+  margin: 0;
+  block-size: 100%;
+  max-inline-size: 100%;
+
+  .modal-content {
+    // Content stretches to fill dialog
+    block-size: 100%;
+    // Remove any residual border
+    border: none;
+    // Sharp corners for full-screen
+    border-radius: 0;
+  }
+
+  .modal-body {
+    // Body fills available space between header and footer
+    flex: 1;
+    overflow-y: auto;
+  }
+}
+
+// ============================================================================
+// SECTION 9: Supplementary Overrides
+// ============================================================================
+// Additional overrides for Odoo-specific modal patterns that need
+// Carbon token alignment but aren't part of the core modal anatomy.
+
+// Preserve Odoo's technical modal title overflow behavior
+.modal.o_technical_modal {
+  .modal-content {
+    .modal-header .modal-title {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+  }
+
+  // Technical modal footer: left-aligned text for secondary actions
+  .modal-footer {
+    button {
+      margin: 0;
+    }
+
+    // Hide default button when other buttons are present
+    button.o-default-button:not(:only-child) {
+      display: none;
+    }
+  }
+}
+
+// Ensure modals rendered by OWL's Dialog component are visible
+.o_dialog > .modal {
+  display: block;
+}
+
+// Inactive modal layering (behind active modal)
+.modal.o_inactive_modal {
+  z-index: $zindex-modal-backdrop - 1;
+}
+
+// Smooth entrance animation for Carbon productive motion
+@media (prefers-reduced-motion: no-preference) {
+  .modal.show .modal-dialog {
+    animation: cds-modal-entrance $cds-motion-duration-moderate-02 $cds-motion-entrance-productive;
+  }
+}
+
+@keyframes cds-modal-entrance {
+  0% {
+    opacity: 0;
+    transform: translateY(-1.5rem);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

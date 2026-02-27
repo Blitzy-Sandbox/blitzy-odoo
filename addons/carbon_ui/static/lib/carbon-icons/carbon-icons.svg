@@ -1,0 +1,354 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <!--
+    Carbon Design System Icons v11
+    Subset for Carbon UI Odoo Module
+    Source: @carbon/icons v11.x
+    Repository: https://github.com/carbon-design-system/carbon
+    License: Apache 2.0 (c) IBM Corp
+
+    All icons use fill="currentColor" to inherit text color from CSS.
+    Each symbol uses a 32x32 viewBox per Carbon specification.
+  -->
+
+  <!-- ========================================================================
+       NAVIGATION ICONS
+       Used by: carbon_sidenav.js/xml, carbon_header.js/xml
+       ======================================================================== -->
+
+  <!-- Hamburger menu - 4 horizontal lines for mobile side-nav toggle -->
+  <symbol id="icon--menu" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M4 6H28V8H4z"/>
+    <path fill="currentColor" d="M4 24H28V26H4z"/>
+    <path fill="currentColor" d="M4 12H28V14H4z"/>
+    <path fill="currentColor" d="M4 18H28V20H4z"/>
+  </symbol>
+
+  <!-- Close (X) - for closing modals, notifications, panels, search clear -->
+  <symbol id="icon--close" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M17.4141 16 24 9.4141 22.5859 8 16 14.5859 9.4143 8 8 9.4141 14.5859 16 8 22.5859 9.4143 24 16 17.4141 22.5859 24 24 22.5859 17.4141 16z"/>
+  </symbol>
+
+  <!-- Chevron Down - SideNav submenu expand, dropdown indicators -->
+  <symbol id="icon--chevron--down" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M16 22 6 12 7.4 10.6 16 19.2 24.6 10.6 26 12z"/>
+  </symbol>
+
+  <!-- Chevron Up - SideNav submenu collapse -->
+  <symbol id="icon--chevron--up" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M16 10 26 20 24.6 21.4 16 12.8 7.4 21.4 6 20z"/>
+  </symbol>
+
+  <!-- Chevron Left - Navigation back, pagination previous -->
+  <symbol id="icon--chevron--left" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M10 16 20 6 21.4 7.4 12.8 16 21.4 24.6 20 26z"/>
+  </symbol>
+
+  <!-- Chevron Right - Navigation forward, pagination next -->
+  <symbol id="icon--chevron--right" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M22 16 12 26 10.6 24.6 19.2 16 10.6 7.4 12 6z"/>
+  </symbol>
+
+  <!-- Home - Home/dashboard navigation in sidenav -->
+  <symbol id="icon--home" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M16.6123,2.2138a1.01,1.01,0,0,0-1.2427,0L1,13.4194l1.2427,1.5717L4,13.6209V26a2.0041,2.0041,0,0,0,2,2H26a2.0037,2.0037,0,0,0,2-2V13.63L29.7573,15,31,13.4282ZM18,26H14V18h4Zm2,0V18a2.0023,2.0023,0,0,0-2-2H14a2.002,2.002,0,0,0-2,2v8H6V12.0615l10-7.79,10,7.8005V26Z"/>
+  </symbol>
+
+  <!-- ========================================================================
+       HEADER UTILITY ICONS
+       Used by: carbon_header.js/xml
+       ======================================================================== -->
+
+  <!-- Search (magnifying glass) - Global search trigger in header -->
+  <symbol id="icon--search" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M29,27.5859l-7.5521-7.5521a11.0177,11.0177,0,1,0-1.4141,1.4141L27.5859,29ZM4,13a9,9,0,1,1,9,9A9.01,9.01,0,0,1,4,13Z"/>
+  </symbol>
+
+  <!-- Notification (bell) - Notification indicator in header -->
+  <symbol id="icon--notification" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M28.7071,19.293,26,16.5859V13a10.0136,10.0136,0,0,0-9-9.9492V1H15V3.0508A10.0136,10.0136,0,0,0,6,13v3.5859L3.2929,19.293A1,1,0,0,0,3,20v3a1,1,0,0,0,1,1h7v.7768a5.152,5.152,0,0,0,4.5,5.1987A5.0057,5.0057,0,0,0,21,25V24h7a1,1,0,0,0,1-1V20A1,1,0,0,0,28.7071,19.293ZM19,25a3,3,0,0,1-6,0V24h6Zm8-3H5V20.4141L7.707,17.707A1,1,0,0,0,8,17V13a8,8,0,0,1,16,0v4a1,1,0,0,0,.293.707L27,20.4141Z"/>
+  </symbol>
+
+  <!-- User Avatar (person in circle) - User menu trigger in header -->
+  <symbol id="icon--user--avatar" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M16,8a5,5,0,1,0,5,5A5,5,0,0,0,16,8Zm0,8a3,3,0,1,1,3-3A3.0034,3.0034,0,0,1,16,16Z"/>
+    <path fill="currentColor" d="M16,2A14,14,0,1,0,30,16,14.0158,14.0158,0,0,0,16,2ZM10,26.3765V25a3.0033,3.0033,0,0,1,3-3h6a3.0033,3.0033,0,0,1,3,3v1.3765a11.8989,11.8989,0,0,1-12,0Zm13.9925-1.4507A5.0016,5.0016,0,0,0,19,20H13a5.0016,5.0016,0,0,0-4.9925,4.9258,12,12,0,1,1,15.985,0Z"/>
+  </symbol>
+
+  <!-- Switcher (3x3 grid) - App switcher trigger in header -->
+  <symbol id="icon--switcher" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M14 4H18V8H14z"/>
+    <path fill="currentColor" d="M4 4H8V8H4z"/>
+    <path fill="currentColor" d="M24 4H28V8H24z"/>
+    <path fill="currentColor" d="M14 14H18V18H14z"/>
+    <path fill="currentColor" d="M4 14H8V18H4z"/>
+    <path fill="currentColor" d="M24 14H28V18H24z"/>
+    <path fill="currentColor" d="M14 24H18V28H14z"/>
+    <path fill="currentColor" d="M4 24H8V28H4z"/>
+    <path fill="currentColor" d="M24 24H28V28H24z"/>
+  </symbol>
+
+  <!-- Settings (gear/cog) - Settings access in user menu -->
+  <symbol id="icon--settings" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M27,16.76c0-.25,0-.5,0-.76s0-.51,0-.77l1.92-1.68A2,2,0,0,0,29.3,11L26.94,7a2,2,0,0,0-1.73-1,2,2,0,0,0-.64.1l-2.43.82a11.35,11.35,0,0,0-1.31-.75l-.51-2.52a2,2,0,0,0-2-1.61H13.64a2,2,0,0,0-2,1.61l-.51,2.52a11.48,11.48,0,0,0-1.32.75L7.43,6.06A2,2,0,0,0,6.79,6,2,2,0,0,0,5.06,7L2.7,11a2,2,0,0,0,.41,2.51L5,15.24c0,.25,0,.5,0,.76s0,.51,0,.77L3.11,18.45A2,2,0,0,0,2.7,21L5.06,25a2,2,0,0,0,1.73,1,2,2,0,0,0,.64-.1l2.43-.82a11.35,11.35,0,0,0,1.31.75l.51,2.52a2,2,0,0,0,2,1.61h4.72a2,2,0,0,0,2-1.61l.51-2.52a11.48,11.48,0,0,0,1.32-.75l2.42.82a2,2,0,0,0,.64.1,2,2,0,0,0,1.73-1L29.3,21a2,2,0,0,0-.41-2.51ZM25.21,24l-3.43-1.16a8.86,8.86,0,0,1-2.71,1.57L18.36,28H13.64l-.71-3.55a9.36,9.36,0,0,1-2.7-1.57L6.79,24,4.43,20l2.72-2.4a8.9,8.9,0,0,1,0-3.13L4.43,12,6.79,8l3.43,1.16a8.86,8.86,0,0,1,2.71-1.57L13.64,4h4.72l.71,3.55a9.36,9.36,0,0,1,2.7,1.57L25.21,8,27.57,12l-2.72,2.4a8.9,8.9,0,0,1,0,3.13L27.57,20Z"/>
+    <path fill="currentColor" d="M16,22a6,6,0,1,1,6-6A5.94,5.94,0,0,1,16,22Zm0-10a3.91,3.91,0,0,0-4,4,3.91,3.91,0,0,0,4,4,3.91,3.91,0,0,0,4-4A3.91,3.91,0,0,0,16,12Z"/>
+  </symbol>
+
+  <!-- ========================================================================
+       ACTION ICONS
+       Used by: various components
+       ======================================================================== -->
+
+  <!-- Overflow Menu Vertical (three vertical dots) - More actions menus -->
+  <symbol id="icon--overflow-menu--vertical" viewBox="0 0 32 32">
+    <circle fill="currentColor" cx="16" cy="8" r="2"/>
+    <circle fill="currentColor" cx="16" cy="16" r="2"/>
+    <circle fill="currentColor" cx="16" cy="24" r="2"/>
+  </symbol>
+
+  <!-- Overflow Menu Horizontal (three horizontal dots) -->
+  <symbol id="icon--overflow-menu--horizontal" viewBox="0 0 32 32">
+    <circle fill="currentColor" cx="8" cy="16" r="2"/>
+    <circle fill="currentColor" cx="16" cy="16" r="2"/>
+    <circle fill="currentColor" cx="24" cy="16" r="2"/>
+  </symbol>
+
+  <!-- Add (plus sign) - Add/create buttons -->
+  <symbol id="icon--add" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M17 15 17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15z"/>
+  </symbol>
+
+  <!-- Edit (pencil) - Edit mode triggers -->
+  <symbol id="icon--edit" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M2 26H30V28H2z"/>
+    <path fill="currentColor" d="M25.4,9c0.8-0.8,0.8-2,0-2.8c0,0,0,0,0,0l-3.6-3.6c-0.8-0.8-2-0.8-2.8,0c0,0,0,0,0,0l-15,15V24h6.4L25.4,9z M20.4,4L24,7.6l-3,3L17.4,7L20.4,4z M6,22v-3.6l10-10l3.6,3.6l-10,10H6z"/>
+  </symbol>
+
+  <!-- Trash Can - Delete actions -->
+  <symbol id="icon--trash-can" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M12 12H14V24H12z"/>
+    <path fill="currentColor" d="M18 12H20V24H18z"/>
+    <path fill="currentColor" d="M4,6V8H6V28a2,2,0,0,0,2,2H24a2,2,0,0,0,2-2V8h2V6ZM8,28V8H24V28Z"/>
+    <path fill="currentColor" d="M12 2H20V4H12z"/>
+  </symbol>
+
+  <!-- Filter (funnel) - Search/filter controls in data tables -->
+  <symbol id="icon--filter" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M18,28H14a2,2,0,0,1-2-2V18.41L4.59,11A2,2,0,0,1,4,9.59V6A2,2,0,0,1,6,4H26a2,2,0,0,1,2,2V9.59A2,2,0,0,1,27.41,11L20,18.41V26A2,2,0,0,1,18,28ZM6,6V9.59l8,8V26h4V17.59l8-8V6Z"/>
+  </symbol>
+
+  <!-- ========================================================================
+       DATA TABLE ICONS
+       Used by: datatable.scss, list views
+       ======================================================================== -->
+
+  <!-- Arrow Up - Sort ascending indicator in data table headers -->
+  <symbol id="icon--arrow--up" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M16 4 6 14 7.41 15.41 15 7.83 15 28 17 28 17 7.83 24.59 15.41 26 14 16 4z"/>
+  </symbol>
+
+  <!-- Arrow Down - Sort descending indicator in data table headers -->
+  <symbol id="icon--arrow--down" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M24.59 16.59 17 24.17 17 4 15 4 15 24.17 7.41 16.59 6 18 16 28 26 18 24.59 16.59z"/>
+  </symbol>
+
+  <!-- Arrows Vertical (bidirectional) - Default unsorted column indicator -->
+  <symbol id="icon--arrows--vertical" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M27.6 20.6 24 24.2 24 4 22 4 22 24.2 18.4 20.6 17 22 23 28 29 22z"/>
+    <path fill="currentColor" d="M9 4 3 10 4.4 11.4 8 7.8 8 28 10 28 10 7.8 13.6 11.4 15 10z"/>
+  </symbol>
+
+  <!-- Arrow Left - Navigation/table back -->
+  <symbol id="icon--arrow--left" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M14 26 15.41 24.59 7.83 17 28 17 28 15 7.83 15 15.41 7.41 14 6 4 16 14 26z"/>
+  </symbol>
+
+  <!-- Arrow Right - Navigation/table forward -->
+  <symbol id="icon--arrow--right" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M18 6 16.57 7.393 24.15 15 4 15 4 17 24.15 17 16.57 24.573 18 26 28 16 18 6z"/>
+  </symbol>
+
+  <!-- ========================================================================
+       NOTIFICATION / STATUS ICONS
+       Used by: notification.scss, status indicators
+       ======================================================================== -->
+
+  <!-- Information (i in circle outline) - Information-level notifications -->
+  <symbol id="icon--information" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M17 22 17 14 13 14 13 16 15 16 15 22 12 22 12 24 20 24 20 22 17 22z"/>
+    <path fill="currentColor" d="M16,8a1.5,1.5,0,1,0,1.5,1.5A1.5,1.5,0,0,0,16,8Z"/>
+    <path fill="currentColor" d="M16,30A14,14,0,1,1,30,16,14,14,0,0,1,16,30ZM16,4A12,12,0,1,0,28,16,12,12,0,0,0,16,4Z"/>
+  </symbol>
+
+  <!-- Warning Alt (triangle with exclamation) - Warning-level notifications -->
+  <symbol id="icon--warning--alt" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M16,23a1.5,1.5,0,1,0,1.5,1.5A1.5,1.5,0,0,0,16,23Z"/>
+    <path fill="currentColor" d="M15 12H17V21H15z"/>
+    <path fill="currentColor" d="M29,30H3a1,1,0,0,1-.8872-1.4614l13-25a1,1,0,0,1,1.7744,0l13,25A1,1,0,0,1,29,30ZM4.6507,28H27.3493l.002-.0033L16.002,6.1714h-.004L4.6487,27.9967Z"/>
+  </symbol>
+
+  <!-- Checkmark Filled (checkmark in filled circle) - Success-level notifications -->
+  <symbol id="icon--checkmark--filled" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M16,2A14,14,0,1,0,30,16,14,14,0,0,0,16,2ZM14,21.5908l-5-5L10.5906,15,14,18.4092,21.41,11l1.5957,1.5859Z"/>
+    <path fill="none" d="M14 21.591 9 16.591 10.591 15 14 18.409 21.41 11 23.005 12.585 14 21.591z" data-icon-path="inner-path"/>
+  </symbol>
+
+  <!-- Error Filled (X in filled circle) - Error-level notifications, danger states -->
+  <symbol id="icon--error--filled" viewBox="0 0 32 32">
+    <path fill="none" d="M14.9 7.2H17.1V24.799H14.9z" data-icon-path="inner-path" transform="rotate(-45 16 16)"/>
+    <path fill="currentColor" d="M16,2A13.914,13.914,0,0,0,2,16,13.914,13.914,0,0,0,16,30,13.914,13.914,0,0,0,30,16,13.914,13.914,0,0,0,16,2Zm5.4449,21L9,10.5557,10.5557,9,23,21.4448Z"/>
+  </symbol>
+
+  <!-- Warning (circle with exclamation) - General warning indicator -->
+  <symbol id="icon--warning" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M16,2A14,14,0,1,0,30,16,14,14,0,0,0,16,2Zm0,26A12,12,0,1,1,28,16,12,12,0,0,1,16,28Z"/>
+    <path fill="currentColor" d="M15 8H17V19H15z"/>
+    <path fill="currentColor" d="M16,22a1.5,1.5,0,1,0,1.5,1.5A1.5,1.5,0,0,0,16,22Z"/>
+  </symbol>
+
+  <!-- ========================================================================
+       THEME TOGGLE ICONS
+       Used by: carbon_theme_toggle.js/xml
+       ======================================================================== -->
+
+  <!-- Light (sun) - Light mode indicator in theme toggle -->
+  <symbol id="icon--light" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M15 2H17V7H15z"/>
+    <path fill="currentColor" d="M21.668 6.854H26.625999999999998V8.854H21.668z" transform="rotate(-45 24.147 7.853)"/>
+    <path fill="currentColor" d="M25 15H30V17H25z"/>
+    <path fill="currentColor" d="M23.147 21.668H25.147V26.625999999999998H23.147z" transform="rotate(-45 24.147 24.146)"/>
+    <path fill="currentColor" d="M15 25H17V30H15z"/>
+    <path fill="currentColor" d="M5.375 23.147H10.333V25.147H5.375z" transform="rotate(-45 7.853 24.146)"/>
+    <path fill="currentColor" d="M2 15H7V17H2z"/>
+    <path fill="currentColor" d="M6.854 5.375H8.854V10.333H6.854z" transform="rotate(-45 7.854 7.853)"/>
+    <path fill="currentColor" d="M16,12a4,4,0,1,1-4,4,4.0045,4.0045,0,0,1,4-4m0-2a6,6,0,1,0,6,6,6,6,0,0,0-6-6Z"/>
+  </symbol>
+
+  <!-- Asleep (moon) - Dark mode indicator in theme toggle -->
+  <symbol id="icon--asleep" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M13.5025,5.4136A15.0755,15.0755,0,0,0,25.096,23.6082a11.1134,11.1134,0,0,1-7.9749,3.3893c-.1385,0-.2782.0051-.4178,0A11.0944,11.0944,0,0,1,13.5025,5.4136M14.98,3a1.0024,1.0024,0,0,0-.1746.0156A13.0959,13.0959,0,0,0,16.63,28.9973c.1641.006.3282,0,.4909,0a13.0724,13.0724,0,0,0,10.702-5.5556,1.0094,1.0094,0,0,0-.7833-1.5644A13.08,13.08,0,0,1,15.8892,4.38,1.0149,1.0149,0,0,0,14.98,3Z"/>
+  </symbol>
+
+  <!-- ========================================================================
+       MISCELLANEOUS UTILITY ICONS
+       Used by: various components and actions
+       ======================================================================== -->
+
+  <!-- Launch (external link arrow) - Open-in-new-window links -->
+  <symbol id="icon--launch" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M26,28H6a2.0027,2.0027,0,0,1-2-2V6A2.0027,2.0027,0,0,1,6,4H16V6H6V26H26V16h2V26A2.0027,2.0027,0,0,1,26,28Z"/>
+    <path fill="currentColor" d="M20 2 20 4 26.586 4 18 12.586 19.414 14 28 5.414 28 12 30 12 30 2 20 2z"/>
+  </symbol>
+
+  <!-- Copy (duplicate) - Copy-to-clipboard actions -->
+  <symbol id="icon--copy" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M28,10V28H10V10H28m0-2H10a2,2,0,0,0-2,2V28a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V10a2,2,0,0,0-2-2Z"/>
+    <path fill="currentColor" d="M4,18H2V4A2,2,0,0,1,4,2H18V4H4Z"/>
+  </symbol>
+
+  <!-- Download (arrow down to tray) - Download file actions -->
+  <symbol id="icon--download" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M26,24v4H6V24H4v4H4a2,2,0,0,0,2,2H26a2,2,0,0,0,2-2h0V24Z"/>
+    <path fill="currentColor" d="M26 14 24.59 12.59 17 20.17 17 2 15 2 15 20.17 7.41 12.59 6 14 16 24 26 14z"/>
+  </symbol>
+
+  <!-- Upload (arrow up from tray) - File upload triggers -->
+  <symbol id="icon--upload" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M6 18 7.41 19.41 15 11.83 15 30 17 30 17 11.83 24.59 19.41 26 18 16 8 6 18z"/>
+    <path fill="currentColor" d="M6,8V4H26V8h2V4a2,2,0,0,0-2-2H6A2,2,0,0,0,4,4V8Z"/>
+  </symbol>
+
+  <!-- Drag Vertical (handle) - Draggable row/element handles -->
+  <symbol id="icon--drag-vertical" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M4 20 15 20 15 26.17 12.41 23.59 11 25 16 30 21 25 19.59 23.59 17 26.17 17 20 28 20 28 18 4 18 4 20z"/>
+    <path fill="currentColor" d="M11 7 12.41 8.41 15 5.83 15 12 4 12 4 14 28 14 28 12 17 12 17 5.83 19.59 8.41 21 7 16 2 11 7z"/>
+  </symbol>
+
+  <!-- Maximize (expand) - Full-screen/maximize triggers -->
+  <symbol id="icon--maximize" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M20 2 20 4 26.586 4 18 12.582 19.414 14 28 5.414 28 12 30 12 30 2 20 2z"/>
+    <path fill="currentColor" d="M14 19.416 12.592 18 4 26.586 4 20 2 20 2 30 12 30 12 28 5.414 28 14 19.416z"/>
+  </symbol>
+
+  <!-- Minimize (collapse) - Minimize panel triggers -->
+  <symbol id="icon--minimize" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M4 18 4 20 10.586 20 2 28.582 3.414 30 12 21.414 12 28 14 28 14 18 4 18z"/>
+    <path fill="currentColor" d="M30 3.416 28.592 2 20 10.586 20 4 18 4 18 14 28 14 28 12 21.414 12 30 3.416z"/>
+  </symbol>
+
+  <!-- Subtract (minus) - Remove/subtract actions -->
+  <symbol id="icon--subtract" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M8 15H24V17H8z"/>
+  </symbol>
+
+  <!-- Calendar - Date-related navigation -->
+  <symbol id="icon--calendar" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M26,4h-4V2h-2v2h-8V2h-2v2H6C4.9,4,4,4.9,4,6v20c0,1.1,0.9,2,2,2h20c1.1,0,2-0.9,2-2V6C28,4.9,27.1,4,26,4z M26,26H6V12h20V26z M26,10H6V6h4v2h2V6h8v2h2V6h4V10z"/>
+  </symbol>
+
+  <!-- Folder - File/folder navigation -->
+  <symbol id="icon--folder" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M11.17,6l3.42,3.41.58.59H28V26H4V6h7.17m0-2H4A2,2,0,0,0,2,6V26a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V10a2,2,0,0,0-2-2H16L12.59,4.59A2,2,0,0,0,11.17,4Z"/>
+  </symbol>
+
+  <!-- Document - File/document references -->
+  <symbol id="icon--document" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M25.7,9.3l-7-7C18.5,2.1,18.3,2,18,2H8C6.9,2,6,2.9,6,4v24c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V10C26,9.7,25.9,9.5,25.7,9.3z M18,4.4l5.6,5.6H18V4.4z M24,28H8V4h8v6c0,1.1,0.9,2,2,2h6V28z"/>
+    <path fill="currentColor" d="M10 22H22V24H10z"/>
+    <path fill="currentColor" d="M10 16H22V18H10z"/>
+  </symbol>
+
+  <!-- Logout - Sign out action -->
+  <symbol id="icon--logout" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M6,30H18a2.0023,2.0023,0,0,0,2-2V25H18v3H6V4H18V7h2V4a2.0023,2.0023,0,0,0-2-2H6A2.0023,2.0023,0,0,0,4,4V28A2.0023,2.0023,0,0,0,6,30Z"/>
+    <path fill="currentColor" d="M20.586 20.586 24.172 17 10 17 10 15 24.172 15 20.586 11.414 22 10 28 16 22 22 20.586 20.586z"/>
+  </symbol>
+
+  <!-- Caret Down - Small dropdown indicator -->
+  <symbol id="icon--caret--down" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M24 12 16 22 8 12z"/>
+  </symbol>
+
+  <!-- Caret Up - Small collapse indicator -->
+  <symbol id="icon--caret--up" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M8 20 16 10 24 20z"/>
+  </symbol>
+
+  <!-- Chevron Sort (up and down chevrons) - Data table column sort indicator -->
+  <symbol id="icon--chevron--sort" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M16 28 9 21 10.41 19.59 16 25.17 21.59 19.59 23 21 16 28z"/>
+    <path fill="currentColor" d="M16 4 23 11 21.59 12.41 16 6.83 10.41 12.41 9 11 16 4z"/>
+  </symbol>
+
+  <!-- Dashboard - Dashboard/analytics view -->
+  <symbol id="icon--dashboard" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M24 21H26V26H24z"/>
+    <path fill="currentColor" d="M20 16H22V26H20z"/>
+    <path fill="currentColor" d="M11,26a5.0059,5.0059,0,0,1-5-5H8a3,3,0,1,0,3-3V16a5,5,0,0,1,0,10Z"/>
+    <path fill="currentColor" d="M28,2H4A2.002,2.002,0,0,0,2,4V28a2.0023,2.0023,0,0,0,2,2H28a2.0027,2.0027,0,0,0,2-2V4A2.0023,2.0023,0,0,0,28,2Zm0,9H14V4H28ZM12,4v7H4V4ZM4,28V13H28.0007l.0013,15Z"/>
+  </symbol>
+
+  <!-- View (eye) - Preview/visibility toggle -->
+  <symbol id="icon--view" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M30.94,15.66A16.69,16.69,0,0,0,16,5,16.69,16.69,0,0,0,1.06,15.66a1,1,0,0,0,0,.68A16.69,16.69,0,0,0,16,27,16.69,16.69,0,0,0,30.94,16.34,1,1,0,0,0,30.94,15.66ZM16,25c-5.3,0-10.9-3.93-12.93-9C5.1,10.93,10.7,7,16,7s10.9,3.93,12.93,9C26.9,21.07,21.3,25,16,25Z"/>
+    <path fill="currentColor" d="M16,10a6,6,0,1,0,6,6A6,6,0,0,0,16,10Zm0,10a4,4,0,1,1,4-4A4,4,0,0,1,16,20Z"/>
+  </symbol>
+
+  <!-- List - List view indicator -->
+  <symbol id="icon--list" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M10 6H28V8H10z"/>
+    <path fill="currentColor" d="M10 24H28V26H10z"/>
+    <path fill="currentColor" d="M10 15H28V17H10z"/>
+    <path fill="currentColor" d="M4 15H6V17H4z"/>
+    <path fill="currentColor" d="M4 6H6V8H4z"/>
+    <path fill="currentColor" d="M4 24H6V26H4z"/>
+  </symbol>
+
+  <!-- Grid (outlined 2x2) - Grid/kanban view indicator -->
+  <symbol id="icon--grid" viewBox="0 0 32 32">
+    <path fill="currentColor" d="M12,4H6A2,2,0,0,0,4,6v6a2,2,0,0,0,2,2h6a2,2,0,0,0,2-2V6A2,2,0,0,0,12,4Zm0,8H6V6h6Z"/>
+    <path fill="currentColor" d="M26,4H20a2,2,0,0,0-2,2v6a2,2,0,0,0,2,2h6a2,2,0,0,0,2-2V6A2,2,0,0,0,26,4Zm0,8H20V6h6Z"/>
+    <path fill="currentColor" d="M12,18H6a2,2,0,0,0-2,2v6a2,2,0,0,0,2,2h6a2,2,0,0,0,2-2V20A2,2,0,0,0,12,18Zm0,8H6V20h6Z"/>
+    <path fill="currentColor" d="M26,18H20a2,2,0,0,0-2,2v6a2,2,0,0,0,2,2h6a2,2,0,0,0,2-2V20A2,2,0,0,0,26,18Zm0,8H20V20h6Z"/>
+  </symbol>
+
+</svg>

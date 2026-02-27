@@ -1,4 +1,202 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-<!-- Placeholder - to be implemented by assigned agent -->
+
+    <!--
+        Carbon UI Shell Header — Fixed 48 px Top Bar
+        ==============================================
+        Implements the Carbon Design System v11 UI Shell Header
+        anatomy that replaces Odoo's horizontal NavBar
+        (web.NavBar template).
+
+        Layout sections (left → center → right):
+          Left  : hamburger menu toggle + product / app name
+          Center: global search (CarbonGlobalSearch child component)
+          Right : systray utilities, theme toggle, app switcher
+
+        The systray items are rendered using the same
+        ErrorHandler-wrapped iteration as the original NavBar
+        for full backward compatibility with third-party
+        systray items.
+
+        Props received from CarbonShell parent:
+          onToggleSideNav — Function: toggles the side navigation
+          isSideNavExpanded — Boolean: current sidenav expand state
+
+        Child components:
+          CarbonGlobalSearch — expandable search input
+          CarbonThemeToggle  — light / dark mode toggle button
+          CarbonSwitcher     — app selection slide-in panel
+          ErrorHandler       — error boundary for systray items
+
+        Accessibility:
+          <header> provides the ARIA banner landmark automatically.
+          Hamburger and switcher buttons expose aria-expanded.
+          All action buttons are keyboard-focusable.
+          data-command-category="disabled" prevents the Odoo
+          command palette from intercepting keyboard events
+          inside the header (matching the original NavBar pattern).
+    -->
+    <t t-name="carbon_ui.CarbonHeader">
+        <header class="cds--header"
+                aria-label="IBM Carbon Header"
+                t-ref="headerRoot"
+                data-command-category="disabled">
+
+            <!-- ================================================
+                 LEFT SECTION — Hamburger Toggle + Product Name
+                 ================================================ -->
+
+            <!--
+                Hamburger menu button
+                Toggles the CarbonSideNav between expanded (256 px)
+                and rail (48 px) states. On mobile viewports it
+                opens the side-nav as a full-height overlay.
+                aria-expanded reflects the current sidenav state.
+            -->
+            <button class="cds--header__menu-trigger cds--header__action"
+                    aria-label="Open menu"
+                    t-att-aria-expanded="props.isSideNavExpanded"
+                    t-on-click="toggleSideNav"
+                    title="Open menu"
+                    type="button">
+                <!--
+                    Carbon Menu icon — 20×20 inline SVG
+                    Source: @carbon/icons v11 — menu.svg (20 px)
+                    fill="currentColor" inherits header text color.
+                -->
+                <svg focusable="false"
+                     preserveAspectRatio="xMidYMid meet"
+                     xmlns="http://www.w3.org/2000/svg"
+                     fill="currentColor"
+                     width="20"
+                     height="20"
+                     viewBox="0 0 20 20"
+                     aria-hidden="true"
+                     class="cds--header__menu-trigger__icon">
+                    <path d="M2 14.8H18V16H2z"/>
+                    <path d="M2 11.2H18V12.4H2z"/>
+                    <path d="M2 7.6H18V8.8H2z"/>
+                    <path d="M2 4H18V5.2H2z"/>
+                </svg>
+            </button>
+
+            <!--
+                Product name / current application brand
+                Shows the platform name ("Odoo") as a prefix and,
+                when an app is active, appends an en-dash separator
+                followed by the app display name.
+                Clicking navigates to the home / default app.
+            -->
+            <a class="cds--header__name"
+               href="/odoo"
+               t-on-click.prevent="onHomeClick">
+                <span class="cds--header__name--prefix"
+                      t-if="productName"
+                      t-esc="productName"/>
+                <t t-if="currentApp">
+                    <span class="cds--header__name--separator">&#160;–&#160;</span>
+                    <span class="cds--header__name--app"
+                          t-esc="currentApp.name"/>
+                </t>
+            </a>
+
+            <!-- ================================================
+                 CENTER SECTION — Global Search
+                 ================================================ -->
+
+            <!--
+                CarbonGlobalSearch provides an expandable search input
+                following Carbon's Search component pattern. On
+                activation it delegates to Odoo's command palette
+                service for application-wide search.
+            -->
+            <div class="cds--header__search">
+                <CarbonGlobalSearch/>
+            </div>
+
+            <!-- ================================================
+                 RIGHT SECTION — Header Global Actions
+                 ================================================ -->
+
+            <div class="cds--header__global">
+
+                <!--
+                    Systray items — rendered from Odoo's systray
+                    registry (notifications, messaging, user menu,
+                    company switcher, etc.).
+
+                    Each item is wrapped in an ErrorHandler so that
+                    a faulty systray component is silently removed
+                    instead of crashing the entire header. This
+                    mirrors the exact pattern from the original
+                    web.NavBar template (navbar.xml lines 35-41).
+
+                    Iteration order is reversed by the JS getter
+                    (highest-priority items appear rightmost).
+                -->
+                <t t-foreach="systrayItems" t-as="item" t-key="item.key">
+                    <div class="cds--header__action cds--header__action--systray"
+                         t-att-data-index="item.index">
+                        <ErrorHandler onError="error => this.handleItemError(error, item)">
+                            <t t-component="item.Component" t-props="item.props"/>
+                        </ErrorHandler>
+                    </div>
+                </t>
+
+                <!--
+                    Theme toggle — switches between Carbon White
+                    (light) and Carbon G90 (dark) themes.
+                    Integrates with Odoo's color_scheme cookie.
+                -->
+                <CarbonThemeToggle/>
+
+                <!--
+                    App Switcher button — opens CarbonSwitcher panel
+                    listing all installed Odoo applications.
+                    Replaces the grid-icon AppsMenu dropdown.
+                    aria-expanded reflects the panel open state.
+                -->
+                <button class="cds--header__action cds--header__action--switcher"
+                        aria-label="App Switcher"
+                        t-att-aria-expanded="state.isSwitcherOpen"
+                        t-on-click="toggleSwitcher"
+                        title="App Switcher"
+                        type="button">
+                    <!--
+                        Carbon Apps / Switcher icon — 20×20 inline SVG
+                        Source: @carbon/icons v11 — apps.svg (scaled
+                        from 16 px reference to 20 px viewBox).
+                        fill="currentColor" inherits header text color.
+                    -->
+                    <svg focusable="false"
+                         preserveAspectRatio="xMidYMid meet"
+                         xmlns="http://www.w3.org/2000/svg"
+                         fill="currentColor"
+                         width="20"
+                         height="20"
+                         viewBox="0 0 16 16"
+                         aria-hidden="true"
+                         class="cds--header__action__icon">
+                        <path d="M4 2v2H2V2h2zm1-1H1v4h4V1zM9 2v2H7V2h2zm1-1H6v4h4V1zM14 2v2h-2V2h2zm1-1h-4v4h4V1zM4 7v2H2V7h2zm1-1H1v4h4V6zM9 7v2H7V7h2zm1-1H6v4h4V6zM14 7v2h-2V7h2zm1-1h-4v4h4V6zM4 12v2H2v-2h2zm1-1H1v4h4v-4zM9 12v2H7v-2h2zm1-1H6v4h4v-4zM14 12v2h-2v-2h2zm1-1h-4v4h4v-4z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- ================================================
+                 SWITCHER PANEL — Conditionally Rendered
+                 ================================================ -->
+
+            <!--
+                CarbonSwitcher is the slide-in panel that lists all
+                installed Odoo applications. Rendered only when the
+                switcher button is toggled open. The onClose callback
+                lets the panel request closing (click outside, Escape).
+            -->
+            <CarbonSwitcher t-if="state.isSwitcherOpen"
+                            isOpen="state.isSwitcherOpen"
+                            onClose.bind="closeSwitcher"/>
+
+        </header>
+    </t>
+
 </templates>

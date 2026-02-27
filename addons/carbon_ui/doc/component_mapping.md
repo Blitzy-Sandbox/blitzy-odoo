@@ -21,7 +21,7 @@ Complete mapping of Odoo 19.0 Community Edition UI components to IBM Carbon Desi
 | Carbon Charts       | 1.27.x    | Vanilla JS (D3.js-based), vendored                         |
 | D3.js               | 7.x       | Peer dependency for Carbon Charts                          |
 | IBM Plex            | 6.x       | Primary typeface (Sans + Mono), WOFF2 self-hosted          |
-| Carbon Icons        | 11.x      | 1600+ SVG icons                                            |
+| Carbon Icons        | 11.x      | 121 SVG icons vendored (from 1600+ in full library)        |
 
 ---
 
@@ -277,7 +277,7 @@ Every core OWL component is restyled using Carbon SCSS tokens applied to existin
 
 | Attribute          | Detail                                                                                                  |
 | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| **Current**        | `Badge` OWL component at `addons/web/static/src/core/badge/badge.js`                                    |
+| **Current**        | `Badge` SCSS-only component at `addons/web/static/src/core/badge/badge.scss` (styled via CSS classes — no OWL JavaScript file) |
 | **Carbon Target**  | Carbon `Tag` with semantic color variants                                                                |
 | **Import**         | `@carbon/styles/scss/components/tag`                                                                     |
 | **Props/Variants** | `type` ("blue"/"green"/"red"/"teal"/"purple"/"cyan"/"magenta"/"gray"/"warm-gray"/"cool-gray"/"high-contrast"/"outline"), `filter`, `size` ("sm"/"md") |
@@ -568,7 +568,7 @@ Comprehensive mapping from Odoo's `$o-*` SCSS variable system to Carbon Design T
 | Odoo Variable   | Odoo Value  | Carbon Token          | Carbon Value       | Notes                           |
 | ---------------- | ----------- | --------------------- | ------------------- | ------------------------------- |
 | `$o-gray-100`   | `#f8f9fa`   | `$layer-01`           | `#f4f4f4` (Gray 10) | Lightest surface                |
-| `$o-gray-200`   | `#e9ecef`   | `$layer-02`           | `#e0e0e0` (Gray 20) | Secondary surface               |
+| `$o-gray-200`   | `#e9ecef`   | `$layer-02`           | `#ffffff` (White)    | Secondary surface               |
 | `$o-gray-300`   | `#dee2e6`   | `$border-subtle`      | `#c6c6c6` (Gray 30) | Subtle borders                  |
 | `$o-gray-400`   | `#ced4da`   | `$border-strong`      | `#8d8d8d` (Gray 50) | Strong borders                  |
 | `$o-gray-500`   | `#adb5bd`   | `$icon-secondary`     | `#525252` (Gray 70) | Secondary icons                 |
@@ -651,7 +651,7 @@ Components with no direct Carbon Design System equivalent. Each gap lists the re
 | **App Grid View**        | Carbon Switcher is a list, not a grid                        | Create custom Carbon-styled grid layout for app selection using Carbon `Tile` components in a CSS grid                                        | `$layer-01`, `$interactive`, `$spacing-05`, `$shadow`                          |
 | **Border Radius**        | Carbon defaults to 0 border-radius; Odoo uses rounded corners| Provide configurable `$carbon-border-radius-override` variable (default: `0`, option: `4px` for softer appearance)                            | —                                                                              |
 
-**Coverage Summary**: Out of approximately 25 high-usage Odoo UI components mapped above, Carbon provides direct equivalents for 20 components (~80% coverage). The remaining 5 components (Color Picker, Resizable Panel, Signature Pad, Calendar, Emoji Picker) plus 3 pattern gaps (Kanban Column Headers, App Grid View, Border Radius) are handled through token-based restyling of existing OWL components.
+**Coverage Summary**: Out of the 43 Odoo UI components mapped in this document (8 navigation + 25 core + 10 view types), Carbon provides direct equivalents for 36 components (~84% coverage). The remaining 5 components without Carbon equivalents (Color Picker, Resizable Panel, Signature Pad, Calendar, Emoji Picker) plus 2 pattern-level gaps (Kanban Column Headers, App Grid View) are handled through token-based restyling of existing OWL components. Additionally, Carbon's default `0` border-radius is addressed via a configurable override variable.
 
 ---
 
@@ -805,7 +805,7 @@ Cookie: color_scheme=dark   →  Apply Carbon G90 theme tokens
 
 - **Toggle Component**: `CarbonThemeToggle` OWL component placed in Carbon Header utilities area
 - **CSS Custom Properties**: Theme tokens are emitted as `--cds-*` CSS custom properties, enabling runtime switching without page reload
-- **Asset Bundle**: Dark mode SCSS injected into `web.assets_web_dark` and `web.assets_backend_lazy_dark` bundles
+- **Asset Bundle**: Dark mode SCSS injected into `web.assets_web_dark` bundle
 - **Persistence**: Theme preference stored via Odoo's `color_scheme` cookie (existing mechanism) for cross-session persistence
 
 ### 8.4 Dark Mode Token Overrides
@@ -816,7 +816,7 @@ Key token changes when switching from White to G90:
 | ------------------------- | -------------- | -------------- | -------------------------- |
 | `$background`             | `#ffffff`      | `#262626`      | Page background            |
 | `$layer-01`               | `#f4f4f4`      | `#393939`      | Card/panel surfaces        |
-| `$layer-02`               | `#e0e0e0`      | `#525252`      | Elevated surfaces          |
+| `$layer-02`               | `#ffffff`      | `#525252`      | Elevated surfaces          |
 | `$text-primary`           | `#161616`      | `#f4f4f4`      | Primary body text          |
 | `$text-secondary`         | `#525252`      | `#c6c6c6`      | Secondary/muted text       |
 | `$interactive`            | `#0f62fe`      | `#4589ff`      | Links, active elements     |
@@ -827,7 +827,7 @@ Key token changes when switching from White to G90:
 | `$support-warning`        | `#f1c21b`      | `#f1c21b`      | Warning states (unchanged) |
 | `$support-info`           | `#0043ce`      | `#4589ff`      | Info states                |
 | `$focus`                  | `#0f62fe`      | `#ffffff`      | Focus indicator            |
-| `$overlay`                | `rgba(22,22,22,0.5)` | `rgba(22,22,22,0.7)` | Modal/overlay backdrop |
+| `$overlay`                | `rgba(0,0,0,0.6)`    | `rgba(0,0,0,0.6)`    | Modal/overlay backdrop |
 
 ---
 
@@ -837,11 +837,11 @@ Key token changes when switching from White to G90:
 
 | Metric                          | Value                                                    |
 | ------------------------------- | -------------------------------------------------------- |
-| Total Odoo components mapped    | 35 (25 core + 10 view types)                             |
-| Direct Carbon equivalents       | 28 (~80%)                                                |
-| Gap components (restyled)       | 7 (~20%)                                                 |
+| Total Odoo components mapped    | 43 (8 navigation + 25 core + 10 view types)              |
+| Direct Carbon equivalents       | 36 (~84%)                                                |
+| Gap components (restyled)       | 7 (~16%)                                                 |
 | Token categories mapped         | 5 (color, gray, typography, spacing, border-radius)      |
-| WCAG 2.1 AA compliance          | All 35 components                                        |
+| WCAG 2.1 AA compliance          | All 43 components                                        |
 | Dark mode support               | Full (G90 primary, G100 secondary)                       |
 | Responsive grid coverage        | 5 breakpoints (sm/md/lg/xlg/max)                         |
 

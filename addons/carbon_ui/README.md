@@ -394,8 +394,12 @@ No npm toolchain or CDN access is required at runtime.
 ```
 static/lib/
 ├── carbon-styles/
-│   ├── carbon-tokens.css          # Carbon CSS custom properties (all 4 themes)
+│   ├── LICENSE                    # Carbon Design System license
+│   ├── README.md                  # Carbon styles package documentation
 │   ├── carbon-components.css      # Pre-compiled Carbon component styles
+│   ├── carbon-styles.min.css      # Minified Carbon styles bundle
+│   ├── carbon-themes.min.css      # Minified Carbon theme definitions
+│   ├── carbon-tokens.css          # Carbon CSS custom properties (all 4 themes)
 │   └── scss/                      # Carbon SCSS source files (reference only)
 ├── carbon-charts/
 │   ├── carbon-charts.min.js       # Carbon Charts UMD bundle
@@ -403,6 +407,12 @@ static/lib/
 ├── d3/
 │   └── d3.min.js                  # D3.js v7.x
 ├── ibm-plex/
+│   ├── IBMPlexMono-Regular.woff2  # Root-level Mono Regular (primary weight)
+│   ├── IBMPlexMono-SemiBold.woff2 # Root-level Mono SemiBold (emphasis weight)
+│   ├── IBMPlexSans-Light.woff2    # Root-level Sans Light (thin weight)
+│   ├── IBMPlexSans-Medium.woff2   # Root-level Sans Medium (medium weight)
+│   ├── IBMPlexSans-Regular.woff2  # Root-level Sans Regular (body weight)
+│   ├── IBMPlexSans-SemiBold.woff2 # Root-level Sans SemiBold (heading weight)
 │   ├── sans/                      # IBM Plex Sans WOFF2 (Light, Regular, Text,
 │   │                              #   Medium, SemiBold, Bold, Italic)
 │   └── mono/                      # IBM Plex Mono WOFF2 (Regular, Medium, SemiBold)
@@ -465,7 +475,8 @@ addons/carbon_ui/
 │   │   │       ├── search.scss
 │   │   │       ├── status_bar.scss
 │   │   │       ├── tabs.scss
-│   │   │       └── tags.scss
+│   │   │       ├── tags.scss
+│   │   │       └── tooltip.scss
 │   │   │
 │   │   ├── webclient/                       # Carbon UI Shell OWL components
 │   │   │   ├── carbon_shell.js              # Root UI Shell component

@@ -1,1 +1,278 @@
-// Placeholder - to be implemented by assigned agent
+// Carbon Design System v11 — Tabs Component Override
+// Applies Carbon Tabs (line variant) to Odoo's Notebook/Tabs component
+// Targets: .o_notebook, .o_notebook_headers, .nav, .nav-item, .nav-link
+//
+// Carbon Tabs Line Variant Anatomy:
+//   ┌──────────┬──────────┬──────────┐
+//   │  Tab 1   │  Tab 2   │  Tab 3   │  ← 48px height, heading-compact-01
+//   └──════════┴──────────┴──────────┘
+//        ↑ 2px active indicator (--cds-border-interactive, Blue 60)
+//
+// Token Dependency: carbon_tokens.scss provides --cds-* CSS custom properties
+// on :root for runtime theme switching (light ↔ dark).
+//
+// Tokens consumed:
+//   --cds-border-interactive  → Active tab underline (Blue 60)
+//   --cds-border-subtle-01    → Baseline divider, hover indicator
+//   --cds-text-primary        → Active & hovered tab text
+//   --cds-text-secondary      → Default (inactive) tab text
+//   --cds-text-disabled       → Disabled tab text
+//   --cds-background-hover    → Hover background fill
+//   --cds-focus               → Focus ring color (Blue 60)
+//   --cds-spacing-05          → Inline padding (16px)
+//
+// Sass variables consumed (compile-time from carbon_tokens.scss):
+//   $cds-motion-duration-fast-01  → 70ms transition duration
+//   $cds-motion-productive        → Productive easing curve
+//
+// Compatibility: libsass-safe — no @use, @forward, or Dart Sass features.
+
+// ============================================================================
+// NOTEBOOK / TABS CONTAINER
+// ============================================================================
+// Overrides Odoo's Notebook CSS custom properties to inject Carbon token values.
+// The original notebook.scss consumes --Notebook__link-border-color-* variables
+// inside .nav-link selectors, so reassigning them here propagates Carbon colors
+// through the existing stylesheet without needing to replicate every rule.
+
+.o_notebook {
+  // Carbon token overrides for Odoo's Notebook CSS custom properties
+  --Notebook__link-border-color: transparent;
+  --Notebook__link-border-color--active: var(--cds-border-interactive);
+  --Notebook__link-border-color--hover: var(--cds-border-subtle-01);
+  --Notebook__link-border-top-color--active: transparent;
+
+  // Baseline border under the entire tab bar (Carbon tab container pattern).
+  // This thin line visually anchors the tabs and separates them from content.
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TAB HEADERS — Scrollable overflow container
+  // ──────────────────────────────────────────────────────────────────────────
+  // Carbon tabs support horizontal scrolling when tabs exceed container width.
+  // The scrollbar is hidden for a cleaner visual; scroll affordance comes from
+  // overflow shadow or swipe gesture on touch devices.
+
+  .o_notebook_headers {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+
+    // Hide scrollbar across browsers for cleaner presentation
+    scrollbar-width: none; // Firefox
+
+    &::-webkit-scrollbar {
+      display: none; // Chrome, Safari, Edge
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TAB BAR — Carbon transparent background (line variant)
+  // ──────────────────────────────────────────────────────────────────────────
+  // Carbon line-variant tabs have no filled background — they sit directly
+  // on the page surface. The container border-block-end above provides the
+  // baseline rule; tabs add their own 2px indicator on top of it.
+
+  .nav {
+    background-color: transparent;
+    border-block-end: none; // Handled by .o_notebook container
+    padding: 0;
+    gap: 0; // Carbon tabs are flush-adjacent with no gap
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TAB ITEMS — Individual tab wrappers
+  // ──────────────────────────────────────────────────────────────────────────
+  // Reset Odoo's negative right margin (-1px) used for Bootstrap's overlapping
+  // border trick. Carbon line variant tabs do not overlap.
+
+  .nav-item {
+    white-space: nowrap;
+    margin: 0;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TAB LINKS — Carbon Tabs (heading-compact-01 typography)
+  // ──────────────────────────────────────────────────────────────────────────
+  // Each tab is a flex container with 48px height, Carbon Productive typography,
+  // and a 2px bottom-border line indicator. All colors use --cds-* tokens for
+  // automatic dark-mode support.
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    height: 3rem; // 48px — Carbon standard tab height
+    padding-block: 0;
+    padding-inline: var(--cds-spacing-05); // 16px
+
+    // Carbon heading-compact-01: 14px / semi-bold / 0.16px tracking / 1.29 lh
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.16px;
+    line-height: 1.29;
+
+    color: var(--cds-text-secondary);
+    background-color: transparent;
+
+    // Carbon line variant: remove all box borders, use only bottom indicator
+    border: none;
+    border-block-end: 2px solid transparent; // Indicator placeholder
+    border-radius: 0;
+    cursor: pointer;
+
+    // Reset default outline — replaced by :focus-visible below
+    outline: none;
+
+    // Carbon Productive motion: fast-01 (70ms) with productive easing
+    @media (prefers-reduced-motion: no-preference) {
+      transition:
+        border-color $cds-motion-duration-fast-01 $cds-motion-productive,
+        color $cds-motion-duration-fast-01 $cds-motion-productive,
+        background-color $cds-motion-duration-fast-01 $cds-motion-productive;
+    }
+
+    // ── Active tab ──────────────────────────────────────────────────────────
+    // 2px Blue 60 underline indicator via --cds-border-interactive.
+    // Maintains its styling across hover, focus, and active pseudo-states
+    // so the indicator remains stable during interaction.
+
+    &.active {
+      color: var(--cds-text-primary);
+      border-block-end-color: var(--cds-border-interactive);
+      background-color: transparent;
+
+      &:hover,
+      &:focus,
+      &:active {
+        color: var(--cds-text-primary);
+        border-block-end-color: var(--cds-border-interactive);
+        background-color: transparent;
+        // Override any inherited box border colors from Bootstrap/Odoo
+        border-block-start-color: transparent;
+        border-inline-color: transparent;
+      }
+    }
+
+    // ── Hover (inactive tabs) ───────────────────────────────────────────────
+    // Carbon adds a subtle background fill and a muted bottom indicator
+    // on hover to signal interactivity without competing with the active tab.
+
+    &:hover:not(.active) {
+      color: var(--cds-text-primary);
+      background-color: var(--cds-background-hover);
+      border-block-end-color: var(--cds-border-subtle-01);
+    }
+
+    // ── Focus ring ──────────────────────────────────────────────────────────
+    // Carbon uses a 2px inset outline (outline-offset: -2px) to keep the
+    // focus indicator within the tab boundary. :focus-visible ensures the
+    // ring appears only for keyboard navigation, not mouse clicks.
+
+    &:focus {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+      // Override Odoo's default box-shadow focus ring
+      box-shadow: none;
+    }
+
+    // Hide focus ring for mouse/pointer interactions
+    &:focus:not(:focus-visible) {
+      outline: none;
+    }
+
+    // ── Invalid page indicator (Odoo form validation) ───────────────────────
+    // When a tab's form page contains validation errors, Odoo applies
+    // .o_page_invalid. We remap the error colors to Carbon support tokens.
+    // Note: the original uses !important — the Carbon primary/secondary
+    // override SCSS files remap the underlying Sass variables, so the
+    // original rule will already emit Carbon-aligned colors at compile time.
+    &.o_page_invalid {
+      color: var(--cds-support-error);
+      background-color: var(--cds-notification-background-error);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DISABLED TABS — Carbon disabled state
+  // ──────────────────────────────────────────────────────────────────────────
+  // Carbon uses --cds-text-disabled (25% opacity text) instead of Odoo's
+  // blanket opacity: 0.3 on the entire link. This preserves the background
+  // and border rendering while only dimming the text.
+
+  .nav-item.disabled .nav-link {
+    color: var(--cds-text-disabled);
+    cursor: not-allowed;
+    border-block-end-color: transparent;
+    background-color: transparent;
+    pointer-events: none;
+    // Override Odoo's opacity-based disabled style — Carbon uses token color
+    opacity: 1;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TAB CONTENT PANE — Prevent transition flicker on hidden panes
+  // ──────────────────────────────────────────────────────────────────────────
+
+  .tab-pane:not(.show) {
+    transition: none;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // VERTICAL TABS VARIANT
+  // ──────────────────────────────────────────────────────────────────────────
+  // Odoo's .o_notebook.vertical lays tabs vertically on the left side.
+  // Adapts the Carbon line indicator from block-end (bottom) to inline-start
+  // (left in LTR) for vertical orientation.
+
+  &.vertical {
+    // Remove the container's bottom border — vertical tabs use a right-side border
+    border-block-end: none;
+    border-inline-end: 1px solid var(--cds-border-subtle-01);
+
+    .o_notebook_headers {
+      overflow-x: visible;
+    }
+
+    .nav {
+      width: max-content;
+      border-block-end-color: transparent;
+    }
+
+    .nav-item {
+      margin: 0;
+
+      &:first-child .nav-link {
+        border-block-start-width: 0;
+      }
+    }
+
+    .nav-link {
+      // Switch indicator from bottom to inline-start (left in LTR)
+      border-block-end: none;
+      border-inline-start: 2px solid transparent;
+      margin-block-end: 0;
+
+      &.active {
+        &,
+        &:hover,
+        &:focus,
+        &:active {
+          border-inline-start-color: var(--cds-border-interactive);
+          border-inline-end-color: transparent;
+          border-block-start-color: transparent;
+          border-block-end-color: transparent;
+        }
+      }
+
+      &:hover:not(.active) {
+        border-inline-start-color: var(--cds-border-subtle-01);
+        border-block-end-color: transparent;
+      }
+    }
+  }
+}

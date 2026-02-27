@@ -1,1 +1,153 @@
-// Placeholder - to be implemented by assigned agent
+// Carbon Design System v11 — Tooltip Component Override
+// Applies Carbon Tooltip styling (dark background, caret, max-width)
+// Targets: .o-tooltip, .tooltip, .tooltip-inner, .popover-arrow
+//
+// Carbon Tooltip specification:
+//   - Background: Gray 80 (#393939) in light mode via --cds-background-inverse
+//   - Text: White (#ffffff) via --cds-text-inverse
+//   - Max width: 288px (18rem)
+//   - Border radius: 0 (Carbon default — sharp corners)
+//   - Padding: 16px horizontal, 8px vertical (spacing-05/03)
+//   - Typography: body-compact-01 (14px / 1.29 / 400 / 0.16px)
+//   - Arrow/caret: same dark color as tooltip background
+//
+// Dark mode compatibility: All color tokens auto-invert via
+// carbon_dark_theme.scss swapping --cds-* custom property values.
+//
+// Sass Compilation Compatibility (§0.8.6): This file uses only CSS custom
+// properties consumed via var(). No Dart Sass-only features, @use, or
+// @forward. Fully compatible with Odoo's libsass compiler.
+//
+// Dependencies:
+//   - carbon_tokens.scss: --cds-background-inverse, --cds-text-inverse,
+//     --cds-spacing-05, --cds-spacing-03, --cds-spacing-02,
+//     --cds-support-info, --cds-text-on-color
+//   - carbon_font_face.scss: --cds-font-family-mono (IBM Plex Mono)
+
+// ============================================================================
+// Base Tooltip — .o-tooltip
+// ============================================================================
+// Overrides Bootstrap tooltip CSS custom properties with Carbon design tokens.
+// The existing OWL Tooltip component applies .o-tooltip on the tooltip
+// wrapper; Bootstrap reads --bs-tooltip-* variables for its .tooltip-inner
+// rendering. We override those variables to inject Carbon styling.
+
+.o-tooltip {
+    // --- Bootstrap CSS variable overrides (Carbon token values) ---
+    // Odoo 19.0 sets $variable-prefix: '' in bootstrap_overridden.scss,
+    // so Bootstrap custom properties use unprefixed names (--tooltip-*)
+    // rather than the standard --bs-tooltip-* prefix.
+    --tooltip-max-width: 288px;
+    --tooltip-padding-x: var(--cds-spacing-05);
+    --tooltip-padding-y: var(--cds-spacing-03);
+    --tooltip-color: var(--cds-text-inverse);
+    --tooltip-bg: var(--cds-background-inverse);
+    --tooltip-border-radius: 0;
+
+    // --- Carbon body-compact-01 typography ---
+    // 14px / 1.29 line-height / 400 weight / 0.16px letter-spacing
+    // This matches Carbon's Productive theme body text optimized for
+    // dense product UI and prolonged daily usage.
+    font-size: 0.875rem;
+    line-height: 1.29;
+    letter-spacing: 0.16px;
+    font-weight: 400;
+
+    // ========================================================================
+    // Technical Tooltip Container — .o-tooltip:has(.o-tooltip--technical)
+    // ========================================================================
+    // Technical tooltips display field debug information (type, widget, etc.)
+    // and need extra width to accommodate monospace content. Carbon pattern:
+    // 2x the standard max-width (576px) for structured technical data.
+
+    &:has(.o-tooltip--technical) {
+        max-width: 576px;
+
+        // Help variant inside technical tooltip: Carbon info background
+        .o-tooltip--help {
+            background-color: var(--cds-support-info);
+            color: var(--cds-text-on-color);
+        }
+
+        // Constrain string and help widths within technical container
+        .o-tooltip--string,
+        .o-tooltip--help {
+            max-width: MIN(288px, 100%);
+        }
+    }
+
+    // ========================================================================
+    // String Tooltip — .o-tooltip--string
+    // Technical Title — .o-tooltip--technical--title
+    // ========================================================================
+    // Both share Carbon semibold (600) weight and compact vertical padding.
+    // Carbon uses 600 (SemiBold) instead of 700 (Bold) for emphasis.
+
+    .o-tooltip--string,
+    .o-tooltip--technical--title {
+        padding-block: var(--cds-spacing-02);
+        padding-inline: 0;
+        font-weight: 600;
+    }
+
+    // ========================================================================
+    // Help & Technical Margin
+    // ========================================================================
+    // Consistent Carbon spacing between tooltip content sections.
+    // Uses spacing-02 (4px) top and spacing-03 (8px) sides/bottom.
+
+    .o-tooltip--help,
+    .o-tooltip--technical {
+        margin-block-start: var(--cds-spacing-02);
+        margin-block-end: var(--cds-spacing-03);
+        margin-inline: var(--cds-spacing-03);
+    }
+
+    // ========================================================================
+    // Help Tooltip — .o-tooltip--help
+    // ========================================================================
+    // Preserves multi-line text with pre-line white-space handling.
+    // Horizontal padding from Carbon spacing-03 (8px) for readable density.
+
+    .o-tooltip--help {
+        white-space: pre-line;
+        padding-block: 0;
+        padding-inline: var(--cds-spacing-03);
+    }
+
+    // ========================================================================
+    // Technical Tooltip — .o-tooltip--technical
+    // ========================================================================
+    // Renders field debug data in IBM Plex Mono at Carbon code-01 size
+    // (12px / 0.75rem). Uses disc list markers for structured display.
+
+    .o-tooltip--technical {
+        padding-inline-start: 1.3em;
+        font-family: var(--cds-font-family-mono);
+        font-size: 0.75rem;
+        line-height: 1.33333;
+        letter-spacing: 0.32px;
+        list-style-type: disc;
+
+        // Technical title within technical list items
+        .o-tooltip--technical--title {
+            margin-inline-end: var(--cds-spacing-02);
+        }
+    }
+
+    // ========================================================================
+    // Popover Arrow / Caret — .o-tooltip + .popover-arrow
+    // ========================================================================
+    // Matches the arrow color to the tooltip background for visual continuity.
+    // Bootstrap uses --bs-popover-bg to color the arrow via border tricks.
+
+    + .popover-arrow {
+        // Odoo 19.0 uses empty $variable-prefix — unprefixed --popover-bg
+        --popover-bg: var(--cds-background-inverse);
+
+        // Hide tooltip arrows in print output — decorative element
+        @media print {
+            display: none;
+        }
+    }
+}

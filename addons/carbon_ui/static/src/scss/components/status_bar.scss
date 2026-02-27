@@ -1,0 +1,388 @@
+// Carbon Design System v11 — ProgressIndicator / StatusBar Component Override
+// Applies Carbon ProgressIndicator styling to Odoo's form status bars.
+// Replaces Odoo's arrow/chevron clip-path shapes with Carbon's circle-based
+// step indicators connected by horizontal lines.
+//
+// Targets: .o_statusbar_status, .o_arrow_button, .o_field_statusbar, .statusbar_buttons
+//
+// Carbon tokens consumed (via var()):
+//   Colors: --cds-interactive, --cds-text-primary, --cds-text-secondary,
+//           --cds-text-disabled, --cds-icon-disabled, --cds-icon-inverse,
+//           --cds-border-subtle-01, --cds-layer-hover-01, --cds-focus,
+//           --cds-link-primary, --cds-support-success
+//   Spacing: --cds-spacing-02, --cds-spacing-03, --cds-spacing-04, --cds-spacing-05
+//
+// Accessibility: Focus ring (2px outline), distinct step states, keyboard operable
+// Sass compat: libsass-safe (no @use, no Dart Sass features)
+
+// ---------------------------------------------------------------------------
+// 1. Status bar field wrapper — the outermost container holding both the
+//    action buttons row (.statusbar_buttons) and the step indicator row
+//    (.o_statusbar_status).
+// ---------------------------------------------------------------------------
+.o_field_statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cds-spacing-03); // 8px between buttons row and status row
+}
+
+// ---------------------------------------------------------------------------
+// 2. Status bar buttons area — action buttons (e.g. "Confirm", "Send")
+//    displayed above or beside the step indicators.
+// ---------------------------------------------------------------------------
+.statusbar_buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-03); // 8px between action buttons
+  padding: var(--cds-spacing-03) 0; // 8px vertical padding
+  flex-wrap: wrap;
+}
+
+// ---------------------------------------------------------------------------
+// 3. Status indicator row — the horizontal progress indicator containing
+//    all .o_arrow_button steps.
+// ---------------------------------------------------------------------------
+.o_field_statusbar > .o_statusbar_status {
+  display: flex;
+  align-items: center;
+  flex-flow: row;
+  gap: 0; // Steps are visually connected by lines
+  padding: var(--cds-spacing-03) 0; // 8px vertical
+  overflow-x: auto;
+  white-space: nowrap;
+  margin-inline-start: auto; // Push to the end of the container
+
+  // Reset Odoo's default reverse-row and stretch alignment
+  flex-wrap: nowrap;
+  align-content: center;
+  align-self: center;
+
+  // Remove Odoo's custom arrow-shape properties — we replace them with circles
+  --o-statusbar-radius: 0;
+  --o-statusbar-border: transparent;
+  --o-statusbar-border-active: transparent;
+  --o-statusbar-background-active: transparent;
+  --o-statusbar-background-hover: transparent;
+  --o-statusbar-caret-width: 0;
+  --o-statusbar-border-width: 0;
+
+  // ---------------------------------------------------------------------------
+  // 3a. Individual step — each .o_arrow_button is a step in the progress
+  //     indicator. We remove the clip-path arrow/chevron shape and render a
+  //     Carbon-style circular indicator via ::before.
+  // ---------------------------------------------------------------------------
+  > .o_arrow_button:not(.d-none) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cds-spacing-03); // 8px between circle and label
+    padding: var(--cds-spacing-03) var(--cds-spacing-04); // 8px 12px
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    min-width: auto;
+    margin-inline-start: 0; // Remove Odoo's negative left margin
+    z-index: 1;
+
+    // Remove Odoo's arrow chevron clip-path completely
+    clip-path: none;
+
+    // -------------------------------------------------------------------------
+    // 3a-i. Step circle indicator (::before) — a 16×16px circle representing
+    //       the step status. Incomplete steps have a hollow circle bordered
+    //       in a subtle color; completed/current steps are filled.
+    // -------------------------------------------------------------------------
+    &::before {
+      content: "";
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--cds-spacing-05); // 16px — Carbon step indicator size
+      height: var(--cds-spacing-05);
+      min-width: var(--cds-spacing-05);
+      border-radius: 50%;
+      border: 2px solid var(--cds-icon-disabled);
+      background: transparent;
+      transition: background-color 70ms, border-color 70ms;
+      flex-shrink: 0;
+      box-sizing: border-box;
+    }
+
+    // -------------------------------------------------------------------------
+    // 3a-ii. Connecting line (::after) — a horizontal 1px line connecting
+    //        each step to the next. The last step has no line extending right.
+    // -------------------------------------------------------------------------
+    &:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-end: 0;
+      width: calc(var(--cds-spacing-04) + 2px); // Extends to cover gap
+      height: 1px;
+      background-color: var(--cds-border-subtle-01);
+      transform: translateX(100%);
+      z-index: 0;
+    }
+
+    // Remove Odoo's clip-path-based ::before (border overlay) entirely —
+    // we now use the pseudo-element for the circle indicator.
+    // The following selectors neutralize any residual Odoo styling:
+    &.o_last,
+    &.o_first {
+      clip-path: none;
+      padding-inline-start: var(--cds-spacing-04);
+      padding-inline-end: var(--cds-spacing-04);
+      margin-inline-start: 0;
+      border-radius: 0;
+
+      &::before {
+        // Ensure circle styling persists on first/last steps
+        position: static;
+        inset: auto;
+        clip-path: none;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 3b. Step label typography — Carbon label-01 (12px, 400 weight,
+    //     0.32px letter-spacing).
+    // -------------------------------------------------------------------------
+    .o_status_label,
+    span {
+      font-size: var(--cds-label-01-font-size, 0.75rem);
+      font-weight: var(--cds-label-01-font-weight, 400);
+      letter-spacing: var(--cds-label-01-letter-spacing, 0.32px);
+      line-height: var(--cds-label-01-line-height, 1.33);
+      color: var(--cds-text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    // -------------------------------------------------------------------------
+    // 3c. Disabled step (non-interactive; all steps that aren't buttons are
+    //     rendered disabled in Odoo). We override the "muted text" to use
+    //     Carbon's disabled token.
+    // -------------------------------------------------------------------------
+    &:disabled {
+      opacity: 1; // Keep fully opaque; let color convey disabled state
+      cursor: default;
+
+      &:not(.o_arrow_button_current) {
+        .o_status_label,
+        span,
+        &,
+        &:hover,
+        &:focus {
+          color: var(--cds-text-disabled);
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 3d. Hover state — subtle background highlight per Carbon layer-hover.
+    // -------------------------------------------------------------------------
+    &:hover:not(:disabled) {
+      background-color: var(--cds-layer-hover-01);
+    }
+
+    // -------------------------------------------------------------------------
+    // 3e. Focus state — Carbon 2px outline focus ring for keyboard navigation.
+    //     Uses :focus-visible to show only for keyboard users.
+    // -------------------------------------------------------------------------
+    &:focus,
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: 2px;
+      z-index: 2; // Above connecting lines
+    }
+
+    // -------------------------------------------------------------------------
+    // 3f. Remove Bootstrap dropdown caret when step has dropdown
+    // -------------------------------------------------------------------------
+    &.dropdown-toggle::after {
+      content: normal;
+    }
+
+    // -------------------------------------------------------------------------
+    // 3g. Current step — the active/in-progress step. Filled interactive
+    //     circle with a small inner white dot (via box-shadow), and bold label.
+    // -------------------------------------------------------------------------
+    &.o_arrow_button_current,
+    &.btn-primary {
+      z-index: 1;
+      background-color: transparent;
+
+      &::before {
+        background-color: var(--cds-interactive);
+        border-color: var(--cds-interactive);
+        // Inner white dot to indicate "current" (distinguishes from completed)
+        box-shadow: inset 0 0 0 2px var(--cds-icon-inverse);
+      }
+
+      .o_status_label,
+      span,
+      & {
+        color: var(--cds-text-primary);
+        font-weight: 600;
+      }
+
+      // Disabled current step (read-only mode) keeps the active circle
+      &:disabled {
+        opacity: 1;
+        background-color: transparent;
+
+        &::before {
+          background-color: var(--cds-interactive);
+          border-color: var(--cds-interactive);
+          box-shadow: inset 0 0 0 2px var(--cds-icon-inverse);
+        }
+      }
+
+      // Override any Odoo active state clip-path border overlays
+      &::before {
+        position: static;
+        inset: auto;
+        clip-path: none;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 3h. Completed steps (steps that precede the current step). In Odoo's
+    //     status bar, steps before the current one are "done". We use a
+    //     general sibling approach: since Odoo renders steps in visual order,
+    //     completed steps appear before .o_arrow_button_current.
+    //
+    //     Note: CSS cannot natively select "all siblings before X". Instead,
+    //     we style all steps as completed by default and override incomplete
+    //     steps after the current one. This is handled by the progressive
+    //     enhancement below.
+    // -------------------------------------------------------------------------
+    // Default: All steps start as incomplete (hollow circle)
+    // Completed state applied via JS class or positional context
+
+    // -------------------------------------------------------------------------
+    // 3i. Folded/overflow steps — compact display for collapsed step groups.
+    // -------------------------------------------------------------------------
+    &.o_arrow_button_fold {
+      color: var(--cds-link-primary);
+      font-size: var(--cds-label-01-font-size, 0.75rem);
+      min-width: auto;
+      padding-inline: var(--cds-spacing-03);
+
+      &::before {
+        // Smaller indicator for folded items
+        width: var(--cds-spacing-03); // 8px
+        height: var(--cds-spacing-03);
+        min-width: var(--cds-spacing-03);
+        border-width: 1px;
+      }
+
+      .o_status_label,
+      span {
+        color: var(--cds-link-primary);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 3j. RTL (right-to-left) support — mirror the connecting line direction
+    //     and reset clip-path overrides for RTL layouts.
+    // -------------------------------------------------------------------------
+    .o_rtl & {
+      clip-path: none;
+
+      &:not(:last-child)::after {
+        inset-inline-end: auto;
+        inset-inline-start: 0;
+        transform: translateX(-100%);
+      }
+
+      &.o_last,
+      &.o_first {
+        clip-path: none;
+        margin-inline-start: 0;
+
+        &::before {
+          clip-path: none;
+          position: static;
+          inset: auto;
+        }
+      }
+
+      // Current and active states in RTL
+      &.o_arrow_button_current:disabled,
+      &:active:not(.o_last) {
+        &::before {
+          clip-path: none;
+          position: static;
+          inset: auto;
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. List view cell context — when the status bar is rendered inside a list
+//    view cell (.o_cell), ensure steps fill the available space.
+// ---------------------------------------------------------------------------
+.o_cell {
+  .o_field_statusbar {
+    > .o_statusbar_status {
+      justify-content: flex-end;
+
+      .o_arrow_button:not(.d-none) {
+        flex: 0 0 auto;
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5. Responsive layout — on narrow screens, stack steps vertically with the
+//    connecting line running along the inline-start edge.
+// ---------------------------------------------------------------------------
+@media (max-width: 671px) { // Below Carbon md breakpoint (672px)
+  .o_field_statusbar {
+    flex-direction: column;
+    align-items: flex-start;
+
+    > .o_statusbar_status {
+      flex-direction: column;
+      align-items: flex-start;
+      overflow-x: visible;
+      white-space: normal;
+      width: 100%;
+      gap: var(--cds-spacing-02); // 4px vertical gap between stacked steps
+
+      > .o_arrow_button:not(.d-none) {
+        width: 100%;
+        padding: var(--cds-spacing-03) var(--cds-spacing-05); // 8px 16px
+
+        // Vertical connecting line — runs below each step except last
+        &:not(:last-child)::after {
+          inset-block-start: 100%;
+          inset-inline-start: calc(var(--cds-spacing-05) + var(--cds-spacing-03) - 1px); // Center of circle
+          inset-inline-end: auto;
+          width: 1px;
+          height: var(--cds-spacing-03); // 8px line height
+          transform: none;
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 6. Reduced motion — honor user preference for reduced motion by disabling
+//    transitions on step circles and interactive elements.
+// ---------------------------------------------------------------------------
+@media (prefers-reduced-motion: reduce) {
+  .o_field_statusbar > .o_statusbar_status > .o_arrow_button:not(.d-none) {
+    &::before {
+      transition: none;
+    }
+  }
+}

@@ -20,11 +20,10 @@ import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { formatFloat, formatMonetary } from "@web/views/fields/formatters";
 import { SEP } from "@web/views/graph/graph_model";
-import { sortBy } from "@web/core/utils/arrays";
 import { renderToMarkup } from "@web/core/utils/render";
 import { useService } from "@web/core/utils/hooks";
 
-import { Component, onWillUnmount, useEffect, useRef, onWillStart, markup } from "@odoo/owl";
+import { Component, onWillUnmount, useEffect, useRef, markup } from "@odoo/owl";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { cookie } from "@web/core/browser/cookie";

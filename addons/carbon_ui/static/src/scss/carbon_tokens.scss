@@ -1,0 +1,587 @@
+// Carbon Design System v11 — Core Design Token Definitions
+// Foundational Carbon tokens: colors, spacing, typography, breakpoints, motion
+// Theme: Productive, Default: White (light)
+//
+// Token Architecture:
+// 1. CSS Custom Properties (--cds-*) for runtime theme switching (light ↔ dark)
+// 2. Sass variables ($cds-*) for compile-time usage in other SCSS files
+// Both are kept in sync: Sass variables reference the White theme defaults,
+// CSS custom properties are swapped by carbon_dark_theme.scss for dark mode.
+//
+// Compatibility: All values are static hex/number values compatible with libsass.
+// CSS var() is used for custom property declarations, NOT inside Sass functions.
+// No @use, @forward, or Dart Sass-only features are used.
+//
+// This file is loaded FIRST in web._assets_primary_variables (prepended)
+// so all tokens are available to subsequent SCSS files at compile time.
+
+// ============================================================================
+// SECTION 1: CSS Custom Properties — Color Tokens (White Theme)
+// ============================================================================
+// Emitted on :root for runtime consumption via var(--cds-*).
+// Values sourced from @carbon/themes v11 — White theme.
+
+:root {
+  // --- Background tokens ---
+  --cds-background: #ffffff;
+  --cds-background-hover: rgba(141, 141, 141, 0.12);
+  --cds-background-active: rgba(141, 141, 141, 0.5);
+  --cds-background-selected: rgba(141, 141, 141, 0.2);
+  --cds-background-selected-hover: rgba(141, 141, 141, 0.32);
+  --cds-background-inverse: #393939;
+  --cds-background-inverse-hover: #474747;
+  --cds-background-brand: #0f62fe;
+
+  // --- Layer tokens ---
+  --cds-layer-01: #f4f4f4;
+  --cds-layer-02: #ffffff;
+  --cds-layer-03: #f4f4f4;
+  --cds-layer-hover-01: #e8e8e8;
+  --cds-layer-hover-02: #e8e8e8;
+  --cds-layer-hover-03: #e8e8e8;
+  --cds-layer-active-01: #c6c6c6;
+  --cds-layer-active-02: #c6c6c6;
+  --cds-layer-active-03: #c6c6c6;
+  --cds-layer-selected-01: #e0e0e0;
+  --cds-layer-selected-02: #e0e0e0;
+  --cds-layer-selected-03: #e0e0e0;
+  --cds-layer-selected-hover-01: #d1d1d1;
+  --cds-layer-selected-hover-02: #d1d1d1;
+  --cds-layer-selected-hover-03: #d1d1d1;
+  --cds-layer-selected-inverse: #161616;
+  --cds-layer-accent-01: #e0e0e0;
+  --cds-layer-accent-02: #e0e0e0;
+  --cds-layer-accent-03: #e0e0e0;
+  --cds-layer-accent-hover-01: #d1d1d1;
+  --cds-layer-accent-hover-02: #d1d1d1;
+  --cds-layer-accent-hover-03: #d1d1d1;
+  --cds-layer-accent-active-01: #a8a8a8;
+  --cds-layer-accent-active-02: #a8a8a8;
+  --cds-layer-accent-active-03: #a8a8a8;
+
+  // --- Text tokens ---
+  --cds-text-primary: #161616;
+  --cds-text-secondary: #525252;
+  --cds-text-placeholder: rgba(22, 22, 22, 0.4);
+  --cds-text-on-color: #ffffff;
+  --cds-text-on-color-disabled: #8d8d8d;
+  --cds-text-inverse: #ffffff;
+  --cds-text-disabled: rgba(22, 22, 22, 0.25);
+  --cds-text-error: #da1e28;
+  --cds-text-helper: #6f6f6f;
+
+  // --- Border tokens ---
+  --cds-border-subtle-00: #e0e0e0;
+  --cds-border-subtle-01: #c6c6c6;
+  --cds-border-subtle-02: #e0e0e0;
+  --cds-border-subtle-03: #c6c6c6;
+  --cds-border-subtle-selected-01: #c6c6c6;
+  --cds-border-strong-01: #8d8d8d;
+  --cds-border-strong-02: #8d8d8d;
+  --cds-border-strong-03: #8d8d8d;
+  --cds-border-interactive: #0f62fe;
+  --cds-border-inverse: #161616;
+  --cds-border-disabled: #c6c6c6;
+  --cds-border-tile-01: #c6c6c6;
+  --cds-border-tile-02: #a8a8a8;
+  --cds-border-tile-03: #c6c6c6;
+
+  // --- Interactive tokens ---
+  --cds-interactive: #0f62fe;
+  --cds-focus: #0f62fe;
+  --cds-focus-inset: #ffffff;
+  --cds-focus-inverse: #ffffff;
+  --cds-highlight: #d0e2ff;
+  --cds-overlay: rgba(0, 0, 0, 0.6);
+  --cds-toggle-off: #8d8d8d;
+  --cds-shadow: rgba(0, 0, 0, 0.3);
+
+  // --- Link tokens ---
+  --cds-link-primary: #0f62fe;
+  --cds-link-primary-hover: #0043ce;
+  --cds-link-secondary: #0043ce;
+  --cds-link-inverse: #78a9ff;
+  --cds-link-inverse-hover: #a6c8ff;
+  --cds-link-visited: #8a3ffc;
+
+  // --- Support / Semantic tokens ---
+  --cds-support-success: #24a148;
+  --cds-support-warning: #f1c21b;
+  --cds-support-error: #da1e28;
+  --cds-support-info: #0043ce;
+  --cds-support-caution-major: #ff832b;
+  --cds-support-caution-minor: #f1c21b;
+  --cds-support-undefined: #8a3ffc;
+  --cds-support-error-inverse: #fa4d56;
+  --cds-support-success-inverse: #42be65;
+  --cds-support-warning-inverse: #f1c21b;
+  --cds-support-info-inverse: #4589ff;
+
+  // --- Icon tokens ---
+  --cds-icon-primary: #161616;
+  --cds-icon-secondary: #525252;
+  --cds-icon-on-color: #ffffff;
+  --cds-icon-on-color-disabled: #8d8d8d;
+  --cds-icon-inverse: #ffffff;
+  --cds-icon-disabled: rgba(22, 22, 22, 0.25);
+  --cds-icon-interactive: #0f62fe;
+
+  // --- Field tokens ---
+  --cds-field-01: #f4f4f4;
+  --cds-field-02: #ffffff;
+  --cds-field-03: #f4f4f4;
+  --cds-field-hover-01: #e8e8e8;
+  --cds-field-hover-02: #e8e8e8;
+  --cds-field-hover-03: #e8e8e8;
+
+  // --- Button tokens ---
+  --cds-button-primary: #0f62fe;
+  --cds-button-primary-hover: #0353e9;
+  --cds-button-primary-active: #002d9c;
+  --cds-button-secondary: #393939;
+  --cds-button-secondary-hover: #4c4c4c;
+  --cds-button-secondary-active: #6f6f6f;
+  --cds-button-tertiary: #0f62fe;
+  --cds-button-tertiary-hover: #0353e9;
+  --cds-button-tertiary-active: #002d9c;
+  --cds-button-danger-primary: #da1e28;
+  --cds-button-danger-secondary: #da1e28;
+  --cds-button-danger-hover: #b81921;
+  --cds-button-danger-active: #750e13;
+  --cds-button-disabled: #c6c6c6;
+  --cds-button-separator: #e0e0e0;
+
+  // --- Tag tokens ---
+  --cds-tag-background-gray: #e0e0e0;
+  --cds-tag-color-gray: #393939;
+  --cds-tag-background-blue: #d0e2ff;
+  --cds-tag-color-blue: #0043ce;
+  --cds-tag-background-green: #a7f0ba;
+  --cds-tag-color-green: #0e6027;
+  --cds-tag-background-red: #ffd7d9;
+  --cds-tag-color-red: #a2191f;
+  --cds-tag-background-teal: #9ef0f0;
+  --cds-tag-color-teal: #004144;
+  --cds-tag-background-purple: #e8daff;
+  --cds-tag-color-purple: #6929c4;
+  --cds-tag-background-magenta: #ffd6e8;
+  --cds-tag-color-magenta: #9f1853;
+  --cds-tag-background-cyan: #bae6ff;
+  --cds-tag-color-cyan: #003a6d;
+  --cds-tag-background-cool-gray: #dde1e6;
+  --cds-tag-color-cool-gray: #343a3f;
+  --cds-tag-background-warm-gray: #e5e0df;
+  --cds-tag-color-warm-gray: #3c3838;
+  --cds-tag-hover-gray: #d1d1d1;
+  --cds-tag-hover-blue: #b8d3ff;
+  --cds-tag-hover-green: #74e792;
+  --cds-tag-hover-red: #ffc2c5;
+  --cds-tag-hover-teal: #57e5e5;
+  --cds-tag-hover-purple: #dcc7ff;
+  --cds-tag-hover-magenta: #ffbdda;
+
+  // --- Notification tokens ---
+  --cds-notification-background-info: #edf5ff;
+  --cds-notification-background-success: #defbe6;
+  --cds-notification-background-warning: #fdf6dd;
+  --cds-notification-background-error: #fff1f1;
+
+  // --- Font-family tokens ---
+  // IBM Plex font stacks for runtime consumption. These are the single
+  // source of truth for font-family values across the Carbon-themed UI.
+  // Sass variable equivalents are defined in Section 4a below.
+  --cds-font-family-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont,
+      'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --cds-font-family-mono: 'IBM Plex Mono', SFMono-Regular, Menlo, Monaco,
+      Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --cds-font-family-serif: 'IBM Plex Serif', Georgia, 'Times New Roman',
+      Times, serif;
+
+  // --- Skeleton tokens ---
+  --cds-skeleton-background: #e8e8e8;
+  --cds-skeleton-element: #c6c6c6;
+
+  // --- Spacing tokens (CSS custom properties) ---
+  --cds-spacing-01: 0.125rem;  // 2px
+  --cds-spacing-02: 0.25rem;   // 4px
+  --cds-spacing-03: 0.5rem;    // 8px
+  --cds-spacing-04: 0.75rem;   // 12px
+  --cds-spacing-05: 1rem;      // 16px
+  --cds-spacing-06: 1.5rem;    // 24px
+  --cds-spacing-07: 2rem;      // 32px
+  --cds-spacing-08: 2.5rem;    // 40px
+  --cds-spacing-09: 3rem;      // 48px
+  --cds-spacing-10: 4rem;      // 64px
+  --cds-spacing-11: 5rem;      // 80px
+  --cds-spacing-12: 6rem;      // 96px
+  --cds-spacing-13: 10rem;     // 160px
+}
+
+// ============================================================================
+// SECTION 2: Sass Variables — Spacing Scale
+// ============================================================================
+// Carbon spacing scale for compile-time use in SCSS calculations.
+// Multiples of 2/4/8 with key values at 12px and 16px breakpoints.
+
+$cds-spacing-01: 0.125rem !default;  // 2px
+$cds-spacing-02: 0.25rem !default;   // 4px
+$cds-spacing-03: 0.5rem !default;    // 8px
+$cds-spacing-04: 0.75rem !default;   // 12px
+$cds-spacing-05: 1rem !default;      // 16px — BASE
+$cds-spacing-06: 1.5rem !default;    // 24px
+$cds-spacing-07: 2rem !default;      // 32px
+$cds-spacing-08: 2.5rem !default;    // 40px
+$cds-spacing-09: 3rem !default;      // 48px
+$cds-spacing-10: 4rem !default;      // 64px
+$cds-spacing-11: 5rem !default;      // 80px
+$cds-spacing-12: 6rem !default;      // 96px
+$cds-spacing-13: 10rem !default;     // 160px
+
+// ============================================================================
+// SECTION 3: Sass Variables — Responsive Breakpoints and Grid
+// ============================================================================
+// Carbon 2x Grid breakpoints (replaces Bootstrap defaults per AAP §0.8.5).
+
+$cds-breakpoint-sm: 320px !default;
+$cds-breakpoint-md: 672px !default;
+$cds-breakpoint-lg: 1056px !default;
+$cds-breakpoint-xlg: 1312px !default;
+$cds-breakpoint-max: 1584px !default;
+
+// Grid column counts per breakpoint
+$cds-grid-columns-sm: 4 !default;
+$cds-grid-columns-md: 8 !default;
+$cds-grid-columns-lg: 16 !default;
+
+// Grid margins (outer padding of the grid container)
+$cds-grid-margin-sm: 16px !default;
+$cds-grid-margin-md: 16px !default;
+$cds-grid-margin-lg: 16px !default;
+$cds-grid-margin-max: 24px !default;
+
+// Grid gutter (space between columns — 16px on each side = 32px total)
+$cds-grid-gutter: 32px !default;
+
+// ============================================================================
+// SECTION 4a: Sass Variables — Font Family Stacks
+// ============================================================================
+// Compile-time Sass variable equivalents of the --cds-font-family-* CSS
+// custom properties defined in the :root block above. Use these when a
+// Sass variable is needed at compile time (e.g., inside Sass functions,
+// interpolation, or map values) rather than the runtime var() form.
+
+$cds-font-family-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol' !default;
+
+$cds-font-family-mono: 'IBM Plex Mono', SFMono-Regular, Menlo, Monaco,
+    Consolas, 'Liberation Mono', 'Courier New', monospace !default;
+
+$cds-font-family-serif: 'IBM Plex Serif', Georgia, 'Times New Roman',
+    Times, serif !default;
+
+// ============================================================================
+// SECTION 4b: Sass Variables — Typography Tokens (Productive)
+// ============================================================================
+// IBM Plex Sans, Productive type scale, 14px base.
+// Each token is a Sass map: (font-size, line-height, font-weight, letter-spacing).
+
+$cds-type-body-compact-01: (
+  font-size: 0.875rem,
+  line-height: 1.28572,
+  font-weight: 400,
+  letter-spacing: 0.16px
+) !default;
+
+$cds-type-body-compact-02: (
+  font-size: 1rem,
+  line-height: 1.375,
+  font-weight: 400,
+  letter-spacing: 0
+) !default;
+
+$cds-type-body-01: (
+  font-size: 0.875rem,
+  line-height: 1.42857,
+  font-weight: 400,
+  letter-spacing: 0.16px
+) !default;
+
+$cds-type-body-02: (
+  font-size: 1rem,
+  line-height: 1.5,
+  font-weight: 400,
+  letter-spacing: 0
+) !default;
+
+$cds-type-heading-compact-01: (
+  font-size: 0.875rem,
+  line-height: 1.28572,
+  font-weight: 600,
+  letter-spacing: 0.16px
+) !default;
+
+$cds-type-heading-compact-02: (
+  font-size: 1rem,
+  line-height: 1.375,
+  font-weight: 600,
+  letter-spacing: 0
+) !default;
+
+$cds-type-heading-01: (
+  font-size: 0.875rem,
+  line-height: 1.42857,
+  font-weight: 600,
+  letter-spacing: 0.16px
+) !default;
+
+$cds-type-heading-02: (
+  font-size: 1rem,
+  line-height: 1.375,
+  font-weight: 600,
+  letter-spacing: 0
+) !default;
+
+$cds-type-heading-03: (
+  font-size: 1.25rem,
+  line-height: 1.4,
+  font-weight: 400,
+  letter-spacing: 0
+) !default;
+
+$cds-type-heading-04: (
+  font-size: 1.75rem,
+  line-height: 1.28572,
+  font-weight: 400,
+  letter-spacing: 0
+) !default;
+
+$cds-type-heading-05: (
+  font-size: 2rem,
+  line-height: 1.25,
+  font-weight: 400,
+  letter-spacing: 0
+) !default;
+
+$cds-type-label-01: (
+  font-size: 0.75rem,
+  line-height: 1.33333,
+  font-weight: 400,
+  letter-spacing: 0.32px
+) !default;
+
+$cds-type-label-02: (
+  font-size: 0.875rem,
+  line-height: 1.28572,
+  font-weight: 400,
+  letter-spacing: 0.16px
+) !default;
+
+$cds-type-helper-text-01: (
+  font-size: 0.75rem,
+  line-height: 1.33333,
+  font-weight: 400,
+  letter-spacing: 0.32px
+) !default;
+
+$cds-type-helper-text-02: (
+  font-size: 0.875rem,
+  line-height: 1.28572,
+  font-weight: 400,
+  letter-spacing: 0.16px
+) !default;
+
+$cds-type-code-01: (
+  font-size: 0.75rem,
+  line-height: 1.33333,
+  font-weight: 400,
+  letter-spacing: 0.32px
+) !default;
+
+$cds-type-code-02: (
+  font-size: 0.875rem,
+  line-height: 1.42857,
+  font-weight: 400,
+  letter-spacing: 0.32px
+) !default;
+
+// ============================================================================
+// SECTION 5: Sass Variables — Motion Tokens (Productive)
+// ============================================================================
+// Carbon motion durations and easing curves for the Productive theme.
+
+$cds-motion-duration-fast-01: 70ms !default;
+$cds-motion-duration-fast-02: 110ms !default;
+$cds-motion-duration-moderate-01: 150ms !default;
+$cds-motion-duration-moderate-02: 240ms !default;
+$cds-motion-duration-slow-01: 400ms !default;
+$cds-motion-duration-slow-02: 700ms !default;
+
+// Productive easing curves
+$cds-motion-productive: cubic-bezier(0.2, 0, 0.38, 0.9) !default;
+$cds-motion-entrance-productive: cubic-bezier(0, 0, 0.38, 0.9) !default;
+$cds-motion-exit-productive: cubic-bezier(0.2, 0, 1, 0.9) !default;
+
+// ============================================================================
+// SECTION 5b: Sass Variables — Button Interaction State Tokens
+// ============================================================================
+// Compile-time Sass variable equivalents of the --cds-button-* CSS custom
+// properties defined in the :root block (Section 1). These tokens represent
+// intermediate color values for hover/active states that do not map to a
+// standard 10-step swatch step.
+
+$cds-button-primary-hover: #0353e9 !default;
+$cds-button-primary-active: #002d9c !default;  // = Blue 80
+$cds-button-secondary-hover: #4c4c4c !default;
+$cds-button-secondary-active: #6f6f6f !default;  // = Gray 60
+$cds-button-tertiary-hover: #0353e9 !default;
+$cds-button-tertiary-active: #002d9c !default;  // = Blue 80
+$cds-button-danger-hover: #b81921 !default;
+$cds-button-danger-active: #750e13 !default;  // = Red 80
+
+// ============================================================================
+// SECTION 5c: Sass Variables — Layer Interaction State Tokens
+// ============================================================================
+// Layer hover/selected-hover tokens used in component backgrounds.
+
+$cds-layer-selected-hover-01: #d1d1d1 !default;
+
+// ============================================================================
+// SECTION 5d: Sass Variables — Orange Palette (IBM Design Language Extension)
+// ============================================================================
+// Carbon Design System does not include an Orange swatch in its standard
+// 10-step palette. These values are sourced from the IBM Design Language
+// orange family and the Carbon --cds-support-caution-major token (#ff832b).
+// Defined here as $cds-orange-* for single-source-of-truth consistency
+// when orange is needed for tag palettes and UI indicators.
+
+$cds-orange-40: #ff832b !default;  // IBM DL Orange 40 (= --cds-support-caution-major)
+$cds-orange-50: #eb6200 !default;  // IBM DL Orange 50
+$cds-orange-60: #ba4e00 !default;  // IBM DL Orange 60
+
+// ============================================================================
+// SECTION 6: Sass Variables — IBM Design Language Color Palette
+// ============================================================================
+// Full 10-step swatches for each IBM color, used at compile time for
+// semantic mapping and component-level token derivation.
+
+// Blue
+$cds-blue-10: #edf5ff !default;
+$cds-blue-20: #d0e2ff !default;
+$cds-blue-30: #a6c8ff !default;
+$cds-blue-40: #78a9ff !default;
+$cds-blue-50: #4589ff !default;
+$cds-blue-60: #0f62fe !default;
+$cds-blue-70: #0043ce !default;
+$cds-blue-80: #002d9c !default;
+$cds-blue-90: #001d6c !default;
+$cds-blue-100: #001141 !default;
+
+// Red
+$cds-red-10: #fff1f1 !default;
+$cds-red-20: #ffd7d9 !default;
+$cds-red-30: #ffb3b8 !default;
+$cds-red-40: #ff8389 !default;
+$cds-red-50: #fa4d56 !default;
+$cds-red-60: #da1e28 !default;
+$cds-red-70: #a2191f !default;
+$cds-red-80: #750e13 !default;
+$cds-red-90: #520408 !default;
+$cds-red-100: #2d0709 !default;
+
+// Green
+$cds-green-10: #defbe6 !default;
+$cds-green-20: #a7f0ba !default;
+$cds-green-30: #6fdc8c !default;
+$cds-green-40: #42be65 !default;
+$cds-green-50: #24a148 !default;
+$cds-green-60: #198038 !default;
+$cds-green-70: #0e6027 !default;
+$cds-green-80: #044317 !default;
+$cds-green-90: #022d0d !default;
+$cds-green-100: #071908 !default;
+
+// Yellow
+$cds-yellow-10: #fcf4d6 !default;
+$cds-yellow-20: #fddc69 !default;
+$cds-yellow-30: #f1c21b !default;
+$cds-yellow-40: #d2a106 !default;
+$cds-yellow-50: #b28600 !default;
+$cds-yellow-60: #8e6a00 !default;
+$cds-yellow-70: #684e00 !default;
+$cds-yellow-80: #483700 !default;
+$cds-yellow-90: #302400 !default;
+$cds-yellow-100: #1c1500 !default;
+
+// Gray
+$cds-gray-10: #f4f4f4 !default;
+$cds-gray-20: #e0e0e0 !default;
+$cds-gray-30: #c6c6c6 !default;
+$cds-gray-40: #a8a8a8 !default;
+$cds-gray-50: #8d8d8d !default;
+$cds-gray-60: #6f6f6f !default;
+$cds-gray-70: #525252 !default;
+$cds-gray-80: #393939 !default;
+$cds-gray-90: #262626 !default;
+$cds-gray-100: #161616 !default;
+
+// Cool Gray
+$cds-cool-gray-10: #f2f4f8 !default;
+$cds-cool-gray-20: #dde1e6 !default;
+$cds-cool-gray-30: #c1c7cd !default;
+$cds-cool-gray-40: #a2a9b0 !default;
+$cds-cool-gray-50: #878d96 !default;
+$cds-cool-gray-60: #697077 !default;
+$cds-cool-gray-70: #4d5358 !default;
+$cds-cool-gray-80: #343a3f !default;
+$cds-cool-gray-90: #21272a !default;
+$cds-cool-gray-100: #121619 !default;
+
+// Cyan
+$cds-cyan-10: #e5f6ff !default;
+$cds-cyan-20: #bae6ff !default;
+$cds-cyan-30: #82cfff !default;
+$cds-cyan-40: #33b1ff !default;
+$cds-cyan-50: #1192e8 !default;
+$cds-cyan-60: #0072c3 !default;
+$cds-cyan-70: #00539a !default;
+$cds-cyan-80: #003a6d !default;
+$cds-cyan-90: #012749 !default;
+$cds-cyan-100: #061727 !default;
+
+// Teal
+$cds-teal-10: #d9fbfb !default;
+$cds-teal-20: #9ef0f0 !default;
+$cds-teal-30: #3ddbd9 !default;
+$cds-teal-40: #08bdba !default;
+$cds-teal-50: #009d9a !default;
+$cds-teal-60: #007d79 !default;
+$cds-teal-70: #005d5d !default;
+$cds-teal-80: #004144 !default;
+$cds-teal-90: #022b30 !default;
+$cds-teal-100: #081a1c !default;
+
+// Purple
+$cds-purple-10: #f6f2ff !default;
+$cds-purple-20: #e8daff !default;
+$cds-purple-30: #d4bbff !default;
+$cds-purple-40: #be95ff !default;
+$cds-purple-50: #a56eff !default;
+$cds-purple-60: #8a3ffc !default;
+$cds-purple-70: #6929c4 !default;
+$cds-purple-80: #491d8b !default;
+$cds-purple-90: #31135e !default;
+$cds-purple-100: #1c0f30 !default;
+
+// Magenta
+$cds-magenta-10: #fff0f7 !default;
+$cds-magenta-20: #ffd6e8 !default;
+$cds-magenta-30: #ffafd2 !default;
+$cds-magenta-40: #ff7eb6 !default;
+$cds-magenta-50: #ee5396 !default;
+$cds-magenta-60: #d02670 !default;
+$cds-magenta-70: #9f1853 !default;
+$cds-magenta-80: #740937 !default;
+$cds-magenta-90: #510224 !default;
+$cds-magenta-100: #2a0a18 !default;

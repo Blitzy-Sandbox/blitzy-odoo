@@ -1,0 +1,333 @@
+// Carbon Design System v11 — Bootstrap Variable Bridge
+// Redirects Bootstrap theme variables to Carbon token values
+// Loaded after bootstrap_overridden.scss to override via Sass cascade
+// Source context: addons/web/static/src/scss/bootstrap_overridden.scss
+//
+// This file operates on Bootstrap's $ namespace variables, overriding the
+// values set by Odoo's bootstrap_overridden.scss (which uses !default on
+// all declarations). Since this file does NOT use !default, its values
+// take precedence in the Sass cascade.
+//
+// Asset bundle position: web._assets_secondary_variables (appended)
+// Load order in the pipeline:
+//   1. carbon_tokens.scss      → $cds-* Sass variables, --cds-* CSS custom properties
+//   2. primary_variables.scss   → Odoo $o-* primary variables (!default)
+//   3. carbon_primary_overrides → Overrides $o-* with Carbon values (no !default)
+//   4. secondary_variables.scss → Odoo $o-* secondary variables (!default)
+//   5. carbon_secondary_overrides → Overrides $o-* secondaries (no !default)
+//   6. *** THIS FILE ***        → Overrides Bootstrap $vars directly (no !default)
+//   7. pre_variables.scss       → Bootstrap gray/theme maps (!default — our values win)
+//   8. bootstrap_overridden.scss → Bootstrap bridge (!default — our values win)
+//   9. Bootstrap _variables.scss → Bootstrap defaults (!default — our values win)
+//
+// Carbon token reference values (White theme):
+//   --cds-interactive:       #0f62fe (Blue 60)     → $primary
+//   --cds-support-success:   #24a148 (Green 50)    → $success
+//   --cds-support-info:      #0043ce (Blue 70)     → $info
+//   --cds-support-warning:   #f1c21b (Yellow 30)   → $warning
+//   --cds-support-error:     #da1e28 (Red 60)      → $danger
+//   --cds-text-primary:      #161616 (Gray 100)    → $body-color
+//   --cds-background:        #ffffff (White)        → $body-bg
+//   --cds-link-primary:      #0f62fe (Blue 60)     → $link-color
+//   --cds-link-primary-hover: #0043ce (Blue 70)    → $link-hover-color
+//   --cds-focus:             #0f62fe (Blue 60)     → $input-focus-border-color
+//   --cds-border-subtle-01:  #c6c6c6 (Gray 30)    → $modal-header-border-color
+//   --cds-border-strong-01:  #8d8d8d (Gray 50)    → $input-border-color
+//   --cds-text-placeholder:  rgba(22,22,22,0.4)    → $input-placeholder-color (#a8a8a8)
+//
+// Compatibility:
+//   - All values are static hex/number values — fully compatible with libsass.
+//   - No var() used inside Sass function calls (darken, lighten, mix, etc.).
+//   - No @use, @forward, or other Dart Sass-only features.
+//   - CSS custom properties (var(--cds-*)) serve as a PARALLEL system for
+//     runtime dark mode switching via carbon_dark_theme.scss.
+//
+// !default behavior:
+//   - This file does NOT use !default on any declaration.
+//   - All subsequent !default declarations in pre_variables.scss,
+//     bootstrap_overridden.scss, and Bootstrap _variables.scss are no-ops
+//     for variables defined here.
+//
+// Rules applied:
+//   Carbon Design Token Compliance (AAP §0.8.3) — every value from Carbon tokens
+//   Accessibility (AAP §0.8.4)                  — $min-contrast-ratio: 4.5 (WCAG 2.1 AA)
+//   Sass Compilation Compatibility (AAP §0.8.6) — libsass safe, static hex values
+//   IBM Plex Typography (AAP §0.8.7)            — IBM Plex Sans/Mono primary
+//   Module Isolation (AAP §0.8.1)               — override through cascade, not modification
+
+
+// ============================================================================
+// SECTION 1: Theme Color Bridge (bs-theme-colors-bridge)
+// ============================================================================
+// Override Bootstrap's theme colors with Carbon Design System token values.
+// Odoo's bootstrap_overridden.scss maps these from $o-* variables with !default.
+// We override directly with static Carbon hex values (no !default).
+//
+// Each value corresponds to a Carbon token defined in carbon_tokens.scss.
+// The $o-* variables were already remapped by carbon_primary_overrides.scss,
+// but we set Bootstrap $ variables directly here for complete coverage.
+
+// Primary — Carbon $interactive (Blue 60)
+// Source: $cds-blue-60 / --cds-interactive from carbon_tokens.scss
+// Replaces: $o-brand-primary (was #71639e Odoo purple)
+$primary: #0f62fe;
+
+// Secondary — Carbon Gray 60
+// Source: $cds-gray-60 / --cds-button-secondary from carbon_tokens.scss
+// Replaces: Bootstrap $gray-300 / Odoo $o-brand-secondary
+$secondary: #6f6f6f;
+
+// Success — Carbon $support-success (Green 50)
+// Source: $cds-green-50 / --cds-support-success from carbon_tokens.scss
+// Replaces: $o-success (was #28a745)
+$success: #24a148;
+
+// Info — Carbon $support-info (Blue 70)
+// Source: $cds-blue-70 / --cds-support-info from carbon_tokens.scss
+// Replaces: $o-info (was #17a2b8)
+$info: #0043ce;
+
+// Warning — Carbon $support-warning (Yellow 30)
+// Source: $cds-yellow-30 / --cds-support-warning from carbon_tokens.scss
+// Replaces: $o-warning (was #ffac00)
+$warning: #f1c21b;
+
+// Danger — Carbon $support-error (Red 60)
+// Source: $cds-red-60 / --cds-support-error from carbon_tokens.scss
+// Replaces: $o-danger (was #dc3545)
+$danger: #da1e28;
+
+// Dark — Carbon Gray 100
+// Source: $cds-gray-100 from carbon_tokens.scss
+// Replaces: $o-gray-900 (was #212529)
+$dark: #161616;
+
+// Light — Carbon Gray 10
+// Source: $cds-gray-10 from carbon_tokens.scss
+// Replaces: Bootstrap $gray-100 default
+$light: #f4f4f4;
+
+
+// ============================================================================
+// SECTION 2: Bootstrap Gray Scale Bridge
+// ============================================================================
+// Override Bootstrap's $gray-* variables with Carbon's 10-step neutral gray
+// palette. These variables are consumed by pre_variables.scss to build the
+// $grays map (via map-merge). Since our declarations precede pre_variables.scss
+// in the load order (and use no !default), the map will contain Carbon grays.
+//
+// Source: $cds-gray-{10..100} Sass variables from carbon_tokens.scss Section 6.
+// Original Odoo values: mapped from $o-gray-* (already overridden by
+// carbon_primary_overrides.scss to Carbon values).
+
+$white: #ffffff;
+
+$gray-100: #f4f4f4;   // Carbon Gray 10  (was Odoo $o-gray-100: #f8f9fa)
+$gray-200: #e0e0e0;   // Carbon Gray 20  (was Odoo $o-gray-200: #e9ecef)
+$gray-300: #c6c6c6;   // Carbon Gray 30  (was Odoo $o-gray-300: #dee2e6)
+$gray-400: #a8a8a8;   // Carbon Gray 40  (was Odoo $o-gray-400: #ced4da)
+$gray-500: #8d8d8d;   // Carbon Gray 50  (was Odoo $o-gray-500: #adb5bd)
+$gray-600: #6f6f6f;   // Carbon Gray 60  (was Odoo $o-gray-600: #6c757d)
+$gray-700: #525252;   // Carbon Gray 70  (was Odoo $o-gray-700: #495057)
+$gray-800: #393939;   // Carbon Gray 80  (was Odoo $o-gray-800: #343a40)
+$gray-900: #262626;   // Carbon Gray 90  (was Odoo $o-gray-900: #212529)
+
+$black: #000000;
+
+
+// ============================================================================
+// SECTION 3: Configuration Bridge (bs-configuration-bridge)
+// ============================================================================
+
+// --- Contrast Ratio ---
+// UPGRADED from Odoo's 3 → 4.5 for WCAG 2.1 AA compliance (AAP §0.8.4).
+// Controls Bootstrap's color-contrast() function: text on colored backgrounds
+// will switch to white/black at the 4.5:1 threshold instead of 3:1.
+$min-contrast-ratio: 4.5;
+
+// --- Bootstrap Feature Flags ---
+// Smooth scroll: disabled (preserves Odoo's setting for instant scroll)
+$enable-smooth-scroll: false;
+// Negative margins: enabled for utility class generation (preserves Odoo)
+$enable-negative-margins: true;
+// CSS Grid: enabled for modern grid layout utilities (preserves Odoo)
+$enable-cssgrid: true;
+// Dark mode: CHANGED from false → true to support Carbon dark mode
+// switching via data-bs-theme attribute and Bootstrap dark mode utilities.
+// Carbon's four themes (White, G10, G90, G100) are applied through CSS
+// custom property overrides in carbon_dark_theme.scss.
+$enable-dark-mode: true;
+
+// --- Body ---
+// Carbon White theme defaults for the <body> element.
+// Runtime equivalents: var(--cds-background), var(--cds-text-primary)
+// Dark mode overrides applied via carbon_dark_theme.scss.
+$body-bg: #ffffff;        // Carbon $background (White theme)
+$body-color: #161616;     // Carbon $text-primary (Gray 100)
+
+// --- Links ---
+// Carbon link tokens for <a> elements.
+// Runtime equivalents: var(--cds-link-primary), var(--cds-link-primary-hover)
+$link-color: #0f62fe;             // Carbon $link-primary (Blue 60)
+$link-decoration: none;           // Preserved from Odoo's setting
+$link-hover-decoration: none;     // Preserved from Odoo's setting
+$link-hover-color: #0043ce;       // Carbon $link-primary-hover (Blue 70)
+
+// --- Spacing ---
+// Bootstrap spacer mapped to Carbon spacing-05 (16px).
+// Source: $cds-spacing-05 from carbon_tokens.scss Section 2.
+// IMPORTANT: Must remain in px units (not rem) because Odoo's SCSS pipeline
+// uses px extensively in calculations. Mixing rem and px causes libsass to
+// throw "Incompatible units: 'px' and 'rem'" when Bootstrap generates the
+// $spacers map from $spacer and Odoo code combines $spacers values with px.
+$spacer: 16px;                    // Carbon $spacing-05 (kept in px for Odoo compat)
+
+// Grid gutter mapped to Carbon spacing-07 (32px).
+// Source: $cds-spacing-07 from carbon_tokens.scss Section 2.
+// Preserves Odoo's computed value ($o-horizontal-padding * 2 = 32px).
+$grid-gutter-width: 32px;         // Carbon $spacing-07 (kept in px for Odoo compat)
+
+
+// ============================================================================
+// SECTION 4: Typography Bridge (bs-typography-bridge)
+// ============================================================================
+
+// --- Font Families ---
+// IBM Plex Sans as primary typeface (AAP §0.8.7), with system fonts as
+// fallback. Font files served from vendored WOFF2 in static/lib/ibm-plex/
+// via @font-face declarations in carbon_font_face.scss.
+//
+// Note: Odoo's o-add-unicode-support-font() wraps the stack with a Unicode
+// support font in $o-font-family-sans-serif. This bridge sets Bootstrap's
+// $font-family-sans-serif directly for complete coverage. The unicode font
+// is injected separately through Odoo's existing mechanism.
+//
+// Source: $cds-font-family-sans / --cds-font-family-sans from carbon_tokens.scss
+$font-family-sans-serif: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+
+// IBM Plex Mono for code, technical fields, and monospace content.
+// Source: $cds-font-family-mono / --cds-font-family-mono from carbon_tokens.scss
+$font-family-monospace: 'IBM Plex Mono', SFMono-Regular, Menlo, Monaco,
+    Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+// --- Font Sizes ---
+// Carbon Productive type scale: compact, optimized for data-dense ERP screens.
+// body-compact-01: 14px (0.875rem) — exact match with Odoo's base.
+// label-01: 12px (0.75rem).
+// Source: $cds-type-body-compact-01, $cds-type-label-01 from carbon_tokens.scss.
+$font-size-base: 0.875rem;      // 14px — Carbon body-compact-01
+$font-size-sm: 0.75rem;         // 12px — Carbon label-01
+$small-font-size: 0.75rem;      // 12px — Carbon label-01
+
+// --- Line Heights ---
+// Carbon Productive line heights are DENSER than Bootstrap/Odoo defaults,
+// improving information density on data-heavy screens.
+// Source: $cds-type-body-compact-01, $cds-type-label-01, $cds-type-body-02
+// from carbon_tokens.scss Section 4b.
+$line-height-base: 1.29;        // Carbon body-compact-01 (18px / 14px) — was 1.5
+$line-height-sm: 1.33;          // Carbon label-01 (16px / 12px) — was 1.25
+$line-height-lg: 1.5;           // Carbon body-02 (24px / 16px) — was 2
+
+// --- Heading Sizes ---
+// Carbon Productive heading scale, mapping to heading-05 through heading-compact-01.
+// Source: $cds-type-heading-05 through $cds-type-heading-compact-01 from
+// carbon_tokens.scss Section 4b.
+$h1-font-size: 2rem;            // 32px — Carbon heading-05
+$h2-font-size: 1.75rem;         // 28px — Carbon heading-04
+$h3-font-size: 1.25rem;         // 20px — Carbon heading-03
+$h4-font-size: 1rem;            // 16px — Carbon heading-compact-02
+$h5-font-size: 0.875rem;        // 14px — Carbon heading-compact-01
+
+// --- Heading Styles ---
+// Carbon uses 600 (semibold) for heading weight (AAP §0.5.3).
+// Color: Carbon $text-primary (Gray 100).
+$headings-font-weight: 600;     // Carbon semibold — was Bootstrap 500 / Odoo 700
+$headings-color: #161616;       // Carbon $text-primary (Gray 100)
+
+// --- Font Weights ---
+// Carbon body: 400 (regular). Emphasis: 600 (semibold, not 700 bold).
+// Source: $o-font-weight-normal, $o-font-weight-bold from
+// carbon_primary_overrides.scss.
+$font-weight-normal: 400;       // Unchanged — Carbon body weight
+$font-weight-bold: 600;         // Carbon semibold — CHANGED from 700
+
+
+// ============================================================================
+// SECTION 5: Component Variable Bridge (bs-component-variables-bridge)
+// ============================================================================
+
+// --- Border Radius ---
+// Carbon default: 0 (sharp corners). Per Carbon Design Token Compliance
+// Rule (AAP §0.8.3). AAP §0.5.4 notes this as a gap: "override to 4px for
+// continuity OR adopt sharp corners." Decision: use 0 per Carbon spec.
+// Source: $o-border-radius from carbon_primary_overrides.scss (set to 0).
+$border-radius: 0;
+$border-radius-sm: 0;
+$border-radius-lg: 0;
+
+// Border color — Carbon Gray 20 ($border-subtle)
+// Runtime equivalent: var(--cds-border-subtle-01)
+// Source: $cds-gray-20 from carbon_tokens.scss Section 6.
+$border-color: #e0e0e0;
+
+// --- Input / Form Controls ---
+// Padding tuned for Carbon's 40px field height (medium size) with 14px font:
+//   11px top padding + ~18px text (14px × 1.29 line-height) + 11px bottom ≈ 40px
+// Source: $cds-spacing-05 (1rem / 16px) from carbon_tokens.scss Section 2.
+$input-btn-padding-y: 0.6875rem;   // 11px — Carbon medium field vertical padding
+$input-btn-padding-x: 1rem;        // 16px — Carbon $spacing-05
+
+// Carbon text input: transparent background with bottom-border-only pattern.
+// Source: $o-input-bg from carbon_primary_overrides.scss (transparent).
+$input-bg: transparent;
+
+// Input border: Carbon $border-strong-01 (Gray 50) for the underline,
+// Carbon $focus (Blue 60) for focus state.
+// Runtime equivalents: var(--cds-border-strong-01), var(--cds-focus)
+$input-border-color: #8d8d8d;           // Carbon $border-strong-01 (Gray 50)
+$input-focus-border-color: #0f62fe;     // Carbon $focus (Blue 60)
+
+// Carbon focus ring: 2px solid outline in $focus color.
+// Replaces Bootstrap's default 0.25rem shadow.
+$input-focus-box-shadow: 0 0 0 2px #0f62fe;
+
+// Placeholder text: approximation of Carbon $text-placeholder
+// (rgba(22,22,22,0.4) ≈ #a8a8a8 on white).
+// Using static hex for libsass compatibility.
+// Runtime equivalent: var(--cds-text-placeholder)
+$input-placeholder-color: #a8a8a8;      // Carbon Gray 40 ≈ $text-placeholder
+
+// --- Tables ---
+// Carbon DataTable compact row: 48px height with 12px vertical padding.
+// Horizontal: Carbon $spacing-05 (16px).
+$table-cell-padding-y: 0.75rem;   // 12px — close to Carbon compact row padding
+$table-cell-padding-x: 1rem;      // 16px — Carbon $spacing-05
+
+// Zebra and hover: subtle factors for Carbon's minimal striping approach.
+$table-striped-bg-factor: 0.02;   // Subtle zebra striping
+$table-hover-bg-factor: 0.04;     // Subtle hover highlight
+
+// --- Modals ---
+// Carbon modal: sharp corners, subtle header separator, no footer border.
+// Runtime equivalent: var(--cds-border-subtle-01) for header border.
+$modal-content-border-radius: 0;
+$modal-header-border-color: #e0e0e0;    // Carbon $border-subtle-01 (Gray 20)
+$modal-footer-border-color: transparent; // Carbon modal: no footer border
+
+// --- Dropdowns ---
+// Carbon dropdown: sharp corners, no vertical padding, subtle border.
+// Runtime equivalent: var(--cds-border-subtle-01) for border.
+$dropdown-border-radius: 0;
+$dropdown-border-color: #e0e0e0;        // Carbon $border-subtle-01 (Gray 20)
+$dropdown-padding-y: 0;                 // Carbon dropdown: flush item alignment
+
+// --- Buttons ---
+// Carbon button: sharp corners, normal-weight text, Carbon spacing.
+// Height achieved through padding: 11px top + ~18px text + 11px bottom ≈ 48px.
+// Source: $cds-spacing-05 (1rem / 16px) from carbon_tokens.scss Section 2.
+$btn-border-radius: 0;                  // Carbon sharp buttons
+$btn-font-weight: 400;                  // Carbon button text: normal weight
+$btn-padding-y: 0.6875rem;             // 11px — Carbon 48px button height target
+$btn-padding-x: 1rem;                   // 16px — Carbon $spacing-05

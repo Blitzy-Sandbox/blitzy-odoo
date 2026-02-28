@@ -1,0 +1,442 @@
+// Carbon Design System v11 — Utility Classes
+// Spacing, typography, and grid utilities based on Carbon's token system
+// Loaded in web.assets_backend after token bridge files
+//
+// Dependencies (loaded before this file in the asset bundle):
+//   - carbon_tokens.scss: CSS custom properties (--cds-spacing-*, --cds-text-*,
+//     --cds-background, --cds-layer-*) and Sass variables ($cds-type-*,
+//     $cds-breakpoint-*, $cds-grid-*)
+//   - carbon_font_face.scss: @font-face declarations for IBM Plex Sans/Mono
+//     (--cds-font-family-mono is defined in carbon_tokens.scss :root block)
+//
+// Compatibility: libsass (Odoo's SCSS compiler). No @use, @forward, or
+// Dart Sass-only features. var() values are opaque strings in Sass maps.
+//
+// All spacing values use Carbon design tokens — no arbitrary pixel values.
+// All color values use CSS custom properties — no hardcoded hex values.
+// Class naming follows Carbon BEM convention: .cds--{category}-{variant}
+
+// ============================================================================
+// SECTION 1: Spacing Utilities
+// ============================================================================
+// Carbon spacing scale: 2px → 160px in multiples of 2/4/8.
+// All values reference CSS custom properties for runtime theme compatibility.
+// Generated via @each loop over the spacing map.
+
+// Sass map mapping scale keys to CSS custom property references.
+// libsass treats var() as opaque string values — safe for map entries.
+$cds-spacing-map: (
+  '01': var(--cds-spacing-01),
+  '02': var(--cds-spacing-02),
+  '03': var(--cds-spacing-03),
+  '04': var(--cds-spacing-04),
+  '05': var(--cds-spacing-05),
+  '06': var(--cds-spacing-06),
+  '07': var(--cds-spacing-07),
+  '08': var(--cds-spacing-08),
+  '09': var(--cds-spacing-09),
+  '10': var(--cds-spacing-10),
+  '11': var(--cds-spacing-11),
+  '12': var(--cds-spacing-12),
+  '13': var(--cds-spacing-13),
+);
+
+// --- 1a. Margin utilities ---
+// .cds--m-{01-13}: all-sides margin
+// .cds--mt/mb/ml/mr-{01-13}: single-side margin
+// .cds--mx/my-{01-13}: axis margin
+@each $key, $value in $cds-spacing-map {
+  .cds--m-#{$key} {
+    margin: #{$value};
+  }
+
+  .cds--mt-#{$key} {
+    margin-top: #{$value};
+  }
+
+  .cds--mb-#{$key} {
+    margin-bottom: #{$value};
+  }
+
+  .cds--ml-#{$key} {
+    margin-left: #{$value};
+  }
+
+  .cds--mr-#{$key} {
+    margin-right: #{$value};
+  }
+
+  .cds--mx-#{$key} {
+    margin-left: #{$value};
+    margin-right: #{$value};
+  }
+
+  .cds--my-#{$key} {
+    margin-top: #{$value};
+    margin-bottom: #{$value};
+  }
+}
+
+// --- 1b. Padding utilities ---
+// .cds--p-{01-13}: all-sides padding
+// .cds--pt/pb/pl/pr-{01-13}: single-side padding
+// .cds--px/py-{01-13}: axis padding
+@each $key, $value in $cds-spacing-map {
+  .cds--p-#{$key} {
+    padding: #{$value};
+  }
+
+  .cds--pt-#{$key} {
+    padding-top: #{$value};
+  }
+
+  .cds--pb-#{$key} {
+    padding-bottom: #{$value};
+  }
+
+  .cds--pl-#{$key} {
+    padding-left: #{$value};
+  }
+
+  .cds--pr-#{$key} {
+    padding-right: #{$value};
+  }
+
+  .cds--px-#{$key} {
+    padding-left: #{$value};
+    padding-right: #{$value};
+  }
+
+  .cds--py-#{$key} {
+    padding-top: #{$value};
+    padding-bottom: #{$value};
+  }
+}
+
+// --- 1c. Gap utilities (flex/grid containers) ---
+// .cds--gap-{01-13}: combined row + column gap
+// .cds--row-gap-{01-13}: row gap only
+// .cds--column-gap-{01-13}: column gap only
+@each $key, $value in $cds-spacing-map {
+  .cds--gap-#{$key} {
+    gap: #{$value};
+  }
+
+  .cds--row-gap-#{$key} {
+    row-gap: #{$value};
+  }
+
+  .cds--column-gap-#{$key} {
+    column-gap: #{$value};
+  }
+}
+
+// ============================================================================
+// SECTION 2: Typography Utilities
+// ============================================================================
+// Carbon Productive type scale (14px base, IBM Plex Sans).
+// Each class sets font-size, line-height, font-weight, and letter-spacing
+// per the Carbon v11 Productive type specifications.
+// Token values are sourced from $cds-type-* Sass maps in carbon_tokens.scss.
+
+// --- 2a. Type token map for @each loop generation ---
+// Maps class-name suffixes to their $cds-type-* Sass variable references.
+$cds-type-tokens: (
+  'body-compact-01': $cds-type-body-compact-01,
+  'body-compact-02': $cds-type-body-compact-02,
+  'body-01': $cds-type-body-01,
+  'body-02': $cds-type-body-02,
+  'heading-compact-01': $cds-type-heading-compact-01,
+  'heading-compact-02': $cds-type-heading-compact-02,
+  'heading-01': $cds-type-heading-01,
+  'heading-02': $cds-type-heading-02,
+  'heading-03': $cds-type-heading-03,
+  'heading-04': $cds-type-heading-04,
+  'heading-05': $cds-type-heading-05,
+  'label-01': $cds-type-label-01,
+  'label-02': $cds-type-label-02,
+  'helper-text-01': $cds-type-helper-text-01,
+  'helper-text-02': $cds-type-helper-text-02,
+  'code-01': $cds-type-code-01,
+  'code-02': $cds-type-code-02,
+);
+
+// --- 2b. Generate typography utility classes from token map ---
+@each $name, $styles in $cds-type-tokens {
+  .cds--type-#{$name} {
+    font-size: map-get($styles, font-size);
+    line-height: map-get($styles, line-height);
+    font-weight: map-get($styles, font-weight);
+    letter-spacing: map-get($styles, letter-spacing);
+  }
+}
+
+// --- 2c. Code typography: IBM Plex Mono font family ---
+// code-01 and code-02 classes additionally set the monospace font stack
+// from --cds-font-family-mono (defined in carbon_tokens.scss :root).
+.cds--type-code-01,
+.cds--type-code-02 {
+  font-family: var(--cds-font-family-mono);
+}
+
+// --- 2d. Legal typography ---
+// Carbon Productive type scale defines legal-01 and legal-02 with the
+// same metrics as label-01/helper-text-01 and label-02/helper-text-02.
+// No $cds-type-legal-* Sass maps exist in carbon_tokens.scss, so values
+// are defined inline per the Carbon v11 Productive specification.
+.cds--type-legal-01 {
+  font-size: 0.75rem;     // 12px
+  line-height: 1.33333;
+  font-weight: 400;
+  letter-spacing: 0.32px;
+}
+
+.cds--type-legal-02 {
+  font-size: 0.875rem;    // 14px
+  line-height: 1.28572;
+  font-weight: 400;
+  letter-spacing: 0.16px;
+}
+
+// ============================================================================
+// SECTION 3: Grid Utilities — Carbon 2x Grid
+// ============================================================================
+// Carbon's responsive 16-column grid with 5 breakpoints.
+// Breakpoints: sm(320), md(672), lg(1056), xlg(1312), max(1584)
+// Gutter: 32px (16px each side) — condensed: 2px total, narrow: 16px total
+// Uses $cds-breakpoint-*, $cds-grid-columns-*, $cds-grid-margin-*,
+// and $cds-grid-gutter Sass variables from carbon_tokens.scss.
+
+// --- 3a. Grid container ---
+// Width is 100% with responsive horizontal margins (padding).
+// Margins increase at larger breakpoints per Carbon's grid spec.
+.cds--grid {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: $cds-grid-margin-sm;
+  padding-right: $cds-grid-margin-sm;
+
+  @media (min-width: $cds-breakpoint-md) {
+    padding-left: $cds-grid-margin-md;
+    padding-right: $cds-grid-margin-md;
+  }
+
+  @media (min-width: $cds-breakpoint-lg) {
+    padding-left: $cds-grid-margin-lg;
+    padding-right: $cds-grid-margin-lg;
+  }
+
+  @media (min-width: $cds-breakpoint-max) {
+    padding-left: $cds-grid-margin-max;
+    padding-right: $cds-grid-margin-max;
+  }
+}
+
+// --- 3b. Grid modifiers ---
+// Condensed: 1px gutters per side (2px total gap between columns).
+// Used for very tight layouts like data tables and compact lists.
+.cds--grid--condensed {
+  > .cds--row {
+    margin-left: -1px;
+    margin-right: -1px;
+
+    > [class*='cds--col'] {
+      padding-left: 1px;
+      padding-right: 1px;
+    }
+  }
+}
+
+// Narrow: 8px gutters per side (16px total gap between columns).
+// Used for content-heavy areas requiring tighter spacing than default.
+.cds--grid--narrow {
+  > .cds--row {
+    margin-left: -($cds-spacing-03);
+    margin-right: -($cds-spacing-03);
+
+    > [class*='cds--col'] {
+      padding-left: $cds-spacing-03;
+      padding-right: $cds-spacing-03;
+    }
+  }
+}
+
+// Full-width: removes max-width constraint for edge-to-edge layouts.
+.cds--grid--full-width {
+  max-width: none;
+}
+
+// --- 3c. Grid row ---
+// Flexbox row container with negative margins to compensate for column gutters.
+.cds--row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: ($cds-grid-gutter / -2);
+  margin-right: ($cds-grid-gutter / -2);
+}
+
+// --- 3d. Auto column ---
+// Flexible column that equally shares available space with siblings.
+.cds--col {
+  flex: 1 0 0%;
+  padding-left: ($cds-grid-gutter / 2);
+  padding-right: ($cds-grid-gutter / 2);
+}
+
+// --- 3e. Responsive column classes ---
+// Generated via @for loops at each breakpoint using media queries.
+// Column widths are calculated as percentage of total columns at breakpoint.
+
+// sm breakpoint (320px): 4-column grid
+@media (min-width: $cds-breakpoint-sm) {
+  @for $i from 1 through $cds-grid-columns-sm {
+    .cds--col-sm-#{$i} {
+      flex: 0 0 percentage($i / $cds-grid-columns-sm);
+      max-width: percentage($i / $cds-grid-columns-sm);
+      padding-left: ($cds-grid-gutter / 2);
+      padding-right: ($cds-grid-gutter / 2);
+    }
+  }
+}
+
+// md breakpoint (672px): 8-column grid
+@media (min-width: $cds-breakpoint-md) {
+  @for $i from 1 through $cds-grid-columns-md {
+    .cds--col-md-#{$i} {
+      flex: 0 0 percentage($i / $cds-grid-columns-md);
+      max-width: percentage($i / $cds-grid-columns-md);
+      padding-left: ($cds-grid-gutter / 2);
+      padding-right: ($cds-grid-gutter / 2);
+    }
+  }
+}
+
+// lg breakpoint (1056px): 16-column grid
+@media (min-width: $cds-breakpoint-lg) {
+  @for $i from 1 through $cds-grid-columns-lg {
+    .cds--col-lg-#{$i} {
+      flex: 0 0 percentage($i / $cds-grid-columns-lg);
+      max-width: percentage($i / $cds-grid-columns-lg);
+      padding-left: ($cds-grid-gutter / 2);
+      padding-right: ($cds-grid-gutter / 2);
+    }
+  }
+}
+
+// xlg breakpoint (1312px): 16-column grid
+@media (min-width: $cds-breakpoint-xlg) {
+  @for $i from 1 through $cds-grid-columns-lg {
+    .cds--col-xlg-#{$i} {
+      flex: 0 0 percentage($i / $cds-grid-columns-lg);
+      max-width: percentage($i / $cds-grid-columns-lg);
+      padding-left: ($cds-grid-gutter / 2);
+      padding-right: ($cds-grid-gutter / 2);
+    }
+  }
+}
+
+// max breakpoint (1584px): 16-column grid
+@media (min-width: $cds-breakpoint-max) {
+  @for $i from 1 through $cds-grid-columns-lg {
+    .cds--col-max-#{$i} {
+      flex: 0 0 percentage($i / $cds-grid-columns-lg);
+      max-width: percentage($i / $cds-grid-columns-lg);
+      padding-left: ($cds-grid-gutter / 2);
+      padding-right: ($cds-grid-gutter / 2);
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 4: Accessibility Utilities
+// ============================================================================
+// Screen-reader-only patterns for content that should be accessible to
+// assistive technology but hidden visually. Follows Carbon's naming
+// convention and the standard clip-rect sr-only technique per WCAG.
+
+// .cds--visually-hidden: Hides content visually while keeping it accessible
+// to screen readers. Uses the clip-rect technique recommended by WCAG.
+.cds--visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// .cds--assistive-text: Carbon alias for visually-hidden. Both class names
+// are supported per Carbon v11 convention for backward compatibility.
+.cds--assistive-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// ============================================================================
+// SECTION 5: Color Utilities
+// ============================================================================
+// Text and background color utilities referencing Carbon color tokens
+// from the :root custom properties in carbon_tokens.scss.
+// No hardcoded hex values — all colors via var(--cds-*).
+// These utilities automatically adapt when the theme switches (light ↔ dark)
+// because they reference CSS custom properties, not static values.
+
+// --- 5a. Text color utilities ---
+.cds--text-primary {
+  color: var(--cds-text-primary);
+}
+
+.cds--text-secondary {
+  color: var(--cds-text-secondary);
+}
+
+.cds--text-disabled {
+  color: var(--cds-text-disabled);
+}
+
+.cds--text-inverse {
+  color: var(--cds-text-inverse);
+}
+
+// --- 5b. Background color utilities ---
+.cds--bg-background {
+  background-color: var(--cds-background);
+}
+
+.cds--bg-layer-01 {
+  background-color: var(--cds-layer-01);
+}
+
+.cds--bg-layer-02 {
+  background-color: var(--cds-layer-02);
+}
+
+// ============================================================================
+// SECTION 6: Density Utilities
+// ============================================================================
+// Layout density modifiers for Carbon's condensed/default density system.
+// The condensed density reduces spacing within components for data-dense
+// ERP screens, improving scanning speed and information density.
+// Works by overriding CSS custom properties scoped to the element subtree,
+// so all children reading var(--cds-spacing-*) receive condensed values.
+
+.cds--layout-constraint--density__default-condensed {
+  // Condensed density: shifts each spacing token down approximately one step
+  // in the Carbon spacing scale, creating tighter layouts.
+  --cds-spacing-03: 0.25rem;   // 4px  (default: 8px / spacing-02 value)
+  --cds-spacing-04: 0.5rem;    // 8px  (default: 12px / spacing-03 value)
+  --cds-spacing-05: 0.75rem;   // 12px (default: 16px / spacing-04 value)
+  --cds-spacing-06: 1rem;      // 16px (default: 24px / spacing-05 value)
+  --cds-spacing-07: 1.5rem;    // 24px (default: 32px / spacing-06 value)
+}

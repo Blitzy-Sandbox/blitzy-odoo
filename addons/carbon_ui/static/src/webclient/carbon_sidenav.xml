@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="carbon_ui.CarbonSideNav">
+        <nav class="cds--side-nav"
+             t-att-class="{
+                 'cds--side-nav--expanded': isVisuallyExpanded,
+                 'cds--side-nav--rail': !props.isExpanded &amp;&amp; !props.isMobileOpen,
+                 'cds--side-nav--mobile-open': props.isMobileOpen,
+             }"
+             aria-label="Side navigation"
+             t-ref="sideNav"
+             t-on-mouseenter="onMouseEnter"
+             t-on-mouseleave="onMouseLeave"
+             t-on-touchstart.stop="_onSwipeStart"
+             t-on-touchend.stop="_onSwipeEnd">
+
+            <div class="cds--side-nav__items">
+
+                <div class="cds--side-nav__header"
+                     t-if="currentApp">
+                    <t t-set="headerAppIcon" t-value="getAppIcon(currentApp)"/>
+                    <span class="cds--side-nav__header-icon">
+                        <img t-if="headerAppIcon.type === 'img'"
+                             t-att-src="headerAppIcon.src"
+                             alt=""
+                             aria-hidden="true"
+                             class="cds--side-nav__app-icon"
+                             width="20"
+                             height="20"
+                             loading="lazy"
+                             decoding="async"/>
+                        <i t-elif="headerAppIcon.type === 'icon'"
+                           t-att-class="headerAppIcon.iconClass"
+                           t-attf-style="color: {{headerAppIcon.color}}; background-color: {{headerAppIcon.backgroundColor}};"
+                           aria-hidden="true"/>
+                        <span t-else=""
+                              class="cds--side-nav__app-icon cds--side-nav__app-icon--fallback"
+                              aria-hidden="true">
+                            <svg focusable="false"
+                                 preserveAspectRatio="xMidYMid meet"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 fill="currentColor"
+                                 width="20" height="20"
+                                 viewBox="0 0 32 32"
+                                 aria-hidden="true">
+                                <path d="M8 4v4H4V4h4m2-2H2v8h8V2zm8 2v4h-4V4h4m2-2H12v8h8V2zm8 2v4h-4V4h4m2-2H22v8h8V2zM8 14v4H4v-4h4m2-2H2v8h8v-8zm8 2v4h-4v-4h4m2-2H12v8h8v-8zm8 2v4h-4v-4h4m2-2H22v8h8v-8zM8 24v4H4v-4h4m2-2H2v8h8v-8zm8 2v4h-4v-4h4m2-2H12v8h8v-8zm8 2v4h-4v-4h4m2-2H22v8h8v-8z"/>
+                            </svg>
+                        </span>
+                    </span>
+                    <span class="cds--side-nav__header-name"
+                          t-esc="currentApp.name"/>
+                </div>
+
+                <ul class="cds--side-nav__menu-items"
+                    aria-label="Application menus"
+                    t-if="currentAppSections.length">
+                    <t t-foreach="currentAppSections" t-as="section" t-key="section.id">
+                        <t t-call="carbon_ui.CarbonSideNav.MenuItem">
+                            <t t-set="menuItem" t-value="section"/>
+                            <t t-set="depth" t-value="0"/>
+                            <t t-set="parentSection" t-value="undefined"/>
+                        </t>
+                    </t>
+                </ul>
+
+                <t t-if="!currentApp &amp;&amp; apps.length">
+                    <ul class="cds--side-nav__menu-items cds--side-nav__menu-items--all-apps"
+                        aria-label="All applications">
+                        <t t-foreach="apps" t-as="app" t-key="app.id">
+                            <li class="cds--side-nav__item">
+                                <a class="cds--side-nav__link"
+                                   t-att-href="getMenuItemHref(app)"
+                                   t-att-class="{'cds--side-nav__link--current': isMenuActive(app)}"
+                                   t-att-aria-current="isMenuActive(app) ? 'page' : undefined"
+                                   t-att-data-menu-xmlid="app.xmlid"
+                                   t-att-data-section="app.id"
+                                   t-on-click.prevent="() => this.onMenuClick(app)"
+                                   t-on-keydown="(ev) => this.onItemKeyDown(ev, app)"
+                                   tabindex="0">
+                                    <t t-set="allAppIcon" t-value="getAppIcon(app)"/>
+                                    <span class="cds--side-nav__icon">
+                                        <img t-if="allAppIcon.type === 'img'"
+                                             t-att-src="allAppIcon.src"
+                                             alt=""
+                                             aria-hidden="true"
+                                             width="20" height="20"
+                                             loading="lazy"
+                                             decoding="async"/>
+                                        <i t-elif="allAppIcon.type === 'icon'"
+                                           t-att-class="allAppIcon.iconClass"
+                                           t-attf-style="color: {{allAppIcon.color}}; background-color: {{allAppIcon.backgroundColor}};"
+                                           aria-hidden="true"/>
+                                        <span t-else=""
+                                              class="cds--side-nav__icon--fallback"
+                                              aria-hidden="true">
+                                            <svg focusable="false"
+                                                 preserveAspectRatio="xMidYMid meet"
+                                                 xmlns="http://www.w3.org/2000/svg"
+                                                 fill="currentColor"
+                                                 width="20" height="20"
+                                                 viewBox="0 0 32 32"
+                                                 aria-hidden="true">
+                                                <path d="M8 4v4H4V4h4m2-2H2v8h8V2zm8 2v4h-4V4h4m2-2H12v8h8V2zm8 2v4h-4V4h4m2-2H22v8h8V2zM8 14v4H4v-4h4m2-2H2v8h8v-8zm8 2v4h-4v-4h4m2-2H12v8h8v-8zm8 2v4h-4v-4h4m2-2H22v8h8v-8zM8 24v4H4v-4h4m2-2H2v8h8v-8zm8 2v4h-4v-4h4m2-2H12v8h8v-8zm8 2v4h-4v-4h4m2-2H22v8h8v-8z"/>
+                                            </svg>
+                                        </span>
+                                    </span>
+                                    <span class="cds--side-nav__item-text"
+                                          t-esc="app.name"/>
+                                </a>
+                            </li>
+                        </t>
+                    </ul>
+                </t>
+
+                <div class="cds--side-nav__empty"
+                     t-if="!currentApp &amp;&amp; !apps.length"
+                     role="status"
+                     aria-live="polite">
+                    <span class="cds--side-nav__empty-text">No applications available</span>
+                </div>
+
+            </div>
+        </nav>
+
+        <div t-if="props.isMobileOpen"
+             class="cds--side-nav__overlay cds--side-nav__overlay--active"
+             t-on-click.stop="onBackdropClick"
+             t-on-touchstart.stop="_onSwipeStart"
+             t-on-touchend.stop="_onSwipeEnd"
+             aria-hidden="true"/>
+    </t>
+
+    <t t-name="carbon_ui.CarbonSideNav.MenuItem">
+
+        <t t-if="!hasChildren(menuItem)">
+            <li class="cds--side-nav__item"
+                t-att-class="{
+                    'cds--side-nav__item--nested': depth > 0,
+                }">
+                <a class="cds--side-nav__link"
+                   t-att-href="getMenuItemHref(menuItem)"
+                   t-att-class="{'cds--side-nav__link--current': isMenuActive(menuItem)}"
+                   t-att-aria-current="isMenuActive(menuItem) ? 'page' : undefined"
+                   t-att-data-menu-xmlid="menuItem.xmlid"
+                   t-att-data-section="menuItem.id"
+                   t-on-click.prevent="() => this.onMenuClick(menuItem)"
+                   t-on-keydown="(ev) => depth > 0 ? this.onSubItemKeyDown(ev, menuItem, parentSection) : this.onItemKeyDown(ev, menuItem)"
+                   tabindex="0">
+                    <t t-if="depth === 0">
+                        <t t-set="leafIcon" t-value="getAppIcon(menuItem)"/>
+                        <span class="cds--side-nav__icon"
+                              t-if="menuItem.webIconData || leafIcon.type !== 'fallback'">
+                            <img t-if="leafIcon.type === 'img'"
+                                 t-att-src="leafIcon.src"
+                                 alt=""
+                                 aria-hidden="true"
+                                 width="20" height="20"
+                                 loading="lazy"
+                                 decoding="async"/>
+                            <i t-elif="leafIcon.type === 'icon'"
+                               t-att-class="leafIcon.iconClass"
+                               t-attf-style="color: {{leafIcon.color}}; background-color: {{leafIcon.backgroundColor}};"
+                               aria-hidden="true"/>
+                        </span>
+                        <span class="cds--side-nav__icon cds--side-nav__icon--placeholder"
+                              t-if="!menuItem.webIconData &amp;&amp; leafIcon.type === 'fallback'"
+                              aria-hidden="true">
+                            <span class="cds--side-nav__icon-letter"
+                                  t-esc="menuItem.name ? menuItem.name[0] : ''"/>
+                        </span>
+                    </t>
+                    <span class="cds--side-nav__item-text"
+                          t-esc="menuItem.name"/>
+                </a>
+            </li>
+        </t>
+
+        <t t-else="">
+            <li class="cds--side-nav__item cds--side-nav__item--has-children"
+                t-att-class="{
+                    'cds--side-nav__item--active': isSubmenuExpanded(menuItem),
+                    'cds--side-nav__item--nested': depth > 0,
+                }">
+                <button class="cds--side-nav__submenu-title"
+                        type="button"
+                        t-on-click="() => this.toggleSubmenu(menuItem)"
+                        t-on-keydown="(ev) => depth > 0 ? this.onSubItemKeyDown(ev, menuItem, parentSection) : this.onItemKeyDown(ev, menuItem)"
+                        aria-haspopup="true"
+                        t-att-aria-expanded="isSubmenuExpanded(menuItem) ? 'true' : 'false'"
+                        tabindex="0">
+                    <t t-if="depth === 0">
+                        <t t-set="parentIcon" t-value="getAppIcon(menuItem)"/>
+                        <span class="cds--side-nav__icon"
+                              t-if="menuItem.webIconData || parentIcon.type !== 'fallback'">
+                            <img t-if="parentIcon.type === 'img'"
+                                 t-att-src="parentIcon.src"
+                                 alt=""
+                                 aria-hidden="true"
+                                 width="20" height="20"
+                                 loading="lazy"
+                                 decoding="async"/>
+                            <i t-elif="parentIcon.type === 'icon'"
+                               t-att-class="parentIcon.iconClass"
+                               t-attf-style="color: {{parentIcon.color}}; background-color: {{parentIcon.backgroundColor}};"
+                               aria-hidden="true"/>
+                        </span>
+                        <span class="cds--side-nav__icon cds--side-nav__icon--placeholder"
+                              t-if="!menuItem.webIconData &amp;&amp; parentIcon.type === 'fallback'"
+                              aria-hidden="true">
+                            <span class="cds--side-nav__icon-letter"
+                                  t-esc="menuItem.name ? menuItem.name[0] : ''"/>
+                        </span>
+                    </t>
+                    <span class="cds--side-nav__item-text"
+                          t-esc="menuItem.name"/>
+                    <span class="cds--side-nav__submenu-chevron"
+                          t-att-class="{'cds--side-nav__submenu-chevron--expanded': isSubmenuExpanded(menuItem)}">
+                        <svg focusable="false"
+                             preserveAspectRatio="xMidYMid meet"
+                             xmlns="http://www.w3.org/2000/svg"
+                             fill="currentColor"
+                             width="20" height="20"
+                             viewBox="0 0 32 32"
+                             aria-hidden="true">
+                            <path d="M16 22L6 12 7.4 10.6 16 19.2 24.6 10.6 26 12z"/>
+                        </svg>
+                    </span>
+                </button>
+
+                <ul class="cds--side-nav__submenu-content"
+                    t-att-class="{'cds--side-nav__submenu-content--expanded': isSubmenuExpanded(menuItem)}"
+                    role="group"
+                    t-att-aria-label="menuItem.name">
+                    <t t-if="isSubmenuExpanded(menuItem)">
+                        <t t-foreach="menuItem.childrenTree" t-as="child" t-key="child.id">
+                            <t t-call="carbon_ui.CarbonSideNav.MenuItem">
+                                <t t-set="parentSection" t-value="menuItem"/>
+                                <t t-set="menuItem" t-value="child"/>
+                                <t t-set="depth" t-value="depth + 1"/>
+                            </t>
+                        </t>
+                    </t>
+                </ul>
+            </li>
+        </t>
+    </t>
+
+</templates>

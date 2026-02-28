@@ -1,0 +1,480 @@
+// Carbon Charts style overrides for Odoo graph views
+// IBM Carbon Design System v11 — Productive theme
+//
+// Provides Carbon-compatible styling for the graph/chart view in Odoo.
+// Ensures Carbon Charts SVG output integrates visually with the
+// Carbon-themed Odoo interface while maintaining backward compatibility
+// with existing CSS class selectors (.o_graph_view, .o_graph_renderer, etc.).
+//
+// Token Usage:
+//   - CSS Custom Properties (var(--cds-*)) for runtime theme switching
+//   - Sass variables ($cds-spacing-*) for compile-time spacing
+//   - No hardcoded hex colors or pixel spacing values
+//
+// Dependencies (loaded before this file in the asset bundle):
+//   - carbon_tokens.scss: --cds-* CSS custom properties and $cds-* Sass vars
+//   - carbon_font_face.scss: --cds-font-family-sans for IBM Plex Sans
+//
+// Compatibility: libsass-safe (no @use, no Dart Sass features)
+
+// ============================================================================
+// SECTION 1: Root Graph View Container
+// ============================================================================
+// Maintains existing behavior from addons/web/static/src/views/graph/graph_view.scss
+// while applying Carbon token overrides for background, text, and spacing.
+
+.o_graph_view {
+    // Remove the ControlPanel bottom border for graph views (preserves original behavior)
+    --ControlPanel-border-bottom: none;
+
+    // Ensure the bottom-left control panel area is block-level (preserves original behavior)
+    .o_cp_bottom_left {
+        display: block;
+    }
+
+    // Minimum chart height for non-dashboard contexts (50vh is viewport-relative, not hardcoded px)
+    :not(.o-dashboard-action) > & .o_graph_canvas_container {
+        min-height: 50vh;
+    }
+
+    // Minimum chart height for Carbon Charts div-based containers
+    :not(.o-dashboard-action) > & .o_graph_chart_container {
+        min-height: 50vh;
+    }
+
+    // Toolbar area: measure selector and chart-type toggle buttons
+    // Uses Carbon spacing tokens for consistent gap and margin
+    .d-flex.d-print-none {
+        gap: $cds-spacing-03;
+        margin-block-start: $cds-spacing-05;
+        margin-block-end: $cds-spacing-05;
+        margin-inline-start: $cds-spacing-05;
+        margin-inline-end: $cds-spacing-05;
+    }
+
+    // Chart mode toggle buttons (bar/line/pie) — Carbon ContentSwitcher pattern
+    .btn-group {
+        .btn {
+            background-color: transparent;
+            color: var(--cds-text-secondary);
+            border: 1px solid var(--cds-border-strong-01);
+            min-block-size: $cds-spacing-07;
+
+            &:focus-visible {
+                outline: 2px solid var(--cds-focus);
+                outline-offset: -2px;
+            }
+
+            &:hover {
+                background-color: var(--cds-background-hover, rgba(141, 141, 141, 0.12));
+                color: var(--cds-text-primary);
+            }
+
+            &.active,
+            &:active {
+                background-color: var(--cds-layer-selected-01);
+                color: var(--cds-text-primary);
+            }
+        }
+    }
+}
+
+// ============================================================================
+// SECTION 2: Graph Renderer Container
+// ============================================================================
+// Styles the main rendering container with Carbon background, text, and spacing tokens.
+
+.o_graph_renderer {
+    background-color: var(--cds-layer-01);
+    color: var(--cds-text-primary);
+    padding: $cds-spacing-05;
+}
+
+// ============================================================================
+// SECTION 3: Carbon Charts Container
+// ============================================================================
+// The .o_graph_chart_container class wraps the Carbon Charts SVG-based output
+// (div-based, not canvas). Ensures the chart fills its parent and maintains
+// a minimum height for readability.
+
+.o_graph_chart_container {
+    position: relative;
+    inline-size: 100%;
+    block-size: 100%;
+    min-block-size: 50vh;
+    background-color: var(--cds-layer-01);
+}
+
+// ============================================================================
+// SECTION 4: Carbon Charts Internal Class Overrides
+// ============================================================================
+// Carbon Charts (@carbon/charts) renders SVG charts and generates its own
+// DOM structure with .cds--cc--* prefixed classes. These overrides ensure
+// visual integration with the Carbon-themed Odoo interface.
+
+// 4a. Chart Wrapper — outermost Carbon Charts container
+.cds--cc--chart-wrapper {
+    inline-size: 100%;
+    block-size: 100%;
+    min-block-size: 50vh;
+    background-color: var(--cds-layer-01);
+    color: var(--cds-text-primary);
+
+    // SVG chart area fill and text defaults
+    svg {
+        // Axis lines
+        .axis {
+            path,
+            line {
+                stroke: var(--cds-border-subtle-01);
+            }
+        }
+
+        // Grid lines with subtle opacity
+        .grid {
+            line {
+                stroke: var(--cds-border-subtle-01);
+                opacity: 0.5;
+            }
+        }
+
+        // Tick label text (axis values)
+        .tick text {
+            fill: var(--cds-text-secondary);
+            font-family: var(--cds-font-family-sans);
+        }
+
+        // Axis title text
+        .axis-title {
+            fill: var(--cds-text-primary);
+            font-family: var(--cds-font-family-sans);
+        }
+
+        // Selected/highlighted data points and bars (hover or click selection)
+        .bar.highlighted,
+        .dot.highlighted,
+        .slice.highlighted {
+            stroke: var(--cds-background-selected);
+        }
+    }
+}
+
+// 4b. Carbon Charts Toolbar — built-in chart controls
+.cds--cc--toolbar {
+    color: var(--cds-text-secondary);
+    font-family: var(--cds-font-family-sans);
+    // Carbon label-01: 0.75rem / 1.33 / 400 / 0.32px
+    font-size: 0.75rem;
+    line-height: 1.33333;
+    letter-spacing: 0.32px;
+    padding: $cds-spacing-03;
+    border-block-end: 1px solid var(--cds-border-subtle-01);
+
+    // Toolbar button overrides
+    button {
+        color: var(--cds-text-secondary);
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+
+        &:hover {
+            color: var(--cds-text-primary);
+            background-color: var(--cds-background-hover, rgba(141, 141, 141, 0.12));
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--cds-focus);
+            outline-offset: -2px;
+        }
+    }
+}
+
+// 4c. Carbon Charts Legend — dataset labels with color swatches
+.cds--cc--legend {
+    font-family: var(--cds-font-family-sans);
+    // Carbon body-compact-01: 0.875rem / 1.28572 / 400 / 0.16px
+    font-size: 0.875rem;
+    line-height: 1.28572;
+    letter-spacing: 0.16px;
+    color: var(--cds-text-primary);
+    padding: $cds-spacing-04;
+
+    // Individual legend items
+    .legend-item {
+        color: var(--cds-text-primary);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--cds-text-secondary);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--cds-focus);
+            outline-offset: -2px;
+        }
+    }
+
+    // Legend title text
+    .legend-title {
+        font-weight: 600;
+        color: var(--cds-text-primary);
+    }
+}
+
+// 4d. Carbon Charts Tooltip — data point hover information
+.cds--cc--tooltip {
+    background-color: var(--cds-background-inverse);
+    color: var(--cds-text-inverse);
+    border-radius: 0;
+    padding: $cds-spacing-03;
+    // Carbon label-01: 0.75rem / 1.33 / 400 / 0.32px
+    font-size: 0.75rem;
+    line-height: 1.33333;
+    letter-spacing: 0.32px;
+    font-family: var(--cds-font-family-sans);
+    box-shadow: 0 2px 6px var(--cds-shadow);
+    // Ensure tooltip renders above chart elements
+    z-index: 1000;
+
+    // Tooltip header/title
+    .tooltip-title {
+        font-weight: 600;
+        color: var(--cds-text-inverse);
+        margin-block-end: $cds-spacing-03;
+    }
+
+    // Tooltip data labels
+    .tooltip-label {
+        color: var(--cds-text-inverse);
+    }
+
+    // Tooltip data values
+    .tooltip-value {
+        font-weight: 600;
+        color: var(--cds-text-inverse);
+    }
+
+    // Color swatch indicator in tooltip
+    .tooltip-color {
+        inline-size: $cds-spacing-04;
+        block-size: $cds-spacing-04;
+        border-radius: 0;
+        display: inline-block;
+        vertical-align: middle;
+        margin-inline-end: $cds-spacing-03;
+    }
+}
+
+// ============================================================================
+// SECTION 5: Custom Odoo Graph Tooltip
+// ============================================================================
+// The .o_graph_custom_tooltip class is rendered by the Odoo graph renderer QWeb
+// template for custom tooltip content (measure names, labels, values, color swatches).
+// Styled following Carbon Tooltip pattern (dark background, light text).
+
+.o_graph_custom_tooltip {
+    background-color: var(--cds-background-inverse);
+    color: var(--cds-text-inverse);
+    padding: $cds-spacing-03 $cds-spacing-04;
+    border-radius: 0;
+    font-family: var(--cds-font-family-sans);
+    // Carbon label-01: 0.75rem
+    font-size: 0.75rem;
+    line-height: 1.33333;
+    letter-spacing: 0.32px;
+
+    // Tooltip measure header
+    .o_measure {
+        font-weight: 600;
+        color: var(--cds-text-inverse);
+        // Carbon heading-compact-01: 0.875rem / 1.28572 / 600
+        font-size: 0.875rem;
+        line-height: 1.28572;
+        letter-spacing: 0.16px;
+        margin-block-end: $cds-spacing-03;
+    }
+
+    // Tooltip data label text
+    .o_label {
+        color: var(--cds-text-inverse);
+        // Carbon label-01: 0.75rem
+        font-size: 0.75rem;
+        line-height: 1.33333;
+        letter-spacing: 0.32px;
+        font-weight: 400;
+    }
+
+    // Tooltip data value
+    .o_value {
+        font-weight: 600;
+        color: var(--cds-text-inverse);
+        // Carbon label-01: 0.75rem
+        font-size: 0.75rem;
+        line-height: 1.33333;
+        letter-spacing: 0.32px;
+    }
+
+    // Color swatch square (dataset color indicator)
+    .o_square {
+        display: inline-block;
+        vertical-align: middle;
+        inline-size: $cds-spacing-04;
+        block-size: $cds-spacing-04;
+        border-radius: 0;
+        margin-inline-end: $cds-spacing-03;
+    }
+
+    // Remove default table styling inside tooltip
+    table {
+        border-spacing: 0;
+        border-collapse: collapse;
+        border: none;
+
+        td,
+        th {
+            border: none;
+            padding: $cds-spacing-03;
+            vertical-align: middle;
+        }
+    }
+}
+
+// ============================================================================
+// SECTION 6: Legend Tooltip
+// ============================================================================
+// Tooltip that appears when hovering over legend items, providing additional
+// dataset context information. Uses Carbon Tooltip pattern.
+
+.o_tooltip_legend {
+    background-color: var(--cds-background-inverse);
+    color: var(--cds-text-inverse);
+    padding: $cds-spacing-05;
+    border-radius: 0;
+    font-family: var(--cds-font-family-sans);
+    // Carbon body-compact-01: 0.875rem / 1.28572 / 400 / 0.16px
+    font-size: 0.875rem;
+    line-height: 1.28572;
+    letter-spacing: 0.16px;
+    box-shadow: 0 2px 6px var(--cds-shadow);
+    z-index: 1000;
+}
+
+// ============================================================================
+// SECTION 7: Sample Data Mode
+// ============================================================================
+// When the view is in sample/demo data mode, chart containers are visually
+// disabled to indicate non-real data. Uses Odoo's o-sample-data-disabled mixin
+// with Carbon token-based opacity.
+
+.o_graph_view .o_view_sample_data {
+    // Standard canvas-based container (Chart.js fallback compatibility)
+    .o_graph_canvas_container {
+        @include o-sample-data-disabled;
+    }
+    // SVG-based Carbon Charts container
+    .o_graph_chart_container {
+        @include o-sample-data-disabled;
+    }
+}
+
+// ============================================================================
+// SECTION 8: Graph Alert — "Too Many Data Points" Notification
+// ============================================================================
+// Styled as a Carbon InlineNotification pattern with a left accent border,
+// informational background color, and a link to load all data.
+
+.o_graph_alert {
+    background-color: var(--cds-notification-background-info);
+    color: var(--cds-text-primary);
+    border-inline-start: 3px solid var(--cds-support-info);
+    padding: $cds-spacing-05;
+    margin: $cds-spacing-05;
+    font-family: var(--cds-font-family-sans);
+    // Carbon body-compact-01: 0.875rem / 1.28572 / 400 / 0.16px
+    font-size: 0.875rem;
+    line-height: 1.28572;
+    letter-spacing: 0.16px;
+    display: flex;
+    align-items: flex-start;
+    gap: $cds-spacing-03;
+
+    // "Load all" action link — Carbon link pattern
+    .o_graph_load_all_btn {
+        color: var(--cds-link-primary);
+        font-weight: 400;
+        text-decoration: none;
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+
+        &:hover {
+            text-decoration: underline;
+            color: var(--cds-link-primary);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--cds-focus);
+            outline-offset: 2px;
+        }
+
+        &:active {
+            color: var(--cds-interactive);
+        }
+    }
+}
+
+// ============================================================================
+// SECTION 9: Responsive — Small Screens (Carbon sm breakpoint: < 672px)
+// ============================================================================
+// At the Carbon sm breakpoint (max-width: 671px = $cds-breakpoint-md - 1px),
+// the chart layout adapts for narrow viewports:
+//   - Legend repositions below the chart
+//   - Chart container takes full width
+//   - Toolbar wraps to multiple lines
+
+@media (max-width: 671px) {
+
+    .o_graph_view {
+        // Allow toolbar items to wrap on narrow screens
+        .d-flex.d-print-none {
+            flex-wrap: wrap;
+        }
+
+        // Toggle buttons stack horizontally with wrapping
+        .btn-group {
+            flex-wrap: wrap;
+        }
+    }
+
+    .o_graph_renderer {
+        padding: $cds-spacing-03;
+    }
+
+    .o_graph_chart_container {
+        // Ensure chart never collapses below the Carbon sm breakpoint width
+        min-inline-size: $cds-breakpoint-sm;
+        min-block-size: 40vh;
+    }
+
+    // Carbon Charts wrapper responsive adjustments
+    .cds--cc--chart-wrapper {
+        min-block-size: 40vh;
+    }
+
+    // Legend repositions below the chart on small screens
+    .cds--cc--legend {
+        padding: $cds-spacing-03;
+        // Carbon label-01 for tighter legend on small screens
+        font-size: 0.75rem;
+        line-height: 1.33333;
+        letter-spacing: 0.32px;
+    }
+
+    // Alert takes full width with reduced padding on small screens
+    .o_graph_alert {
+        margin: $cds-spacing-03;
+        padding: $cds-spacing-04;
+        flex-direction: column;
+    }
+}

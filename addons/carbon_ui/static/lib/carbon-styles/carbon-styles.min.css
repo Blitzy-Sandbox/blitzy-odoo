@@ -1,0 +1,5404 @@
+@charset "UTF-8";
+/*!
+ * IBM Carbon Design System v11 — Core Styles
+ * Pre-compiled from @carbon/styles v1.67.x
+ * Includes: @carbon/themes, @carbon/type, @carbon/layout, @carbon/colors, @carbon/motion
+ * Copyright IBM Corp. 2016, 2024
+ * Licensed under Apache-2.0 (see LICENSE)
+ *
+ * Productive theme, White default
+ * Generated for Odoo 19.0 CE — carbon_ui module
+ */
+
+/* ==========================================================================
+   1. Design Token Definitions (CSS Custom Properties)
+   White theme as default on :root
+   ========================================================================== */
+
+:root {
+  /* === Background Tokens === */
+  --cds-background: #ffffff;
+  --cds-background-active: rgba(141, 141, 141, 0.5);
+  --cds-background-brand: #0f62fe;
+  --cds-background-hover: rgba(141, 141, 141, 0.12);
+  --cds-background-inverse: #393939;
+  --cds-background-inverse-hover: #474747;
+  --cds-background-selected: rgba(141, 141, 141, 0.2);
+  --cds-background-selected-hover: rgba(141, 141, 141, 0.32);
+
+  /* === Layer Tokens === */
+  --cds-layer-01: #f4f4f4;
+  --cds-layer-02: #ffffff;
+  --cds-layer-03: #f4f4f4;
+  --cds-layer-hover-01: #e8e8e8;
+  --cds-layer-hover-02: #e8e8e8;
+  --cds-layer-hover-03: #e8e8e8;
+  --cds-layer-active-01: #c6c6c6;
+  --cds-layer-active-02: #c6c6c6;
+  --cds-layer-active-03: #c6c6c6;
+  --cds-layer-selected-01: #e0e0e0;
+  --cds-layer-selected-02: #e0e0e0;
+  --cds-layer-selected-03: #e0e0e0;
+  --cds-layer-selected-hover-01: #d1d1d1;
+  --cds-layer-selected-hover-02: #d1d1d1;
+  --cds-layer-selected-hover-03: #d1d1d1;
+  --cds-layer-selected-inverse: #161616;
+  --cds-layer-selected-disabled: #8d8d8d;
+  --cds-layer-accent-01: #e0e0e0;
+  --cds-layer-accent-02: #e0e0e0;
+  --cds-layer-accent-03: #e0e0e0;
+  --cds-layer-accent-hover-01: #d1d1d1;
+  --cds-layer-accent-hover-02: #d1d1d1;
+  --cds-layer-accent-hover-03: #d1d1d1;
+  --cds-layer-accent-active-01: #a8a8a8;
+  --cds-layer-accent-active-02: #a8a8a8;
+  --cds-layer-accent-active-03: #a8a8a8;
+  --cds-layer-background-01: #ffffff;
+  --cds-layer-background-02: #f4f4f4;
+  --cds-layer-background-03: #ffffff;
+
+  /* === Text Tokens === */
+  --cds-text-primary: #161616;
+  --cds-text-secondary: #525252;
+  --cds-text-placeholder: rgba(22, 22, 22, 0.4);
+  --cds-text-on-color: #ffffff;
+  --cds-text-on-color-disabled: #8d8d8d;
+  --cds-text-helper: #6f6f6f;
+  --cds-text-error: #da1e28;
+  --cds-text-inverse: #ffffff;
+  --cds-text-disabled: rgba(22, 22, 22, 0.25);
+
+  /* === Link Tokens === */
+  --cds-link-primary: #0f62fe;
+  --cds-link-primary-hover: #0043ce;
+  --cds-link-secondary: #0043ce;
+  --cds-link-inverse: #78a9ff;
+  --cds-link-inverse-hover: #a6c8ff;
+  --cds-link-inverse-active: #f4f4f4;
+  --cds-link-inverse-visited: #be95ff;
+  --cds-link-visited: #8a3ffc;
+
+  /* === Icon Tokens === */
+  --cds-icon-primary: #161616;
+  --cds-icon-secondary: #525252;
+  --cds-icon-on-color: #ffffff;
+  --cds-icon-on-color-disabled: #8d8d8d;
+  --cds-icon-interactive: #0f62fe;
+  --cds-icon-inverse: #ffffff;
+  --cds-icon-disabled: rgba(22, 22, 22, 0.25);
+
+  /* === Interactive Tokens === */
+  --cds-interactive: #0f62fe;
+  --cds-focus: #0f62fe;
+  --cds-focus-inset: #ffffff;
+  --cds-focus-inverse: #ffffff;
+
+  /* === Support (Semantic) Tokens === */
+  --cds-support-error: #da1e28;
+  --cds-support-success: #24a148;
+  --cds-support-warning: #f1c21b;
+  --cds-support-info: #0043ce;
+  --cds-support-error-inverse: #fa4d56;
+  --cds-support-success-inverse: #42be65;
+  --cds-support-warning-inverse: #f1c21b;
+  --cds-support-info-inverse: #4589ff;
+  --cds-support-caution-major: #ff832b;
+  --cds-support-caution-minor: #f1c21b;
+  --cds-support-caution-undefined: #8a3ffc;
+
+  /* === Border Tokens === */
+  --cds-border-strong-01: #8d8d8d;
+  --cds-border-strong-02: #8d8d8d;
+  --cds-border-strong-03: #8d8d8d;
+  --cds-border-subtle-00: #e0e0e0;
+  --cds-border-subtle-01: #c6c6c6;
+  --cds-border-subtle-02: #e0e0e0;
+  --cds-border-subtle-03: #c6c6c6;
+  --cds-border-subtle-selected-01: #c6c6c6;
+  --cds-border-subtle-selected-02: #c6c6c6;
+  --cds-border-subtle-selected-03: #c6c6c6;
+  --cds-border-disabled: #c6c6c6;
+  --cds-border-interactive: #0f62fe;
+  --cds-border-inverse: #161616;
+  --cds-border-tile-01: #c6c6c6;
+  --cds-border-tile-02: #a8a8a8;
+  --cds-border-tile-03: #c6c6c6;
+
+  /* === Field Tokens === */
+  --cds-field-01: #f4f4f4;
+  --cds-field-02: #ffffff;
+  --cds-field-03: #f4f4f4;
+  --cds-field-hover-01: #e8e8e8;
+  --cds-field-hover-02: #e8e8e8;
+  --cds-field-hover-03: #e8e8e8;
+
+  /* === Button Tokens === */
+  --cds-button-primary: #0f62fe;
+  --cds-button-primary-hover: #0353e9;
+  --cds-button-primary-active: #002d9c;
+  --cds-button-secondary: #393939;
+  --cds-button-secondary-hover: #474747;
+  --cds-button-secondary-active: #6f6f6f;
+  --cds-button-tertiary: #0f62fe;
+  --cds-button-tertiary-hover: #0353e9;
+  --cds-button-tertiary-active: #002d9c;
+  --cds-button-danger-primary: #da1e28;
+  --cds-button-danger-secondary: #da1e28;
+  --cds-button-danger-hover: #b81921;
+  --cds-button-danger-active: #750e13;
+  --cds-button-separator: #e0e0e0;
+  --cds-button-disabled: #c6c6c6;
+
+  /* === Notification Tokens === */
+  --cds-notification-background-error: #fff1f1;
+  --cds-notification-background-success: #defbe6;
+  --cds-notification-background-warning: #fdf6dd;
+  --cds-notification-background-info: #edf5ff;
+  --cds-notification-action-hover: #ffffff;
+  --cds-notification-action-tertiary-inverse: #0f62fe;
+  --cds-notification-action-tertiary-inverse-hover: #0353e9;
+  --cds-notification-action-tertiary-inverse-active: #002d9c;
+  --cds-notification-action-tertiary-inverse-text: #ffffff;
+  --cds-notification-action-tertiary-inverse-text-on-color-disabled: rgba(255, 255, 255, 0.25);
+
+  /* === Tag Tokens (all color variants) === */
+  --cds-tag-background-red: #ffd7d9;
+  --cds-tag-color-red: #a2191f;
+  --cds-tag-hover-red: #ffc2c5;
+  --cds-tag-border-red: #ff8389;
+  --cds-tag-background-magenta: #ffd6e8;
+  --cds-tag-color-magenta: #9f1853;
+  --cds-tag-hover-magenta: #ffbdda;
+  --cds-tag-border-magenta: #ff7eb6;
+  --cds-tag-background-purple: #e8daff;
+  --cds-tag-color-purple: #6929c4;
+  --cds-tag-hover-purple: #dcc7ff;
+  --cds-tag-border-purple: #be95ff;
+  --cds-tag-background-blue: #d0e2ff;
+  --cds-tag-color-blue: #0043ce;
+  --cds-tag-hover-blue: #b8d3ff;
+  --cds-tag-border-blue: #78a9ff;
+  --cds-tag-background-cyan: #bae6ff;
+  --cds-tag-color-cyan: #00539a;
+  --cds-tag-hover-cyan: #99daff;
+  --cds-tag-border-cyan: #33b1ff;
+  --cds-tag-background-teal: #9ef0f0;
+  --cds-tag-color-teal: #005d5d;
+  --cds-tag-hover-teal: #57e5e5;
+  --cds-tag-border-teal: #08bdba;
+  --cds-tag-background-green: #a7f0ba;
+  --cds-tag-color-green: #0e6027;
+  --cds-tag-hover-green: #74e792;
+  --cds-tag-border-green: #42be65;
+  --cds-tag-background-gray: #e0e0e0;
+  --cds-tag-color-gray: #161616;
+  --cds-tag-hover-gray: #d1d1d1;
+  --cds-tag-border-gray: #a8a8a8;
+  --cds-tag-background-cool-gray: #dde1e6;
+  --cds-tag-color-cool-gray: #121619;
+  --cds-tag-hover-cool-gray: #cdd3da;
+  --cds-tag-border-cool-gray: #a2a9b0;
+  --cds-tag-background-warm-gray: #e5e0df;
+  --cds-tag-color-warm-gray: #171414;
+  --cds-tag-hover-warm-gray: #d8d0cf;
+  --cds-tag-border-warm-gray: #ada8a8;
+
+  /* === Overlay & Shadow Tokens === */
+  --cds-overlay: rgba(0, 0, 0, 0.6);
+  --cds-shadow: rgba(0, 0, 0, 0.3);
+  --cds-highlight: #d0e2ff;
+  --cds-toggle-off: #8d8d8d;
+  --cds-skeleton-background: #e8e8e8;
+  --cds-skeleton-element: #c6c6c6;
+
+  /* === Spacing Scale === */
+  --cds-spacing-01: 0.125rem;
+  --cds-spacing-02: 0.25rem;
+  --cds-spacing-03: 0.5rem;
+  --cds-spacing-04: 0.75rem;
+  --cds-spacing-05: 1rem;
+  --cds-spacing-06: 1.5rem;
+  --cds-spacing-07: 2rem;
+  --cds-spacing-08: 2.5rem;
+  --cds-spacing-09: 3rem;
+  --cds-spacing-10: 4rem;
+  --cds-spacing-11: 5rem;
+  --cds-spacing-12: 6rem;
+  --cds-spacing-13: 10rem;
+
+  /* Fluid spacing */
+  --cds-fluid-spacing-01: 0;
+  --cds-fluid-spacing-02: 2vw;
+  --cds-fluid-spacing-03: 5vw;
+  --cds-fluid-spacing-04: 10vw;
+
+  /* === Typography Scale (Productive) === */
+  --cds-caption-01-font-size: 0.75rem;
+  --cds-caption-01-font-weight: 400;
+  --cds-caption-01-line-height: 1.33333;
+  --cds-caption-01-letter-spacing: 0.32px;
+
+  --cds-caption-02-font-size: 0.875rem;
+  --cds-caption-02-font-weight: 400;
+  --cds-caption-02-line-height: 1.28572;
+  --cds-caption-02-letter-spacing: 0.32px;
+
+  --cds-label-01-font-size: 0.75rem;
+  --cds-label-01-font-weight: 400;
+  --cds-label-01-line-height: 1.33333;
+  --cds-label-01-letter-spacing: 0.32px;
+
+  --cds-label-02-font-size: 0.875rem;
+  --cds-label-02-font-weight: 400;
+  --cds-label-02-line-height: 1.28572;
+  --cds-label-02-letter-spacing: 0.16px;
+
+  --cds-helper-text-01-font-size: 0.75rem;
+  --cds-helper-text-01-line-height: 1.33333;
+  --cds-helper-text-01-letter-spacing: 0.32px;
+
+  --cds-helper-text-02-font-size: 0.875rem;
+  --cds-helper-text-02-font-weight: 400;
+  --cds-helper-text-02-line-height: 1.28572;
+  --cds-helper-text-02-letter-spacing: 0.16px;
+
+  --cds-legal-01-font-size: 0.75rem;
+  --cds-legal-01-font-weight: 400;
+  --cds-legal-01-line-height: 1.33333;
+  --cds-legal-01-letter-spacing: 0.32px;
+
+  --cds-legal-02-font-size: 0.875rem;
+  --cds-legal-02-font-weight: 400;
+  --cds-legal-02-line-height: 1.28572;
+  --cds-legal-02-letter-spacing: 0.16px;
+
+  --cds-body-compact-01-font-size: 0.875rem;
+  --cds-body-compact-01-font-weight: 400;
+  --cds-body-compact-01-line-height: 1.28572;
+  --cds-body-compact-01-letter-spacing: 0.16px;
+
+  --cds-body-compact-02-font-size: 1rem;
+  --cds-body-compact-02-font-weight: 400;
+  --cds-body-compact-02-line-height: 1.375;
+  --cds-body-compact-02-letter-spacing: 0;
+
+  --cds-body-01-font-size: 0.875rem;
+  --cds-body-01-font-weight: 400;
+  --cds-body-01-line-height: 1.42857;
+  --cds-body-01-letter-spacing: 0.16px;
+
+  --cds-body-02-font-size: 1rem;
+  --cds-body-02-font-weight: 400;
+  --cds-body-02-line-height: 1.5;
+  --cds-body-02-letter-spacing: 0;
+
+  --cds-heading-compact-01-font-size: 0.875rem;
+  --cds-heading-compact-01-font-weight: 600;
+  --cds-heading-compact-01-line-height: 1.28572;
+  --cds-heading-compact-01-letter-spacing: 0.16px;
+
+  --cds-heading-compact-02-font-size: 1rem;
+  --cds-heading-compact-02-font-weight: 600;
+  --cds-heading-compact-02-line-height: 1.375;
+  --cds-heading-compact-02-letter-spacing: 0;
+
+  --cds-heading-01-font-size: 0.875rem;
+  --cds-heading-01-font-weight: 600;
+  --cds-heading-01-line-height: 1.42857;
+  --cds-heading-01-letter-spacing: 0.16px;
+
+  --cds-heading-02-font-size: 1rem;
+  --cds-heading-02-font-weight: 600;
+  --cds-heading-02-line-height: 1.5;
+  --cds-heading-02-letter-spacing: 0;
+
+  --cds-heading-03-font-size: 1.25rem;
+  --cds-heading-03-font-weight: 400;
+  --cds-heading-03-line-height: 1.4;
+  --cds-heading-03-letter-spacing: 0;
+
+  --cds-heading-04-font-size: 1.75rem;
+  --cds-heading-04-font-weight: 400;
+  --cds-heading-04-line-height: 1.28572;
+  --cds-heading-04-letter-spacing: 0;
+
+  --cds-heading-05-font-size: 2rem;
+  --cds-heading-05-font-weight: 400;
+  --cds-heading-05-line-height: 1.25;
+  --cds-heading-05-letter-spacing: 0;
+
+  --cds-heading-06-font-size: 2.625rem;
+  --cds-heading-06-font-weight: 300;
+  --cds-heading-06-line-height: 1.199;
+  --cds-heading-06-letter-spacing: 0;
+
+  --cds-heading-07-font-size: 3.375rem;
+  --cds-heading-07-font-weight: 300;
+  --cds-heading-07-line-height: 1.19;
+  --cds-heading-07-letter-spacing: 0;
+
+  --cds-code-01-font-family: 'IBM Plex Mono', system-ui, -apple-system, BlinkMacSystemFont, '.SFNSText-Regular', monospace;
+  --cds-code-01-font-size: 0.75rem;
+  --cds-code-01-font-weight: 400;
+  --cds-code-01-line-height: 1.33333;
+  --cds-code-01-letter-spacing: 0.32px;
+
+  --cds-code-02-font-family: 'IBM Plex Mono', system-ui, -apple-system, BlinkMacSystemFont, '.SFNSText-Regular', monospace;
+  --cds-code-02-font-size: 0.875rem;
+  --cds-code-02-font-weight: 400;
+  --cds-code-02-line-height: 1.42857;
+  --cds-code-02-letter-spacing: 0.32px;
+
+  /* Font families */
+  --cds-font-family-sans: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  --cds-font-family-serif: 'IBM Plex Serif', 'Georgia', Times, serif;
+  --cds-font-family-mono: 'IBM Plex Mono', 'Menlo', 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', Courier, monospace;
+
+  /* === Grid Breakpoints (Carbon 2x Grid) === */
+  --cds-grid-breakpoint-sm: 320px;
+  --cds-grid-breakpoint-md: 672px;
+  --cds-grid-breakpoint-lg: 1056px;
+  --cds-grid-breakpoint-xlg: 1312px;
+  --cds-grid-breakpoint-max: 1584px;
+
+  /* Grid margins */
+  --cds-grid-margin-sm: 0;
+  --cds-grid-margin-md: 1rem;
+  --cds-grid-margin-lg: 1rem;
+  --cds-grid-margin-xlg: 1rem;
+  --cds-grid-margin-max: 1.5rem;
+
+  /* Grid gutter */
+  --cds-grid-gutter: 2rem;
+
+  /* Grid columns */
+  --cds-grid-columns-sm: 4;
+  --cds-grid-columns-md: 8;
+  --cds-grid-columns-lg: 16;
+  --cds-grid-columns-xlg: 16;
+  --cds-grid-columns-max: 16;
+
+  /* === Motion Tokens === */
+  --cds-duration-fast-01: 70ms;
+  --cds-duration-fast-02: 110ms;
+  --cds-duration-moderate-01: 150ms;
+  --cds-duration-moderate-02: 240ms;
+  --cds-duration-slow-01: 400ms;
+  --cds-duration-slow-02: 700ms;
+  --cds-ease-productive-standard: cubic-bezier(0.2, 0, 0.38, 0.9);
+  --cds-ease-productive-entrance: cubic-bezier(0, 0, 0.38, 0.9);
+  --cds-ease-productive-exit: cubic-bezier(0.2, 0, 1, 0.9);
+  --cds-ease-expressive-standard: cubic-bezier(0.4, 0.14, 0.3, 1);
+  --cds-ease-expressive-entrance: cubic-bezier(0, 0, 0.3, 1);
+  --cds-ease-expressive-exit: cubic-bezier(0.4, 0.14, 1, 1);
+
+  /* === UI Shell Tokens === */
+  --cds-shell-header-bg: #161616;
+  --cds-shell-header-bg-hover: rgba(255, 255, 255, 0.1);
+  --cds-shell-header-bg-active: #393939;
+  --cds-shell-header-text: #f4f4f4;
+  --cds-shell-header-icon: #f4f4f4;
+  --cds-shell-header-icon-hover: #ffffff;
+  --cds-shell-header-link: #c6c6c6;
+  --cds-shell-header-link-hover: #ffffff;
+  --cds-shell-header-focus: #ffffff;
+  --cds-shell-header-height: 3rem;
+
+  --cds-shell-side-nav-bg: #ffffff;
+  --cds-shell-side-nav-bg-hover: #e8e8e8;
+  --cds-shell-side-nav-text: #525252;
+  --cds-shell-side-nav-text-hover: #161616;
+  --cds-shell-side-nav-text-active: #161616;
+  --cds-shell-side-nav-icon: #525252;
+  --cds-shell-side-nav-icon-hover: #161616;
+  --cds-shell-side-nav-accent: #0f62fe;
+  --cds-shell-side-nav-width: 16rem;
+  --cds-shell-side-nav-width-rail: 3rem;
+
+  /* === IBM Design Language Color Palette === */
+  /* Blue */
+  --cds-blue-10: #edf5ff;
+  --cds-blue-20: #d0e2ff;
+  --cds-blue-30: #a6c8ff;
+  --cds-blue-40: #78a9ff;
+  --cds-blue-50: #4589ff;
+  --cds-blue-60: #0f62fe;
+  --cds-blue-70: #0043ce;
+  --cds-blue-80: #002d9c;
+  --cds-blue-90: #001d6c;
+  --cds-blue-100: #001141;
+
+  /* Gray */
+  --cds-gray-10: #f4f4f4;
+  --cds-gray-20: #e0e0e0;
+  --cds-gray-30: #c6c6c6;
+  --cds-gray-40: #a8a8a8;
+  --cds-gray-50: #8d8d8d;
+  --cds-gray-60: #6f6f6f;
+  --cds-gray-70: #525252;
+  --cds-gray-80: #393939;
+  --cds-gray-90: #262626;
+  --cds-gray-100: #161616;
+
+  /* Cool Gray */
+  --cds-cool-gray-10: #f2f4f8;
+  --cds-cool-gray-20: #dde1e6;
+  --cds-cool-gray-30: #c1c7cd;
+  --cds-cool-gray-40: #a2a9b0;
+  --cds-cool-gray-50: #878d96;
+  --cds-cool-gray-60: #697077;
+  --cds-cool-gray-70: #4d5358;
+  --cds-cool-gray-80: #343a3f;
+  --cds-cool-gray-90: #21272a;
+  --cds-cool-gray-100: #121619;
+
+  /* Warm Gray */
+  --cds-warm-gray-10: #f7f3f2;
+  --cds-warm-gray-20: #e5e0df;
+  --cds-warm-gray-30: #cac5c4;
+  --cds-warm-gray-40: #ada8a8;
+  --cds-warm-gray-50: #8f8b8b;
+  --cds-warm-gray-60: #726e6e;
+  --cds-warm-gray-70: #565151;
+  --cds-warm-gray-80: #3c3838;
+  --cds-warm-gray-90: #272525;
+  --cds-warm-gray-100: #171414;
+
+  /* Red */
+  --cds-red-10: #fff1f1;
+  --cds-red-20: #ffd7d9;
+  --cds-red-30: #ffb3b8;
+  --cds-red-40: #ff8389;
+  --cds-red-50: #fa4d56;
+  --cds-red-60: #da1e28;
+  --cds-red-70: #a2191f;
+  --cds-red-80: #750e13;
+  --cds-red-90: #520408;
+  --cds-red-100: #2d0709;
+
+  /* Green */
+  --cds-green-10: #defbe6;
+  --cds-green-20: #a7f0ba;
+  --cds-green-30: #6fdc8c;
+  --cds-green-40: #42be65;
+  --cds-green-50: #24a148;
+  --cds-green-60: #198038;
+  --cds-green-70: #0e6027;
+  --cds-green-80: #044317;
+  --cds-green-90: #022d0d;
+  --cds-green-100: #071908;
+
+  /* Yellow */
+  --cds-yellow-10: #fcf4d6;
+  --cds-yellow-20: #fddc69;
+  --cds-yellow-30: #f1c21b;
+  --cds-yellow-40: #d2a106;
+  --cds-yellow-50: #b28600;
+  --cds-yellow-60: #8e6a00;
+  --cds-yellow-70: #684e00;
+  --cds-yellow-80: #483700;
+  --cds-yellow-90: #302400;
+  --cds-yellow-100: #1c1500;
+
+  /* Orange */
+  --cds-orange-10: #fff2e8;
+  --cds-orange-20: #ffd8ad;
+  --cds-orange-30: #ffb784;
+  --cds-orange-40: #ff832b;
+  --cds-orange-50: #eb6200;
+  --cds-orange-60: #ba4e00;
+  --cds-orange-70: #8a3800;
+  --cds-orange-80: #5e2900;
+  --cds-orange-90: #3e1a00;
+  --cds-orange-100: #231000;
+
+  /* Purple */
+  --cds-purple-10: #f6f2ff;
+  --cds-purple-20: #e8daff;
+  --cds-purple-30: #d4bbff;
+  --cds-purple-40: #be95ff;
+  --cds-purple-50: #a56eff;
+  --cds-purple-60: #8a3ffc;
+  --cds-purple-70: #6929c4;
+  --cds-purple-80: #491d8b;
+  --cds-purple-90: #31135e;
+  --cds-purple-100: #1c0f30;
+
+  /* Magenta */
+  --cds-magenta-10: #fff0f7;
+  --cds-magenta-20: #ffd6e8;
+  --cds-magenta-30: #ffafd2;
+  --cds-magenta-40: #ff7eb6;
+  --cds-magenta-50: #ee5396;
+  --cds-magenta-60: #d02670;
+  --cds-magenta-70: #9f1853;
+  --cds-magenta-80: #740937;
+  --cds-magenta-90: #510224;
+  --cds-magenta-100: #2a0a18;
+
+  /* Cyan */
+  --cds-cyan-10: #e5f6ff;
+  --cds-cyan-20: #bae6ff;
+  --cds-cyan-30: #82cfff;
+  --cds-cyan-40: #33b1ff;
+  --cds-cyan-50: #1192e8;
+  --cds-cyan-60: #0072c3;
+  --cds-cyan-70: #00539a;
+  --cds-cyan-80: #003a6d;
+  --cds-cyan-90: #012749;
+  --cds-cyan-100: #061727;
+
+  /* Teal */
+  --cds-teal-10: #d9fbfb;
+  --cds-teal-20: #9ef0f0;
+  --cds-teal-30: #3ddbd9;
+  --cds-teal-40: #08bdba;
+  --cds-teal-50: #009d9a;
+  --cds-teal-60: #007d79;
+  --cds-teal-70: #005d5d;
+  --cds-teal-80: #004144;
+  --cds-teal-90: #022b30;
+  --cds-teal-100: #081a1c;
+}
+
+/* ==========================================================================
+   2. Carbon 2x Grid System
+   ========================================================================== */
+
+.cds--grid {
+  margin-inline: auto;
+  padding-inline: var(--cds-grid-margin-sm);
+  max-width: var(--cds-grid-breakpoint-max);
+  width: 100%;
+}
+
+@media (min-width: 672px) {
+  .cds--grid {
+    padding-inline: var(--cds-grid-margin-md);
+  }
+}
+
+@media (min-width: 1056px) {
+  .cds--grid {
+    padding-inline: var(--cds-grid-margin-lg);
+  }
+}
+
+@media (min-width: 1312px) {
+  .cds--grid {
+    padding-inline: var(--cds-grid-margin-xlg);
+  }
+}
+
+@media (min-width: 1584px) {
+  .cds--grid {
+    padding-inline: var(--cds-grid-margin-max);
+  }
+}
+
+.cds--grid--full-width {
+  max-width: 100%;
+}
+
+.cds--grid--narrow {
+  padding-inline: 0;
+}
+
+.cds--grid--condensed .cds--row {
+  margin-inline: -0.0625rem;
+}
+
+.cds--grid--condensed .cds--col {
+  padding-inline: 0.0625rem;
+}
+
+.cds--row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-inline: calc(var(--cds-grid-gutter) / -2);
+}
+
+.cds--row--narrow {
+  margin-inline: 0 calc(var(--cds-grid-gutter) / -2);
+}
+
+.cds--col {
+  flex: 1 0 0%;
+  padding-inline: calc(var(--cds-grid-gutter) / 2);
+}
+
+.cds--no-gutter {
+  padding-inline: 0;
+}
+
+.cds--no-gutter--start {
+  padding-inline-start: 0;
+}
+
+.cds--no-gutter--end {
+  padding-inline-end: 0;
+}
+
+
+/* Column span classes */
+.cds--col-sm-1 { flex: 0 0 25.0%; max-width: 25.0%; }
+.cds--col-sm-2 { flex: 0 0 50.0%; max-width: 50.0%; }
+.cds--col-sm-3 { flex: 0 0 75.0%; max-width: 75.0%; }
+.cds--col-sm-4 { flex: 0 0 100.0%; max-width: 100.0%; }
+@media (min-width: 672px) { .cds--col-md-1 { flex: 0 0 12.5%; max-width: 12.5%; } }
+@media (min-width: 672px) { .cds--col-md-2 { flex: 0 0 25.0%; max-width: 25.0%; } }
+@media (min-width: 672px) { .cds--col-md-3 { flex: 0 0 37.5%; max-width: 37.5%; } }
+@media (min-width: 672px) { .cds--col-md-4 { flex: 0 0 50.0%; max-width: 50.0%; } }
+@media (min-width: 672px) { .cds--col-md-5 { flex: 0 0 62.5%; max-width: 62.5%; } }
+@media (min-width: 672px) { .cds--col-md-6 { flex: 0 0 75.0%; max-width: 75.0%; } }
+@media (min-width: 672px) { .cds--col-md-7 { flex: 0 0 87.5%; max-width: 87.5%; } }
+@media (min-width: 672px) { .cds--col-md-8 { flex: 0 0 100.0%; max-width: 100.0%; } }
+@media (min-width: 1056px) { .cds--col-lg-1 { flex: 0 0 6.25%; max-width: 6.25%; } }
+@media (min-width: 1056px) { .cds--col-lg-2 { flex: 0 0 12.5%; max-width: 12.5%; } }
+@media (min-width: 1056px) { .cds--col-lg-3 { flex: 0 0 18.75%; max-width: 18.75%; } }
+@media (min-width: 1056px) { .cds--col-lg-4 { flex: 0 0 25.0%; max-width: 25.0%; } }
+@media (min-width: 1056px) { .cds--col-lg-5 { flex: 0 0 31.25%; max-width: 31.25%; } }
+@media (min-width: 1056px) { .cds--col-lg-6 { flex: 0 0 37.5%; max-width: 37.5%; } }
+@media (min-width: 1056px) { .cds--col-lg-7 { flex: 0 0 43.75%; max-width: 43.75%; } }
+@media (min-width: 1056px) { .cds--col-lg-8 { flex: 0 0 50.0%; max-width: 50.0%; } }
+@media (min-width: 1056px) { .cds--col-lg-9 { flex: 0 0 56.25%; max-width: 56.25%; } }
+@media (min-width: 1056px) { .cds--col-lg-10 { flex: 0 0 62.5%; max-width: 62.5%; } }
+@media (min-width: 1056px) { .cds--col-lg-11 { flex: 0 0 68.75%; max-width: 68.75%; } }
+@media (min-width: 1056px) { .cds--col-lg-12 { flex: 0 0 75.0%; max-width: 75.0%; } }
+@media (min-width: 1056px) { .cds--col-lg-13 { flex: 0 0 81.25%; max-width: 81.25%; } }
+@media (min-width: 1056px) { .cds--col-lg-14 { flex: 0 0 87.5%; max-width: 87.5%; } }
+@media (min-width: 1056px) { .cds--col-lg-15 { flex: 0 0 93.75%; max-width: 93.75%; } }
+@media (min-width: 1056px) { .cds--col-lg-16 { flex: 0 0 100.0%; max-width: 100.0%; } }
+@media (min-width: 1312px) { .cds--col-xlg-1 { flex: 0 0 6.25%; max-width: 6.25%; } }
+@media (min-width: 1312px) { .cds--col-xlg-2 { flex: 0 0 12.5%; max-width: 12.5%; } }
+@media (min-width: 1312px) { .cds--col-xlg-3 { flex: 0 0 18.75%; max-width: 18.75%; } }
+@media (min-width: 1312px) { .cds--col-xlg-4 { flex: 0 0 25.0%; max-width: 25.0%; } }
+@media (min-width: 1312px) { .cds--col-xlg-5 { flex: 0 0 31.25%; max-width: 31.25%; } }
+@media (min-width: 1312px) { .cds--col-xlg-6 { flex: 0 0 37.5%; max-width: 37.5%; } }
+@media (min-width: 1312px) { .cds--col-xlg-7 { flex: 0 0 43.75%; max-width: 43.75%; } }
+@media (min-width: 1312px) { .cds--col-xlg-8 { flex: 0 0 50.0%; max-width: 50.0%; } }
+@media (min-width: 1312px) { .cds--col-xlg-9 { flex: 0 0 56.25%; max-width: 56.25%; } }
+@media (min-width: 1312px) { .cds--col-xlg-10 { flex: 0 0 62.5%; max-width: 62.5%; } }
+@media (min-width: 1312px) { .cds--col-xlg-11 { flex: 0 0 68.75%; max-width: 68.75%; } }
+@media (min-width: 1312px) { .cds--col-xlg-12 { flex: 0 0 75.0%; max-width: 75.0%; } }
+@media (min-width: 1312px) { .cds--col-xlg-13 { flex: 0 0 81.25%; max-width: 81.25%; } }
+@media (min-width: 1312px) { .cds--col-xlg-14 { flex: 0 0 87.5%; max-width: 87.5%; } }
+@media (min-width: 1312px) { .cds--col-xlg-15 { flex: 0 0 93.75%; max-width: 93.75%; } }
+@media (min-width: 1312px) { .cds--col-xlg-16 { flex: 0 0 100.0%; max-width: 100.0%; } }
+@media (min-width: 1584px) { .cds--col-max-1 { flex: 0 0 6.25%; max-width: 6.25%; } }
+@media (min-width: 1584px) { .cds--col-max-2 { flex: 0 0 12.5%; max-width: 12.5%; } }
+@media (min-width: 1584px) { .cds--col-max-3 { flex: 0 0 18.75%; max-width: 18.75%; } }
+@media (min-width: 1584px) { .cds--col-max-4 { flex: 0 0 25.0%; max-width: 25.0%; } }
+@media (min-width: 1584px) { .cds--col-max-5 { flex: 0 0 31.25%; max-width: 31.25%; } }
+@media (min-width: 1584px) { .cds--col-max-6 { flex: 0 0 37.5%; max-width: 37.5%; } }
+@media (min-width: 1584px) { .cds--col-max-7 { flex: 0 0 43.75%; max-width: 43.75%; } }
+@media (min-width: 1584px) { .cds--col-max-8 { flex: 0 0 50.0%; max-width: 50.0%; } }
+@media (min-width: 1584px) { .cds--col-max-9 { flex: 0 0 56.25%; max-width: 56.25%; } }
+@media (min-width: 1584px) { .cds--col-max-10 { flex: 0 0 62.5%; max-width: 62.5%; } }
+@media (min-width: 1584px) { .cds--col-max-11 { flex: 0 0 68.75%; max-width: 68.75%; } }
+@media (min-width: 1584px) { .cds--col-max-12 { flex: 0 0 75.0%; max-width: 75.0%; } }
+@media (min-width: 1584px) { .cds--col-max-13 { flex: 0 0 81.25%; max-width: 81.25%; } }
+@media (min-width: 1584px) { .cds--col-max-14 { flex: 0 0 87.5%; max-width: 87.5%; } }
+@media (min-width: 1584px) { .cds--col-max-15 { flex: 0 0 93.75%; max-width: 93.75%; } }
+@media (min-width: 1584px) { .cds--col-max-16 { flex: 0 0 100.0%; max-width: 100.0%; } }
+.cds--offset-lg-1 { margin-inline-start: 6.25%; }
+.cds--offset-lg-2 { margin-inline-start: 12.5%; }
+.cds--offset-lg-3 { margin-inline-start: 18.75%; }
+.cds--offset-lg-4 { margin-inline-start: 25.0%; }
+.cds--offset-lg-5 { margin-inline-start: 31.25%; }
+.cds--offset-lg-6 { margin-inline-start: 37.5%; }
+.cds--offset-lg-7 { margin-inline-start: 43.75%; }
+.cds--offset-lg-8 { margin-inline-start: 50.0%; }
+.cds--offset-lg-9 { margin-inline-start: 56.25%; }
+.cds--offset-lg-10 { margin-inline-start: 62.5%; }
+.cds--offset-lg-11 { margin-inline-start: 68.75%; }
+.cds--offset-lg-12 { margin-inline-start: 75.0%; }
+.cds--offset-lg-13 { margin-inline-start: 81.25%; }
+.cds--offset-lg-14 { margin-inline-start: 87.5%; }
+.cds--offset-lg-15 { margin-inline-start: 93.75%; }
+
+/* CSS Grid variant */
+.cds--css-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  column-gap: var(--cds-grid-gutter);
+  padding-inline: var(--cds-grid-margin-sm);
+  margin-inline: auto;
+  max-width: var(--cds-grid-breakpoint-max);
+}
+
+@media (min-width: 672px) {
+  .cds--css-grid {
+    grid-template-columns: repeat(8, 1fr);
+    padding-inline: var(--cds-grid-margin-md);
+  }
+}
+
+@media (min-width: 1056px) {
+  .cds--css-grid {
+    grid-template-columns: repeat(16, 1fr);
+    padding-inline: var(--cds-grid-margin-lg);
+  }
+}
+
+@media (min-width: 1584px) {
+  .cds--css-grid {
+    padding-inline: var(--cds-grid-margin-max);
+  }
+}
+
+.cds--css-grid--full-width {
+  max-width: 100%;
+}
+
+.cds--sm\:col-span-1 { grid-column: span 1; }
+.cds--sm\:col-span-2 { grid-column: span 2; }
+.cds--sm\:col-span-3 { grid-column: span 3; }
+.cds--sm\:col-span-4 { grid-column: span 4; }
+@media (min-width: 672px) { .cds--md\:col-span-1 { grid-column: span 1; } }
+@media (min-width: 672px) { .cds--md\:col-span-2 { grid-column: span 2; } }
+@media (min-width: 672px) { .cds--md\:col-span-3 { grid-column: span 3; } }
+@media (min-width: 672px) { .cds--md\:col-span-4 { grid-column: span 4; } }
+@media (min-width: 672px) { .cds--md\:col-span-5 { grid-column: span 5; } }
+@media (min-width: 672px) { .cds--md\:col-span-6 { grid-column: span 6; } }
+@media (min-width: 672px) { .cds--md\:col-span-7 { grid-column: span 7; } }
+@media (min-width: 672px) { .cds--md\:col-span-8 { grid-column: span 8; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-1 { grid-column: span 1; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-2 { grid-column: span 2; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-3 { grid-column: span 3; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-4 { grid-column: span 4; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-5 { grid-column: span 5; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-6 { grid-column: span 6; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-7 { grid-column: span 7; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-8 { grid-column: span 8; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-9 { grid-column: span 9; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-10 { grid-column: span 10; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-11 { grid-column: span 11; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-12 { grid-column: span 12; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-13 { grid-column: span 13; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-14 { grid-column: span 14; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-15 { grid-column: span 15; } }
+@media (min-width: 1056px) { .cds--lg\:col-span-16 { grid-column: span 16; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-1 { grid-column: span 1; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-2 { grid-column: span 2; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-3 { grid-column: span 3; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-4 { grid-column: span 4; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-5 { grid-column: span 5; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-6 { grid-column: span 6; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-7 { grid-column: span 7; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-8 { grid-column: span 8; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-9 { grid-column: span 9; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-10 { grid-column: span 10; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-11 { grid-column: span 11; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-12 { grid-column: span 12; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-13 { grid-column: span 13; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-14 { grid-column: span 14; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-15 { grid-column: span 15; } }
+@media (min-width: 1312px) { .cds--xlg\:col-span-16 { grid-column: span 16; } }
+@media (min-width: 1584px) { .cds--max\:col-span-1 { grid-column: span 1; } }
+@media (min-width: 1584px) { .cds--max\:col-span-2 { grid-column: span 2; } }
+@media (min-width: 1584px) { .cds--max\:col-span-3 { grid-column: span 3; } }
+@media (min-width: 1584px) { .cds--max\:col-span-4 { grid-column: span 4; } }
+@media (min-width: 1584px) { .cds--max\:col-span-5 { grid-column: span 5; } }
+@media (min-width: 1584px) { .cds--max\:col-span-6 { grid-column: span 6; } }
+@media (min-width: 1584px) { .cds--max\:col-span-7 { grid-column: span 7; } }
+@media (min-width: 1584px) { .cds--max\:col-span-8 { grid-column: span 8; } }
+@media (min-width: 1584px) { .cds--max\:col-span-9 { grid-column: span 9; } }
+@media (min-width: 1584px) { .cds--max\:col-span-10 { grid-column: span 10; } }
+@media (min-width: 1584px) { .cds--max\:col-span-11 { grid-column: span 11; } }
+@media (min-width: 1584px) { .cds--max\:col-span-12 { grid-column: span 12; } }
+@media (min-width: 1584px) { .cds--max\:col-span-13 { grid-column: span 13; } }
+@media (min-width: 1584px) { .cds--max\:col-span-14 { grid-column: span 14; } }
+@media (min-width: 1584px) { .cds--max\:col-span-15 { grid-column: span 15; } }
+@media (min-width: 1584px) { .cds--max\:col-span-16 { grid-column: span 16; } }
+
+/* ==========================================================================
+   3. Typography Utility Classes
+   ========================================================================== */
+
+.cds--type-caption-01 {
+  font-size: var(--cds-caption-01-font-size);
+  font-weight: var(--cds-caption-01-font-weight);
+  line-height: var(--cds-caption-01-line-height);
+  letter-spacing: var(--cds-caption-01-letter-spacing);
+}
+
+.cds--type-caption-02 {
+  font-size: var(--cds-caption-02-font-size);
+  font-weight: var(--cds-caption-02-font-weight);
+  line-height: var(--cds-caption-02-line-height);
+  letter-spacing: var(--cds-caption-02-letter-spacing);
+}
+
+.cds--type-label-01 {
+  font-size: var(--cds-label-01-font-size);
+  font-weight: var(--cds-label-01-font-weight);
+  line-height: var(--cds-label-01-line-height);
+  letter-spacing: var(--cds-label-01-letter-spacing);
+}
+
+.cds--type-label-02 {
+  font-size: var(--cds-label-02-font-size);
+  font-weight: var(--cds-label-02-font-weight);
+  line-height: var(--cds-label-02-line-height);
+  letter-spacing: var(--cds-label-02-letter-spacing);
+}
+
+.cds--type-helper-text-01 {
+  font-size: var(--cds-helper-text-01-font-size);
+  line-height: var(--cds-helper-text-01-line-height);
+  letter-spacing: var(--cds-helper-text-01-letter-spacing);
+}
+
+.cds--type-helper-text-02 {
+  font-size: var(--cds-helper-text-02-font-size);
+  font-weight: var(--cds-helper-text-02-font-weight);
+  line-height: var(--cds-helper-text-02-line-height);
+  letter-spacing: var(--cds-helper-text-02-letter-spacing);
+}
+
+.cds--type-legal-01 {
+  font-size: var(--cds-legal-01-font-size);
+  font-weight: var(--cds-legal-01-font-weight);
+  line-height: var(--cds-legal-01-line-height);
+  letter-spacing: var(--cds-legal-01-letter-spacing);
+}
+
+.cds--type-legal-02 {
+  font-size: var(--cds-legal-02-font-size);
+  font-weight: var(--cds-legal-02-font-weight);
+  line-height: var(--cds-legal-02-line-height);
+  letter-spacing: var(--cds-legal-02-letter-spacing);
+}
+
+.cds--type-body-compact-01 {
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: var(--cds-body-compact-01-font-weight);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+}
+
+.cds--type-body-compact-02 {
+  font-size: var(--cds-body-compact-02-font-size);
+  font-weight: var(--cds-body-compact-02-font-weight);
+  line-height: var(--cds-body-compact-02-line-height);
+  letter-spacing: var(--cds-body-compact-02-letter-spacing);
+}
+
+.cds--type-body-01 {
+  font-size: var(--cds-body-01-font-size);
+  font-weight: var(--cds-body-01-font-weight);
+  line-height: var(--cds-body-01-line-height);
+  letter-spacing: var(--cds-body-01-letter-spacing);
+}
+
+.cds--type-body-02 {
+  font-size: var(--cds-body-02-font-size);
+  font-weight: var(--cds-body-02-font-weight);
+  line-height: var(--cds-body-02-line-height);
+  letter-spacing: var(--cds-body-02-letter-spacing);
+}
+
+.cds--type-heading-compact-01 {
+  font-size: var(--cds-heading-compact-01-font-size);
+  font-weight: var(--cds-heading-compact-01-font-weight);
+  line-height: var(--cds-heading-compact-01-line-height);
+  letter-spacing: var(--cds-heading-compact-01-letter-spacing);
+}
+
+.cds--type-heading-compact-02 {
+  font-size: var(--cds-heading-compact-02-font-size);
+  font-weight: var(--cds-heading-compact-02-font-weight);
+  line-height: var(--cds-heading-compact-02-line-height);
+  letter-spacing: var(--cds-heading-compact-02-letter-spacing);
+}
+
+.cds--type-heading-01 {
+  font-size: var(--cds-heading-01-font-size);
+  font-weight: var(--cds-heading-01-font-weight);
+  line-height: var(--cds-heading-01-line-height);
+  letter-spacing: var(--cds-heading-01-letter-spacing);
+}
+
+.cds--type-heading-02 {
+  font-size: var(--cds-heading-02-font-size);
+  font-weight: var(--cds-heading-02-font-weight);
+  line-height: var(--cds-heading-02-line-height);
+  letter-spacing: var(--cds-heading-02-letter-spacing);
+}
+
+.cds--type-heading-03 {
+  font-size: var(--cds-heading-03-font-size);
+  font-weight: var(--cds-heading-03-font-weight);
+  line-height: var(--cds-heading-03-line-height);
+  letter-spacing: var(--cds-heading-03-letter-spacing);
+}
+
+.cds--type-heading-04 {
+  font-size: var(--cds-heading-04-font-size);
+  font-weight: var(--cds-heading-04-font-weight);
+  line-height: var(--cds-heading-04-line-height);
+  letter-spacing: var(--cds-heading-04-letter-spacing);
+}
+
+.cds--type-heading-05 {
+  font-size: var(--cds-heading-05-font-size);
+  font-weight: var(--cds-heading-05-font-weight);
+  line-height: var(--cds-heading-05-line-height);
+  letter-spacing: var(--cds-heading-05-letter-spacing);
+}
+
+.cds--type-heading-06 {
+  font-size: var(--cds-heading-06-font-size);
+  font-weight: var(--cds-heading-06-font-weight);
+  line-height: var(--cds-heading-06-line-height);
+  letter-spacing: var(--cds-heading-06-letter-spacing);
+}
+
+.cds--type-heading-07 {
+  font-size: var(--cds-heading-07-font-size);
+  font-weight: var(--cds-heading-07-font-weight);
+  line-height: var(--cds-heading-07-line-height);
+  letter-spacing: var(--cds-heading-07-letter-spacing);
+}
+
+.cds--type-code-01 {
+  font-family: var(--cds-code-01-font-family);
+  font-size: var(--cds-code-01-font-size);
+  font-weight: var(--cds-code-01-font-weight);
+  line-height: var(--cds-code-01-line-height);
+  letter-spacing: var(--cds-code-01-letter-spacing);
+}
+
+.cds--type-code-02 {
+  font-family: var(--cds-code-02-font-family);
+  font-size: var(--cds-code-02-font-size);
+  font-weight: var(--cds-code-02-font-weight);
+  line-height: var(--cds-code-02-line-height);
+  letter-spacing: var(--cds-code-02-letter-spacing);
+}
+
+/* ==========================================================================
+   4. Spacing Utility Classes
+   ========================================================================== */
+
+.cds--spacing-01 { --spacing: var(--cds-spacing-01); }
+.cds--spacing-02 { --spacing: var(--cds-spacing-02); }
+.cds--spacing-03 { --spacing: var(--cds-spacing-03); }
+.cds--spacing-04 { --spacing: var(--cds-spacing-04); }
+.cds--spacing-05 { --spacing: var(--cds-spacing-05); }
+.cds--spacing-06 { --spacing: var(--cds-spacing-06); }
+.cds--spacing-07 { --spacing: var(--cds-spacing-07); }
+.cds--spacing-08 { --spacing: var(--cds-spacing-08); }
+.cds--spacing-09 { --spacing: var(--cds-spacing-09); }
+.cds--spacing-10 { --spacing: var(--cds-spacing-10); }
+.cds--spacing-11 { --spacing: var(--cds-spacing-11); }
+.cds--spacing-12 { --spacing: var(--cds-spacing-12); }
+.cds--spacing-13 { --spacing: var(--cds-spacing-13); }
+
+/* Margin m */
+.cds--m-01 { margin: var(--cds-spacing-01); }
+.cds--m-02 { margin: var(--cds-spacing-02); }
+.cds--m-03 { margin: var(--cds-spacing-03); }
+.cds--m-04 { margin: var(--cds-spacing-04); }
+.cds--m-05 { margin: var(--cds-spacing-05); }
+.cds--m-06 { margin: var(--cds-spacing-06); }
+.cds--m-07 { margin: var(--cds-spacing-07); }
+.cds--m-08 { margin: var(--cds-spacing-08); }
+.cds--m-09 { margin: var(--cds-spacing-09); }
+.cds--m-10 { margin: var(--cds-spacing-10); }
+.cds--m-11 { margin: var(--cds-spacing-11); }
+.cds--m-12 { margin: var(--cds-spacing-12); }
+.cds--m-13 { margin: var(--cds-spacing-13); }
+
+/* Margin mt */
+.cds--mt-01 { margin-top: var(--cds-spacing-01); }
+.cds--mt-02 { margin-top: var(--cds-spacing-02); }
+.cds--mt-03 { margin-top: var(--cds-spacing-03); }
+.cds--mt-04 { margin-top: var(--cds-spacing-04); }
+.cds--mt-05 { margin-top: var(--cds-spacing-05); }
+.cds--mt-06 { margin-top: var(--cds-spacing-06); }
+.cds--mt-07 { margin-top: var(--cds-spacing-07); }
+.cds--mt-08 { margin-top: var(--cds-spacing-08); }
+.cds--mt-09 { margin-top: var(--cds-spacing-09); }
+.cds--mt-10 { margin-top: var(--cds-spacing-10); }
+.cds--mt-11 { margin-top: var(--cds-spacing-11); }
+.cds--mt-12 { margin-top: var(--cds-spacing-12); }
+.cds--mt-13 { margin-top: var(--cds-spacing-13); }
+
+/* Margin mr */
+.cds--mr-01 { margin-right: var(--cds-spacing-01); }
+.cds--mr-02 { margin-right: var(--cds-spacing-02); }
+.cds--mr-03 { margin-right: var(--cds-spacing-03); }
+.cds--mr-04 { margin-right: var(--cds-spacing-04); }
+.cds--mr-05 { margin-right: var(--cds-spacing-05); }
+.cds--mr-06 { margin-right: var(--cds-spacing-06); }
+.cds--mr-07 { margin-right: var(--cds-spacing-07); }
+.cds--mr-08 { margin-right: var(--cds-spacing-08); }
+.cds--mr-09 { margin-right: var(--cds-spacing-09); }
+.cds--mr-10 { margin-right: var(--cds-spacing-10); }
+.cds--mr-11 { margin-right: var(--cds-spacing-11); }
+.cds--mr-12 { margin-right: var(--cds-spacing-12); }
+.cds--mr-13 { margin-right: var(--cds-spacing-13); }
+
+/* Margin mb */
+.cds--mb-01 { margin-bottom: var(--cds-spacing-01); }
+.cds--mb-02 { margin-bottom: var(--cds-spacing-02); }
+.cds--mb-03 { margin-bottom: var(--cds-spacing-03); }
+.cds--mb-04 { margin-bottom: var(--cds-spacing-04); }
+.cds--mb-05 { margin-bottom: var(--cds-spacing-05); }
+.cds--mb-06 { margin-bottom: var(--cds-spacing-06); }
+.cds--mb-07 { margin-bottom: var(--cds-spacing-07); }
+.cds--mb-08 { margin-bottom: var(--cds-spacing-08); }
+.cds--mb-09 { margin-bottom: var(--cds-spacing-09); }
+.cds--mb-10 { margin-bottom: var(--cds-spacing-10); }
+.cds--mb-11 { margin-bottom: var(--cds-spacing-11); }
+.cds--mb-12 { margin-bottom: var(--cds-spacing-12); }
+.cds--mb-13 { margin-bottom: var(--cds-spacing-13); }
+
+/* Margin ml */
+.cds--ml-01 { margin-left: var(--cds-spacing-01); }
+.cds--ml-02 { margin-left: var(--cds-spacing-02); }
+.cds--ml-03 { margin-left: var(--cds-spacing-03); }
+.cds--ml-04 { margin-left: var(--cds-spacing-04); }
+.cds--ml-05 { margin-left: var(--cds-spacing-05); }
+.cds--ml-06 { margin-left: var(--cds-spacing-06); }
+.cds--ml-07 { margin-left: var(--cds-spacing-07); }
+.cds--ml-08 { margin-left: var(--cds-spacing-08); }
+.cds--ml-09 { margin-left: var(--cds-spacing-09); }
+.cds--ml-10 { margin-left: var(--cds-spacing-10); }
+.cds--ml-11 { margin-left: var(--cds-spacing-11); }
+.cds--ml-12 { margin-left: var(--cds-spacing-12); }
+.cds--ml-13 { margin-left: var(--cds-spacing-13); }
+
+/* Margin mx */
+.cds--mx-01 { margin-left: var(--cds-spacing-01); margin-right: var(--cds-spacing-01); }
+.cds--mx-02 { margin-left: var(--cds-spacing-02); margin-right: var(--cds-spacing-02); }
+.cds--mx-03 { margin-left: var(--cds-spacing-03); margin-right: var(--cds-spacing-03); }
+.cds--mx-04 { margin-left: var(--cds-spacing-04); margin-right: var(--cds-spacing-04); }
+.cds--mx-05 { margin-left: var(--cds-spacing-05); margin-right: var(--cds-spacing-05); }
+.cds--mx-06 { margin-left: var(--cds-spacing-06); margin-right: var(--cds-spacing-06); }
+.cds--mx-07 { margin-left: var(--cds-spacing-07); margin-right: var(--cds-spacing-07); }
+.cds--mx-08 { margin-left: var(--cds-spacing-08); margin-right: var(--cds-spacing-08); }
+.cds--mx-09 { margin-left: var(--cds-spacing-09); margin-right: var(--cds-spacing-09); }
+.cds--mx-10 { margin-left: var(--cds-spacing-10); margin-right: var(--cds-spacing-10); }
+.cds--mx-11 { margin-left: var(--cds-spacing-11); margin-right: var(--cds-spacing-11); }
+.cds--mx-12 { margin-left: var(--cds-spacing-12); margin-right: var(--cds-spacing-12); }
+.cds--mx-13 { margin-left: var(--cds-spacing-13); margin-right: var(--cds-spacing-13); }
+
+/* Margin my */
+.cds--my-01 { margin-top: var(--cds-spacing-01); margin-bottom: var(--cds-spacing-01); }
+.cds--my-02 { margin-top: var(--cds-spacing-02); margin-bottom: var(--cds-spacing-02); }
+.cds--my-03 { margin-top: var(--cds-spacing-03); margin-bottom: var(--cds-spacing-03); }
+.cds--my-04 { margin-top: var(--cds-spacing-04); margin-bottom: var(--cds-spacing-04); }
+.cds--my-05 { margin-top: var(--cds-spacing-05); margin-bottom: var(--cds-spacing-05); }
+.cds--my-06 { margin-top: var(--cds-spacing-06); margin-bottom: var(--cds-spacing-06); }
+.cds--my-07 { margin-top: var(--cds-spacing-07); margin-bottom: var(--cds-spacing-07); }
+.cds--my-08 { margin-top: var(--cds-spacing-08); margin-bottom: var(--cds-spacing-08); }
+.cds--my-09 { margin-top: var(--cds-spacing-09); margin-bottom: var(--cds-spacing-09); }
+.cds--my-10 { margin-top: var(--cds-spacing-10); margin-bottom: var(--cds-spacing-10); }
+.cds--my-11 { margin-top: var(--cds-spacing-11); margin-bottom: var(--cds-spacing-11); }
+.cds--my-12 { margin-top: var(--cds-spacing-12); margin-bottom: var(--cds-spacing-12); }
+.cds--my-13 { margin-top: var(--cds-spacing-13); margin-bottom: var(--cds-spacing-13); }
+
+/* Padding p */
+.cds--p-01 { padding: var(--cds-spacing-01); }
+.cds--p-02 { padding: var(--cds-spacing-02); }
+.cds--p-03 { padding: var(--cds-spacing-03); }
+.cds--p-04 { padding: var(--cds-spacing-04); }
+.cds--p-05 { padding: var(--cds-spacing-05); }
+.cds--p-06 { padding: var(--cds-spacing-06); }
+.cds--p-07 { padding: var(--cds-spacing-07); }
+.cds--p-08 { padding: var(--cds-spacing-08); }
+.cds--p-09 { padding: var(--cds-spacing-09); }
+.cds--p-10 { padding: var(--cds-spacing-10); }
+.cds--p-11 { padding: var(--cds-spacing-11); }
+.cds--p-12 { padding: var(--cds-spacing-12); }
+.cds--p-13 { padding: var(--cds-spacing-13); }
+
+/* Padding pt */
+.cds--pt-01 { padding-top: var(--cds-spacing-01); }
+.cds--pt-02 { padding-top: var(--cds-spacing-02); }
+.cds--pt-03 { padding-top: var(--cds-spacing-03); }
+.cds--pt-04 { padding-top: var(--cds-spacing-04); }
+.cds--pt-05 { padding-top: var(--cds-spacing-05); }
+.cds--pt-06 { padding-top: var(--cds-spacing-06); }
+.cds--pt-07 { padding-top: var(--cds-spacing-07); }
+.cds--pt-08 { padding-top: var(--cds-spacing-08); }
+.cds--pt-09 { padding-top: var(--cds-spacing-09); }
+.cds--pt-10 { padding-top: var(--cds-spacing-10); }
+.cds--pt-11 { padding-top: var(--cds-spacing-11); }
+.cds--pt-12 { padding-top: var(--cds-spacing-12); }
+.cds--pt-13 { padding-top: var(--cds-spacing-13); }
+
+/* Padding pr */
+.cds--pr-01 { padding-right: var(--cds-spacing-01); }
+.cds--pr-02 { padding-right: var(--cds-spacing-02); }
+.cds--pr-03 { padding-right: var(--cds-spacing-03); }
+.cds--pr-04 { padding-right: var(--cds-spacing-04); }
+.cds--pr-05 { padding-right: var(--cds-spacing-05); }
+.cds--pr-06 { padding-right: var(--cds-spacing-06); }
+.cds--pr-07 { padding-right: var(--cds-spacing-07); }
+.cds--pr-08 { padding-right: var(--cds-spacing-08); }
+.cds--pr-09 { padding-right: var(--cds-spacing-09); }
+.cds--pr-10 { padding-right: var(--cds-spacing-10); }
+.cds--pr-11 { padding-right: var(--cds-spacing-11); }
+.cds--pr-12 { padding-right: var(--cds-spacing-12); }
+.cds--pr-13 { padding-right: var(--cds-spacing-13); }
+
+/* Padding pb */
+.cds--pb-01 { padding-bottom: var(--cds-spacing-01); }
+.cds--pb-02 { padding-bottom: var(--cds-spacing-02); }
+.cds--pb-03 { padding-bottom: var(--cds-spacing-03); }
+.cds--pb-04 { padding-bottom: var(--cds-spacing-04); }
+.cds--pb-05 { padding-bottom: var(--cds-spacing-05); }
+.cds--pb-06 { padding-bottom: var(--cds-spacing-06); }
+.cds--pb-07 { padding-bottom: var(--cds-spacing-07); }
+.cds--pb-08 { padding-bottom: var(--cds-spacing-08); }
+.cds--pb-09 { padding-bottom: var(--cds-spacing-09); }
+.cds--pb-10 { padding-bottom: var(--cds-spacing-10); }
+.cds--pb-11 { padding-bottom: var(--cds-spacing-11); }
+.cds--pb-12 { padding-bottom: var(--cds-spacing-12); }
+.cds--pb-13 { padding-bottom: var(--cds-spacing-13); }
+
+/* Padding pl */
+.cds--pl-01 { padding-left: var(--cds-spacing-01); }
+.cds--pl-02 { padding-left: var(--cds-spacing-02); }
+.cds--pl-03 { padding-left: var(--cds-spacing-03); }
+.cds--pl-04 { padding-left: var(--cds-spacing-04); }
+.cds--pl-05 { padding-left: var(--cds-spacing-05); }
+.cds--pl-06 { padding-left: var(--cds-spacing-06); }
+.cds--pl-07 { padding-left: var(--cds-spacing-07); }
+.cds--pl-08 { padding-left: var(--cds-spacing-08); }
+.cds--pl-09 { padding-left: var(--cds-spacing-09); }
+.cds--pl-10 { padding-left: var(--cds-spacing-10); }
+.cds--pl-11 { padding-left: var(--cds-spacing-11); }
+.cds--pl-12 { padding-left: var(--cds-spacing-12); }
+.cds--pl-13 { padding-left: var(--cds-spacing-13); }
+
+/* Padding px */
+.cds--px-01 { padding-left: var(--cds-spacing-01); padding-right: var(--cds-spacing-01); }
+.cds--px-02 { padding-left: var(--cds-spacing-02); padding-right: var(--cds-spacing-02); }
+.cds--px-03 { padding-left: var(--cds-spacing-03); padding-right: var(--cds-spacing-03); }
+.cds--px-04 { padding-left: var(--cds-spacing-04); padding-right: var(--cds-spacing-04); }
+.cds--px-05 { padding-left: var(--cds-spacing-05); padding-right: var(--cds-spacing-05); }
+.cds--px-06 { padding-left: var(--cds-spacing-06); padding-right: var(--cds-spacing-06); }
+.cds--px-07 { padding-left: var(--cds-spacing-07); padding-right: var(--cds-spacing-07); }
+.cds--px-08 { padding-left: var(--cds-spacing-08); padding-right: var(--cds-spacing-08); }
+.cds--px-09 { padding-left: var(--cds-spacing-09); padding-right: var(--cds-spacing-09); }
+.cds--px-10 { padding-left: var(--cds-spacing-10); padding-right: var(--cds-spacing-10); }
+.cds--px-11 { padding-left: var(--cds-spacing-11); padding-right: var(--cds-spacing-11); }
+.cds--px-12 { padding-left: var(--cds-spacing-12); padding-right: var(--cds-spacing-12); }
+.cds--px-13 { padding-left: var(--cds-spacing-13); padding-right: var(--cds-spacing-13); }
+
+/* Padding py */
+.cds--py-01 { padding-top: var(--cds-spacing-01); padding-bottom: var(--cds-spacing-01); }
+.cds--py-02 { padding-top: var(--cds-spacing-02); padding-bottom: var(--cds-spacing-02); }
+.cds--py-03 { padding-top: var(--cds-spacing-03); padding-bottom: var(--cds-spacing-03); }
+.cds--py-04 { padding-top: var(--cds-spacing-04); padding-bottom: var(--cds-spacing-04); }
+.cds--py-05 { padding-top: var(--cds-spacing-05); padding-bottom: var(--cds-spacing-05); }
+.cds--py-06 { padding-top: var(--cds-spacing-06); padding-bottom: var(--cds-spacing-06); }
+.cds--py-07 { padding-top: var(--cds-spacing-07); padding-bottom: var(--cds-spacing-07); }
+.cds--py-08 { padding-top: var(--cds-spacing-08); padding-bottom: var(--cds-spacing-08); }
+.cds--py-09 { padding-top: var(--cds-spacing-09); padding-bottom: var(--cds-spacing-09); }
+.cds--py-10 { padding-top: var(--cds-spacing-10); padding-bottom: var(--cds-spacing-10); }
+.cds--py-11 { padding-top: var(--cds-spacing-11); padding-bottom: var(--cds-spacing-11); }
+.cds--py-12 { padding-top: var(--cds-spacing-12); padding-bottom: var(--cds-spacing-12); }
+.cds--py-13 { padding-top: var(--cds-spacing-13); padding-bottom: var(--cds-spacing-13); }
+
+/* Gap utilities */
+.cds--gap-01 { gap: var(--cds-spacing-01); }
+.cds--gap-02 { gap: var(--cds-spacing-02); }
+.cds--gap-03 { gap: var(--cds-spacing-03); }
+.cds--gap-04 { gap: var(--cds-spacing-04); }
+.cds--gap-05 { gap: var(--cds-spacing-05); }
+.cds--gap-06 { gap: var(--cds-spacing-06); }
+.cds--gap-07 { gap: var(--cds-spacing-07); }
+.cds--gap-08 { gap: var(--cds-spacing-08); }
+.cds--gap-09 { gap: var(--cds-spacing-09); }
+.cds--gap-10 { gap: var(--cds-spacing-10); }
+.cds--gap-11 { gap: var(--cds-spacing-11); }
+.cds--gap-12 { gap: var(--cds-spacing-12); }
+.cds--gap-13 { gap: var(--cds-spacing-13); }
+
+/* ==========================================================================
+   5. Component CSS — Button (.cds--btn)
+   ========================================================================== */
+
+.cds--btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(0.875rem - 3px) 63px calc(0.875rem - 3px) 15px;
+  min-height: 3rem;
+  border: 1px solid transparent;
+  border-radius: 0;
+  font-family: var(--cds-font-family-sans);
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: 400;
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+  position: relative;
+  max-width: 20rem;
+  transition: all var(--cds-duration-fast-01) var(--cds-ease-productive-standard);
+}
+
+.cds--btn:focus {
+  border-color: var(--cds-focus);
+  box-shadow: inset 0 0 0 1px var(--cds-focus), inset 0 0 0 2px var(--cds-background);
+}
+
+.cds--btn--primary {
+  background-color: var(--cds-button-primary);
+  color: var(--cds-text-on-color);
+  border-color: transparent;
+}
+
+.cds--btn--primary:hover {
+  background-color: var(--cds-button-primary-hover);
+}
+
+.cds--btn--primary:active {
+  background-color: var(--cds-button-primary-active);
+}
+
+.cds--btn--secondary {
+  background-color: var(--cds-button-secondary);
+  color: var(--cds-text-on-color);
+  border-color: transparent;
+}
+
+.cds--btn--secondary:hover {
+  background-color: var(--cds-button-secondary-hover);
+}
+
+.cds--btn--secondary:active {
+  background-color: var(--cds-button-secondary-active);
+}
+
+.cds--btn--tertiary {
+  background-color: transparent;
+  color: var(--cds-button-tertiary);
+  border-color: var(--cds-button-tertiary);
+}
+
+.cds--btn--tertiary:hover {
+  background-color: var(--cds-button-tertiary-hover);
+  color: var(--cds-text-on-color);
+}
+
+.cds--btn--tertiary:active {
+  background-color: var(--cds-button-tertiary-active);
+  color: var(--cds-text-on-color);
+  border-color: transparent;
+}
+
+.cds--btn--danger {
+  background-color: var(--cds-button-danger-primary);
+  color: var(--cds-text-on-color);
+  border-color: transparent;
+}
+
+.cds--btn--danger:hover {
+  background-color: var(--cds-button-danger-hover);
+}
+
+.cds--btn--danger:active {
+  background-color: var(--cds-button-danger-active);
+}
+
+.cds--btn--danger--tertiary {
+  background-color: transparent;
+  color: var(--cds-button-danger-secondary);
+  border-color: var(--cds-button-danger-secondary);
+}
+
+.cds--btn--danger--tertiary:hover {
+  background-color: var(--cds-button-danger-hover);
+  color: var(--cds-text-on-color);
+  border-color: transparent;
+}
+
+.cds--btn--danger--ghost {
+  background-color: transparent;
+  color: var(--cds-button-danger-secondary);
+  border-color: transparent;
+  padding: calc(0.875rem - 3px) 15px;
+}
+
+.cds--btn--danger--ghost:hover {
+  background-color: var(--cds-button-danger-hover);
+  color: var(--cds-text-on-color);
+}
+
+.cds--btn--ghost {
+  background-color: transparent;
+  color: var(--cds-link-primary);
+  border-color: transparent;
+  padding: calc(0.875rem - 3px) 15px;
+}
+
+.cds--btn--ghost:hover {
+  background-color: var(--cds-background-hover);
+  color: var(--cds-link-primary-hover);
+}
+
+.cds--btn--ghost:active {
+  background-color: var(--cds-background-active);
+}
+
+.cds--btn:disabled,
+.cds--btn--disabled,
+.cds--btn:disabled:hover,
+.cds--btn--disabled:hover {
+  background-color: var(--cds-button-disabled);
+  color: var(--cds-text-on-color-disabled);
+  border-color: transparent;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+.cds--btn--ghost:disabled,
+.cds--btn--ghost.cds--btn--disabled {
+  background-color: transparent;
+  color: var(--cds-text-disabled);
+  border-color: transparent;
+}
+
+.cds--btn--sm {
+  min-height: 2rem;
+  padding: calc(0.375rem - 3px) 63px calc(0.375rem - 3px) 15px;
+}
+
+.cds--btn--md {
+  min-height: 2.5rem;
+  padding: calc(0.625rem - 3px) 63px calc(0.625rem - 3px) 15px;
+}
+
+.cds--btn--lg {
+  min-height: 3rem;
+}
+
+.cds--btn--xl,
+.cds--btn--2xl {
+  min-height: 4rem;
+  padding: calc(1.375rem - 3px) 63px calc(1.375rem - 3px) 15px;
+}
+
+.cds--btn--icon-only {
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cds--btn--icon-only.cds--btn--sm {
+  width: 2rem;
+  height: 2rem;
+}
+
+.cds--btn--icon-only.cds--btn--md {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.cds--btn--icon-only.cds--btn--lg {
+  width: 3rem;
+  height: 3rem;
+}
+
+.cds--btn--icon-only.cds--btn--xl {
+  width: 4rem;
+  height: 4rem;
+}
+
+.cds--btn__icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  position: absolute;
+  right: 1rem;
+}
+
+.cds--btn-set {
+  display: flex;
+}
+
+.cds--btn-set .cds--btn {
+  max-width: 12.25rem;
+  width: 100%;
+}
+
+/* ==========================================================================
+   6. Component CSS — Text Input & Form (.cds--text-input, .cds--form-item)
+   ========================================================================== */
+
+.cds--form-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+  margin-bottom: var(--cds-spacing-06);
+}
+
+.cds--label {
+  display: inline-block;
+  font-family: var(--cds-font-family-sans);
+  font-size: var(--cds-label-01-font-size);
+  font-weight: var(--cds-label-01-font-weight);
+  line-height: var(--cds-label-01-line-height);
+  letter-spacing: var(--cds-label-01-letter-spacing);
+  color: var(--cds-text-secondary);
+  margin-bottom: var(--cds-spacing-03);
+  vertical-align: baseline;
+}
+
+.cds--label--disabled {
+  color: var(--cds-text-disabled);
+}
+
+.cds--form__helper-text {
+  font-size: var(--cds-helper-text-01-font-size);
+  line-height: var(--cds-helper-text-01-line-height);
+  letter-spacing: var(--cds-helper-text-01-letter-spacing);
+  color: var(--cds-text-helper);
+  margin-top: var(--cds-spacing-02);
+}
+
+.cds--form__helper-text--disabled {
+  color: var(--cds-text-disabled);
+}
+
+.cds--form-requirement {
+  display: block;
+  font-size: var(--cds-caption-01-font-size);
+  line-height: var(--cds-caption-01-line-height);
+  letter-spacing: var(--cds-caption-01-letter-spacing);
+  color: var(--cds-text-error);
+  margin: var(--cds-spacing-02) 0 0;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.cds--form-requirement--visible,
+[data-invalid] ~ .cds--form-requirement {
+  max-height: 12.5rem;
+}
+
+.cds--text-input-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.cds--text-input {
+  display: block;
+  width: 100%;
+  height: 2.5rem;
+  min-width: 10rem;
+  padding: 0 var(--cds-spacing-05);
+  background-color: var(--cds-field-01);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  color: var(--cds-text-primary);
+  font-family: var(--cds-font-family-sans);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color var(--cds-duration-fast-01), background-color var(--cds-duration-fast-01);
+}
+
+.cds--text-input:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--text-input:hover {
+  background-color: var(--cds-field-hover-01);
+}
+
+.cds--text-input::placeholder {
+  color: var(--cds-text-placeholder);
+  opacity: 1;
+}
+
+.cds--text-input:disabled {
+  background-color: var(--cds-field-01);
+  border-bottom-color: transparent;
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
+.cds--text-input:read-only {
+  background-color: transparent;
+  border-bottom-color: var(--cds-border-subtle-01);
+  cursor: default;
+}
+
+.cds--text-input[data-invalid] {
+  outline: 2px solid var(--cds-support-error);
+  outline-offset: -2px;
+}
+
+.cds--text-input--sm {
+  height: 2rem;
+}
+
+.cds--text-input--lg {
+  height: 3rem;
+}
+
+.cds--text-input--light {
+  background-color: var(--cds-field-02);
+}
+
+.cds--text-area {
+  display: block;
+  width: 100%;
+  min-height: 2.5rem;
+  min-width: 10rem;
+  padding: calc(var(--cds-spacing-03) - 1px) var(--cds-spacing-05);
+  background-color: var(--cds-field-01);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  color: var(--cds-text-primary);
+  font-family: var(--cds-font-family-sans);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  resize: vertical;
+  transition: outline-color var(--cds-duration-fast-01), background-color var(--cds-duration-fast-01);
+}
+
+.cds--text-area:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--text-area:hover {
+  background-color: var(--cds-field-hover-01);
+}
+
+.cds--text-area::placeholder {
+  color: var(--cds-text-placeholder);
+  opacity: 1;
+}
+
+.cds--text-area:disabled {
+  background-color: var(--cds-field-01);
+  border-bottom-color: transparent;
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
+.cds--number-input {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.cds--number__input-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.cds--number input[type='number'] {
+  display: block;
+  width: 100%;
+  height: 2.5rem;
+  min-width: 9.375rem;
+  padding: 0 var(--cds-spacing-09) 0 var(--cds-spacing-05);
+  background-color: var(--cds-field-01);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  color: var(--cds-text-primary);
+  font-family: var(--cds-font-family-sans);
+  font-size: var(--cds-body-compact-01-font-size);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  appearance: textfield;
+}
+
+.cds--number input[type='number']:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--number input[type='number']::-webkit-inner-spin-button,
+.cds--number input[type='number']::-webkit-outer-spin-button {
+  appearance: none;
+}
+
+.cds--number__controls {
+  position: absolute;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.cds--number__control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 50%;
+  border: none;
+  background-color: transparent;
+  color: var(--cds-icon-primary);
+  cursor: pointer;
+}
+
+.cds--number__control-btn:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--select {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.cds--select-input {
+  display: block;
+  width: 100%;
+  height: 2.5rem;
+  min-width: 10rem;
+  padding: 0 var(--cds-spacing-09) 0 var(--cds-spacing-05);
+  background-color: var(--cds-field-01);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  color: var(--cds-text-primary);
+  font-family: var(--cds-font-family-sans);
+  font-size: var(--cds-body-compact-01-font-size);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  appearance: none;
+  cursor: pointer;
+  transition: outline-color var(--cds-duration-fast-01), background-color var(--cds-duration-fast-01);
+}
+
+.cds--select-input:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--select-input:hover {
+  background-color: var(--cds-field-hover-01);
+}
+
+.cds--select-input:disabled {
+  background-color: var(--cds-field-01);
+  border-bottom-color: transparent;
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
+.cds--select__arrow {
+  position: absolute;
+  right: var(--cds-spacing-05);
+  top: 50%;
+  transform: translateY(-50%);
+  fill: var(--cds-icon-primary);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   7. Component CSS — Data Table (.cds--data-table)
+   ========================================================================== */
+
+.cds--data-table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.cds--data-table-header {
+  padding: var(--cds-spacing-05) 0 var(--cds-spacing-06) var(--cds-spacing-05);
+  background-color: var(--cds-layer-01);
+}
+
+.cds--data-table-header__title {
+  font-size: var(--cds-heading-03-font-size);
+  font-weight: var(--cds-heading-03-font-weight);
+  line-height: var(--cds-heading-03-line-height);
+  color: var(--cds-text-primary);
+}
+
+.cds--data-table-header__description {
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-secondary);
+}
+
+.cds--table-toolbar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 3rem;
+  background-color: var(--cds-layer-01);
+  overflow: hidden;
+}
+
+.cds--toolbar-content {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  height: 3rem;
+}
+
+.cds--toolbar-search-container-expandable {
+  position: relative;
+  width: 3rem;
+  height: 3rem;
+  cursor: pointer;
+  transition: width var(--cds-duration-moderate-01) var(--cds-ease-productive-standard);
+}
+
+.cds--toolbar-search-container-expandable.cds--toolbar-search-container-active {
+  width: 100%;
+}
+
+.cds--data-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.cds--data-table thead {
+  background-color: var(--cds-layer-accent-01);
+}
+
+.cds--data-table th {
+  padding: 0 var(--cds-spacing-05);
+  height: 3rem;
+  font-size: var(--cds-heading-compact-01-font-size);
+  font-weight: var(--cds-heading-compact-01-font-weight);
+  line-height: var(--cds-heading-compact-01-line-height);
+  letter-spacing: var(--cds-heading-compact-01-letter-spacing);
+  color: var(--cds-text-primary);
+  text-align: start;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  vertical-align: middle;
+}
+
+.cds--data-table td {
+  padding: 0 var(--cds-spacing-05);
+  height: 3rem;
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  color: var(--cds-text-secondary);
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  vertical-align: middle;
+  background-color: var(--cds-layer-01);
+}
+
+.cds--data-table tbody tr:hover td {
+  background-color: var(--cds-layer-hover-01);
+  color: var(--cds-text-primary);
+}
+
+.cds--data-table--compact th,
+.cds--data-table--compact td {
+  height: 1.5rem;
+  padding-block: var(--cds-spacing-01);
+}
+
+.cds--data-table--xs th,
+.cds--data-table--xs td {
+  height: 1.5rem;
+  padding-block: var(--cds-spacing-01);
+}
+
+.cds--data-table--short th,
+.cds--data-table--short td {
+  height: 2rem;
+  padding-block: var(--cds-spacing-02);
+}
+
+.cds--data-table--sm th,
+.cds--data-table--sm td {
+  height: 2rem;
+  padding-block: var(--cds-spacing-02);
+}
+
+.cds--data-table--md th,
+.cds--data-table--md td {
+  height: 2.5rem;
+  padding-block: var(--cds-spacing-03);
+}
+
+.cds--data-table--tall th,
+.cds--data-table--tall td {
+  height: 4rem;
+  padding-block: var(--cds-spacing-05);
+}
+
+.cds--data-table--lg th,
+.cds--data-table--lg td {
+  height: 4rem;
+  padding-block: var(--cds-spacing-05);
+}
+
+.cds--data-table--xl th,
+.cds--data-table--xl td {
+  height: 4rem;
+  padding-block: var(--cds-spacing-05);
+}
+
+.cds--data-table--zebra tbody tr:nth-child(even) td {
+  background-color: var(--cds-layer-01);
+  border-bottom: 1px solid var(--cds-layer-01);
+}
+
+.cds--data-table--zebra tbody tr:nth-child(odd) td {
+  background-color: var(--cds-layer-02);
+  border-bottom: 1px solid var(--cds-layer-02);
+}
+
+.cds--data-table--zebra tbody tr:hover td {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--data-table--sort th {
+  cursor: pointer;
+}
+
+.cds--data-table--sort th:hover {
+  background-color: var(--cds-layer-accent-hover-01);
+}
+
+.cds--table-sort {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+}
+
+.cds--table-sort__icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  margin-left: var(--cds-spacing-03);
+  opacity: 0;
+  fill: var(--cds-icon-primary);
+  transition: opacity var(--cds-duration-fast-01), transform var(--cds-duration-fast-01);
+}
+
+.cds--table-sort:hover .cds--table-sort__icon {
+  opacity: 1;
+}
+
+.cds--table-sort--active .cds--table-sort__icon {
+  opacity: 1;
+}
+
+.cds--table-sort--ascending .cds--table-sort__icon {
+  transform: rotate(180deg);
+}
+
+.cds--data-table--selected td {
+  background-color: var(--cds-layer-selected-01);
+  color: var(--cds-text-primary);
+  border-bottom-color: var(--cds-layer-active-01);
+}
+
+.cds--data-table--selected:hover td {
+  background-color: var(--cds-layer-selected-hover-01);
+}
+
+.cds--data-table .cds--table-column-checkbox {
+  width: 2.5rem;
+  padding: 0;
+  text-align: center;
+}
+
+.cds--data-table .cds--table-expand {
+  width: 2.5rem;
+  padding: 0;
+  text-align: center;
+}
+
+.cds--data-table .cds--table-expand__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.cds--data-table .cds--table-expand__svg {
+  transition: transform var(--cds-duration-fast-02) var(--cds-ease-productive-standard);
+  fill: var(--cds-icon-primary);
+}
+
+.cds--data-table--expanded .cds--table-expand__svg {
+  transform: rotate(90deg);
+}
+
+.cds--table-row--expanded + .cds--expandable-row td {
+  padding: var(--cds-spacing-05);
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+
+.cds--data-table--sticky-header {
+  position: relative;
+  max-height: 18.75rem;
+  overflow-y: auto;
+}
+
+.cds--data-table--sticky-header thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.cds--table-header-label {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   8. Component CSS — Modal (.cds--modal)
+   ========================================================================== */
+
+.cds--modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  background-color: var(--cds-overlay);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--cds-duration-moderate-02) var(--cds-ease-productive-standard),
+              visibility var(--cds-duration-moderate-02) var(--cds-ease-productive-standard);
+}
+
+.cds--modal.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.cds--modal-container {
+  position: relative;
+  background-color: var(--cds-layer-01);
+  max-height: 100%;
+  width: 84%;
+  max-width: 36rem;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  transform: translate3d(0, -1.5rem, 0);
+  transition: transform var(--cds-duration-moderate-02) var(--cds-ease-productive-standard);
+}
+
+.cds--modal.is-visible .cds--modal-container {
+  transform: translate3d(0, 0, 0);
+}
+
+.cds--modal-container--xs {
+  max-width: 20rem;
+}
+
+.cds--modal-container--sm {
+  max-width: 30rem;
+}
+
+.cds--modal-container--md {
+  max-width: 36rem;
+}
+
+.cds--modal-container--lg {
+  max-width: 48rem;
+  width: 96%;
+}
+
+.cds--modal-header {
+  padding: var(--cds-spacing-05) var(--cds-spacing-05) var(--cds-spacing-04);
+  padding-right: var(--cds-spacing-09);
+  margin-bottom: 0;
+}
+
+.cds--modal-header__label {
+  font-size: var(--cds-label-01-font-size);
+  font-weight: var(--cds-label-01-font-weight);
+  line-height: var(--cds-label-01-line-height);
+  letter-spacing: var(--cds-label-01-letter-spacing);
+  color: var(--cds-text-secondary);
+  margin-bottom: var(--cds-spacing-02);
+}
+
+.cds--modal-header__heading {
+  font-size: var(--cds-heading-03-font-size);
+  font-weight: var(--cds-heading-03-font-weight);
+  line-height: var(--cds-heading-03-line-height);
+  color: var(--cds-text-primary);
+}
+
+.cds--modal-content {
+  padding: 0 var(--cds-spacing-05) var(--cds-spacing-06);
+  overflow-y: auto;
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  letter-spacing: var(--cds-body-01-letter-spacing);
+  color: var(--cds-text-primary);
+}
+
+.cds--modal-content p {
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+}
+
+.cds--modal-content--overflow-indicator {
+  position: relative;
+}
+
+.cds--modal-content--overflow-indicator::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2rem;
+  background: linear-gradient(transparent, var(--cds-layer-01));
+  pointer-events: none;
+}
+
+.cds--modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.cds--modal-footer .cds--btn {
+  flex: 0 1 50%;
+  max-width: none;
+  height: 4rem;
+  margin: 0;
+  padding-top: var(--cds-spacing-05);
+  border-radius: 0;
+}
+
+.cds--modal-footer--three-button .cds--btn {
+  flex: 0 1 calc(100% / 3);
+}
+
+.cds--modal-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3rem;
+  height: 3rem;
+  padding: 0.75rem;
+  background-color: transparent;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--cds-duration-fast-01);
+}
+
+.cds--modal-close:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--modal-close:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+  border-color: transparent;
+}
+
+.cds--modal-close__icon {
+  fill: var(--cds-icon-primary);
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.cds--modal--danger .cds--modal-footer .cds--btn--primary {
+  background-color: var(--cds-button-danger-primary);
+}
+
+.cds--modal--danger .cds--modal-footer .cds--btn--primary:hover {
+  background-color: var(--cds-button-danger-hover);
+}
+
+.cds--modal--danger .cds--modal-footer .cds--btn--primary:active {
+  background-color: var(--cds-button-danger-active);
+}
+
+/* ==========================================================================
+   9. Component CSS — Notification (.cds--inline-notification, .cds--toast-notification)
+   ========================================================================== */
+
+.cds--inline-notification {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  padding: var(--cds-spacing-04) var(--cds-spacing-05);
+  min-height: 3rem;
+  width: 100%;
+  color: var(--cds-text-primary);
+  margin-bottom: var(--cds-spacing-05);
+}
+
+.cds--inline-notification--error {
+  background-color: var(--cds-notification-background-error);
+  border-left: 3px solid var(--cds-support-error);
+}
+
+.cds--inline-notification--success {
+  background-color: var(--cds-notification-background-success);
+  border-left: 3px solid var(--cds-support-success);
+}
+
+.cds--inline-notification--warning {
+  background-color: var(--cds-notification-background-warning);
+  border-left: 3px solid var(--cds-support-warning);
+}
+
+.cds--inline-notification--info,
+.cds--inline-notification--info-square {
+  background-color: var(--cds-notification-background-info);
+  border-left: 3px solid var(--cds-support-info);
+}
+
+.cds--inline-notification--low-contrast {
+  border-left-width: 3px;
+}
+
+.cds--inline-notification__icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: var(--cds-spacing-04);
+  margin-top: 0.0625rem;
+}
+
+.cds--inline-notification__title {
+  font-size: var(--cds-heading-compact-01-font-size);
+  font-weight: var(--cds-heading-compact-01-font-weight);
+  line-height: var(--cds-heading-compact-01-line-height);
+  letter-spacing: var(--cds-heading-compact-01-letter-spacing);
+  margin: 0 var(--cds-spacing-02) 0 0;
+}
+
+.cds--inline-notification__subtitle {
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  word-break: break-word;
+}
+
+.cds--inline-notification__close-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.cds--inline-notification__close-button:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--inline-notification__close-icon {
+  fill: var(--cds-icon-primary);
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.cds--inline-notification__action-button {
+  display: inline-flex;
+  align-items: center;
+  height: 2rem;
+  padding: 0 var(--cds-spacing-04);
+  margin-left: var(--cds-spacing-04);
+  background-color: transparent;
+  border: 1px solid var(--cds-notification-action-tertiary-inverse);
+  color: var(--cds-notification-action-tertiary-inverse);
+  font-size: var(--cds-body-compact-01-font-size);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cds--inline-notification__action-button:hover {
+  background-color: var(--cds-notification-action-tertiary-inverse);
+  color: var(--cds-notification-action-tertiary-inverse-text);
+}
+
+.cds--toast-notification {
+  display: flex;
+  flex-direction: column;
+  width: 18rem;
+  padding: var(--cds-spacing-04) var(--cds-spacing-05);
+  padding-right: var(--cds-spacing-09);
+  color: var(--cds-text-inverse);
+  background-color: var(--cds-background-inverse);
+  box-shadow: 0 2px 6px var(--cds-shadow);
+  margin-bottom: var(--cds-spacing-03);
+  position: relative;
+}
+
+.cds--toast-notification--error {
+  border-left: 3px solid var(--cds-support-error-inverse);
+}
+
+.cds--toast-notification--success {
+  border-left: 3px solid var(--cds-support-success-inverse);
+}
+
+.cds--toast-notification--warning {
+  border-left: 3px solid var(--cds-support-warning-inverse);
+}
+
+.cds--toast-notification--info,
+.cds--toast-notification--info-square {
+  border-left: 3px solid var(--cds-support-info-inverse);
+}
+
+.cds--toast-notification__icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: var(--cds-spacing-04);
+  fill: currentColor;
+}
+
+.cds--toast-notification__title {
+  font-size: var(--cds-heading-compact-01-font-size);
+  font-weight: var(--cds-heading-compact-01-font-weight);
+  word-break: break-word;
+}
+
+.cds--toast-notification__subtitle {
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  margin-top: 0;
+  color: var(--cds-text-inverse);
+  word-break: break-word;
+}
+
+.cds--toast-notification__caption {
+  font-size: var(--cds-body-compact-01-font-size);
+  color: var(--cds-text-inverse);
+  margin-top: var(--cds-spacing-04);
+  padding-top: var(--cds-spacing-04);
+}
+
+.cds--toast-notification__close-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.cds--toast-notification__close-button:focus {
+  outline: 2px solid var(--cds-focus-inverse);
+  outline-offset: -2px;
+}
+
+/* ==========================================================================
+   10. Component CSS — Tabs (.cds--tabs)
+   ========================================================================== */
+
+.cds--tabs {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.cds--tab--list {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.cds--tab--list::-webkit-scrollbar {
+  display: none;
+}
+
+.cds--tabs__nav-item {
+  display: flex;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.cds--tabs__nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--cds-spacing-04) var(--cds-spacing-05);
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: var(--cds-body-compact-01-font-weight);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  color: var(--cds-text-secondary);
+  text-decoration: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+  outline: 2px solid transparent;
+  transition: color var(--cds-duration-fast-01), border-color var(--cds-duration-fast-01), outline-color var(--cds-duration-fast-01);
+}
+
+.cds--tabs__nav-link:hover {
+  color: var(--cds-text-primary);
+  border-bottom-color: var(--cds-border-strong-01);
+}
+
+.cds--tabs__nav-link:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--tabs__nav-link--active,
+.cds--tabs__nav-item--selected .cds--tabs__nav-link,
+.cds--tabs__nav-link[aria-selected="true"] {
+  color: var(--cds-text-primary);
+  font-weight: 600;
+  border-bottom-color: var(--cds-border-interactive);
+}
+
+.cds--tabs__nav-link:disabled,
+.cds--tabs__nav-item--disabled .cds--tabs__nav-link {
+  color: var(--cds-text-disabled);
+  border-bottom-color: transparent;
+  cursor: not-allowed;
+}
+
+.cds--tabs--contained .cds--tab--list {
+  border-bottom: none;
+  background-color: var(--cds-layer-accent-01);
+}
+
+.cds--tabs--contained .cds--tabs__nav-link {
+  padding: var(--cds-spacing-03) var(--cds-spacing-05);
+  border-bottom: none;
+  border-right: 1px solid var(--cds-border-strong-01);
+}
+
+.cds--tabs--contained .cds--tabs__nav-link--active,
+.cds--tabs--contained .cds--tabs__nav-item--selected .cds--tabs__nav-link {
+  background-color: var(--cds-layer-01);
+  box-shadow: inset 0 2px 0 0 var(--cds-border-interactive);
+}
+
+.cds--tab-content {
+  padding: var(--cds-spacing-05);
+}
+
+.cds--tabs--vertical {
+  flex-direction: row;
+}
+
+.cds--tabs--vertical .cds--tab--list {
+  flex-direction: column;
+  border-bottom: none;
+  border-right: 1px solid var(--cds-border-subtle-01);
+}
+
+.cds--tabs--vertical .cds--tabs__nav-link {
+  border-bottom: none;
+  border-left: 2px solid transparent;
+}
+
+.cds--tabs--vertical .cds--tabs__nav-link--active,
+.cds--tabs--vertical .cds--tabs__nav-item--selected .cds--tabs__nav-link {
+  border-left-color: var(--cds-border-interactive);
+  border-bottom-color: transparent;
+}
+
+/* ==========================================================================
+   11. Component CSS — Dropdown (.cds--dropdown)
+   ========================================================================== */
+
+.cds--dropdown {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 2.5rem;
+  cursor: pointer;
+  outline: none;
+  transition: outline-color var(--cds-duration-fast-01);
+}
+
+.cds--dropdown__wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.cds--list-box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  max-height: 2.5rem;
+  background-color: var(--cds-field-01);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  color: var(--cds-text-primary);
+  cursor: pointer;
+  outline: 2px solid transparent;
+  transition: outline-color var(--cds-duration-fast-01);
+}
+
+.cds--list-box:hover {
+  background-color: var(--cds-field-hover-01);
+}
+
+.cds--list-box:focus-within,
+.cds--dropdown:focus-within .cds--list-box {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--list-box--sm {
+  max-height: 2rem;
+}
+
+.cds--list-box--lg {
+  max-height: 3rem;
+}
+
+.cds--list-box--light {
+  background-color: var(--cds-field-02);
+}
+
+.cds--list-box--disabled {
+  background-color: var(--cds-field-01);
+  border-bottom-color: transparent;
+  cursor: not-allowed;
+}
+
+.cds--list-box--disabled .cds--list-box__label {
+  color: var(--cds-text-disabled);
+}
+
+.cds--list-box__field {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0 var(--cds-spacing-09) 0 var(--cds-spacing-05);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  background: none;
+  border: none;
+  outline: none;
+  min-height: 2.5rem;
+}
+
+.cds--list-box__label {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-primary);
+}
+
+.cds--list-box__menu-icon {
+  position: absolute;
+  right: var(--cds-spacing-05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform var(--cds-duration-fast-02) var(--cds-ease-productive-standard);
+}
+
+.cds--list-box--expanded .cds--list-box__menu-icon {
+  transform: rotate(180deg);
+}
+
+.cds--list-box__menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 6000;
+  max-height: 11rem;
+  overflow-y: auto;
+  background-color: var(--cds-layer-01);
+  box-shadow: 0 2px 6px var(--cds-shadow);
+}
+
+.cds--list-box--expanded .cds--list-box__menu,
+.cds--dropdown--open .cds--list-box__menu {
+  display: block;
+}
+
+.cds--list-box__menu-item {
+  display: flex;
+  align-items: center;
+  height: 2.5rem;
+  padding: 0 var(--cds-spacing-05);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-secondary);
+  cursor: pointer;
+  outline: 2px solid transparent;
+  transition: background-color var(--cds-duration-fast-01);
+}
+
+.cds--list-box__menu-item:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--list-box__menu-item--active,
+.cds--list-box__menu-item--highlighted {
+  background-color: var(--cds-layer-selected-01);
+  color: var(--cds-text-primary);
+}
+
+.cds--list-box__menu-item:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--list-box__menu-item__option {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: var(--cds-spacing-04) 0;
+}
+
+.cds--list-box__selection {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-right: var(--cds-spacing-05);
+}
+
+.cds--dropdown--inline {
+  display: inline-flex;
+  border-bottom-color: transparent;
+  background-color: transparent;
+}
+
+.cds--dropdown--inline:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+/* ==========================================================================
+   12. Component CSS — Checkbox (.cds--checkbox)
+   ========================================================================== */
+
+.cds--checkbox-wrapper {
+  display: flex;
+  align-items: flex-start;
+}
+
+.cds--checkbox {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.cds--checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+  min-height: 1.5rem;
+  padding-left: 1.25rem;
+  position: relative;
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  color: var(--cds-text-primary);
+}
+
+.cds--checkbox-label::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--cds-icon-primary);
+  border-radius: 1px;
+  background-color: transparent;
+  transition: background-color var(--cds-duration-fast-01), border-color var(--cds-duration-fast-01);
+}
+
+.cds--checkbox-label::after {
+  content: '';
+  position: absolute;
+  left: 0.35rem;
+  top: 0.3rem;
+  width: 0.5625rem;
+  height: 0.3125rem;
+  border-left: 1.5px solid var(--cds-icon-on-color);
+  border-bottom: 1.5px solid var(--cds-icon-on-color);
+  transform: scale(0) rotate(-45deg);
+  transition: transform var(--cds-duration-fast-01) var(--cds-ease-productive-standard);
+}
+
+.cds--checkbox:checked + .cds--checkbox-label::before {
+  background-color: var(--cds-icon-primary);
+  border-color: var(--cds-icon-primary);
+}
+
+.cds--checkbox:checked + .cds--checkbox-label::after {
+  transform: scale(1) rotate(-45deg);
+}
+
+.cds--checkbox:indeterminate + .cds--checkbox-label::before {
+  background-color: var(--cds-icon-primary);
+  border-color: var(--cds-icon-primary);
+}
+
+.cds--checkbox:indeterminate + .cds--checkbox-label::after {
+  border-left: none;
+  border-bottom: 1.5px solid var(--cds-icon-on-color);
+  transform: scale(1) rotate(0deg);
+  top: 0.6875rem;
+  left: 0.1875rem;
+  width: 0.625rem;
+}
+
+.cds--checkbox:focus + .cds--checkbox-label::before {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 1px;
+}
+
+.cds--checkbox:disabled + .cds--checkbox-label {
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
+.cds--checkbox:disabled + .cds--checkbox-label::before {
+  border-color: var(--cds-icon-disabled);
+}
+
+.cds--checkbox:checked:disabled + .cds--checkbox-label::before {
+  background-color: var(--cds-icon-disabled);
+  border-color: var(--cds-icon-disabled);
+}
+
+/* ==========================================================================
+   13. Component CSS — Tag (.cds--tag)
+   ========================================================================== */
+
+.cds--tag {
+  display: inline-flex;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 var(--cds-spacing-03);
+  border-radius: 624.9375rem;
+  border: 1px solid transparent;
+  font-size: var(--cds-label-01-font-size);
+  font-weight: var(--cds-label-01-font-weight);
+  line-height: var(--cds-label-01-line-height);
+  letter-spacing: var(--cds-label-01-letter-spacing);
+  cursor: default;
+  max-width: 100%;
+  min-width: 2rem;
+  word-break: break-word;
+}
+
+.cds--tag--red { background-color: var(--cds-tag-background-red); color: var(--cds-tag-color-red); }
+.cds--tag--magenta { background-color: var(--cds-tag-background-magenta); color: var(--cds-tag-color-magenta); }
+.cds--tag--purple { background-color: var(--cds-tag-background-purple); color: var(--cds-tag-color-purple); }
+.cds--tag--blue { background-color: var(--cds-tag-background-blue); color: var(--cds-tag-color-blue); }
+.cds--tag--cyan { background-color: var(--cds-tag-background-cyan); color: var(--cds-tag-color-cyan); }
+.cds--tag--teal { background-color: var(--cds-tag-background-teal); color: var(--cds-tag-color-teal); }
+.cds--tag--green { background-color: var(--cds-tag-background-green); color: var(--cds-tag-color-green); }
+.cds--tag--gray { background-color: var(--cds-tag-background-gray); color: var(--cds-tag-color-gray); }
+.cds--tag--cool-gray { background-color: var(--cds-tag-background-cool-gray); color: var(--cds-tag-color-cool-gray); }
+.cds--tag--warm-gray { background-color: var(--cds-tag-background-warm-gray); color: var(--cds-tag-color-warm-gray); }
+
+.cds--tag--red:hover { background-color: var(--cds-tag-hover-red); }
+.cds--tag--magenta:hover { background-color: var(--cds-tag-hover-magenta); }
+.cds--tag--purple:hover { background-color: var(--cds-tag-hover-purple); }
+.cds--tag--blue:hover { background-color: var(--cds-tag-hover-blue); }
+.cds--tag--cyan:hover { background-color: var(--cds-tag-hover-cyan); }
+.cds--tag--teal:hover { background-color: var(--cds-tag-hover-teal); }
+.cds--tag--green:hover { background-color: var(--cds-tag-hover-green); }
+.cds--tag--gray:hover { background-color: var(--cds-tag-hover-gray); }
+.cds--tag--cool-gray:hover { background-color: var(--cds-tag-hover-cool-gray); }
+.cds--tag--warm-gray:hover { background-color: var(--cds-tag-hover-warm-gray); }
+
+.cds--tag--outline {
+  background-color: transparent;
+}
+.cds--tag--outline.cds--tag--red { border-color: var(--cds-tag-border-red); color: var(--cds-tag-color-red); }
+.cds--tag--outline.cds--tag--magenta { border-color: var(--cds-tag-border-magenta); color: var(--cds-tag-color-magenta); }
+.cds--tag--outline.cds--tag--purple { border-color: var(--cds-tag-border-purple); color: var(--cds-tag-color-purple); }
+.cds--tag--outline.cds--tag--blue { border-color: var(--cds-tag-border-blue); color: var(--cds-tag-color-blue); }
+.cds--tag--outline.cds--tag--cyan { border-color: var(--cds-tag-border-cyan); color: var(--cds-tag-color-cyan); }
+.cds--tag--outline.cds--tag--teal { border-color: var(--cds-tag-border-teal); color: var(--cds-tag-color-teal); }
+.cds--tag--outline.cds--tag--green { border-color: var(--cds-tag-border-green); color: var(--cds-tag-color-green); }
+.cds--tag--outline.cds--tag--gray { border-color: var(--cds-tag-border-gray); color: var(--cds-tag-color-gray); }
+.cds--tag--outline.cds--tag--cool-gray { border-color: var(--cds-tag-border-cool-gray); color: var(--cds-tag-color-cool-gray); }
+.cds--tag--outline.cds--tag--warm-gray { border-color: var(--cds-tag-border-warm-gray); color: var(--cds-tag-color-warm-gray); }
+
+.cds--tag--high-contrast {
+  background-color: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+}
+
+.cds--tag--sm {
+  height: 1.125rem;
+  font-size: 0.6875rem;
+  padding: 0 var(--cds-spacing-02);
+}
+
+.cds--tag--md {
+  height: 1.5rem;
+}
+
+.cds--tag--lg {
+  height: 2rem;
+  padding: 0 var(--cds-spacing-04);
+}
+
+.cds--tag--filter {
+  cursor: pointer;
+}
+
+.cds--tag__close-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  margin-left: var(--cds-spacing-02);
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  fill: currentColor;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cds--tag__close-icon:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.cds--tag__close-icon:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--tag--disabled {
+  color: var(--cds-text-disabled);
+  background-color: var(--cds-layer-01);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.cds--tag__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* ==========================================================================
+   14. Component CSS — Pagination (.cds--pagination)
+   ========================================================================== */
+
+.cds--pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  min-height: 2.5rem;
+  background-color: var(--cds-layer-01);
+  border-top: 1px solid var(--cds-border-subtle-01);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-primary);
+  overflow-x: auto;
+}
+
+.cds--pagination__left,
+.cds--pagination__right {
+  display: flex;
+  align-items: center;
+  height: 2.5rem;
+}
+
+.cds--pagination__left {
+  padding: 0 var(--cds-spacing-05);
+}
+
+.cds--pagination__text {
+  margin: 0 var(--cds-spacing-02);
+  white-space: nowrap;
+}
+
+.cds--pagination__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--cds-icon-primary);
+  fill: var(--cds-icon-primary);
+  outline: none;
+  transition: background-color var(--cds-duration-fast-01);
+}
+
+.cds--pagination__button:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--pagination__button:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--pagination__button:disabled {
+  color: var(--cds-text-disabled);
+  fill: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
+.cds--pagination__button:disabled:hover {
+  background: none;
+}
+
+.cds--pagination__button .cds--pagination__nav-arrow {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.cds--select--inline .cds--select-input {
+  height: 100%;
+  padding: 0 var(--cds-spacing-08) 0 var(--cds-spacing-05);
+  border-bottom: none;
+  background-color: transparent;
+}
+
+/* ==========================================================================
+   15. Component CSS — Breadcrumb (.cds--breadcrumb)
+   ========================================================================== */
+
+.cds--breadcrumb {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.cds--breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  margin-right: var(--cds-spacing-03);
+}
+
+.cds--breadcrumb-item::after {
+  content: '/';
+  margin-left: var(--cds-spacing-03);
+  color: var(--cds-text-primary);
+}
+
+.cds--breadcrumb-item:last-child::after {
+  content: '';
+  margin-left: 0;
+}
+
+.cds--breadcrumb--no-trailing-slash .cds--breadcrumb-item:last-child::after {
+  content: '';
+}
+
+.cds--link {
+  color: var(--cds-link-primary);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  text-decoration: none;
+  outline: 2px solid transparent;
+  transition: color var(--cds-duration-fast-01), outline-color var(--cds-duration-fast-01);
+}
+
+.cds--link:hover {
+  color: var(--cds-link-primary-hover);
+  text-decoration: underline;
+}
+
+.cds--link:focus {
+  outline: 2px solid var(--cds-focus);
+}
+
+.cds--link:active {
+  color: var(--cds-text-primary);
+}
+
+.cds--link:visited {
+  color: var(--cds-link-visited);
+}
+
+.cds--link--disabled {
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+  pointer-events: none;
+  text-decoration: none;
+}
+
+.cds--link--current-page,
+.cds--breadcrumb-item--current .cds--link {
+  color: var(--cds-text-primary);
+  cursor: default;
+  text-decoration: none;
+  pointer-events: none;
+}
+
+.cds--link--inline {
+  text-decoration: underline;
+}
+
+.cds--link--sm {
+  font-size: var(--cds-helper-text-01-font-size);
+}
+
+.cds--link--lg {
+  font-size: var(--cds-body-02-font-size);
+}
+
+/* ==========================================================================
+   16. Component CSS — Search (.cds--search)
+   ========================================================================== */
+
+.cds--search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.cds--search-input {
+  appearance: none;
+  border: none;
+  background-color: var(--cds-field-01);
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  color: var(--cds-text-primary);
+  font-family: var(--cds-font-family-sans);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  height: 3rem;
+  padding: 0 2.5rem 0 3rem;
+  width: 100%;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color var(--cds-duration-fast-01), background-color var(--cds-duration-fast-01);
+}
+
+.cds--search-input:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--search-input:hover {
+  background-color: var(--cds-field-hover-01);
+}
+
+.cds--search-input::placeholder {
+  color: var(--cds-text-placeholder);
+  opacity: 1;
+}
+
+.cds--search-input:disabled {
+  background-color: var(--cds-field-01);
+  border-bottom-color: transparent;
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
+.cds--search-magnifier {
+  position: absolute;
+  left: var(--cds-spacing-05);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  fill: var(--cds-icon-secondary);
+  pointer-events: none;
+}
+
+.cds--search-close {
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  fill: var(--cds-icon-primary);
+  outline: 2px solid transparent;
+  transition: outline-color var(--cds-duration-fast-01), background-color var(--cds-duration-fast-01);
+}
+
+.cds--search-close:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--search-close:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--search-close[hidden] {
+  display: none;
+}
+
+.cds--search-close svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.cds--search--sm .cds--search-input {
+  height: 2rem;
+  padding: 0 2rem 0 2rem;
+}
+
+.cds--search--sm .cds--search-magnifier {
+  left: var(--cds-spacing-03);
+}
+
+.cds--search--sm .cds--search-close {
+  width: 2rem;
+}
+
+.cds--search--md .cds--search-input {
+  height: 2.5rem;
+}
+
+.cds--search--lg .cds--search-input {
+  height: 3rem;
+}
+
+.cds--search--light .cds--search-input {
+  background-color: var(--cds-field-02);
+}
+
+.cds--search--expandable {
+  min-width: 3rem;
+  width: 3rem;
+  transition: width var(--cds-duration-moderate-01) var(--cds-ease-productive-standard);
+}
+
+.cds--search--expandable.cds--search--expanded {
+  width: 100%;
+}
+
+.cds--search--expandable .cds--search-input {
+  padding: 0;
+  width: 0;
+  border-bottom-color: transparent;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.cds--search--expandable.cds--search--expanded .cds--search-input {
+  padding: 0 2.5rem 0 3rem;
+  width: 100%;
+  background-color: var(--cds-field-01);
+  border-bottom-color: var(--cds-border-strong-01);
+  cursor: text;
+}
+
+/* ==========================================================================
+   17. Component CSS — Tooltip (.cds--tooltip)
+   ========================================================================== */
+
+.cds--tooltip {
+  position: absolute;
+  z-index: 6000;
+  display: none;
+  max-width: 18rem;
+  padding: var(--cds-spacing-03) var(--cds-spacing-05);
+  background-color: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  border-radius: 2px;
+  pointer-events: none;
+  box-shadow: 0 2px 6px var(--cds-shadow);
+  word-wrap: break-word;
+}
+
+.cds--tooltip--visible,
+.cds--tooltip[data-show] {
+  display: block;
+}
+
+.cds--tooltip__caret {
+  position: absolute;
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: var(--cds-background-inverse);
+  transform: rotate(45deg);
+}
+
+.cds--tooltip--bottom .cds--tooltip__caret {
+  top: -0.25rem;
+  left: 50%;
+  margin-left: -0.25rem;
+}
+
+.cds--tooltip--top .cds--tooltip__caret {
+  bottom: -0.25rem;
+  left: 50%;
+  margin-left: -0.25rem;
+}
+
+.cds--tooltip--left .cds--tooltip__caret {
+  right: -0.25rem;
+  top: 50%;
+  margin-top: -0.25rem;
+}
+
+.cds--tooltip--right .cds--tooltip__caret {
+  left: -0.25rem;
+  top: 50%;
+  margin-top: -0.25rem;
+}
+
+.cds--tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.cds--tooltip-trigger__wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Definition tooltip */
+.cds--definition-tooltip {
+  position: absolute;
+  z-index: 6000;
+  max-width: 11rem;
+  padding: var(--cds-spacing-03) var(--cds-spacing-05);
+  background-color: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   18. Component CSS — Popover (.cds--popover)
+   ========================================================================== */
+
+.cds--popover-container {
+  position: relative;
+  display: inline-flex;
+}
+
+.cds--popover {
+  position: absolute;
+  z-index: 6000;
+  display: none;
+}
+
+.cds--popover--open {
+  display: block;
+}
+
+.cds--popover-content {
+  padding: var(--cds-spacing-05);
+  background-color: var(--cds-layer-01);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-primary);
+  box-shadow: 0 2px 6px var(--cds-shadow);
+  max-width: 22rem;
+  border-radius: 2px;
+}
+
+.cds--popover--high-contrast .cds--popover-content {
+  background-color: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+}
+
+.cds--popover__caret {
+  position: absolute;
+  width: 0.75rem;
+  height: 0.75rem;
+  background-color: var(--cds-layer-01);
+  transform: rotate(45deg);
+  z-index: -1;
+}
+
+.cds--popover--high-contrast .cds--popover__caret {
+  background-color: var(--cds-background-inverse);
+}
+
+.cds--popover--bottom .cds--popover__caret {
+  top: -0.375rem;
+  left: 50%;
+  margin-left: -0.375rem;
+}
+
+.cds--popover--top .cds--popover__caret {
+  bottom: -0.375rem;
+  left: 50%;
+  margin-left: -0.375rem;
+}
+
+.cds--popover--caret-tip {
+  filter: drop-shadow(0 2px 2px var(--cds-shadow));
+}
+
+.cds--popover--tab-tip {
+  position: absolute;
+  z-index: 6000;
+}
+
+/* Toggletip variant */
+.cds--toggletip {
+  position: relative;
+  display: inline-flex;
+}
+
+.cds--toggletip-content {
+  padding: var(--cds-spacing-05);
+  background-color: var(--cds-layer-01);
+  color: var(--cds-text-primary);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  box-shadow: 0 2px 6px var(--cds-shadow);
+  max-width: 18rem;
+}
+
+.cds--toggletip-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  fill: var(--cds-icon-secondary);
+}
+
+.cds--toggletip-button:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 1px;
+}
+
+/* ==========================================================================
+   19. Component CSS — Loading (.cds--loading)
+   ========================================================================== */
+
+.cds--loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 6000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--cds-overlay);
+  transition: background-color var(--cds-duration-slow-01) var(--cds-ease-productive-standard);
+}
+
+.cds--loading-overlay--stop {
+  display: none;
+}
+
+.cds--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  animation: cds--loading__rotate 690ms linear infinite;
+}
+
+.cds--loading--small {
+  width: 1rem;
+  height: 1rem;
+}
+
+.cds--loading__svg {
+  width: 100%;
+  height: 100%;
+}
+
+.cds--loading__svg circle {
+  fill: none;
+  stroke: var(--cds-interactive);
+  stroke-width: 8;
+  stroke-dasharray: 240;
+  stroke-dashoffset: 0;
+  stroke-linecap: butt;
+  animation: cds--loading__stroke 1200ms ease-in-out infinite;
+}
+
+.cds--loading--small .cds--loading__svg circle {
+  stroke-width: 12;
+}
+
+@keyframes cds--loading__rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cds--loading__stroke {
+  0% {
+    stroke-dashoffset: 240;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.cds--inline-loading {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  width: 100%;
+}
+
+.cds--inline-loading__animation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--cds-spacing-03);
+}
+
+.cds--inline-loading__text {
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  color: var(--cds-text-secondary);
+}
+
+.cds--inline-loading__checkmark-container {
+  display: flex;
+}
+
+.cds--inline-loading--error .cds--inline-loading__text {
+  color: var(--cds-text-error);
+}
+
+/* ==========================================================================
+   20. Component CSS — Tile (.cds--tile)
+   ========================================================================== */
+
+.cds--tile {
+  display: block;
+  background-color: var(--cds-layer-01);
+  padding: var(--cds-spacing-05);
+  min-height: 4rem;
+  min-width: 8rem;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  position: relative;
+}
+
+.cds--tile--clickable {
+  cursor: pointer;
+  transition: background-color var(--cds-duration-fast-01) var(--cds-ease-productive-standard);
+}
+
+.cds--tile--clickable:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--tile--clickable:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--tile--selectable {
+  cursor: pointer;
+  transition: background-color var(--cds-duration-fast-01), outline-color var(--cds-duration-fast-01);
+  border: 1px solid var(--cds-border-tile-01);
+}
+
+.cds--tile--selectable:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--tile--is-selected {
+  outline: 1px solid var(--cds-border-inverse);
+  outline-offset: -1px;
+}
+
+.cds--tile--expandable {
+  cursor: pointer;
+  overflow: hidden;
+  transition: max-height var(--cds-duration-moderate-01) var(--cds-ease-productive-standard);
+}
+
+.cds--tile--is-expanded {
+  overflow: visible;
+}
+
+.cds--tile--light {
+  background-color: var(--cds-layer-02);
+}
+
+.cds--tile__chevron {
+  position: absolute;
+  bottom: var(--cds-spacing-03);
+  right: var(--cds-spacing-05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--cds-duration-fast-02) var(--cds-ease-productive-standard);
+}
+
+.cds--tile--is-expanded .cds--tile__chevron {
+  transform: rotate(180deg);
+}
+
+/* ==========================================================================
+   21. Component CSS — Accordion (.cds--accordion)
+   ========================================================================== */
+
+.cds--accordion {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.cds--accordion__item {
+  border-top: 1px solid var(--cds-border-subtle-01);
+  list-style: none;
+  overflow: visible;
+  transition: all var(--cds-duration-fast-02) var(--cds-ease-productive-standard);
+}
+
+.cds--accordion__item:last-child {
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+
+.cds--accordion__heading {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 var(--cds-spacing-05);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--cds-text-primary);
+  font-family: var(--cds-font-family-sans);
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: var(--cds-body-compact-01-font-weight);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  text-align: left;
+  outline: 2px solid transparent;
+  transition: background-color var(--cds-duration-fast-01), outline-color var(--cds-duration-fast-01);
+}
+
+.cds--accordion__heading:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--accordion__heading:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--accordion__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  margin-right: var(--cds-spacing-05);
+  fill: var(--cds-icon-primary);
+  transition: transform var(--cds-duration-fast-02) var(--cds-ease-productive-standard);
+}
+
+.cds--accordion__item--active > .cds--accordion__heading .cds--accordion__arrow {
+  transform: rotate(90deg);
+}
+
+.cds--accordion__title {
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: var(--cds-body-compact-01-font-weight);
+  line-height: var(--cds-body-compact-01-line-height);
+  margin: 0;
+  padding: var(--cds-spacing-04) 0;
+}
+
+.cds--accordion__content {
+  display: none;
+  padding: var(--cds-spacing-03) var(--cds-spacing-05) var(--cds-spacing-06);
+  padding-left: calc(var(--cds-spacing-05) + 1rem + var(--cds-spacing-05));
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  color: var(--cds-text-primary);
+}
+
+.cds--accordion__item--active > .cds--accordion__content {
+  display: block;
+}
+
+.cds--accordion--sm .cds--accordion__heading {
+  min-height: 2rem;
+}
+
+.cds--accordion--lg .cds--accordion__heading {
+  min-height: 3rem;
+}
+
+.cds--accordion__item--disabled .cds--accordion__heading {
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
+.cds--accordion__item--disabled .cds--accordion__arrow {
+  fill: var(--cds-icon-disabled);
+}
+
+/* ==========================================================================
+   22. Component CSS — Progress Indicator (.cds--progress)
+   ========================================================================== */
+
+.cds--progress {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cds--progress-step {
+  display: inline-flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 7rem;
+  overflow: visible;
+  position: relative;
+}
+
+.cds--progress-step-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+}
+
+.cds--progress-step-button:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+
+.cds--progress-step-button--unclickable {
+  cursor: default;
+}
+
+.cds--progress__indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.cds--progress-step--complete .cds--progress__indicator {
+  fill: var(--cds-interactive);
+  color: var(--cds-interactive);
+}
+
+.cds--progress-step--current .cds--progress__indicator {
+  fill: var(--cds-interactive);
+  color: var(--cds-interactive);
+}
+
+.cds--progress-step--incomplete .cds--progress__indicator {
+  fill: var(--cds-icon-primary);
+  color: var(--cds-icon-primary);
+}
+
+.cds--progress-step--disabled .cds--progress__indicator {
+  fill: var(--cds-icon-disabled);
+  cursor: not-allowed;
+}
+
+.cds--progress-label {
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: var(--cds-body-compact-01-font-weight);
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 88%;
+  margin: var(--cds-spacing-03) 0;
+}
+
+.cds--progress-step--current .cds--progress-label {
+  color: var(--cds-text-primary);
+  font-weight: 600;
+}
+
+.cds--progress-step--complete .cds--progress-label {
+  color: var(--cds-text-primary);
+}
+
+.cds--progress-step--incomplete .cds--progress-label {
+  color: var(--cds-text-secondary);
+}
+
+.cds--progress-step--disabled .cds--progress-label {
+  color: var(--cds-text-disabled);
+}
+
+.cds--progress-line {
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  top: 0.75rem;
+  left: 0;
+  background-color: var(--cds-border-subtle-01);
+}
+
+.cds--progress-step:first-child .cds--progress-line {
+  left: 50%;
+  width: 50%;
+}
+
+.cds--progress-step:last-child .cds--progress-line {
+  width: 50%;
+}
+
+.cds--progress-step--complete .cds--progress-line {
+  background-color: var(--cds-interactive);
+}
+
+.cds--progress-optional {
+  font-size: var(--cds-label-01-font-size);
+  color: var(--cds-text-secondary);
+  margin-top: var(--cds-spacing-01);
+}
+
+.cds--progress--vertical {
+  flex-direction: column;
+}
+
+.cds--progress--vertical .cds--progress-step {
+  flex-direction: row;
+  min-height: 3.625rem;
+  min-width: auto;
+  width: 100%;
+}
+
+.cds--progress--vertical .cds--progress-line {
+  width: 1px;
+  height: 100%;
+  top: 0;
+  left: 0.75rem;
+}
+
+/* ==========================================================================
+   23. Component CSS — File Uploader (.cds--file)
+   ========================================================================== */
+
+.cds--file {
+  width: 100%;
+}
+
+.cds--file--label {
+  font-size: var(--cds-heading-compact-01-font-size);
+  font-weight: var(--cds-heading-compact-01-font-weight);
+  line-height: var(--cds-heading-compact-01-line-height);
+  letter-spacing: var(--cds-heading-compact-01-letter-spacing);
+  color: var(--cds-text-primary);
+  margin-bottom: var(--cds-spacing-03);
+}
+
+.cds--label-description {
+  font-size: var(--cds-body-compact-01-font-size);
+  color: var(--cds-text-secondary);
+  margin-bottom: var(--cds-spacing-05);
+}
+
+.cds--file-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: var(--cds-spacing-05);
+}
+
+.cds--file__drop-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--cds-spacing-05);
+  min-height: 6rem;
+  border: 1px dashed var(--cds-border-strong-01);
+  background-color: var(--cds-field-01);
+  cursor: pointer;
+  font-size: var(--cds-body-compact-01-font-size);
+  color: var(--cds-text-secondary);
+  transition: background-color var(--cds-duration-fast-01), border-color var(--cds-duration-fast-01);
+}
+
+.cds--file__drop-container:hover {
+  background-color: var(--cds-field-hover-01);
+}
+
+.cds--file__drop-container--drag-over {
+  border-color: var(--cds-border-interactive);
+  background-color: var(--cds-highlight);
+}
+
+.cds--file-container {
+  margin-top: var(--cds-spacing-05);
+}
+
+.cds--file__selected-file {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  min-height: 2.5rem;
+  gap: var(--cds-spacing-03);
+  padding: 0 var(--cds-spacing-05);
+  background-color: var(--cds-layer-01);
+  margin-bottom: var(--cds-spacing-03);
+  word-break: break-all;
+}
+
+.cds--file-filename {
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cds--file__state-container {
+  display: flex;
+  align-items: center;
+}
+
+.cds--file__state-container .cds--loading {
+  width: 1rem;
+  height: 1rem;
+}
+
+.cds--file-close,
+.cds--file__state-container button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  fill: var(--cds-icon-primary);
+}
+
+.cds--file-close:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--file--invalid .cds--file__selected-file {
+  outline: 2px solid var(--cds-support-error);
+  outline-offset: -2px;
+}
+
+/* ==========================================================================
+   24. Component CSS — Date Picker (.cds--date-picker)
+   ========================================================================== */
+
+.cds--date-picker {
+  display: flex;
+}
+
+.cds--date-picker--single {
+  flex-direction: column;
+}
+
+.cds--date-picker--range {
+  display: flex;
+  align-items: flex-end;
+}
+
+.cds--date-picker--range > .cds--date-picker-container {
+  margin-right: var(--cds-spacing-02);
+}
+
+.cds--date-picker-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.cds--date-picker-input__wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cds--date-picker__input {
+  display: block;
+  width: 100%;
+  height: 2.5rem;
+  padding: 0 var(--cds-spacing-09) 0 var(--cds-spacing-05);
+  font-family: var(--cds-font-family-sans);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-primary);
+  background-color: var(--cds-field-01);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color var(--cds-duration-fast-01), background-color var(--cds-duration-fast-01);
+}
+
+.cds--date-picker__input:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--date-picker__input:hover {
+  background-color: var(--cds-field-hover-01);
+}
+
+.cds--date-picker__input::placeholder {
+  color: var(--cds-text-placeholder);
+  opacity: 1;
+}
+
+.cds--date-picker__input:disabled {
+  background-color: var(--cds-field-01);
+  border-bottom-color: transparent;
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
+.cds--date-picker__input[data-invalid] {
+  outline: 2px solid var(--cds-support-error);
+  outline-offset: -2px;
+}
+
+.cds--date-picker__input--sm {
+  height: 2rem;
+}
+
+.cds--date-picker__input--lg {
+  height: 3rem;
+}
+
+.cds--date-picker__icon {
+  position: absolute;
+  right: var(--cds-spacing-05);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  fill: var(--cds-icon-primary);
+  pointer-events: none;
+  cursor: pointer;
+}
+
+.cds--date-picker--light .cds--date-picker__input {
+  background-color: var(--cds-field-02);
+}
+
+/* ==========================================================================
+   25. Component CSS — UI Shell Header (.cds--header)
+   ========================================================================== */
+
+.cds--header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 8000;
+  display: flex;
+  align-items: center;
+  height: var(--cds-shell-header-height);
+  background-color: var(--cds-shell-header-bg);
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+
+.cds--header__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cds-shell-header-height);
+  height: var(--cds-shell-header-height);
+  border: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  transition: background-color var(--cds-duration-fast-01), outline-color var(--cds-duration-fast-01);
+}
+
+.cds--header__action > svg {
+  fill: var(--cds-shell-header-icon);
+}
+
+.cds--header__action:hover {
+  background-color: var(--cds-shell-header-bg-hover);
+}
+
+.cds--header__action:hover > svg {
+  fill: var(--cds-shell-header-icon-hover);
+}
+
+.cds--header__action:focus {
+  border-color: var(--cds-shell-header-focus);
+  outline: none;
+}
+
+.cds--header__action--active {
+  background-color: var(--cds-shell-header-bg-active);
+}
+
+.cds--header__menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cds-shell-header-height);
+  height: var(--cds-shell-header-height);
+  border: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+}
+
+.cds--header__menu-trigger > svg {
+  fill: var(--cds-shell-header-icon);
+}
+
+.cds--header__menu-trigger:hover {
+  background-color: var(--cds-shell-header-bg-hover);
+}
+
+.cds--header__menu-trigger:focus {
+  border-color: var(--cds-shell-header-focus);
+  outline: none;
+}
+
+.cds--header__name {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 var(--cds-spacing-07) 0 var(--cds-spacing-05);
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: 600;
+  line-height: 1.25rem;
+  letter-spacing: 0.1px;
+  text-decoration: none;
+  color: var(--cds-shell-header-text);
+  white-space: nowrap;
+  outline: none;
+  transition: color var(--cds-duration-fast-01);
+  border: 2px solid transparent;
+}
+
+.cds--header__name:focus {
+  border-color: var(--cds-shell-header-focus);
+}
+
+.cds--header__name--prefix {
+  font-weight: 400;
+}
+
+.cds--header__nav {
+  display: none;
+  height: 100%;
+  padding-left: var(--cds-spacing-05);
+}
+
+@media (min-width: 1056px) {
+  .cds--header__nav {
+    display: flex;
+  }
+}
+
+.cds--header__menu-bar {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+}
+
+.cds--header__menu-item {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 var(--cds-spacing-05);
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: 400;
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-shell-header-link);
+  text-decoration: none;
+  border: 2px solid transparent;
+  transition: background-color var(--cds-duration-fast-01), color var(--cds-duration-fast-01);
+  white-space: nowrap;
+}
+
+.cds--header__menu-item:hover {
+  background-color: var(--cds-shell-header-bg-hover);
+  color: var(--cds-shell-header-link-hover);
+}
+
+.cds--header__menu-item:focus {
+  border-color: var(--cds-shell-header-focus);
+  outline: none;
+}
+
+.cds--header__menu-item--current,
+.cds--header__menu-item[aria-current="page"] {
+  color: var(--cds-shell-header-text);
+  font-weight: 600;
+}
+
+.cds--header__global {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  height: 100%;
+}
+
+/* ==========================================================================
+   26. Component CSS — UI Shell SideNav (.cds--side-nav)
+   ========================================================================== */
+
+.cds--side-nav {
+  position: fixed;
+  top: var(--cds-shell-header-height);
+  bottom: 0;
+  left: 0;
+  z-index: 6000;
+  width: var(--cds-shell-side-nav-width);
+  max-width: var(--cds-shell-side-nav-width);
+  background-color: var(--cds-shell-side-nav-bg);
+  color: var(--cds-shell-side-nav-text);
+  overflow-x: hidden;
+  overflow-y: auto;
+  transition: width var(--cds-duration-fast-02) var(--cds-ease-productive-standard),
+              transform var(--cds-duration-fast-02) var(--cds-ease-productive-standard);
+  transform: translateX(0);
+  will-change: width;
+}
+
+.cds--side-nav--collapsed,
+.cds--side-nav:not(.cds--side-nav--expanded) {
+  width: 0;
+  overflow: hidden;
+}
+
+.cds--side-nav--rail {
+  width: var(--cds-shell-side-nav-width-rail);
+}
+
+.cds--side-nav--rail:not(.cds--side-nav--expanded) {
+  overflow: hidden;
+}
+
+.cds--side-nav--rail:hover,
+.cds--side-nav--rail.cds--side-nav--expanded {
+  width: var(--cds-shell-side-nav-width);
+}
+
+.cds--side-nav--ux {
+  top: var(--cds-shell-header-height);
+  width: var(--cds-shell-side-nav-width);
+}
+
+.cds--side-nav__items {
+  list-style: none;
+  padding: var(--cds-spacing-05) 0;
+  margin: 0;
+  overflow: hidden;
+  flex: 1;
+}
+
+.cds--side-nav__item {
+  overflow: hidden;
+  width: auto;
+  height: auto;
+}
+
+.cds--side-nav__link {
+  display: flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 var(--cds-spacing-05);
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: 400;
+  line-height: var(--cds-body-compact-01-line-height);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing);
+  color: var(--cds-shell-side-nav-text);
+  text-decoration: none;
+  outline: 2px solid transparent;
+  transition: background-color var(--cds-duration-fast-01), color var(--cds-duration-fast-01), outline-color var(--cds-duration-fast-01);
+  white-space: nowrap;
+}
+
+.cds--side-nav__link:hover {
+  background-color: var(--cds-shell-side-nav-bg-hover);
+  color: var(--cds-shell-side-nav-text-hover);
+}
+
+.cds--side-nav__link:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--side-nav__link--current,
+.cds--side-nav__link[aria-current="page"] {
+  background-color: var(--cds-layer-selected-01);
+  color: var(--cds-shell-side-nav-text-active);
+  font-weight: 600;
+}
+
+.cds--side-nav__link--current::before,
+.cds--side-nav__link[aria-current="page"]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: var(--cds-shell-side-nav-accent);
+}
+
+.cds--side-nav__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: var(--cds-spacing-05);
+  fill: var(--cds-shell-side-nav-icon);
+}
+
+.cds--side-nav__link:hover .cds--side-nav__icon {
+  fill: var(--cds-shell-side-nav-icon-hover);
+}
+
+.cds--side-nav__link-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  user-select: none;
+}
+
+.cds--side-nav__submenu {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0 var(--cds-spacing-05);
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: 400;
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-shell-side-nav-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: 2px solid transparent;
+  transition: background-color var(--cds-duration-fast-01), color var(--cds-duration-fast-01);
+  text-align: left;
+}
+
+.cds--side-nav__submenu:hover {
+  background-color: var(--cds-shell-side-nav-bg-hover);
+  color: var(--cds-shell-side-nav-text-hover);
+}
+
+.cds--side-nav__submenu:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--side-nav__submenu-chevron {
+  display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
+  fill: var(--cds-shell-side-nav-icon);
+  transition: transform var(--cds-duration-fast-02) var(--cds-ease-productive-standard);
+}
+
+.cds--side-nav__item--active .cds--side-nav__submenu-chevron {
+  transform: rotate(180deg);
+}
+
+.cds--side-nav__menu {
+  display: none;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.cds--side-nav__item--active > .cds--side-nav__menu {
+  display: block;
+}
+
+.cds--side-nav__menu .cds--side-nav__link {
+  padding-left: 2rem;
+  min-height: 2rem;
+  font-weight: 400;
+}
+
+.cds--side-nav__divider {
+  height: 1px;
+  margin: var(--cds-spacing-03) var(--cds-spacing-05);
+  background-color: var(--cds-border-subtle-01);
+}
+
+.cds--side-nav__header {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--cds-spacing-05);
+  min-height: var(--cds-shell-header-height);
+}
+
+.cds--side-nav__header-navigation {
+  font-size: var(--cds-heading-compact-01-font-size);
+  font-weight: var(--cds-heading-compact-01-font-weight);
+  color: var(--cds-shell-side-nav-text-active);
+  margin: 0;
+  padding: 0;
+}
+
+@media (max-width: 671px) {
+  .cds--side-nav {
+    transform: translateX(-100%);
+  }
+  .cds--side-nav--expanded {
+    transform: translateX(0);
+    width: var(--cds-shell-side-nav-width);
+  }
+}
+
+@media (min-width: 672px) and (max-width: 1055px) {
+  .cds--side-nav:not(.cds--side-nav--expanded) {
+    width: var(--cds-shell-side-nav-width-rail);
+  }
+  .cds--side-nav--rail:not(.cds--side-nav--expanded) .cds--side-nav__link-text,
+  .cds--side-nav--rail:not(.cds--side-nav--expanded) .cds--side-nav__submenu-title {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .cds--side-nav--rail:hover .cds--side-nav__link-text,
+  .cds--side-nav--rail:hover .cds--side-nav__submenu-title,
+  .cds--side-nav--rail.cds--side-nav--expanded .cds--side-nav__link-text,
+  .cds--side-nav--rail.cds--side-nav--expanded .cds--side-nav__submenu-title {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* ==========================================================================
+   27. Component CSS — Switcher (.cds--switcher)
+   ========================================================================== */
+
+.cds--switcher {
+  position: fixed;
+  top: var(--cds-shell-header-height);
+  right: 0;
+  bottom: 0;
+  z-index: 6000;
+  width: 16rem;
+  background-color: var(--cds-shell-header-bg);
+  color: var(--cds-shell-header-text);
+  list-style: none;
+  padding: var(--cds-spacing-05) 0;
+  margin: 0;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform var(--cds-duration-fast-02) var(--cds-ease-productive-standard);
+}
+
+.cds--switcher--expanded {
+  transform: translateX(0);
+  box-shadow: -2px 0 6px var(--cds-shadow);
+}
+
+.cds--switcher__item {
+  width: 100%;
+  height: auto;
+}
+
+.cds--switcher__item-link {
+  display: flex;
+  align-items: center;
+  height: 2rem;
+  padding: 0 var(--cds-spacing-05);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-shell-header-link);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--cds-duration-fast-01), color var(--cds-duration-fast-01);
+}
+
+.cds--switcher__item-link:hover {
+  background-color: var(--cds-shell-header-bg-hover);
+  color: var(--cds-shell-header-link-hover);
+}
+
+.cds--switcher__item-link:focus {
+  outline: 2px solid var(--cds-shell-header-focus);
+  outline-offset: -2px;
+}
+
+.cds--switcher__item--divider {
+  height: 1px;
+  background-color: var(--cds-border-subtle-01);
+  margin: var(--cds-spacing-03) var(--cds-spacing-05);
+}
+
+/* ==========================================================================
+   28. Component CSS — Toggle (.cds--toggle)
+   ========================================================================== */
+
+.cds--toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cds--toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.cds--toggle__switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 3rem;
+  height: 1.5rem;
+  border-radius: 0.75rem;
+  background-color: var(--cds-toggle-off);
+  cursor: pointer;
+  transition: background-color var(--cds-duration-fast-01) var(--cds-ease-productive-standard);
+}
+
+.cds--toggle__switch::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background-color: var(--cds-icon-on-color);
+  transition: transform var(--cds-duration-fast-01) var(--cds-ease-productive-standard);
+  box-shadow: 0 0 0 1px transparent;
+}
+
+.cds--toggle-input:checked + .cds--toggle__switch {
+  background-color: var(--cds-support-success);
+}
+
+.cds--toggle-input:checked + .cds--toggle__switch::after {
+  transform: translateX(1.5rem);
+}
+
+.cds--toggle-input:focus + .cds--toggle__switch {
+  box-shadow: 0 0 0 2px var(--cds-focus);
+}
+
+.cds--toggle-input:disabled + .cds--toggle__switch {
+  background-color: var(--cds-button-disabled);
+  cursor: not-allowed;
+}
+
+.cds--toggle-input:disabled + .cds--toggle__switch::after {
+  background-color: var(--cds-text-on-color-disabled);
+}
+
+.cds--toggle--sm .cds--toggle__switch {
+  width: 2rem;
+  height: 1rem;
+  border-radius: 0.5rem;
+}
+
+.cds--toggle--sm .cds--toggle__switch::after {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.cds--toggle--sm .cds--toggle-input:checked + .cds--toggle__switch::after {
+  transform: translateX(1rem);
+}
+
+.cds--toggle__label-text {
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-primary);
+  margin-left: var(--cds-spacing-03);
+}
+
+.cds--toggle__text {
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-primary);
+  margin-left: var(--cds-spacing-03);
+}
+
+/* ==========================================================================
+   29. Component CSS — Overflow Menu (.cds--overflow-menu)
+   ========================================================================== */
+
+.cds--overflow-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.cds--overflow-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  outline: 2px solid transparent;
+  fill: var(--cds-icon-primary);
+  transition: background-color var(--cds-duration-fast-01), outline-color var(--cds-duration-fast-01);
+}
+
+.cds--overflow-menu__trigger:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--overflow-menu__trigger:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--overflow-menu-options {
+  position: absolute;
+  top: 2.5rem;
+  left: 0;
+  z-index: 6000;
+  display: none;
+  min-width: 10rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background-color: var(--cds-layer-01);
+  box-shadow: 0 2px 6px var(--cds-shadow);
+}
+
+.cds--overflow-menu-options--open {
+  display: block;
+}
+
+.cds--overflow-menu-options--flip {
+  left: auto;
+  right: 0;
+}
+
+.cds--overflow-menu-options__btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0 var(--cds-spacing-05);
+  height: 2.5rem;
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: 400;
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  outline: 2px solid transparent;
+  transition: background-color var(--cds-duration-fast-01);
+}
+
+.cds--overflow-menu-options__btn:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--overflow-menu-options__btn:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--overflow-menu-options__btn--danger:hover {
+  background-color: var(--cds-button-danger-hover);
+  color: var(--cds-text-on-color);
+}
+
+.cds--overflow-menu-options__option--divider {
+  border-top: 1px solid var(--cds-border-subtle-01);
+}
+
+.cds--overflow-menu-options__option--disabled .cds--overflow-menu-options__btn {
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   30. Component CSS — Structured List (.cds--structured-list)
+   ========================================================================== */
+
+.cds--structured-list {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin-bottom: var(--cds-spacing-05);
+}
+
+.cds--structured-list-thead {
+  display: table-header-group;
+}
+
+.cds--structured-list-row {
+  display: table-row;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  transition: background-color var(--cds-duration-fast-01);
+}
+
+.cds--structured-list-row:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--structured-list-row--header-row {
+  border-bottom: 1px solid var(--cds-border-subtle-selected-01);
+}
+
+.cds--structured-list-row--header-row:hover {
+  background-color: transparent;
+}
+
+.cds--structured-list-th {
+  display: table-cell;
+  padding: var(--cds-spacing-05) var(--cds-spacing-05) var(--cds-spacing-04);
+  font-size: var(--cds-heading-compact-01-font-size);
+  font-weight: var(--cds-heading-compact-01-font-weight);
+  line-height: var(--cds-heading-compact-01-line-height);
+  color: var(--cds-text-primary);
+  text-align: start;
+  vertical-align: bottom;
+}
+
+.cds--structured-list-td {
+  display: table-cell;
+  padding: var(--cds-spacing-05);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-primary);
+  vertical-align: top;
+}
+
+.cds--structured-list--selection .cds--structured-list-row {
+  cursor: pointer;
+}
+
+.cds--structured-list--selection .cds--structured-list-row--selected {
+  background-color: var(--cds-layer-selected-01);
+}
+
+/* ==========================================================================
+   31. Component CSS — Radio Button (.cds--radio-button)
+   ========================================================================== */
+
+.cds--radio-button-group {
+  display: flex;
+  align-items: center;
+}
+
+.cds--radio-button-group--vertical {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.cds--radio-button-wrapper {
+  display: flex;
+  align-items: center;
+  margin-right: var(--cds-spacing-05);
+  height: 2.5rem;
+}
+
+.cds--radio-button-group--vertical .cds--radio-button-wrapper {
+  margin-right: 0;
+  margin-bottom: var(--cds-spacing-02);
+}
+
+.cds--radio-button {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.cds--radio-button__label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding-left: 1.625rem;
+  position: relative;
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-primary);
+}
+
+.cds--radio-button__appearance {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 1px solid var(--cds-icon-primary);
+  border-radius: 50%;
+  background-color: transparent;
+  flex-shrink: 0;
+}
+
+.cds--radio-button__appearance::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--cds-icon-primary);
+  transition: transform var(--cds-duration-fast-01) var(--cds-ease-productive-standard);
+}
+
+.cds--radio-button:checked + .cds--radio-button__label .cds--radio-button__appearance::after {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.cds--radio-button:focus + .cds--radio-button__label .cds--radio-button__appearance {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 1.5px;
+}
+
+.cds--radio-button:disabled + .cds--radio-button__label {
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
+.cds--radio-button:disabled + .cds--radio-button__label .cds--radio-button__appearance {
+  border-color: var(--cds-icon-disabled);
+}
+
+/* ==========================================================================
+   32. Component CSS — Code Snippet (.cds--snippet)
+   ========================================================================== */
+
+.cds--snippet {
+  position: relative;
+  width: 100%;
+}
+
+.cds--snippet--single {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  max-width: 48rem;
+  padding: 0 var(--cds-spacing-09) 0 var(--cds-spacing-05);
+  background-color: var(--cds-layer-01);
+}
+
+.cds--snippet--multi {
+  display: block;
+  padding: var(--cds-spacing-05);
+  background-color: var(--cds-layer-01);
+  max-width: 48rem;
+  max-height: 15rem;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.cds--snippet--inline {
+  display: inline;
+  padding: 0 var(--cds-spacing-03);
+  background-color: var(--cds-layer-01);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: var(--cds-code-01-font-size);
+  color: var(--cds-text-primary);
+  cursor: pointer;
+}
+
+.cds--snippet--inline:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--snippet--inline:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--snippet code,
+.cds--snippet pre {
+  font-family: var(--cds-font-family-mono);
+  font-size: var(--cds-code-01-font-size);
+  line-height: var(--cds-code-01-line-height);
+  tab-size: 4;
+}
+
+.cds--snippet__icon {
+  position: absolute;
+  right: var(--cds-spacing-03);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  fill: var(--cds-icon-primary);
+}
+
+.cds--snippet__icon:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--snippet__icon:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+/* ==========================================================================
+   33. Component CSS — Content Switcher (.cds--content-switcher)
+   ========================================================================== */
+
+.cds--content-switcher {
+  display: flex;
+  height: 2.5rem;
+}
+
+.cds--content-switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 0 var(--cds-spacing-05);
+  font-size: var(--cds-body-compact-01-font-size);
+  font-weight: 400;
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-secondary);
+  background-color: transparent;
+  border: 1px solid var(--cds-border-inverse);
+  cursor: pointer;
+  white-space: nowrap;
+  outline: 2px solid transparent;
+  transition: all var(--cds-duration-fast-01) var(--cds-ease-productive-standard);
+}
+
+.cds--content-switcher-btn:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+.cds--content-switcher-btn:focus {
+  z-index: 2;
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--content-switcher--selected,
+.cds--content-switcher-btn--selected {
+  background-color: var(--cds-layer-selected-inverse);
+  color: var(--cds-text-inverse);
+  font-weight: 600;
+}
+
+.cds--content-switcher--selected:hover,
+.cds--content-switcher-btn--selected:hover {
+  background-color: var(--cds-layer-selected-inverse);
+}
+
+.cds--content-switcher--sm {
+  height: 2rem;
+}
+
+.cds--content-switcher--lg {
+  height: 3rem;
+}
+
+.cds--content-switcher-btn:first-child {
+  border-radius: 0;
+}
+
+.cds--content-switcher-btn:last-child {
+  border-radius: 0;
+}
+
+.cds--content-switcher-btn + .cds--content-switcher-btn {
+  margin-left: -1px;
+}
+
+.cds--content-switcher-btn:disabled {
+  color: var(--cds-text-disabled);
+  border-color: var(--cds-border-disabled);
+  cursor: not-allowed;
+  background-color: transparent;
+}
+
+/* ==========================================================================
+   34. Component CSS — Skeleton (.cds--skeleton)
+   ========================================================================== */
+
+.cds--skeleton {
+  position: relative;
+  padding: 0;
+  border: none;
+  background: var(--cds-skeleton-background);
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.cds--skeleton::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(270deg,
+    var(--cds-skeleton-background),
+    var(--cds-skeleton-element),
+    var(--cds-skeleton-element),
+    var(--cds-skeleton-background));
+  background-size: 400% 100%;
+  animation: cds--skeleton 3000ms ease-in-out infinite;
+  will-change: background-position;
+}
+
+@keyframes cds--skeleton {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: -200% 50%;
+  }
+}
+
+.cds--skeleton__text {
+  height: 1rem;
+  margin-bottom: var(--cds-spacing-03);
+  border-radius: 0;
+}
+
+.cds--skeleton__text:last-child {
+  width: 50%;
+}
+
+.cds--skeleton__placeholder {
+  height: 6rem;
+  width: 100%;
+}
+
+/* ==========================================================================
+   35. Component CSS — Slider (.cds--slider)
+   ========================================================================== */
+
+.cds--slider-container {
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+.cds--slider {
+  position: relative;
+  width: 100%;
+  min-width: 12.5rem;
+  max-width: 100%;
+  margin: 0 var(--cds-spacing-05);
+}
+
+.cds--slider__track {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background-color: var(--cds-border-subtle-01);
+  cursor: pointer;
+}
+
+.cds--slider__filled-track {
+  position: absolute;
+  height: 2px;
+  background-color: var(--cds-interactive);
+  pointer-events: none;
+}
+
+.cds--slider__thumb {
+  position: absolute;
+  top: 50%;
+  width: 0.875rem;
+  height: 0.875rem;
+  background-color: var(--cds-interactive);
+  border-radius: 50%;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  outline: none;
+  transition: box-shadow var(--cds-duration-fast-01);
+  z-index: 1;
+}
+
+.cds--slider__thumb:hover {
+  box-shadow: 0 0 0 4px var(--cds-background-hover);
+}
+
+.cds--slider__thumb:focus {
+  box-shadow: 0 0 0 2px var(--cds-focus);
+}
+
+.cds--slider__thumb:active {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.cds--slider--disabled .cds--slider__thumb {
+  background-color: var(--cds-border-disabled);
+  cursor: not-allowed;
+}
+
+.cds--slider--disabled .cds--slider__filled-track {
+  background-color: var(--cds-border-disabled);
+}
+
+.cds--slider__range-label {
+  font-size: var(--cds-code-02-font-size);
+  color: var(--cds-text-primary);
+  white-space: nowrap;
+}
+
+.cds--slider-text-input {
+  width: 4rem;
+  height: 2.5rem;
+  text-align: center;
+}
+
+/* ==========================================================================
+   36. Component CSS — Progress Bar (.cds--progress-bar)
+   ========================================================================== */
+
+.cds--progress-bar {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.cds--progress-bar__label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--cds-spacing-03);
+  font-size: var(--cds-body-compact-01-font-size);
+  line-height: var(--cds-body-compact-01-line-height);
+  color: var(--cds-text-primary);
+}
+
+.cds--progress-bar__track {
+  position: relative;
+  width: 100%;
+  height: 0.5rem;
+  background-color: var(--cds-layer-accent-01);
+  border-radius: 0;
+}
+
+.cds--progress-bar__bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: var(--cds-interactive);
+  transition: width var(--cds-duration-moderate-02) var(--cds-ease-productive-standard);
+}
+
+.cds--progress-bar--indeterminate .cds--progress-bar__bar {
+  width: 50%;
+  animation: cds--progress-bar__indeterminate 1500ms infinite linear;
+}
+
+@keyframes cds--progress-bar__indeterminate {
+  0% {
+    left: -50%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.cds--progress-bar__helper-text {
+  font-size: var(--cds-helper-text-01-font-size);
+  line-height: var(--cds-helper-text-01-line-height);
+  color: var(--cds-text-helper);
+  margin-top: var(--cds-spacing-03);
+}
+
+.cds--progress-bar--error .cds--progress-bar__bar {
+  background-color: var(--cds-support-error);
+}
+
+.cds--progress-bar--finished .cds--progress-bar__bar {
+  background-color: var(--cds-support-success);
+}
+
+.cds--progress-bar--sm .cds--progress-bar__track {
+  height: 0.25rem;
+}
+
+.cds--progress-bar--lg .cds--progress-bar__track {
+  height: 0.5rem;
+}
+
+/* ==========================================================================
+   37. Component CSS — Multi-Select (.cds--multi-select)
+   ========================================================================== */
+
+.cds--multi-select {
+  position: relative;
+  width: 100%;
+}
+
+.cds--multi-select .cds--list-box {
+  cursor: pointer;
+}
+
+.cds--multi-select .cds--tag {
+  margin: var(--cds-spacing-01) var(--cds-spacing-02) var(--cds-spacing-01) 0;
+}
+
+.cds--multi-select--filterable .cds--text-input {
+  border-bottom: none;
+  background-color: transparent;
+  height: 100%;
+  padding: 0 var(--cds-spacing-05);
+}
+
+.cds--multi-select--selected .cds--list-box__field {
+  padding-left: 0;
+}
+
+.cds--multi-select .cds--list-box__selection {
+  position: absolute;
+  right: 2.5rem;
+}
+
+.cds--multi-select .cds--list-box__selection--multi {
+  display: inline-flex;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 var(--cds-spacing-03);
+  background-color: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+  border-radius: 624.9375rem;
+  font-size: var(--cds-label-01-font-size);
+}
+
+/* ==========================================================================
+   38. Component CSS — Combo Box (.cds--combo-box)
+   ========================================================================== */
+
+.cds--combo-box {
+  position: relative;
+  width: 100%;
+}
+
+.cds--combo-box .cds--list-box__field {
+  padding: 0;
+}
+
+.cds--combo-box .cds--text-input {
+  background-color: transparent;
+  border-bottom: none;
+  height: 100%;
+}
+
+.cds--combo-box .cds--list-box__selection {
+  position: absolute;
+  right: 2.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ==========================================================================
+   39. Focus Ring & Accessibility Utilities
+   ========================================================================== */
+
+.cds--focus-outline:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--focus-outline--inset:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.cds--focus-within:focus-within {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+/* Visually hidden — available to screen readers */
+.cds--assistive-text,
+.cds--visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  white-space: nowrap;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (forced-colors: active) {
+  .cds--btn {
+    border: 1px solid transparent;
+  }
+
+  .cds--btn:focus {
+    outline: 2px solid;
+    outline-offset: -2px;
+  }
+
+  .cds--text-input:focus,
+  .cds--text-area:focus,
+  .cds--select-input:focus,
+  .cds--search-input:focus,
+  .cds--date-picker__input:focus {
+    outline: 2px solid;
+    outline-offset: -2px;
+  }
+
+  .cds--checkbox:focus + .cds--checkbox-label::before,
+  .cds--radio-button:focus + .cds--radio-button__label .cds--radio-button__appearance {
+    outline: 2px solid;
+  }
+
+  .cds--toggle-input:focus + .cds--toggle__switch {
+    outline: 2px solid;
+  }
+
+  .cds--data-table--selected td {
+    border: 2px solid;
+  }
+
+  .cds--inline-notification,
+  .cds--toast-notification {
+    border: 1px solid;
+  }
+
+  .cds--modal-container {
+    border: 1px solid;
+  }
+
+  .cds--tag {
+    border: 1px solid;
+  }
+
+  .cds--tile--selectable.cds--tile--is-selected {
+    border: 2px solid;
+  }
+}
+
+/* Print styles */
+@media print {
+  .cds--header,
+  .cds--side-nav,
+  .cds--switcher {
+    display: none !important;
+  }
+
+  .cds--modal {
+    display: none !important;
+  }
+
+  .cds--tooltip,
+  .cds--popover {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   40. Layer Alias Tokens
+   Shorthand tokens that resolve to the active layer context
+   ========================================================================== */
+
+:root {
+  /* Layer aliases (resolve to layer-01 by default) */
+  --cds-layer: var(--cds-layer-01);
+  --cds-layer-active: var(--cds-layer-active-01);
+  --cds-layer-hover: var(--cds-layer-hover-01);
+  --cds-layer-selected: var(--cds-layer-selected-01);
+  --cds-layer-selected-hover: var(--cds-layer-selected-hover-01);
+  --cds-layer-accent: var(--cds-layer-accent-01);
+  --cds-layer-accent-hover: var(--cds-layer-accent-hover-01);
+  --cds-layer-accent-active: var(--cds-layer-accent-active-01);
+  --cds-field: var(--cds-field-01);
+  --cds-field-hover: var(--cds-field-hover-01);
+  --cds-border-subtle: var(--cds-border-subtle-01);
+  --cds-border-subtle-selected: var(--cds-border-subtle-selected-01);
+  --cds-border-strong: var(--cds-border-strong-01);
+  --cds-border-tile: var(--cds-border-tile-01);
+
+  /* Chat tokens (AI features) */
+  --cds-chat-avatar-agent: var(--cds-gray-60);
+  --cds-chat-avatar-bot: var(--cds-purple-60);
+  --cds-chat-avatar-user: var(--cds-blue-60);
+  --cds-chat-bubble-agent: var(--cds-layer-01);
+  --cds-chat-bubble-border: var(--cds-border-subtle-01);
+  --cds-chat-bubble-user: var(--cds-layer-accent-01);
+  --cds-chat-button-active: rgba(141, 141, 141, 0.5);
+  --cds-chat-button-hover: rgba(141, 141, 141, 0.12);
+  --cds-chat-button-selected: rgba(141, 141, 141, 0.2);
+  --cds-chat-button-text-hover: var(--cds-layer-accent-hover-01);
+  --cds-chat-button-text-selected: var(--cds-layer-accent-active-01);
+  --cds-chat-header-background: var(--cds-layer-01);
+  --cds-chat-prompt-background: var(--cds-layer-01);
+  --cds-chat-prompt-border-end: transparent;
+  --cds-chat-prompt-border-start: var(--cds-border-subtle-01);
+  --cds-chat-shell-background: var(--cds-background);
+
+  /* Color scheme */
+  color-scheme: var(--cds-color-scheme, light);
+}
+
+/* ==========================================================================
+   End of Carbon Design System v11 — Core Styles
+   ========================================================================== */

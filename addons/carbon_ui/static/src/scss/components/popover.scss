@@ -1,0 +1,348 @@
+// Carbon Design System v11 — Popover Component Override
+// Applies Carbon Popover styling with caret, drop shadow, and animations
+// Targets: .o_popover, .o-popover, popover arrow positioning
+//
+// Token Dependencies (from carbon_tokens.scss via CSS custom properties):
+//   --cds-layer-01          Popover background
+//   --cds-text-primary      Primary text color
+//   --cds-spacing-05        Padding (16px)
+//   --cds-spacing-02        Close button offset (4px)
+//   --cds-icon-primary      Icon/close button color
+//   --cds-layer-hover-01    Hover state for interactive elements
+//   --cds-focus             Focus ring color
+//   --cds-background-inverse High-contrast popover background
+//   --cds-text-inverse      High-contrast popover text
+//
+// Sass Compatibility: libsass-safe — no @use, @forward, or Dart Sass features.
+// All Carbon tokens consumed via var(--cds-*) CSS custom properties.
+
+// ============================================================================
+// SECTION 1: Carbon Popover Fade-In Animation
+// ============================================================================
+// Carbon fast-02 duration (110ms) with productive entrance easing.
+// Wrapped in prefers-reduced-motion media query per WCAG / UI guidelines.
+
+@keyframes cds-popover-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ============================================================================
+// SECTION 2: Base Popover Styles
+// ============================================================================
+// Overrides Odoo's .o_popover and .o-popover (both selectors used in codebase)
+// with Carbon Popover design: layer-01 background, drop shadow elevation,
+// no border, no border-radius (Carbon sharp corners), 16px padding.
+
+.o_popover,
+.o-popover {
+  background-color: var(--cds-layer-01);
+  border: none;
+  border-radius: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  padding: var(--cds-spacing-05);
+  max-width: 368px;
+  color: var(--cds-text-primary);
+  // Carbon body-compact-01: 14px / 18px (line-height 1.29)
+  font-size: 0.875rem;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  z-index: 1060;
+
+  // Carbon popover entry animation — 110ms fast-02
+  @media (prefers-reduced-motion: no-preference) {
+    animation: cds-popover-fade-in 110ms cubic-bezier(0, 0, 0.38, 0.9);
+  }
+
+  // Override Odoo's default popover arrow size: 6px (Carbon) vs 8px (Odoo)
+  --Popover-arrow-size: 6px;
+
+  // ========================================================================
+  // SECTION 2a: Arrow / Caret Styling
+  // ========================================================================
+  // Odoo renders popover arrows via .popover-arrow > ::before / ::after
+  // pseudo-elements. Carbon uses a clean triangular caret that matches the
+  // popover background with no border — drop shadow provides visual
+  // separation from the underlying content.
+
+  > .popover-arrow {
+    --safety-margin: calc((var(--popover-arrow-width, 12px) / 4) - 1px);
+    --position-min: var(--safety-margin);
+    --position-center: calc(50% - var(--popover-arrow-width, 12px) / 2);
+    --position-max: calc(100% - var(--popover-arrow-width, 12px) - var(--safety-margin));
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: opacity 110ms cubic-bezier(0, 0, 0.38, 0.9),
+                  transform 110ms cubic-bezier(0, 0, 0.38, 0.9);
+    }
+    opacity: 1;
+
+    // Arrow pseudo-elements: fill with layer-01 to match popover background,
+    // remove border for clean Carbon caret appearance.
+    &::before {
+      border-color: transparent;
+    }
+
+    &::after {
+      border-color: transparent;
+    }
+
+    // Sucked animation states — retained from Odoo for compatibility
+    // with the popover positioning system, using Carbon motion tokens.
+    &.sucked {
+      opacity: 0;
+    }
+  }
+
+  // ========================================================================
+  // SECTION 2b: Close / Dismiss Button
+  // ========================================================================
+  // Carbon icon-button pattern for popover close affordance.
+  // Positioned in the top-right corner with accessible focus ring.
+
+  .o_popover_close,
+  .btn-close,
+  [aria-label="Close"] {
+    position: absolute;
+    inset-block-start: var(--cds-spacing-02);
+    inset-inline-end: var(--cds-spacing-02);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    color: var(--cds-icon-primary);
+    cursor: pointer;
+
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--cds-layer-hover-01);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+    }
+
+    &:active {
+      background-color: var(--cds-layer-hover-01);
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 3: Directional Arrow Placement
+// ============================================================================
+// Carbon caret positioning for each Popper.js placement direction.
+// Preserves Odoo's data-popper-placement attribute selectors and adds
+// Bootstrap bs-popover-* aliases for backward compatibility.
+// Arrow fill matches popover background (--cds-layer-01) for seamless caret.
+
+// --- Top placement: arrow points downward from bottom edge ---
+.o_popover[data-popper-placement^="top"],
+.o-popover[data-popper-placement^="top"],
+.bs-popover-top {
+  > .popover-arrow {
+    &::after {
+      border-top-color: var(--cds-layer-01);
+    }
+
+    &.sucked {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+  }
+}
+
+// --- Bottom placement: arrow points upward from top edge ---
+.o_popover[data-popper-placement^="bottom"],
+.o-popover[data-popper-placement^="bottom"],
+.bs-popover-bottom {
+  > .popover-arrow {
+    &::after {
+      border-bottom-color: var(--cds-layer-01);
+    }
+
+    &.sucked {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+  }
+}
+
+// --- Start placement (left in LTR): arrow points toward inline-end ---
+.o_popover[data-popper-placement^="start"],
+.o-popover[data-popper-placement^="start"],
+.bs-popover-start {
+  > .popover-arrow {
+    &::after {
+      /* rtl:ignore */
+      border-left-color: var(--cds-layer-01);
+    }
+
+    &.sucked {
+      opacity: 0;
+      /* rtl:ignore */
+      transform: translateX(-100%);
+    }
+  }
+}
+
+// --- End placement (right in LTR): arrow points toward inline-start ---
+.o_popover[data-popper-placement^="end"],
+.o-popover[data-popper-placement^="end"],
+.bs-popover-end {
+  > .popover-arrow {
+    &::after {
+      /* rtl:ignore */
+      border-right-color: var(--cds-layer-01);
+    }
+
+    &.sucked {
+      opacity: 0;
+      /* rtl:ignore */
+      transform: translateX(100%);
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 4: Popover Body / Content Typography
+// ============================================================================
+// Carbon body-01 type token for popover content: 14px / 20px (1.43 ratio).
+// Slightly more relaxed line-height than the compact header for readability
+// in longer popover descriptions.
+
+.o_popover .popover-body,
+.o-popover .popover-body {
+  font-size: 0.875rem;
+  color: var(--cds-text-primary);
+  line-height: 1.43;
+  letter-spacing: 0.16px;
+  padding: 0;
+  // Ensure long words in constrained containers break gracefully
+  overflow-wrap: break-word;
+}
+
+// ============================================================================
+// SECTION 5: High-Contrast Variant (Toggletip Pattern)
+// ============================================================================
+// Carbon Toggletip / high-contrast popover: inverse background (Gray 80/100)
+// with inverse text for maximum contrast. Used for critical information or
+// tooltip-style popovers that require higher visual prominence.
+
+.o_popover.o-tooltip--high-contrast,
+.o-popover.o-tooltip--high-contrast {
+  background-color: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+
+  // Arrow fill matches inverse background
+  > .popover-arrow {
+    &::after {
+      border-color: transparent;
+    }
+  }
+
+  // Close button adapts to inverse context
+  .o_popover_close,
+  .btn-close,
+  [aria-label="Close"] {
+    color: var(--cds-text-inverse);
+
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--cds-background-inverse-hover, rgba(255, 255, 255, 0.16));
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+    }
+  }
+
+  // Content text inherits inverse color
+  .popover-body {
+    color: var(--cds-text-inverse);
+  }
+}
+
+// High-contrast directional arrow fills
+.o_popover.o-tooltip--high-contrast[data-popper-placement^="top"] {
+  > .popover-arrow::after {
+    border-top-color: var(--cds-background-inverse);
+  }
+}
+
+.o_popover.o-tooltip--high-contrast[data-popper-placement^="bottom"] {
+  > .popover-arrow::after {
+    border-bottom-color: var(--cds-background-inverse);
+  }
+}
+
+.o_popover.o-tooltip--high-contrast[data-popper-placement^="start"] {
+  > .popover-arrow::after {
+    /* rtl:ignore */
+    border-left-color: var(--cds-background-inverse);
+  }
+}
+
+.o_popover.o-tooltip--high-contrast[data-popper-placement^="end"] {
+  > .popover-arrow::after {
+    /* rtl:ignore */
+    border-right-color: var(--cds-background-inverse);
+  }
+}
+
+// ============================================================================
+// SECTION 6: Popover Sucked Animation Compatibility
+// ============================================================================
+// Odoo's popover system uses "sucked" animation classes for dismissal.
+// These are retained and enhanced with Carbon motion curves.
+
+.o_popover,
+.o-popover {
+  // Sucked-animation variants: ensure smooth exit with Carbon productive motion
+  &.o-popover--with-sucked-animation-bs-popover-top,
+  &.o-popover--with-sucked-animation-bs-popover-bottom,
+  &.o-popover--with-sucked-animation-bs-popover-start,
+  &.o-popover--with-sucked-animation-bs-popover-end {
+    > .popover-arrow {
+      @media (prefers-reduced-motion: no-preference) {
+        transition: opacity 110ms cubic-bezier(0.2, 0, 1, 0.9),
+                    transform 110ms cubic-bezier(0.2, 0, 1, 0.9);
+      }
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 7: Popover Header (Optional Title Area)
+// ============================================================================
+// Some Odoo popovers include a .popover-header for titled content.
+// Style with Carbon heading-compact-01 token pattern.
+
+.o_popover .popover-header,
+.o-popover .popover-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-primary);
+  background-color: transparent;
+  border-block-end: none;
+  padding: 0;
+  padding-block-end: var(--cds-spacing-02);
+  margin-block-end: var(--cds-spacing-02);
+}

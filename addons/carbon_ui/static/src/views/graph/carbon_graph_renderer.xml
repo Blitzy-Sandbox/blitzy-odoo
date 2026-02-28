@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Custom tooltip template for Carbon graph charts.
+         Renders a Carbon Popover-styled tooltip showing the measure name,
+         color-coded data point labels, values, and percentage (for pie charts).
+         Used by CarbonGraphRenderer.buildCustomTooltipHTML() via renderToMarkup(). -->
+    <t t-name="carbon_ui.CarbonGraphRenderer.CustomTooltip">
+        <div class="o_graph_custom_tooltip cds--popover-content pe-none mw-100 position-absolute">
+            <table class="overflow-hidden m-0">
+                <thead>
+                    <tr>
+                        <th class="o_measure align-baseline border-0" t-esc="measure" />
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="tooltipItems" t-as="tooltipItem" t-key="tooltipItem_index">
+                        <td>
+                            <span class="o_square d-inline-block align-middle me-2"
+                                  t-attf-style="background-color: {{ tooltipItem.boxColor }}; width: 12px; height: 12px;" />
+                            <small class="o_label d-inline-block text-truncate align-middle"
+                                   t-attf-style="max-width: {{ maxWidth }}"
+                                   t-esc="tooltipItem.label" />
+                        </td>
+                        <td class="o_value ps-2 text-end fw-bolder">
+                            <small>
+                                <t t-out="tooltipItem.value"/>
+                                <t t-if="mode === 'pie' and tooltipItem.percentage">
+                                    (<t t-esc="tooltipItem.percentage" />%)
+                                </t>
+                            </small>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </t>
+
+    <!-- Main Carbon graph renderer template.
+         Replaces the original web.GraphRenderer template structure, using a <div>
+         container instead of <canvas> for Carbon Charts SVG-based rendering.
+         Layout: alert (optional) -> toolbar -> chart container. -->
+    <t t-name="carbon_ui.CarbonGraphRenderer">
+        <div t-att-class="'o_graph_renderer o_renderer h-100 d-flex flex-column border-top ' + props.class" t-ref="root">
+            <t t-if="model.data.exceeds">
+                <div class="alert alert-info cds--inline-notification cds--inline-notification--info text-center o_graph_alert m-3 mb-2" role="status">
+                    There are too many data. The graph only shows a sample. Use the filters to refine the scope.
+                    <a class="o_graph_load_all_btn cds--link" href="#" t-on-click="() => this.loadAll()">
+                        Load everything anyway.
+                    </a>
+                </div>
+            </t>
+            <div class="d-flex d-print-none gap-1 flex-shrink-0 mt-2 mx-3 mb-3 overflow-x-auto">
+                <t t-call="{{ props.buttonTemplate }}"/>
+            </div>
+            <div t-if="model.hasData()" class="o_graph_canvas_container o_graph_chart_container flex-grow-1 position-relative px-3 pb-3" t-ref="container">
+                <!-- data-chart-mode and data-chart-measure ensure OWL detects
+                     template output changes when the user switches chart type
+                     or measure, causing an onPatched lifecycle call that
+                     re-triggers renderChart() via useEffect. -->
+                <div t-ref="chart" class="o_carbon_chart w-100 h-100"
+                     t-att-data-chart-mode="model.metaData.mode"
+                     t-att-data-chart-measure="model.metaData.measure" />
+            </div>
+        </div>
+    </t>
+
+</templates>

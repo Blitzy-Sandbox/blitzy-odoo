@@ -1,0 +1,252 @@
+// Carbon Design System v11 — Search Component Override
+// Applies Carbon Search component styling to Odoo's SearchBar
+// Targets: .o_searchview, .o_search_bar, .o_searchview_facet, .o_searchview_autocomplete
+//
+// Carbon Search pattern:
+//   - Container: 40px height, field-01 background, bottom-border-only
+//   - Input: body-compact-01 typography, transparent background
+//   - Focus: 2px bottom-border in interactive/focus color
+//   - Facets: Carbon Tag pattern (24px, rounded pill, blue semantic)
+//   - Autocomplete: Carbon dropdown pattern with layer-01 background
+//
+// Token dependency: carbon_tokens.scss (loaded earlier in web.assets_backend)
+// Consumes: --cds-field-01, --cds-border-strong-01, --cds-focus,
+//           --cds-text-primary, --cds-text-placeholder, --cds-icon-secondary,
+//           --cds-tag-background-blue, --cds-tag-color-blue,
+//           --cds-layer-01, --cds-border-subtle-01, --cds-text-secondary,
+//           --cds-layer-hover-01, --cds-spacing-02, --cds-spacing-03,
+//           --cds-spacing-05, --cds-spacing-07
+//
+// Compatibility: libsass-safe (no @use, @forward, or Dart Sass features)
+
+// ============================================================================
+// 1. Search View Container (.o_searchview)
+// ============================================================================
+// Carbon Search — bottom-border-only container with subtle field background.
+// Height: 40px (Carbon md size for search inputs).
+
+.o_searchview {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  background-color: var(--cds-field-01);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  border-radius: 0;
+  // Override Bootstrap .py-1 utility (!important needed to beat utility !important)
+  padding: 0 var(--cds-spacing-05) !important; // 0 16px
+  transition: border-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9); // Carbon fast-01
+  // Override Bootstrap .form-control focus glow
+  box-shadow: none;
+
+  // Carbon 2px focus underline when the search container receives focus-within
+  &:focus-within {
+    border-bottom-color: var(--cds-focus);
+    box-shadow: inset 0 -1px 0 0 var(--cds-focus);
+  }
+
+  // Override Bootstrap .form-control:focus styling
+  &:focus {
+    border-color: transparent;
+    border-bottom-color: var(--cds-focus);
+    box-shadow: inset 0 -1px 0 0 var(--cds-focus);
+  }
+}
+
+// ============================================================================
+// 2. Search Input (.o_searchview input)
+// ============================================================================
+// Carbon Search input — transparent background, no borders, body-compact-01 type.
+// Placeholder uses Carbon text-placeholder token for WCAG-compliant contrast.
+
+.o_searchview input {
+  flex: 1 1 auto;
+  min-width: 0; // allow shrinking in flex context
+  font-size: 0.875rem; // body-compact-01 (14px)
+  line-height: 1.29; // Carbon Productive line-height
+  letter-spacing: 0.16px; // body-compact-01
+  color: var(--cds-text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: var(--cds-spacing-03) 0; // 8px vertical padding
+  height: 100%; // fill the 40px container
+
+  &::placeholder {
+    color: var(--cds-text-placeholder);
+    opacity: 1; // Firefox placeholder opacity reset
+  }
+
+  // Remove native browser search cancel button (Webkit)
+  &::-webkit-search-cancel-button,
+  &::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+// ============================================================================
+// 3. Search Icon (.o_searchview .o_searchview_input_container .oi-search)
+// ============================================================================
+// Carbon magnifier icon — secondary icon color, 16px size, right-margin gap.
+
+.o_searchview .o_searchview_input_container .oi-search {
+  color: var(--cds-icon-secondary);
+  font-size: 1rem; // 16px Carbon icon size
+  line-height: 1;
+  margin-inline-end: var(--cds-spacing-03); // 8px gap before input
+  flex-shrink: 0;
+}
+
+// ============================================================================
+// 4. Search Facets / Tags (.o_searchview_facet)
+// ============================================================================
+// Carbon Tag pattern — 24px height, rounded pill shape, blue semantic color.
+// Each facet represents an active search filter displayed as a dismissible tag.
+
+.o_searchview_facet {
+  display: inline-flex;
+  align-items: center;
+  height: 24px; // Carbon tag default height
+  padding: 0 var(--cds-spacing-03); // 0 8px
+  // Override Bootstrap .bg-200 utility (!important needed to beat utility !important)
+  background-color: var(--cds-tag-background-blue) !important; // Carbon Blue tag
+  color: var(--cds-tag-color-blue);
+  border: none;
+  // Override Bootstrap .rounded-2 utility (!important needed to beat utility !important)
+  border-radius: 24px !important; // Carbon tag rounded pill
+  font-size: 0.75rem; // Carbon label-01 (12px)
+  line-height: 1.33; // label-01
+  letter-spacing: 0.32px; // label-01
+  font-weight: 400;
+  margin-inline-end: var(--cds-spacing-02); // 4px gap between facets
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  // Override Odoo's default slide-up animation — Carbon tags appear instantly
+  animation: none;
+
+  // Retain z-index fix for buttons inside facets (functional requirement from source)
+  .btn,
+  .btn:focus {
+    z-index: 0;
+  }
+}
+
+// ============================================================================
+// 5. Facet Value Text (.o_searchview_facet .o_facet_value)
+// ============================================================================
+// Truncated display for long filter values with ellipsis.
+
+.o_searchview_facet .o_facet_value {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+// ============================================================================
+// 6. Facet Remove/Dismiss Button (.o_searchview_facet .o_facet_remove)
+// ============================================================================
+// Carbon tag dismiss — inherits tag color, small margin for spacing.
+
+.o_searchview_facet .o_facet_remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: var(--cds-spacing-02); // 4px
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+
+  // Accessible focus ring on dismiss button
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+    border-radius: 50%;
+  }
+
+  // Subtle hover feedback
+  @media (hover: hover) {
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+}
+
+// ============================================================================
+// 7. Autocomplete Dropdown (.o_searchview_autocomplete)
+// ============================================================================
+// Carbon dropdown pattern — layer-01 background, subtle border, elevated shadow.
+
+.o_searchview_autocomplete {
+  background-color: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0; // Carbon sharp corners
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); // Carbon elevated layer shadow
+  padding: 0; // Carbon dropdown containers have no inner padding
+  overflow-y: auto;
+
+  // ============================================================================
+  // 8. Autocomplete Items (.o_searchview_autocomplete .o-dropdown-item)
+  // ============================================================================
+  // Carbon dropdown item — 40px height, indented padding, hover/focus states.
+
+  .o-dropdown-item {
+    display: flex;
+    align-items: center;
+    height: 40px; // Carbon compact item height
+    min-height: 40px;
+    padding: 0 var(--cds-spacing-05) 0 var(--cds-spacing-07); // 0 16px 0 32px (indented)
+    font-size: 0.875rem; // body-compact-01
+    line-height: 1.29;
+    letter-spacing: 0.16px;
+    color: var(--cds-text-secondary);
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9); // Carbon fast-01
+
+    // Carbon hover state — layer-hover background
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--cds-layer-hover-01);
+        color: var(--cds-text-primary);
+      }
+    }
+
+    // Carbon keyboard focus — 2px inset outline
+    &:focus,
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+      background-color: var(--cds-layer-01);
+    }
+
+    // Indented variant for nested/grouped suggestions (Odoo-specific)
+    &.o_indent {
+      padding-inline-start: calc(var(--cds-spacing-07) + var(--cds-spacing-05)); // 32px + 16px = 48px
+    }
+
+    // Expand icon (left-positioned disclosure icon in autocomplete)
+    a {
+      color: inherit;
+      text-decoration: none;
+
+      &.o_expand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--cds-spacing-07); // 32px
+        position: absolute;
+        inset-inline-start: 0;
+      }
+    }
+  }
+}

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!--
+        Carbon Global Search : Header Search Input
+        ============================================
+        QWeb/OWL template for the CarbonGlobalSearch component
+        placed in the Carbon UI Shell header center area.
+
+        This implements the Carbon Design System v11 Search component
+        (large, expandable variant) tailored for application level
+        search. Unlike Odoo view level SearchBar (which filters
+        within a specific view via env.searchModel), this component
+        acts as a visual gateway to Odoo command palette service
+        (Ctrl+K) searching across menus, records, and commands.
+
+        State bindings (from carbon_global_search.js):
+          state.query       : current search text
+          state.isExpanded  : responsive expand/collapse state
+          state.showResults : whether results region is active
+
+        Method bindings:
+          onSearchIconClick(ev) : magnifier click handler
+          onSearchInput(ev)     : input event handler
+          onKeyDown(ev)         : keydown (Enter/Escape/Arrows)
+          onFocus()             : focus event handler
+          clearSearch()         : clear button click handler
+
+        Accessibility:
+          role="search"         : ARIA search landmark
+          aria_label            : on container, input, and buttons
+          aria_live="polite"    : screen reader announcements
+          autocomplete="off"    : prevent browser suggestions
+    -->
+    <t t-name="carbon_ui.CarbonGlobalSearch">
+        <div class="cds--search cds--search--lg"
+             role="search"
+             aria-label="Global search"
+             t-att-class="{
+                 'cds--search--expanded': state.isExpanded,
+                 'cds--search--has-content': state.query.length > 0,
+             }">
+
+            <!--
+                Search magnifier icon : left side affordance.
+                On small screens this acts as a clickable trigger
+                that opens the command palette directly. On medium
+                screens it expands the input. On large screens the
+                input is always visible and clicking focuses it.
+                Uses Carbon 16x16 magnifying glass SVG.
+            -->
+            <div class="cds--search-magnifier"
+                 t-on-click="onSearchIconClick"
+                 role="button"
+                 tabindex="-1"
+                 aria-label="Search">
+                <svg focusable="false"
+                     preserveAspectRatio="xMidYMid meet"
+                     xmlns="http://www.w3.org/2000/svg"
+                     fill="currentColor"
+                     width="16"
+                     height="16"
+                     viewBox="0 0 16 16"
+                     aria-hidden="true"
+                     class="cds--search-magnifier-icon">
+                    <path d="M15 14.3L10.7 10c1.9-2.3 1.6-5.8-.7-7.7S4.2.7 2.3 3 .7 8.8 3 10.7c2 1.7 5 1.7 7 0l4.3 4.3.7-.7zM2 6.5C2 4 4 2 6.5 2S11 4 11 6.5 9 11 6.5 11 2 9 2 6.5z"/>
+                </svg>
+            </div>
+
+            <!--
+                Search input field : primary text entry for global
+                search. Bound to reactive state for query tracking,
+                with keyboard handlers for Enter (trigger search),
+                Escape (clear/collapse), and arrow keys (delegate
+                to command palette).
+
+                t_ref="searchInput" enables programmatic focus from
+                expandSearch() and clearSearch() methods in JS.
+
+                Placeholder text guides the user. The value is
+                directly managed through the DOM by the JS component
+                (input events update state.query, and programmatic
+                clears set el.value = "").
+            -->
+            <input type="text"
+                   class="cds--search-input"
+                   t-att-placeholder="state.isExpanded ? 'Search menus, actions...' : ''"
+                   t-on-input="onSearchInput"
+                   t-on-keydown="onKeyDown"
+                   t-on-focus="onFocus"
+                   t-ref="searchInput"
+                   aria-label="Global search"
+                   aria-autocomplete="list"
+                   autocomplete="off"
+                   spellcheck="false"/>
+
+            <!--
+                Clear / close button : appears only when the search
+                input contains text (state.query.length > 0).
+                Clicking resets the query while keeping the input
+                expanded and focused (per Carbon Search UX pattern).
+                Contains Carbon close icon (16x16 SVG).
+            -->
+            <button t-if="state.query.length > 0"
+                    class="cds--search-close"
+                    type="button"
+                    t-on-click="clearSearch"
+                    aria-label="Clear search"
+                    title="Clear search">
+                <svg focusable="false"
+                     preserveAspectRatio="xMidYMid meet"
+                     xmlns="http://www.w3.org/2000/svg"
+                     fill="currentColor"
+                     width="16"
+                     height="16"
+                     viewBox="0 0 16 16"
+                     aria-hidden="true"
+                     class="cds--search-close__icon">
+                    <path d="M12 4.7l-.7-.7L8 7.3 4.7 4l-.7.7L7.3 8 4 11.3l.7.7L8 8.7l3.3 3.3.7-.7L8.7 8z"/>
+                </svg>
+            </button>
+
+            <!--
+                Screen reader only live region : announces search
+                state changes to assistive technologies without
+                visual disruption. Populated reactively based on
+                state.query and state.isExpanded.
+            -->
+            <div class="cds--assistive-text"
+                 aria-live="polite"
+                 aria-atomic="true">
+                <t t-if="state.query.length > 0">
+                    Searching for: <t t-esc="state.query"/>
+                </t>
+            </div>
+
+        </div>
+    </t>
+
+</templates>

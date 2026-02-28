@@ -1,0 +1,323 @@
+// Carbon Design System v11 — Accordion Component Override
+// Applies Carbon Accordion styling to collapsible sections and settings
+// Targets: .accordion, .accordion-item, .o_accordion, .o_accordion_toggle, .o_settings_container
+//
+// Carbon Accordion pattern reference:
+//   - Full-width clickable header with left-aligned chevron icon
+//   - 40px compact header height (Productive theme)
+//   - 1px border-subtle-01 separator between items
+//   - 150ms productive motion for chevron rotation
+//   - Transparent header background; hover shows layer-hover-01
+//   - Content indented past chevron with spacing-09 left padding
+//
+// Token dependency: carbon_tokens.scss (consumed via var(--cds-*) at runtime)
+// Sass compatibility: libsass-safe — no @use, @forward, or Dart Sass features
+
+// ============================================================================
+// SECTION 1: Accordion Container
+// ============================================================================
+// Styles the root wrapper for both Bootstrap accordion and Odoo accordion.
+
+.accordion,
+.o_accordion {
+  width: 100%;
+  border: none;
+  background: transparent;
+  // Reset any inherited border-radius from Bootstrap
+  border-radius: 0;
+}
+
+// ============================================================================
+// SECTION 2: Accordion Item
+// ============================================================================
+// Each collapsible section. Top border creates separator lines between items.
+
+.accordion-item {
+  border: none;
+  border-top: 1px solid var(--cds-border-subtle-01);
+  background: transparent;
+  // Override Bootstrap rounded corners — Carbon uses sharp edges
+  border-radius: 0;
+
+  // Reset first/last child border-radius overrides from Bootstrap
+  &:first-of-type,
+  &:last-of-type {
+    border-radius: 0;
+  }
+
+  // First item inherits top border from the rule above — no extra rule needed.
+
+  // Close the bottom of the accordion with a matching border on the last item
+  &:last-child {
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+  }
+}
+
+// Odoo-specific accordion children (used in filter dropdowns, etc.)
+.o_accordion > * {
+  border-top: 1px solid var(--cds-border-subtle-01);
+  background: transparent;
+
+  &:last-child {
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+  }
+}
+
+// ============================================================================
+// SECTION 3: Accordion Header / Button
+// ============================================================================
+// The clickable heading row that expands/collapses content.
+// Carbon compact header: 40px min-height, transparent, full-width flex row.
+
+.accordion-button,
+.o_accordion_toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding-block: 0;
+  padding-inline: var(--cds-spacing-05); // 16px horizontal padding
+  background-color: transparent;
+  border: none;
+  color: var(--cds-text-primary);
+  font-size: 0.875rem; // body-compact-01: 14px
+  font-weight: 400;
+  letter-spacing: 0.16px;
+  line-height: 1.28572; // body-compact-01 line-height
+  cursor: pointer;
+  text-align: start; // Logical property for LTR/RTL
+  text-decoration: none;
+
+  // Carbon productive motion for hover background transition
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 70ms ease;
+  }
+
+  // Hover state — Carbon layer-hover-01 background
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--cds-layer-hover-01);
+    }
+  }
+
+  // Focus state — Carbon 2px inset focus ring (keyboard users only)
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+// ============================================================================
+// SECTION 4: Remove Bootstrap Accordion Arrow
+// ============================================================================
+// Bootstrap uses a background-image chevron on ::after — remove it entirely
+// so the Carbon chevron on ::before takes over.
+
+.accordion-button::after {
+  display: none;
+}
+
+// Also remove any Bootstrap caret styling that may be injected by the
+// @include caret() mixin on .o_accordion_toggle
+.o_accordion_toggle::after {
+  display: none;
+}
+
+// ============================================================================
+// SECTION 5: Carbon Chevron (::before pseudo-element)
+// ============================================================================
+// Draws a CSS chevron pointing right (collapsed) or down (expanded).
+// Uses border-right + border-bottom rotated to form an arrow shape.
+// Sized at 10px (visual) within a 16px box for proper spacing.
+
+.accordion-button::before,
+.o_accordion_toggle::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-inline-end: var(--cds-spacing-05); // 16px gap after chevron
+  border-right: 2px solid var(--cds-icon-primary);
+  border-bottom: 2px solid var(--cds-icon-primary);
+  // Collapsed state: chevron points to the right (rotated -45deg)
+  transform: rotate(-45deg);
+  flex-shrink: 0;
+
+  // Productive motion for chevron rotation
+  @media (prefers-reduced-motion: no-preference) {
+    transition: transform 150ms ease;
+  }
+}
+
+// Expanded state: chevron rotates to point downward (+45deg)
+.accordion-button:not(.collapsed)::before {
+  transform: rotate(45deg);
+}
+
+// Odoo accordion toggle expanded state: uses .open class
+.o_accordion_toggle.open::before {
+  transform: rotate(45deg);
+}
+
+// ============================================================================
+// SECTION 6: Accordion Body / Content
+// ============================================================================
+// The expandable content area. Indented past the chevron for visual alignment.
+
+.accordion-body {
+  padding-block: var(--cds-spacing-05); // 16px top/bottom
+  padding-inline-start: var(--cds-spacing-09); // 48px left — past chevron
+  padding-inline-end: var(--cds-spacing-05); // 16px right
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem; // body-compact-01
+  line-height: 1.43; // body-01 line-height for readable content
+
+  @media (prefers-reduced-motion: no-preference) {
+    // Smooth content appearance
+    animation: cds-accordion-content-fade-in 150ms ease;
+  }
+}
+
+// Odoo accordion content area (nested values in filter menus)
+.o_accordion > .o_accordion_values {
+  padding-block: var(--cds-spacing-05);
+  padding-inline-start: var(--cds-spacing-09);
+  padding-inline-end: var(--cds-spacing-05);
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.43;
+}
+
+// Simple fade-in keyframe for accordion content reveal
+@keyframes cds-accordion-content-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// ============================================================================
+// SECTION 7: Bootstrap Accordion Override Resets
+// ============================================================================
+// Remove Bootstrap's default colored backgrounds, box-shadows, and text
+// styling that conflict with Carbon's transparent, token-based approach.
+
+.accordion-button:not(.collapsed) {
+  background-color: transparent;
+  color: var(--cds-text-primary);
+  box-shadow: none;
+}
+
+.accordion-button:focus {
+  // Bootstrap uses box-shadow for focus — Carbon uses outline (applied above
+  // via :focus-visible). Remove the Bootstrap shadow entirely.
+  box-shadow: none;
+}
+
+// Ensure Bootstrap .accordion-collapse transitions are preserved but the
+// visual styling is Carbon-aligned
+.accordion-collapse {
+  border: none;
+}
+
+// Reset any Bootstrap card-based accordion styling (legacy pattern)
+.accordion > .card {
+  border-radius: 0;
+  border: none;
+}
+
+// ============================================================================
+// SECTION 8: Settings Container — Odoo-Specific Accordion Pattern
+// ============================================================================
+// The Odoo settings form uses .o_settings_container and .o_setting_box
+// for collapsible option groups. Apply Carbon accordion spacing and borders.
+
+.o_settings_container .o_setting_box {
+  // Carbon-consistent border separator
+  border-top: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0;
+  // Carbon spacing scale for consistent vertical rhythm
+  margin-block-start: 0;
+  margin-block-end: 0;
+  padding-block: var(--cds-spacing-05); // 16px vertical padding
+  padding-inline: var(--cds-spacing-05); // 16px horizontal padding
+  position: relative;
+
+  // Last setting box gets a bottom border to close the group
+  &:last-child {
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+  }
+
+  // Setting box section headers — Carbon heading-compact-01
+  .o_form_label {
+    font-size: 0.875rem; // heading-compact-01
+    font-weight: 600;
+    letter-spacing: 0.16px;
+    line-height: 1.28572;
+    color: var(--cds-text-primary);
+  }
+
+  // Setting box divider between left pane and right pane
+  .o_setting_right_pane {
+    border-inline-start: 1px solid var(--cds-border-subtle-01);
+    padding-inline-start: var(--cds-spacing-05); // 16px
+  }
+}
+
+// Settings form section headings (h2 within app_settings_block)
+// These act as accordion-like section separators
+.app_settings_block h2 {
+  color: var(--cds-text-primary);
+  font-size: 0.875rem; // heading-compact-01
+  font-weight: 600;
+  letter-spacing: 0.16px;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  padding-block: var(--cds-spacing-05);
+}
+
+// Settings tab navigation — Carbon-aligned active indicator and typography
+.o_setting_container .settings_tab .tab {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.28572;
+  letter-spacing: 0.16px;
+  min-height: 40px; // Carbon compact row height
+
+  @media (hover: hover) {
+    &:hover {
+      color: var(--cds-text-primary);
+      background-color: var(--cds-layer-hover-01);
+    }
+  }
+
+  &.selected {
+    color: var(--cds-text-primary);
+    font-weight: 600;
+  }
+}
+
+// ============================================================================
+// SECTION 9: Accessibility Enhancements
+// ============================================================================
+// Ensure all interactive accordion elements meet WCAG 2.1 AA requirements.
+
+// Minimum 44x44px touch target for accordion buttons on touch devices
+@media (pointer: coarse) {
+  .accordion-button,
+  .o_accordion_toggle {
+    min-height: 44px;
+  }
+}
+
+// Screen reader announcement support via aria-expanded
+// (structural — no visual styles needed, but ensure no visual conflict
+//  with expanded/collapsed states driven by ARIA attributes)
+.accordion-button[aria-expanded="true"]::before {
+  transform: rotate(45deg);
+}
+
+.accordion-button[aria-expanded="false"]::before {
+  transform: rotate(-45deg);
+}

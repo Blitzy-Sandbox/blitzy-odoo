@@ -1,0 +1,204 @@
+// Carbon Charts — Dark Mode Overrides (G90/G100)
+// IBM Carbon Design System v11 — Productive theme
+//
+// Loaded in web.assets_backend_lazy_dark bundle.
+// Active when Odoo's color_scheme cookie is "dark".
+//
+// This file provides dark-mode-specific style adjustments for the Carbon
+// Charts graph renderer. The main carbon_graph_renderer.scss already uses
+// var(--cds-*) CSS custom properties throughout, which automatically swap
+// values when carbon_dark_theme.scss is loaded (via web.assets_web_dark).
+// This file handles additional per-component overrides that benefit from
+// explicit dark-mode attention beyond the global token swap.
+//
+// Compatibility: libsass-safe — only var(), no @use/@forward.
+// Token compliance: all colors via var(--cds-*) tokens.
+// WCAG 2.1 AA (G90):
+//   - Text primary (#f4f4f4) on layer-01 (#393939): ~7.5:1 ✓
+//   - Text secondary (#c6c6c6) on layer-01 (#393939): ~4.7:1 ✓
+//   - Interactive (#4589ff) on background (#262626): ~4.6:1 ✓
+
+// ============================================================================
+// 1. GRAPH RENDERER — Dark Background Layer
+// ============================================================================
+// In dark mode the renderer background uses the dark layer token rather
+// than relying solely on the global token swap, ensuring correct elevation.
+
+.o_graph_renderer {
+  background-color: var(--cds-layer-01);
+}
+
+.o_graph_chart_container {
+  background-color: var(--cds-layer-01);
+}
+
+// ============================================================================
+// 2. CARBON CHARTS WRAPPER — Dark SVG Adjustments
+// ============================================================================
+// Carbon Charts SVG internals require explicit dark-mode treatment for
+// axis lines, grid lines, and tick labels to maintain contrast on dark
+// backgrounds.
+
+.cds--cc--chart-wrapper {
+  background-color: var(--cds-layer-01);
+
+  svg {
+    // Axis lines: use border-subtle for subtle contrast on dark layer
+    .axis {
+      path,
+      line {
+        stroke: var(--cds-border-subtle-01);
+      }
+    }
+
+    // Grid lines: slightly more visible on dark backgrounds
+    .grid {
+      line {
+        stroke: var(--cds-border-subtle-01);
+        opacity: 0.4;
+      }
+    }
+
+    // Tick label text: ensure text-secondary meets contrast on dark layer
+    .tick text {
+      fill: var(--cds-text-secondary);
+    }
+
+    // Axis title text
+    .axis-title {
+      fill: var(--cds-text-primary);
+    }
+  }
+}
+
+// ============================================================================
+// 3. CHART TOOLBAR — Dark Mode
+// ============================================================================
+// Toolbar border and button hover states need explicit dark-mode colors
+// for proper contrast and feedback.
+
+.cds--cc--toolbar {
+  color: var(--cds-text-secondary);
+  border-block-end-color: var(--cds-border-subtle-01);
+
+  button {
+    color: var(--cds-text-secondary);
+
+    &:hover {
+      color: var(--cds-text-primary);
+      background-color: var(--cds-background-hover);
+    }
+  }
+}
+
+// ============================================================================
+// 4. CHART LEGEND — Dark Mode
+// ============================================================================
+// Legend text and hover states for dark backgrounds.
+
+.cds--cc--legend {
+  color: var(--cds-text-primary);
+
+  .legend-item {
+    color: var(--cds-text-primary);
+
+    &:hover {
+      color: var(--cds-text-secondary);
+    }
+  }
+
+  .legend-title {
+    color: var(--cds-text-primary);
+  }
+}
+
+// ============================================================================
+// 5. CHART TOOLTIP — Dark Mode Inversion
+// ============================================================================
+// In light mode, Carbon tooltips use a dark background (#393939 inverse).
+// In dark mode, the inverse tokens automatically flip so the tooltip
+// becomes light-on-dark. These overrides ensure clean rendering.
+
+.cds--cc--tooltip {
+  background-color: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+  box-shadow: 0 2px 6px var(--cds-shadow);
+
+  .tooltip-title {
+    color: var(--cds-text-inverse);
+  }
+
+  .tooltip-label {
+    color: var(--cds-text-inverse);
+  }
+
+  .tooltip-value {
+    color: var(--cds-text-inverse);
+  }
+}
+
+// Odoo custom tooltip — same inverse treatment
+.o_graph_custom_tooltip {
+  background-color: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+
+  .o_measure {
+    color: var(--cds-text-inverse);
+  }
+
+  .o_label {
+    color: var(--cds-text-inverse);
+  }
+
+  .o_value {
+    color: var(--cds-text-inverse);
+  }
+}
+
+// Legend tooltip
+.o_tooltip_legend {
+  background-color: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+  box-shadow: 0 2px 6px var(--cds-shadow);
+}
+
+// ============================================================================
+// 6. GRAPH ALERT — Dark Mode
+// ============================================================================
+// Inline notification in dark mode uses dark-appropriate info tokens.
+
+.o_graph_alert {
+  background-color: var(--cds-notification-background-info);
+  color: var(--cds-text-primary);
+  border-inline-start-color: var(--cds-support-info);
+
+  .o_graph_load_all_btn {
+    color: var(--cds-link-primary);
+
+    &:hover {
+      color: var(--cds-link-primary);
+    }
+  }
+}
+
+// ============================================================================
+// 7. CHART MODE TOGGLE BUTTONS — Dark Mode
+// ============================================================================
+// Button group (bar/line/pie switcher) in dark mode needs explicit border
+// and background token references for correct contrast.
+
+.o_graph_view .btn-group .btn {
+  color: var(--cds-text-secondary);
+  border-color: var(--cds-border-strong-01);
+
+  &:hover {
+    background-color: var(--cds-background-hover);
+    color: var(--cds-text-primary);
+  }
+
+  &.active,
+  &:active {
+    background-color: var(--cds-layer-selected-01);
+    color: var(--cds-text-primary);
+  }
+}

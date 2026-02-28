@@ -1,0 +1,215 @@
+// Carbon Design System v11 — DataTable Component Override
+// Applies Carbon DataTable styling to Odoo list views
+// Targets: .o_list_renderer, .o_list_view, .o_list_table, .o_data_row
+// Depends on: carbon_tokens.scss for --cds-* CSS custom properties
+//
+// Carbon DataTable spec:
+//   - Compact row height: 48px
+//   - Header weight: 600 (semibold)
+//   - Body text: body-compact-01 (14px / 1.29 / 400 / 0.16px)
+//   - Heading text: heading-compact-01 (14px / 1.29 / 600 / 0.16px)
+//   - Zebra striping with layer-01 / background alternation
+//   - Focus ring: 2px inset, var(--cds-focus)
+//   - Motion: 70ms productive for hover transitions
+//
+// Compatibility: libsass (no @use, no Dart Sass features)
+// Dark mode: all values use var(--cds-*) custom properties — automatically
+//   swapped when carbon_dark_theme.scss activates G90/G100 theme tokens.
+
+// ==========================================================================
+// 1. LIST RENDERER ROOT — Override Odoo custom properties with Carbon tokens
+// ==========================================================================
+
+.o_list_renderer {
+  // Override the CSS custom properties that Odoo's list renderer defines.
+  // These properties are consumed internally by thead, tfoot, and cell
+  // padding rules in the original list_renderer.scss, so overriding them
+  // here propagates Carbon spacing and color into the existing layout
+  // without needing to duplicate every downstream rule.
+  --ListRenderer-table-padding-x: var(--cds-spacing-05); // 16px
+  --ListRenderer-thead-padding-y: var(--cds-spacing-03); // 8px compact
+  --ListRenderer-thead-bg-color: var(--cds-layer-accent-01);
+  --ListRenderer-thead-border-end-color: var(--cds-border-subtle-01);
+  --ListRenderer-tfoot-bg-color: transparent;
+}
+
+// ==========================================================================
+// 2. TABLE BASE — Carbon DataTable typography and color
+// ==========================================================================
+
+.o_list_table {
+  // Preserve structural defaults from Odoo
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+
+  // Carbon body-compact-01 (Productive type scale)
+  font-size: 0.875rem; // 14px
+  line-height: 1.29; // Carbon Productive line-height
+  letter-spacing: 0.16px; // Carbon body-compact-01 letter-spacing
+  color: var(--cds-text-primary);
+}
+
+// ==========================================================================
+// 3. THEAD — Carbon DataTable header
+// ==========================================================================
+
+.o_list_table thead {
+  background-color: var(--cds-layer-accent-01);
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+
+// Header cells — Carbon heading-compact-01 type token
+.o_list_table thead th {
+  // Carbon compact header cell dimensions
+  padding: var(--cds-spacing-03) var(--cds-spacing-05); // 8px 16px
+  height: 48px; // Carbon compact row height (AAP §0.6.1)
+
+  // Carbon heading-compact-01 typography
+  font-size: 0.875rem; // 14px
+  font-weight: 600; // Carbon heading weight (semibold)
+  letter-spacing: 0.16px;
+  line-height: 1.29;
+  color: var(--cds-text-primary);
+  text-transform: none; // Carbon does NOT uppercase table headers
+
+  // Borders and alignment
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  vertical-align: middle;
+}
+
+// ==========================================================================
+// 4. SORT INDICATORS — Carbon DataTable sortable column headers
+// ==========================================================================
+
+// Sortable columns — .o_column_sortable is applied directly on the <th>.
+.o_list_table thead th.o_column_sortable {
+  cursor: pointer;
+  user-select: none; // Prevent text selection while clicking to sort
+
+  &:hover {
+    background-color: var(--cds-layer-hover-01);
+  }
+
+  // Sort icon styling — Odoo renders sort indicator elements inside sortable
+  // headers. Override their color to use Carbon icon-primary token.
+  .fa,
+  [class*="oi-"] {
+    color: var(--cds-icon-primary);
+  }
+}
+
+// ==========================================================================
+// 5. DATA ROWS — Carbon DataTable row styles
+// ==========================================================================
+
+.o_list_table .o_data_row {
+  height: 48px; // Carbon compact row height
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  color: var(--cds-text-secondary);
+
+  // Carbon Productive motion: fast-01 (70ms) for background transitions
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 70ms;
+  }
+}
+
+// Hover state — Carbon layer-hover-01
+.o_list_table .o_data_row:hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+// Selected state (checkbox-selected rows) — Carbon layer-selected-01
+.o_list_table .o_data_row.o_data_row_selected {
+  background-color: var(--cds-layer-selected-01);
+}
+
+// ==========================================================================
+// 6. ZEBRA STRIPING — Subtle even/odd alternation for scannability
+// ==========================================================================
+
+// Even rows: subtle Carbon layer for differentiation
+.o_list_table .o_data_row:nth-child(even) {
+  background-color: var(--cds-layer-01);
+}
+
+// Odd rows: base Carbon background
+.o_list_table .o_data_row:nth-child(odd) {
+  background-color: var(--cds-background);
+}
+
+// ==========================================================================
+// 7. TABLE CELLS — Carbon DataTable cell dimensions and typography
+// ==========================================================================
+
+.o_list_table td {
+  padding: var(--cds-spacing-03) var(--cds-spacing-05); // 8px 16px
+  vertical-align: middle;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  color: var(--cds-text-secondary);
+}
+
+// ==========================================================================
+// 8. SELECTION CHECKBOX COLUMN — Carbon checkbox cell width
+// ==========================================================================
+
+.o_list_table .o_list_record_selector {
+  width: 48px; // Carbon checkbox cell width — 48px to match row height
+  min-width: 48px; // Ensure minimum width is met despite content constraints
+  padding-inline-start: var(--cds-spacing-05); // 16px left alignment
+  padding-inline-end: 0;
+  vertical-align: middle;
+}
+
+// ==========================================================================
+// 9. GROUP HEADER — Carbon styled grouped list header rows
+// ==========================================================================
+
+.o_list_table .o_group_header {
+  background-color: var(--cds-layer-accent-01);
+  font-weight: 600; // Carbon semibold
+  color: var(--cds-text-primary);
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  height: 48px; // Carbon compact row height
+
+  > th,
+  > td {
+    vertical-align: middle;
+    padding-block: var(--cds-spacing-03); // 8px top and bottom
+  }
+}
+
+// ==========================================================================
+// 10. FOOTER — Carbon DataTable footer (aggregate/totals row)
+// ==========================================================================
+
+// Footer uses .o_list_footer in Odoo — qualify for specificity.
+.o_list_table tfoot,
+.o_list_table tfoot.o_list_footer {
+  border-top: 1px solid var(--cds-border-strong-01);
+  background-color: var(--cds-layer-accent-01);
+  font-weight: 600; // Carbon semibold
+  color: var(--cds-text-primary);
+
+  > tr > td {
+    font-weight: 600; // Carbon semibold — override Bootstrap bold (700)
+    color: var(--cds-text-primary);
+    background-color: var(--cds-layer-accent-01);
+    vertical-align: middle;
+    padding: var(--cds-spacing-03) var(--cds-spacing-05); // 8px 16px
+    height: 48px;
+    border-top: 1px solid var(--cds-border-strong-01);
+  }
+}
+
+// ==========================================================================
+// 11. EDITABLE / SELECTED ROW — Carbon focus ring for inline editing
+// ==========================================================================
+
+.o_list_table .o_data_row.o_selected_row {
+  background-color: var(--cds-layer-selected-01);
+
+  // Carbon focus ring: 2px inset outline using the focus token.
+  // This provides a clear visual indication that the row is in edit mode,
+  // meeting WCAG 2.1 AA focus visibility requirements.
+  box-shadow: inset 0 0 0 2px var(--cds-focus);
+}

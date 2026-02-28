@@ -1,0 +1,378 @@
+// Carbon Design System v11 — Breadcrumb Component Override
+// Applies Carbon Breadcrumb styling with slash separators and link typography
+// Targets: .o_breadcrumb, .breadcrumb, .breadcrumb-item, .o_last_breadcrumb_item
+//
+// Carbon Breadcrumb pattern:
+//   Separator: "/" (forward slash)
+//   Typography: body-compact-01 (14px, weight 400, line-height 1.29, letter-spacing 0.16px)
+//   Link color: --cds-link-primary (Blue 60)
+//   Current page: --cds-text-primary (non-clickable)
+//   No background, no borders, no border-radius
+//
+// Compatibility: libsass-safe — uses CSS custom properties via var() only.
+// Tokens are defined in carbon_tokens.scss on :root and swapped for dark mode.
+
+// ============================================================================
+// SECTION 1: Breadcrumb Container
+// ============================================================================
+// The .o_breadcrumb wrapper and inner .breadcrumb <ol> receive Carbon's flat,
+// transparent breadcrumb styling with body-compact-01 typography.
+
+.o_breadcrumb {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  // Carbon body-compact-01 typography
+  font-size: 0.875rem;       // 14px
+  line-height: 1.29;         // ~18px
+  letter-spacing: 0.16px;
+  list-style: none;
+  overflow: hidden;
+}
+
+// The <ol> element rendered by Bootstrap's .breadcrumb class inside .o_breadcrumb.
+// Reset Bootstrap's default breadcrumb styling to align with Carbon's flat pattern.
+.o_breadcrumb .breadcrumb,
+.o_control_panel_breadcrumbs .breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font-size: 0.875rem;       // body-compact-01
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  list-style: none;
+  border-radius: 0;          // Carbon: no border-radius on breadcrumbs
+  overflow: hidden;
+}
+
+// ============================================================================
+// SECTION 2: Breadcrumb Items
+// ============================================================================
+// Each .breadcrumb-item displays as an inline flex container with nowrap
+// to prevent individual crumbs from wrapping mid-word.
+
+.o_breadcrumb .breadcrumb-item,
+.o_control_panel_breadcrumbs .breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  min-width: 0;
+  color: var(--cds-link-primary);
+  font-size: 0.875rem;
+  line-height: 1.29;
+}
+
+// ============================================================================
+// SECTION 3: Slash Separator
+// ============================================================================
+// Carbon uses a forward slash "/" as the breadcrumb separator — not a chevron
+// or ">" character. Override Bootstrap's default separator.
+
+.o_breadcrumb .breadcrumb-item + .breadcrumb-item::before,
+.o_control_panel_breadcrumbs .breadcrumb-item + .breadcrumb-item::before {
+  // Carbon forward-slash separator
+  content: "/";
+  display: inline-flex;
+  align-items: center;
+  padding-inline-start: var(--cds-spacing-03);  // 8px
+  padding-inline-end: var(--cds-spacing-03);     // 8px
+  color: var(--cds-text-primary);
+  font-weight: 400;
+  font-size: 0.875rem;
+  // Prevent separator from floating or having Bootstrap's default margins
+  float: none;
+  margin: 0;
+}
+
+// ============================================================================
+// SECTION 4: Breadcrumb Links
+// ============================================================================
+// Clickable breadcrumb links use Carbon's link-primary color with underline
+// on hover and a visible focus ring for accessibility.
+
+.o_breadcrumb .breadcrumb-item a,
+.o_control_panel_breadcrumbs .breadcrumb-item a {
+  color: var(--cds-link-primary);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;           // Truncation for long view names
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 0;           // Carbon: no border-radius
+  // Override Odoo's .fw-bold on breadcrumb links — Carbon uses normal weight
+  font-weight: 400;
+
+  // Hover state: underline + darker link color per Carbon interaction pattern
+  @media (hover: hover) {
+    &:hover {
+      color: var(--cds-link-primary-hover);
+      text-decoration: underline;
+    }
+  }
+
+  // Focus state: Carbon 2px focus ring for keyboard accessibility (WCAG 2.1 AA)
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+    border-radius: 0;
+  }
+
+  // Active/pressed state
+  &:active {
+    color: var(--cds-link-primary-hover);
+  }
+}
+
+// ============================================================================
+// SECTION 5: Current Page (Active Item)
+// ============================================================================
+// The last breadcrumb item represents the current page. Carbon renders this
+// as plain text in text-primary color — no link, no underline, normal weight.
+
+.o_breadcrumb .breadcrumb-item.active,
+.o_breadcrumb .o_last_breadcrumb_item,
+.o_control_panel_breadcrumbs .breadcrumb-item.active,
+.o_control_panel_breadcrumbs .o_last_breadcrumb_item {
+  color: var(--cds-text-primary);
+  font-weight: 400;           // Carbon: current item is NOT bold
+  cursor: default;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+
+  // Ensure nested span inherits truncation for the current page name
+  > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    color: inherit;
+  }
+
+  // When active item has no preceding siblings, it acts as the page title
+  // Odoo uses .fs-4 (Bootstrap class) — override to Carbon heading-compact-01
+  &.fs-4 {
+    font-size: 0.875rem;      // Override Bootstrap .fs-4 to stay at body-compact-01
+    font-weight: 600;          // Heading-compact-01 weight for standalone titles
+    line-height: 1.29;
+    letter-spacing: 0.16px;
+  }
+}
+
+// The .o_last_breadcrumb_item .active separator should not show
+.o_breadcrumb .o_last_breadcrumb_item.active::before {
+  content: none;
+}
+
+// ============================================================================
+// SECTION 6: Overflow Dropdown (Collapsed Breadcrumbs)
+// ============================================================================
+// When too many breadcrumbs exist, Odoo collapses earlier items into a
+// dropdown triggered by an ellipsis icon. Style this as a Carbon overflow
+// menu pattern.
+
+.o_breadcrumb .breadcrumb-item .dropdown,
+.o_control_panel_breadcrumbs .breadcrumb-item .dropdown {
+  display: inline-flex;
+  align-items: center;
+}
+
+// Ellipsis trigger button — style as Carbon overflow menu trigger
+.o_breadcrumb .breadcrumb-item .dropdown > .btn,
+.o_control_panel_breadcrumbs .breadcrumb-item .dropdown > .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;             // 32px — Carbon minimum touch target width
+  min-height: 2rem;            // 32px
+  padding: var(--cds-spacing-02) var(--cds-spacing-03); // 4px 8px
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;           // Carbon: no border-radius
+  color: var(--cds-icon-secondary);
+  cursor: pointer;
+  font-size: 0.875rem;
+
+  // Hover: subtle background per Carbon overflow menu
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--cds-background-hover);
+      color: var(--cds-icon-primary, var(--cds-icon-secondary));
+    }
+  }
+
+  // Focus: Carbon focus ring
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+    background: transparent;
+  }
+
+  // Override Bootstrap .btn-light background
+  &.btn-light {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+
+    &:hover {
+      background-color: var(--cds-background-hover);
+    }
+
+    &:active,
+    &:focus {
+      background: transparent;
+      box-shadow: none;
+    }
+  }
+}
+
+// Ellipsis icon inside the trigger
+.o_breadcrumb .breadcrumb-item .dropdown > .btn .oi-ellipsis-h,
+.o_control_panel_breadcrumbs .breadcrumb-item .dropdown > .btn .oi-ellipsis-h {
+  color: var(--cds-icon-secondary);
+  font-size: 1rem;
+}
+
+// Dropdown menu (collapsed breadcrumb list) — Carbon overflow menu pattern
+.o_breadcrumb .breadcrumb-item .dropdown .dropdown-menu,
+.o_control_panel_breadcrumbs .breadcrumb-item .dropdown .dropdown-menu {
+  min-width: 10rem;            // 160px — Carbon overflow menu min-width
+  padding-block: var(--cds-spacing-02); // 4px top and bottom
+  background-color: var(--cds-layer-01);
+  border: none;
+  border-radius: 0;           // Carbon: no border-radius on menus
+  box-shadow: 0 2px 6px var(--cds-shadow, rgba(0, 0, 0, 0.3));
+}
+
+// Individual items in the collapsed dropdown
+.o_breadcrumb .breadcrumb-item .dropdown .dropdown-menu .dropdown-item,
+.o_control_panel_breadcrumbs .breadcrumb-item .dropdown .dropdown-menu .dropdown-item {
+  padding: var(--cds-spacing-03) var(--cds-spacing-05); // 8px 16px
+  font-size: 0.875rem;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-secondary);
+  background: transparent;
+  border-radius: 0;
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--cds-layer-hover-01);
+      color: var(--cds-text-primary);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+    background: transparent;
+  }
+
+  &:active {
+    background-color: var(--cds-layer-active-01);
+    color: var(--cds-text-primary);
+  }
+}
+
+// ============================================================================
+// SECTION 7: Mobile Back Button
+// ============================================================================
+// On small screens (env.isSmall), Odoo replaces the breadcrumb trail with a
+// single back button (.o_back_button). Style it with Carbon tokens.
+
+.o_breadcrumb .o_back_button,
+.o_control_panel .o_back_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;          // 44px — WCAG minimum touch target
+  min-height: 2.75rem;         // 44px
+  padding: var(--cds-spacing-02); // 4px
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--cds-link-primary);
+  cursor: pointer;
+
+  @media (hover: hover) {
+    &:hover {
+      color: var(--cds-link-primary-hover);
+      background-color: var(--cds-background-hover);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+  }
+
+  // Back arrow icon
+  .oi-arrow-left {
+    color: inherit;
+    font-size: 1rem;
+  }
+}
+
+// ============================================================================
+// SECTION 8: Control Panel Breadcrumbs Context
+// ============================================================================
+// Override the Bootstrap breadcrumb variable set by Odoo's control panel SCSS
+// and ensure Carbon styling cascades properly within the control panel.
+
+.o_control_panel_breadcrumbs {
+  // Reset Bootstrap breadcrumb CSS variable to Carbon body-compact-01
+  --bs-breadcrumb-font-size: 0.875rem;
+
+  // Ensure the breadcrumb container uses Carbon layout
+  .o_breadcrumb {
+    gap: 0;                    // Carbon separators handle all spacing via padding
+    min-width: 0;
+  }
+}
+
+// ============================================================================
+// SECTION 9: Breadcrumb Actions (Adjacent Controls)
+// ============================================================================
+// Buttons and controls placed next to the breadcrumb (e.g., favorite star,
+// status indicator). Keep them aligned and non-intrusive.
+
+.o_control_panel_breadcrumbs_actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cds-spacing-02);  // 4px between action buttons
+  margin-inline-start: var(--cds-spacing-03); // 8px gap from breadcrumb text
+}
+
+// ============================================================================
+// SECTION 10: Hover Transition
+// ============================================================================
+// Carbon productive motion for breadcrumb link hover transitions.
+// Wrapped in prefers-reduced-motion per accessibility guidelines.
+
+@media (prefers-reduced-motion: no-preference) {
+  .o_breadcrumb .breadcrumb-item a,
+  .o_control_panel_breadcrumbs .breadcrumb-item a {
+    transition: color 150ms cubic-bezier(0.2, 0, 0.38, 0.9);
+  }
+
+  .o_breadcrumb .breadcrumb-item .dropdown > .btn,
+  .o_control_panel_breadcrumbs .breadcrumb-item .dropdown > .btn {
+    transition: background-color 150ms cubic-bezier(0.2, 0, 0.38, 0.9),
+                color 150ms cubic-bezier(0.2, 0, 0.38, 0.9);
+  }
+}

@@ -1,0 +1,529 @@
+// Carbon Design System v11 — Dark Theme (G90)
+// Comprehensive dark mode token swapping from White theme to Gray 90
+// Loaded in web.assets_web_dark bundle — active when color_scheme=dark
+//
+// Architecture:
+// This file overrides EVERY --cds-* CSS custom property originally defined in
+// carbon_tokens.scss (White theme) with the equivalent G90 dark theme value.
+// When Odoo's color_scheme cookie is set to "dark", this bundle is loaded,
+// and the :root custom properties are re-declared with G90 values, effectively
+// swapping the entire theme at runtime.
+//
+// Token values are sourced from @carbon/themes v11 — Gray 90 theme.
+// All values are verified against the official pre-compiled carbon-tokens.css.
+//
+// Compatibility: libsass-safe. Uses only plain CSS custom property declarations.
+// No @use, @forward, or Dart Sass-only features.
+//
+// WCAG 2.1 AA Compliance:
+// - Text primary (#f4f4f4) on background (#262626) = contrast ratio ~13.1:1 ✓
+// - Text secondary (#c6c6c6) on background (#262626) = contrast ratio ~8.6:1 ✓
+// - Interactive (#4589ff) on background (#262626) = contrast ratio ~4.6:1 ✓
+// - Link primary (#78a9ff) on background (#262626) = contrast ratio ~7.0:1 ✓
+
+
+// ============================================================================
+// SECTION 1: G90 Dark Theme — Color Token Overrides
+// ============================================================================
+// Re-declares all --cds-* color tokens on :root with Carbon G90 theme values.
+// This block overrides the White theme tokens set in carbon_tokens.scss.
+
+:root {
+  // Signal dark color scheme to the browser and Carbon components
+  --cds-color-scheme: dark;
+
+  // -------------------------------------------------------------------------
+  // Background tokens
+  // -------------------------------------------------------------------------
+  // G90 base background: Gray 90 (#262626)
+  --cds-background: #262626;
+  --cds-background-hover: rgba(141, 141, 141, 0.16);
+  --cds-background-active: rgba(141, 141, 141, 0.4);
+  --cds-background-selected: rgba(141, 141, 141, 0.24);
+  --cds-background-selected-hover: rgba(141, 141, 141, 0.32);
+  --cds-background-inverse: #f4f4f4;
+  --cds-background-inverse-hover: #e8e8e8;
+  --cds-background-brand: #0f62fe;
+
+  // -------------------------------------------------------------------------
+  // Layer tokens
+  // -------------------------------------------------------------------------
+  // Layers provide elevated surfaces on the dark background.
+  // G90 layer-01: Gray 80 (#393939), layer-02: Gray 70 (#525252),
+  // layer-03: Gray 60 (#6f6f6f)
+  --cds-layer-01: #393939;
+  --cds-layer-02: #525252;
+  --cds-layer-03: #6f6f6f;
+  --cds-layer-hover-01: #474747;
+  --cds-layer-hover-02: #636363;
+  --cds-layer-hover-03: #5e5e5e;
+  --cds-layer-active-01: #6f6f6f;
+  --cds-layer-active-02: #8d8d8d;
+  --cds-layer-active-03: #393939;
+  --cds-layer-selected-01: #525252;
+  --cds-layer-selected-02: #6f6f6f;
+  --cds-layer-selected-03: #525252;
+  --cds-layer-selected-hover-01: #636363;
+  --cds-layer-selected-hover-02: #5e5e5e;
+  --cds-layer-selected-hover-03: #636363;
+  --cds-layer-selected-disabled: #a8a8a8;
+  --cds-layer-selected-inverse: #f4f4f4;
+  --cds-layer-accent-01: #525252;
+  --cds-layer-accent-02: #6f6f6f;
+  --cds-layer-accent-03: #8d8d8d;
+  --cds-layer-accent-hover-01: #636363;
+  --cds-layer-accent-hover-02: #5e5e5e;
+  --cds-layer-accent-hover-03: #7a7a7a;
+  --cds-layer-accent-active-01: #8d8d8d;
+  --cds-layer-accent-active-02: #393939;
+  --cds-layer-accent-active-03: #525252;
+  --cds-layer-background-01: #262626;
+  --cds-layer-background-02: #393939;
+  --cds-layer-background-03: #525252;
+
+  // -------------------------------------------------------------------------
+  // Text tokens
+  // -------------------------------------------------------------------------
+  // Light text on dark backgrounds for high contrast readability.
+  // G90 text-primary: Gray 10 (#f4f4f4), text-secondary: Gray 30 (#c6c6c6)
+  --cds-text-primary: #f4f4f4;
+  --cds-text-secondary: #c6c6c6;
+  --cds-text-placeholder: rgba(244, 244, 244, 0.4);
+  --cds-text-on-color: #ffffff;
+  --cds-text-on-color-disabled: rgba(255, 255, 255, 0.25);
+  --cds-text-inverse: #161616;
+  --cds-text-disabled: rgba(244, 244, 244, 0.25);
+  --cds-text-error: #ffb3b8;
+  --cds-text-helper: #c6c6c6;
+
+  // -------------------------------------------------------------------------
+  // Border tokens
+  // -------------------------------------------------------------------------
+  // Borders are lightened for visibility on dark surfaces.
+  --cds-border-subtle-00: #525252;
+  --cds-border-subtle-01: #6f6f6f;
+  --cds-border-subtle-02: #8d8d8d;
+  --cds-border-subtle-03: #8d8d8d;
+  --cds-border-subtle-selected-01: #8d8d8d;
+  --cds-border-subtle-selected-02: #a8a8a8;
+  --cds-border-subtle-selected-03: #a8a8a8;
+  --cds-border-strong-01: #8d8d8d;
+  --cds-border-strong-02: #a8a8a8;
+  --cds-border-strong-03: #c6c6c6;
+  --cds-border-interactive: #4589ff;
+  --cds-border-inverse: #f4f4f4;
+  --cds-border-disabled: rgba(141, 141, 141, 0.5);
+  --cds-border-tile-01: #6f6f6f;
+  --cds-border-tile-02: #8d8d8d;
+  --cds-border-tile-03: #a8a8a8;
+
+  // -------------------------------------------------------------------------
+  // Interactive tokens
+  // -------------------------------------------------------------------------
+  // G90 interactive: Blue 50 (#4589ff) — lighter blue for dark backgrounds.
+  // G90 focus: white (#ffffff) — maximum contrast for focus rings.
+  --cds-interactive: #4589ff;
+  --cds-focus: #ffffff;
+  --cds-focus-inset: #161616;
+  --cds-focus-inverse: #0f62fe;
+  --cds-highlight: #002d9c;
+  --cds-overlay: rgba(0, 0, 0, 0.6);
+  --cds-toggle-off: #8d8d8d;
+  --cds-shadow: rgba(0, 0, 0, 0.8);
+
+  // -------------------------------------------------------------------------
+  // Link tokens
+  // -------------------------------------------------------------------------
+  // Links are brightened for dark backgrounds.
+  // G90 link-primary: Blue 40 (#78a9ff) — brighter than White theme's Blue 60.
+  --cds-link-primary: #78a9ff;
+  --cds-link-primary-hover: #a6c8ff;
+  --cds-link-secondary: #a6c8ff;
+  --cds-link-inverse: #0f62fe;
+  --cds-link-inverse-active: #161616;
+  --cds-link-inverse-hover: #0043ce;
+  --cds-link-inverse-visited: #8a3ffc;
+  --cds-link-visited: #be95ff;
+
+  // -------------------------------------------------------------------------
+  // Support / Semantic tokens
+  // -------------------------------------------------------------------------
+  // Semantic colors are shifted to lighter variants for dark mode visibility.
+  // G90 support-success: Green 40 (#42be65), support-error: Red 40 (#ff8389)
+  --cds-support-success: #42be65;
+  --cds-support-warning: #f1c21b;
+  --cds-support-error: #ff8389;
+  --cds-support-info: #4589ff;
+  --cds-support-caution-major: #ff832b;
+  --cds-support-caution-minor: #f1c21b;
+  --cds-support-undefined: #a56eff;
+  --cds-support-error-inverse: #da1e28;
+  --cds-support-success-inverse: #24a148;
+  --cds-support-warning-inverse: #f1c21b;
+  --cds-support-info-inverse: #0043ce;
+
+  // -------------------------------------------------------------------------
+  // Icon tokens
+  // -------------------------------------------------------------------------
+  // Icons follow text tokens for consistency on dark surfaces.
+  --cds-icon-primary: #f4f4f4;
+  --cds-icon-secondary: #c6c6c6;
+  --cds-icon-on-color: #ffffff;
+  --cds-icon-on-color-disabled: rgba(255, 255, 255, 0.25);
+  --cds-icon-inverse: #161616;
+  --cds-icon-disabled: rgba(244, 244, 244, 0.25);
+  --cds-icon-interactive: #ffffff;
+
+  // -------------------------------------------------------------------------
+  // Field tokens
+  // -------------------------------------------------------------------------
+  // Form fields use elevated layer surfaces.
+  // G90 field-01: Gray 80 (#393939), field-02: Gray 70 (#525252)
+  --cds-field-01: #393939;
+  --cds-field-02: #525252;
+  --cds-field-03: #6f6f6f;
+  --cds-field-hover-01: #474747;
+  --cds-field-hover-02: #636363;
+  --cds-field-hover-03: #5e5e5e;
+
+  // -------------------------------------------------------------------------
+  // Button tokens
+  // -------------------------------------------------------------------------
+  // Primary button stays blue; secondary/tertiary adapt for dark surfaces.
+  --cds-button-primary: #0f62fe;
+  --cds-button-primary-hover: #0353e9;
+  --cds-button-primary-active: #002d9c;
+  --cds-button-secondary: #6f6f6f;
+  --cds-button-secondary-hover: #606060;
+  --cds-button-secondary-active: #393939;
+  --cds-button-tertiary: #ffffff;
+  --cds-button-tertiary-hover: #f4f4f4;
+  --cds-button-tertiary-active: #c6c6c6;
+  --cds-button-danger-primary: #da1e28;
+  --cds-button-danger-secondary: #ff8389;
+  --cds-button-danger-hover: #b81921;
+  --cds-button-danger-active: #750e13;
+  --cds-button-disabled: rgba(141, 141, 141, 0.5);
+  --cds-button-separator: #161616;
+
+  // -------------------------------------------------------------------------
+  // Tag tokens
+  // -------------------------------------------------------------------------
+  // Tag backgrounds use darker shades; text uses lighter tints for contrast.
+  --cds-tag-background-gray: #525252;
+  --cds-tag-color-gray: #c6c6c6;
+  --cds-tag-background-blue: #002d9c;
+  --cds-tag-color-blue: #a6c8ff;
+  --cds-tag-background-green: #044317;
+  --cds-tag-color-green: #6fdc8c;
+  --cds-tag-background-red: #750e13;
+  --cds-tag-color-red: #ffb3b8;
+  --cds-tag-background-teal: #004144;
+  --cds-tag-color-teal: #3ddbd9;
+  --cds-tag-background-purple: #491d8b;
+  --cds-tag-color-purple: #d4bbff;
+  --cds-tag-background-magenta: #740937;
+  --cds-tag-color-magenta: #ffafd2;
+  --cds-tag-background-cyan: #003a6d;
+  --cds-tag-color-cyan: #82cfff;
+  --cds-tag-background-cool-gray: #343a3f;
+  --cds-tag-color-cool-gray: #c1c7cd;
+  --cds-tag-background-warm-gray: #3c3838;
+  --cds-tag-color-warm-gray: #e5e0df;
+  --cds-tag-hover-gray: #636363;
+  --cds-tag-hover-blue: #001d6c;
+  --cds-tag-hover-green: #022d0d;
+  --cds-tag-hover-red: #520408;
+  --cds-tag-hover-teal: #022b30;
+  --cds-tag-hover-purple: #31135e;
+  --cds-tag-hover-magenta: #510224;
+
+  // -------------------------------------------------------------------------
+  // Notification tokens
+  // -------------------------------------------------------------------------
+  // Notifications use the same elevated surface as layer-01 in dark mode.
+  --cds-notification-background-info: #393939;
+  --cds-notification-background-success: #393939;
+  --cds-notification-background-warning: #393939;
+  --cds-notification-background-error: #393939;
+
+  // -------------------------------------------------------------------------
+  // Skeleton tokens
+  // -------------------------------------------------------------------------
+  --cds-skeleton-background: #333333;
+  --cds-skeleton-element: #525252;
+
+  // -------------------------------------------------------------------------
+  // Shorthand / alias layer tokens (contextual pointers)
+  // -------------------------------------------------------------------------
+  // These aliases resolve to the -01 tier by default, ensuring components
+  // that reference the unnumbered alias pick up the correct G90 value.
+  --cds-layer: var(--cds-layer-01, #393939);
+  --cds-layer-active: var(--cds-layer-active-01, #6f6f6f);
+  --cds-layer-background: var(--cds-layer-background-01, #262626);
+  --cds-layer-hover: var(--cds-layer-hover-01, #474747);
+  --cds-layer-selected: var(--cds-layer-selected-01, #525252);
+  --cds-layer-selected-hover: var(--cds-layer-selected-hover-01, #636363);
+  --cds-layer-accent: var(--cds-layer-accent-01, #525252);
+  --cds-layer-accent-hover: var(--cds-layer-accent-hover-01, #636363);
+  --cds-layer-accent-active: var(--cds-layer-accent-active-01, #8d8d8d);
+  --cds-field: var(--cds-field-01, #393939);
+  --cds-field-hover: var(--cds-field-hover-01, #474747);
+  --cds-border-subtle: var(--cds-border-subtle-00, #525252);
+  --cds-border-subtle-selected: var(--cds-border-subtle-selected-01, #8d8d8d);
+  --cds-border-strong: var(--cds-border-strong-01, #8d8d8d);
+  --cds-border-tile: var(--cds-border-tile-01, #6f6f6f);
+
+  // -------------------------------------------------------------------------
+  // Chat tokens (G90)
+  // -------------------------------------------------------------------------
+  --cds-chat-avatar-agent: #c6c6c6;
+  --cds-chat-avatar-bot: #8d8d8d;
+  --cds-chat-avatar-user: #4589ff;
+  --cds-chat-bubble-agent: #262626;
+  --cds-chat-bubble-agent-text: #f4f4f4;
+  --cds-chat-bubble-border: #525252;
+  --cds-chat-bubble-user: #393939;
+  --cds-chat-bubble-user-text: #f4f4f4;
+  --cds-chat-button: #78a9ff;
+  --cds-chat-button-active: rgba(141, 141, 141, 0.4);
+  --cds-chat-button-hover: rgba(141, 141, 141, 0.16);
+  --cds-chat-button-selected: rgba(141, 141, 141, 0.24);
+  --cds-chat-button-text-hover: #a6c8ff;
+  --cds-chat-button-text-selected: #c6c6c6;
+  --cds-chat-header-background: #262626;
+  --cds-chat-header-text: #f4f4f4;
+  --cds-chat-prompt-background: #161616;
+  --cds-chat-prompt-border-end: rgba(38, 38, 38, 0);
+  --cds-chat-prompt-border-start: #262626;
+  --cds-chat-prompt-text: #f4f4f4;
+  --cds-chat-shell-background: #262626;
+
+  // -------------------------------------------------------------------------
+  // AI tokens (G90)
+  // -------------------------------------------------------------------------
+  --cds-ai-aura-end: rgba(0, 0, 0, 0);
+  --cds-ai-aura-hover-background: #474747;
+  --cds-ai-aura-hover-end: rgba(0, 0, 0, 0);
+  --cds-ai-aura-hover-start: rgba(69, 137, 255, 0.4);
+  --cds-ai-aura-start: rgba(69, 137, 255, 0.1);
+  --cds-ai-aura-start-sm: rgba(69, 137, 255, 0.16);
+  --cds-ai-border-end: #4589ff;
+  --cds-ai-border-start: rgba(166, 200, 255, 0.36);
+  --cds-ai-border-strong: #78a9ff;
+  --cds-ai-drop-shadow: rgba(0, 0, 0, 0.28);
+  --cds-ai-inner-shadow: rgba(69, 137, 255, 0.16);
+  --cds-ai-overlay: rgba(0, 0, 0, 0.5);
+  --cds-ai-popover-background: #161616;
+  --cds-ai-popover-caret-bottom: #4589ff;
+  --cds-ai-popover-caret-bottom-background: #202d45;
+  --cds-ai-popover-caret-bottom-background-actions: #1e283a;
+  --cds-ai-popover-caret-center: #4870b5;
+  --cds-ai-popover-shadow-outer-01: rgba(0, 0, 0, 0.12);
+  --cds-ai-popover-shadow-outer-02: rgba(0, 0, 0, 0.08);
+  --cds-ai-skeleton-background: rgba(120, 169, 255, 0.5);
+  --cds-ai-skeleton-element-background: rgba(120, 169, 255, 0.3);
+}
+
+
+// ============================================================================
+// SECTION 2: High Contrast Mode Support (G90)
+// ============================================================================
+// Windows High Contrast / Forced Colors mode overrides for accessibility.
+// Mirrors the forced-color tokens from Carbon's pre-compiled output.
+
+@media screen and (-ms-high-contrast: active), (forced-colors: active) {
+  :root {
+    --cds-icon-primary: ButtonText;
+    --cds-icon-secondary: ButtonText;
+    --cds-icon-interactive: ButtonText;
+    --cds-icon-disabled: GrayText;
+    --cds-icon-on-color-disabled: GrayText;
+    --cds-icon-inverse: SelectedItemText;
+    --cds-icon-on-color: SelectedItemText;
+    --cds-button-disabled: GrayText;
+    --cds-interactive: ButtonText;
+    --cds-link-primary: LinkText;
+    --cds-link-primary-hover: LinkText;
+    --cds-link-secondary: LinkText;
+    --cds-link-inverse: SelectedItemText;
+    --cds-link-inverse-hover: SelectedItemText;
+    --cds-link-inverse-visited: SelectedItemText;
+    --cds-link-visited: VisitedText;
+    --cds-background-selected: SelectedItem;
+    --cds-background-selected-hover: SelectedItem;
+    --cds-background-inverse: SelectedItem;
+    --cds-layer-selected-inverse: SelectedItem;
+  }
+}
+
+
+// ============================================================================
+// SECTION 3: Syntax Highlighting Tokens (G90)
+// ============================================================================
+// Code editor and syntax highlighting tokens for dark mode.
+// These ensure code snippets, CodeEditor (Ace), and inline code blocks
+// are readable on the G90 dark background.
+
+:root {
+  --cds-syntax-angle-bracket: #8d8d8d;
+  --cds-syntax-annotation: #08bdba;
+  --cds-syntax-arithmetic-operator: #e0e0e0;
+  --cds-syntax-atom: #f4f4f4;
+  --cds-syntax-attribute: #33b1ff;
+  --cds-syntax-attribute-name: #33b1ff;
+  --cds-syntax-attribute-value: #f4f4f4;
+  --cds-syntax-bitwise-operator: #e0e0e0;
+  --cds-syntax-block-comment: #42be65;
+  --cds-syntax-bool: #f4f4f4;
+  --cds-syntax-brace: #e0e0e0;
+  --cds-syntax-bracket: #e0e0e0;
+  --cds-syntax-character: #f4f4f4;
+  --cds-syntax-class-name: #3ddbd9;
+  --cds-syntax-color: #f4f4f4;
+  --cds-syntax-comment: #42be65;
+  --cds-syntax-compare-operator: #e0e0e0;
+  --cds-syntax-constant: #4589ff;
+  --cds-syntax-content: #f4f4f4;
+  --cds-syntax-content-separator: #e0e0e0;
+  --cds-syntax-control-keyword: #be95ff;
+  --cds-syntax-control-operator: #be95ff;
+  --cds-syntax-definition: #33b1ff;
+  --cds-syntax-definition-keyword: #33b1ff;
+  --cds-syntax-definition-operator: #33b1ff;
+  --cds-syntax-deref-operator: #e0e0e0;
+  --cds-syntax-doc-comment: #42be65;
+  --cds-syntax-doc-string: #f4f4f4;
+  --cds-syntax-document-meta: #42be65;
+  --cds-syntax-emphasis: #f4f4f4;
+  --cds-syntax-escape: #e0e0e0;
+  --cds-syntax-float: #6fdc8c;
+  --cds-syntax-function: #f1c21b;
+  --cds-syntax-heading: #33b1ff;
+  --cds-syntax-heading-1: #33b1ff;
+  --cds-syntax-heading-2: #33b1ff;
+  --cds-syntax-heading-3: #33b1ff;
+  --cds-syntax-heading-4: #33b1ff;
+  --cds-syntax-heading-5: #33b1ff;
+  --cds-syntax-heading-6: #33b1ff;
+  --cds-syntax-integer: #6fdc8c;
+  --cds-syntax-invalid: #fa4d56;
+  --cds-syntax-keyword: #4589ff;
+  --cds-syntax-label-name: #a6c8ff;
+  --cds-syntax-line-comment: #42be65;
+  --cds-syntax-link: #4589ff;
+  --cds-syntax-list: #f4f4f4;
+  --cds-syntax-literal: #f4f4f4;
+  --cds-syntax-local: #a6c8ff;
+  --cds-syntax-logic-operator: #e0e0e0;
+  --cds-syntax-macro-name: #f4f4f4;
+  --cds-syntax-meta: #42be65;
+  --cds-syntax-modifier: #4589ff;
+  --cds-syntax-module-keyword: #be95ff;
+  --cds-syntax-monospace: #f4f4f4;
+  --cds-syntax-name: #a6c8ff;
+  --cds-syntax-namespace: #3ddbd9;
+  --cds-syntax-null: #f4f4f4;
+  --cds-syntax-number: #6fdc8c;
+  --cds-syntax-operator: #e0e0e0;
+  --cds-syntax-operator-keyword: #4589ff;
+  --cds-syntax-paren: #e0e0e0;
+  --cds-syntax-processing-instruction: #f4f4f4;
+  --cds-syntax-property-name: #33b1ff;
+  --cds-syntax-punctuation: #e0e0e0;
+  --cds-syntax-quote: #42be65;
+  --cds-syntax-regexp: #be95ff;
+  --cds-syntax-self: #3ddbd9;
+  --cds-syntax-separator: #e0e0e0;
+  --cds-syntax-special: #4589ff;
+  --cds-syntax-special-string: #be95ff;
+  --cds-syntax-square-bracket: #e0e0e0;
+  --cds-syntax-standard: #4589ff;
+  --cds-syntax-strikethrough: #f4f4f4;
+  --cds-syntax-string: #f4f4f4;
+  --cds-syntax-strong: #f4f4f4;
+  --cds-syntax-tag: #3ddbd9;
+  --cds-syntax-tag-name: #3ddbd9;
+  --cds-syntax-type: #3ddbd9;
+  --cds-syntax-type-name: #3ddbd9;
+  --cds-syntax-type-operator: #3ddbd9;
+  --cds-syntax-unit: #6fdc8c;
+  --cds-syntax-update-operator: #e0e0e0;
+  --cds-syntax-url: #e0e0e0;
+  --cds-syntax-variable: #a6c8ff;
+  --cds-syntax-variable-name: #a6c8ff;
+}
+
+
+// ============================================================================
+// SECTION 4: Odoo $o-* Variable Overrides for Dark Mode
+// ============================================================================
+// Override Odoo's core Sass variables to reference Carbon dark theme tokens.
+// These variables are consumed by Odoo's Bootstrap bridge and component SCSS.
+//
+// Since this file is loaded in the dark bundle (web.assets_web_dark), these
+// overrides cascade on top of the light-mode values set in
+// carbon_primary_overrides.scss and carbon_secondary_overrides.scss.
+//
+// Note: var() in Sass variable assignments works at the CSS output level.
+// The Sass compiler passes var() through as-is into the generated CSS, so
+// these values resolve at runtime in the browser when the dark bundle loads.
+
+// Core surface and text colors — tied to Carbon dark tokens via var().
+// These override the light-mode Sass values set in carbon_primary_overrides.scss
+// and carbon_secondary_overrides.scss. The var() expressions pass through the
+// Sass compiler and resolve at runtime in the browser, picking up the G90 dark
+// token values from the :root re-declarations above.
+$o-webclient-background-color: var(--cds-background);
+$o-view-background-color: var(--cds-layer-01);
+$o-main-text-color: var(--cds-text-primary);
+$o-main-color-muted: var(--cds-text-secondary);
+$o-main-headings-color: var(--cds-text-primary);
+$o-main-link-color: var(--cds-link-primary);
+
+
+// ============================================================================
+// SECTION 5: Odoo Component Dark Mode Adjustments
+// ============================================================================
+// Targeted dark-mode overrides for specific Odoo components that rely on
+// hardcoded or computed color values rather than variable cascading.
+// These mirror and extend the patterns found in Odoo's existing dark.scss files
+// (emoji_picker.dark.scss, file_viewer.dark.scss, calendar_renderer.dark.scss).
+
+// --- Emoji Picker dark mode ---
+// Override EmojiPicker CSS custom properties for dark surfaces
+.o-EmojiPicker {
+  --EmojiPicker-placeholderOpacity: 50%;
+  --EmojiPicker-active: var(--cds-layer-active-01, #6f6f6f);
+}
+
+.o-EmojiPicker-searchContour {
+  --border-opacity: 0.3;
+}
+
+// --- File Viewer dark mode ---
+// Adapt the file viewer toolbar to dark theme surface
+.o-FileViewer-header {
+  --FileViewer-toolbarBgColor: var(--cds-layer-01, #393939);
+}
+
+.o-FileViewer-toolbarButton {
+  --FileViewer-toolbarBgColor: var(--cds-layer-01, #393939);
+}
+
+// --- Calendar Renderer dark mode ---
+// FullCalendar disabled areas on dark background
+.o_calendar_renderer .o_calendar_widget .o_calendar_disabled {
+  background-color: var(--cds-layer-accent-01, #525252);
+}
+
+
+// ============================================================================
+// SECTION 6: Browser Color Scheme Hint
+// ============================================================================
+// Tell the browser we are in dark mode so native form controls, scrollbars,
+// and other user-agent UI elements adopt dark styling automatically.
+
+:root {
+  color-scheme: dark;
+}

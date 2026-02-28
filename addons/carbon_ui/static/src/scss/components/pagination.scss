@@ -1,0 +1,356 @@
+// Carbon Design System v11 — Pagination Component Override
+// Applies Carbon Pagination styling to Odoo's Pager component.
+// Targets: .o_pager, .o_cp_pager, .o_pager_indicator, .o_pager_value
+//
+// Carbon tokens consumed (defined in carbon_tokens.scss on :root):
+//   --cds-spacing-03 (8px), --cds-spacing-05 (16px)
+//   --cds-text-primary, --cds-text-secondary
+//   --cds-border-strong-01, --cds-border-subtle-01
+//   --cds-focus
+//   --cds-icon-primary, --cds-icon-disabled
+//   --cds-background-hover, --cds-background-active
+//   --cds-layer-01
+//
+// Design references:
+//   Carbon Pagination: 48px row height, body-compact-01 typography,
+//   icon-button navigation arrows, inline page-number input.
+//
+// Compatibility: libsass-safe — no @use, no Dart Sass features.
+//   All token consumption via CSS var().
+
+// ============================================================================
+// 1. PAGER CONTAINER — Carbon pagination bar layout
+// ============================================================================
+// Odoo's main pager container is `<nav class="o_pager">`.
+// We apply Carbon's Pagination row pattern: 48px height, flex layout,
+// body-compact-01 typography, secondary text color.
+
+.o_pager {
+  display: flex;
+  align-items: center;
+  block-size: 3rem; // 48px — Carbon pagination row height
+  gap: var(--cds-spacing-03); // 8px between elements
+  font-size: 0.875rem; // body-compact-01
+  line-height: 1.28572; // body-compact-01
+  font-weight: 400;
+  letter-spacing: 0.16px; // body-compact-01
+  color: var(--cds-text-secondary);
+
+  // Reset Bootstrap .h-100 that Odoo applies via d-flex utility
+  &.h-100 {
+    block-size: 3rem;
+  }
+}
+
+// ============================================================================
+// 2. CONTROL PANEL PAGER WRAPPER
+// ============================================================================
+// `.o_cp_pager` wraps the Pager in Odoo's control panel and x2many fields.
+// Carbon alignment: flex end with consistent spacing.
+
+.o_cp_pager {
+  display: flex;
+  align-items: center;
+  margin-inline-start: auto;
+  gap: var(--cds-spacing-03); // 8px
+}
+
+// ============================================================================
+// 3. PAGER VALUE / RANGE TEXT — Carbon pagination range display
+// ============================================================================
+// `.o_pager_value` shows the record range (e.g., "1-10") as either a
+// clickable <span> (display mode) or an <input> (edit mode).
+// Carbon pattern: body-compact-01 text, primary color for data.
+
+.o_pager_value {
+  font-size: 0.875rem; // body-compact-01
+  line-height: 1.28572;
+  font-weight: 400;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-primary);
+  min-inline-size: 0; // allow shrinking — override any min-width
+
+  // --- Display mode (span): clickable to enter edit mode ---
+  // Odoo adds `.border-bottom.border-transparent` via utility classes.
+  // We normalise to Carbon's underline-on-hover for editable indicators.
+  &:not(input) {
+    cursor: pointer;
+    border-block-end: 1px solid transparent;
+
+    @media (hover: hover) {
+      &:hover {
+        border-block-end-color: var(--cds-border-strong-01);
+      }
+    }
+  }
+
+  // --- Edit mode (input): inline text input for page number entry ---
+  // Odoo renders <input class="o_pager_value o_input"> when editing.
+  &.o_input {
+    border: none;
+    border-block-end: 1px solid var(--cds-border-strong-01);
+    border-radius: 0; // Carbon sharp corners
+    background-color: transparent;
+    text-align: center;
+    color: var(--cds-text-primary);
+    font-size: 0.875rem;
+    line-height: 1.28572;
+    letter-spacing: 0.16px;
+    padding-block: var(--cds-spacing-01, 0.125rem);
+    padding-inline: var(--cds-spacing-02, 0.25rem);
+
+    // Carbon focus: bottom border turns focus color
+    &:focus {
+      border-block-end-color: var(--cds-focus);
+      outline: none;
+      box-shadow: none; // remove Bootstrap focus glow
+    }
+  }
+}
+
+// ============================================================================
+// 4. PAGER COUNTER — separator and total styling
+// ============================================================================
+// The `.o_pager_counter` holds value, separator, and total.
+
+.o_pager .o_pager_counter {
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-02, 0.25rem); // 4px between value/sep/total
+  color: var(--cds-text-secondary);
+  white-space: nowrap;
+
+  // Total count text
+  .o_pager_limit {
+    color: var(--cds-text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.28572;
+  }
+}
+
+// ============================================================================
+// 5. NAVIGATION ARROW BUTTONS — Carbon icon-button pattern
+// ============================================================================
+// Previous/Next buttons in `.o_pager` are rendered as `<button>` elements
+// with `.btn.btn-secondary.o_pager_previous` / `.o_pager_next`.
+// Carbon Pagination uses 48×48px ghost icon buttons with chevron icons.
+
+.o_pager button {
+  inline-size: 3rem; // 48px — Carbon touch target minimum
+  block-size: 3rem; // 48px
+  min-inline-size: 3rem; // prevent Bootstrap btn shrinking
+  min-block-size: 3rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: none;
+  border-radius: 0; // Carbon sharp corners
+  color: var(--cds-icon-primary);
+  cursor: pointer;
+
+  // Carbon productive motion for background transitions
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9);
+  }
+
+  // Icon sizing within button
+  > i,
+  > .oi {
+    font-size: 1rem; // 16px icon
+    line-height: 1;
+    color: inherit;
+  }
+
+  // --- Hover state: subtle background fill ---
+  @media (hover: hover) {
+    &:hover:not(:disabled):not([disabled]) {
+      background-color: var(--cds-background-hover);
+    }
+  }
+
+  // --- Active/pressed state ---
+  &:active:not(:disabled):not([disabled]) {
+    background-color: var(--cds-background-active);
+  }
+
+  // --- Focus state: Carbon 2px inset focus ring ---
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
+  // Fallback for browsers not supporting :focus-visible
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  // --- Disabled state ---
+  &:disabled,
+  &[disabled] {
+    color: var(--cds-icon-disabled);
+    cursor: not-allowed;
+    background-color: transparent;
+    opacity: 1; // Override Bootstrap's disabled opacity
+
+    > i,
+    > .oi {
+      color: inherit;
+    }
+  }
+
+  // Reset Bootstrap .btn-secondary overrides
+  &.btn-secondary,
+  &.btn {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+
+    @media (hover: hover) {
+      &:hover:not(:disabled):not([disabled]) {
+        background-color: var(--cds-background-hover);
+        border: none;
+        box-shadow: none;
+      }
+    }
+
+    &:active:not(:disabled):not([disabled]) {
+      background-color: var(--cds-background-active);
+      border: none;
+      box-shadow: none;
+    }
+  }
+}
+
+// --- Specific previous/next buttons ---
+// These selectors ensure Carbon styling overrides any additional specificity
+// from Odoo's list renderer or control panel context.
+
+.o_pager .o_pager_previous,
+.o_pager .o_pager_next {
+  inline-size: 3rem;
+  block-size: 3rem;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--cds-icon-primary);
+  max-block-size: none; // override list_renderer's max-height: 30px
+
+  @media (hover: hover) {
+    &:hover:not(:disabled):not([disabled]) {
+      background-color: var(--cds-background-hover);
+    }
+  }
+
+  &:active:not(:disabled):not([disabled]) {
+    background-color: var(--cds-background-active);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
+  &:disabled,
+  &[disabled] {
+    color: var(--cds-icon-disabled);
+    cursor: not-allowed;
+    background-color: transparent;
+    opacity: 1;
+  }
+}
+
+// Remove rounded corners from button group
+.o_pager .btn-group {
+  border-radius: 0;
+
+  > .btn {
+    border-radius: 0;
+
+    &.rounded-start,
+    &.rounded-end {
+      border-radius: 0;
+    }
+  }
+}
+
+// ============================================================================
+// 6. PAGER INDICATOR — Carbon-styled overlay notification chip
+// ============================================================================
+// Floating overlay displayed on small screens when pager navigates.
+// Uses Carbon Layer-01 background with subtle border.
+
+.o_pager_indicator {
+  z-index: 1056; // above modals (Bootstrap $zindex-modal is 1055)
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: opacity 400ms cubic-bezier(0.2, 0, 0.38, 0.9);
+  }
+
+  // Fade transition states (used by OWL Transition component)
+  &.o-fade-leave,
+  &.o-fade-enter {
+    opacity: 0;
+  }
+}
+
+// --- Inner chip of pager indicator ---
+.o_pager_indicator_inner,
+.o_pager_indicator .o_pager_indicator_inner {
+  padding-block: var(--cds-spacing-03); // 8px vertical
+  padding-inline: var(--cds-spacing-05); // 16px horizontal
+  background-color: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0; // Carbon sharp corners
+  color: var(--cds-text-primary);
+  font-size: 0.875rem; // body-compact-01
+  line-height: 1.28572;
+  font-weight: 400;
+  letter-spacing: 0.16px;
+  min-inline-size: 0; // override source min-width: 13ch if too wide
+
+  // Value text inside indicator
+  .o_pager_value {
+    color: var(--cds-text-primary);
+    font-weight: 600; // emphasise current range
+  }
+
+  // Total/limit text
+  .o_pager_limit {
+    color: var(--cds-text-secondary);
+  }
+}
+
+// ============================================================================
+// 7. CONTEXTUAL OVERRIDES — List view and control panel pager
+// ============================================================================
+// Override Odoo's list-renderer-specific pager styles to maintain Carbon
+// consistency regardless of rendering context.
+
+// List view embedded pager
+.o_list_renderer .o_pager,
+.o_list_view .o_pager {
+  padding-block: 0;
+  margin-block: 0;
+
+  .o_pager_previous,
+  .o_pager_next {
+    max-block-size: 3rem; // override list_renderer's 30px constraint
+    background-color: transparent;
+
+    @media (hover: hover) {
+      &:hover:not(:disabled):not([disabled]) {
+        background-color: var(--cds-background-hover);
+      }
+    }
+  }
+}
+
+// X2Many field pager (embedded in form views)
+.o_x2m_control_panel .o_cp_pager {
+  display: flex;
+  align-items: center;
+  margin-inline-start: auto;
+}

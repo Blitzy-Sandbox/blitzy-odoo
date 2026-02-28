@@ -1,0 +1,336 @@
+// Carbon Design System v11 — Loading Component Override
+// Applies Carbon Loading and InlineLoading spinner styles to Odoo's LoadingIndicator
+// Targets: .o_loading_indicator, .o_blockUI, .o_spinner, .o_message
+//
+// Token dependencies (from carbon_tokens.scss):
+//   --cds-interactive      — spinner active stroke, progress bar color
+//   --cds-overlay          — blocking overlay background
+//   --cds-border-subtle-01 — spinner track (inactive stroke)
+//   --cds-text-secondary   — loading label text color
+//   --cds-spacing-05       — spacing between spinner and label (16px)
+//
+// Compatibility: libsass-safe — no Dart Sass features, no @use/@forward.
+// Dark mode: All colors via var(--cds-*) tokens, automatically switch when
+//            carbon_dark_theme.scss overrides :root custom properties.
+
+// ============================================================================
+// SECTION 1: Keyframes — Spinner rotation
+// ============================================================================
+// Carbon loading spinner uses a continuous 360° rotation at constant speed.
+// Wrapped in prefers-reduced-motion for accessibility compliance (UI3).
+
+@keyframes cds-loading-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Reduced-motion alternative: a gentle pulse instead of rotation.
+// This ensures the loading indication remains visible but is less
+// visually disruptive for users who prefer reduced motion.
+@keyframes cds-loading-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+// ============================================================================
+// SECTION 2: Progress Bar Indicator (.o_loading_indicator)
+// ============================================================================
+// Odoo's LoadingIndicator renders a <span class="o_loading_indicator"> with
+// text content ("Loading") and uses the OWL Transition component to add
+// o-fade-enter / o-fade-leave classes for visibility toggling.
+//
+// Carbon restyling: Thin fixed progress bar at bottom of viewport, colored
+// with the interactive token. Text is hidden (clip) since the bar is a
+// visual-only indicator — the content is still accessible to screen readers.
+
+.o_loading_indicator {
+  position: fixed;
+  bottom: 0;
+  inset-inline-start: 0;
+  width: 0;
+  height: 4px;
+  background-color: var(--cds-interactive);
+  color: transparent;
+  padding: 0;
+  border-radius: 0;
+  z-index: 1060; // Above modals (Bootstrap $zindex-modal = 1055)
+  overflow: hidden;
+  font-size: 0;
+  line-height: 0;
+
+  // Smooth width animation for progress, and opacity for fade transitions
+  transition: opacity 0.4s ease-out, width 0.3s ease-out;
+
+  // When the indicator is visible (rendered by OWL Transition without
+  // enter/leave classes), expand to full width to simulate progress.
+  // The actual width is toggled by the Transition component; we ensure
+  // full-width appearance when neither enter nor leave class is present.
+  &:not(.o-fade-enter):not(.o-fade-leave) {
+    width: 100%;
+    opacity: 1;
+  }
+
+  // OWL Transition enter state — initially invisible
+  &.o-fade-enter {
+    opacity: 0;
+    width: 0;
+  }
+
+  // OWL Transition leave state — fade out
+  &.o-fade-leave {
+    opacity: 0;
+    width: 100%;
+  }
+
+  // Utility state classes for programmatic control
+  // Used when external code toggles visibility without OWL Transition
+  &.o_visible {
+    opacity: 1;
+    width: 100%;
+  }
+
+  &.o_done {
+    opacity: 0;
+  }
+
+  // Reduced motion: disable width animation, rely on opacity only
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity 0.4s ease-out;
+    width: 100%;
+  }
+}
+
+// ============================================================================
+// SECTION 3: Block UI Overlay (.o_blockUI)
+// ============================================================================
+// Odoo's BlockUI component renders a full-screen overlay with a spinner
+// and optional message text when the UI is blocked during long operations.
+//
+// Original styles: backdrop-filter blur, black 50% overlay, white text.
+// Carbon restyling: Uses --cds-overlay token for consistent overlay color,
+// removes backdrop-filter (Carbon does not use blur overlays), centers
+// content with flexbox.
+
+.o_blockUI {
+  cursor: wait;
+  // z-index is already set by Odoo with !important; we override the visual tokens.
+
+  &:not(.o_blockUI_invisible) {
+    background: var(--cds-overlay);
+    color: var(--cds-text-on-color);
+    // Carbon overlays do not use backdrop-filter blur
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  // ========================================================================
+  // SECTION 3a: Spinner (.o_spinner) within Block UI
+  // ========================================================================
+  // Odoo renders <div class="o_spinner mb-4"><img src="spin.svg"/></div>.
+  // Carbon restyling: Hide the default SVG image, replace with a CSS-only
+  // circular spinner using border technique. This matches Carbon's Loading
+  // component pattern: 88px diameter, 4px stroke.
+
+  .o_spinner {
+    position: relative;
+    width: 88px;
+    height: 88px;
+    // Margin-bottom is already provided by Bootstrap's mb-4 utility class
+    // on the element; we only control the spinner visuals here.
+
+    // Hide the default Odoo spin.svg image
+    img {
+      display: none;
+    }
+
+    // Carbon spinner via ::after pseudo-element
+    &::after {
+      content: "";
+      display: block;
+      position: absolute;
+      inset: 0;
+      width: 88px;
+      height: 88px;
+      border: 4px solid var(--cds-border-subtle-01); // Track ring
+      border-block-start-color: var(--cds-interactive); // Active segment
+      border-radius: 50%;
+      box-sizing: border-box;
+      animation: cds-loading-spin 1s linear infinite;
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: cds-loading-pulse 2s ease-in-out infinite;
+        border-block-start-color: var(--cds-interactive);
+      }
+    }
+  }
+
+  // ========================================================================
+  // SECTION 3b: Loading Message (.o_message) within Block UI
+  // ========================================================================
+  // Odoo renders <div class="o_message text-center px-4"> with line1/line2.
+  // Carbon restyling: Apply body-compact-01 typography with text-secondary
+  // color and proper spacing from the spinner.
+
+  .o_message {
+    font-size: 0.875rem; // Carbon body-compact-01
+    line-height: 1.28572; // Carbon body-compact-01 line-height
+    font-weight: 400;
+    letter-spacing: 0.16px; // Carbon body-compact-01 letter-spacing
+    color: var(--cds-text-on-color);
+    margin-block-start: var(--cds-spacing-05); // 16px gap from spinner
+    max-width: 20rem; // Constrain long messages for readability
+  }
+}
+
+// ============================================================================
+// SECTION 4: Inline Loading (.o_loading_inline)
+// ============================================================================
+// Carbon InlineLoading pattern: Small 16px spinner for use inside buttons,
+// form fields, or inline contexts. Not part of Odoo's default component set,
+// but provided for use by Carbon-styled OWL components.
+
+.o_loading_inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cds-spacing-03, 0.5rem); // 8px gap between spinner and text
+
+  // Small spinner circle
+  &::before {
+    content: "";
+    display: inline-block;
+    flex-shrink: 0;
+    width: 1rem; // 16px
+    height: 1rem; // 16px
+    border: 2px solid var(--cds-border-subtle-01);
+    border-block-start-color: var(--cds-interactive);
+    border-radius: 50%;
+    box-sizing: border-box;
+    animation: cds-loading-spin 1s linear infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: cds-loading-pulse 2s ease-in-out infinite;
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 5: Loading Text (.o_loading_text)
+// ============================================================================
+// Standalone loading label that can be placed adjacent to a spinner.
+// Follows Carbon body-compact-01 typography with text-secondary color.
+
+.o_loading_text {
+  font-size: 0.875rem; // 14px — Carbon body-compact-01
+  line-height: 1.28572;
+  font-weight: 400;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-secondary);
+  margin-block-start: var(--cds-spacing-05); // 16px spacing from spinner
+}
+
+// ============================================================================
+// SECTION 6: Small Spinner Variant (.cds--loading--small)
+// ============================================================================
+// Carbon provides a small (24px) loading variant for compact UI contexts.
+// This can be composed with the inline loading or used standalone.
+
+.cds--loading--small {
+  width: 1.5rem; // 24px
+  height: 1.5rem;
+
+  &::after {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 2px solid var(--cds-border-subtle-01);
+    border-block-start-color: var(--cds-interactive);
+    border-radius: 50%;
+    box-sizing: border-box;
+    animation: cds-loading-spin 1s linear infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: cds-loading-pulse 2s ease-in-out infinite;
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 7: Autocomplete Loading State
+// ============================================================================
+// Odoo's autocomplete dropdown shows a loading item with class .o_loading.
+// Carbon restyling: Add inline spinner indicator.
+
+.o-autocomplete {
+  .o_loading {
+    display: flex;
+    align-items: center;
+    gap: var(--cds-spacing-03, 0.5rem);
+    color: var(--cds-text-secondary);
+    font-size: 0.875rem;
+    letter-spacing: 0.16px;
+    padding-block: var(--cds-spacing-03, 0.5rem);
+    padding-inline: var(--cds-spacing-05, 1rem);
+    cursor: default;
+
+    // Small inline spinner before the "Loading" text
+    &::before {
+      content: "";
+      display: inline-block;
+      flex-shrink: 0;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid var(--cds-border-subtle-01);
+      border-block-start-color: var(--cds-interactive);
+      border-radius: 50%;
+      box-sizing: border-box;
+      animation: cds-loading-spin 1s linear infinite;
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: cds-loading-pulse 2s ease-in-out infinite;
+      }
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 8: Loading Overlay Variant (.cds--loading-overlay)
+// ============================================================================
+// A reusable Carbon-styled overlay pattern that can be applied to any
+// container to show a centered loading spinner over its content.
+
+.cds--loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--cds-overlay);
+  z-index: 10;
+
+  // Large spinner centered in overlay
+  &::after {
+    content: "";
+    display: block;
+    width: 88px;
+    height: 88px;
+    border: 4px solid var(--cds-border-subtle-01);
+    border-block-start-color: var(--cds-interactive);
+    border-radius: 50%;
+    box-sizing: border-box;
+    animation: cds-loading-spin 1s linear infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: cds-loading-pulse 2s ease-in-out infinite;
+    }
+  }
+}

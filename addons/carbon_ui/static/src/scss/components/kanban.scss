@@ -1,0 +1,249 @@
+// Carbon Design System v11 — Kanban/Tile Component Override
+// Applies Carbon ClickableTile styling to Odoo Kanban cards.
+// Targets: .o_kanban_record, .o_kanban_view, .o_kanban_group, .o_kanban_group_header
+//
+// Consumes CSS custom properties from carbon_tokens.scss (loaded via
+// web._assets_primary_variables). No direct Sass-level imports — all values
+// reference --cds-* custom properties for runtime theme switching (light ↔ dark).
+//
+// Compatible with libsass: no @use, @forward, or Dart Sass-only features.
+
+// ============================================================================
+// 1. KANBAN VIEW CONTAINER
+// ============================================================================
+// Root container for the entire kanban view. Sets the Carbon background and
+// consistent spacing between columns using the Carbon spacing scale.
+
+.o_kanban_view {
+  background-color: var(--cds-background);
+
+  // Apply Carbon spacing between kanban columns in grouped mode.
+  // The gap property is used by the flex container that holds groups.
+  .o_kanban_renderer {
+    gap: var(--cds-spacing-05); // 16px between columns
+  }
+}
+
+// ============================================================================
+// 2. KANBAN GROUP / COLUMN
+// ============================================================================
+// Each grouped column uses Carbon layer-01 as its surface, with Carbon
+// spacing for internal padding and sharp corners per Carbon defaults.
+
+.o_kanban_group {
+  background-color: var(--cds-layer-01);
+  border-radius: 0;
+  padding-block: var(--cds-spacing-03);  // 8px vertical
+  padding-inline: var(--cds-spacing-03); // 8px horizontal
+
+  // Remove any residual box-shadow or rounded corners from Bootstrap
+  box-shadow: none;
+}
+
+// ============================================================================
+// 3. KANBAN GROUP HEADER
+// ============================================================================
+// Column header follows Carbon's structured-list heading pattern:
+// heading-compact-01 typography, text-primary color, subtle bottom border.
+
+.o_kanban_group_header {
+  font-size: 0.875rem;   // heading-compact-01
+  font-weight: 600;
+  letter-spacing: 0.16px;
+  line-height: 1.28572;
+  color: var(--cds-text-primary);
+  padding-block: var(--cds-spacing-05);  // 16px top & bottom
+  padding-inline: var(--cds-spacing-05); // 16px start & end
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0;
+}
+
+.o_kanban_header_title {
+  font-size: 0.875rem;   // heading-compact-01
+  font-weight: 600;
+  letter-spacing: 0.16px;
+  line-height: 1.28572;
+  color: var(--cds-text-primary);
+}
+
+// ============================================================================
+// 4. KANBAN RECORD — CARBON CLICKABLE TILE
+// ============================================================================
+// Each kanban card is restyled as a Carbon ClickableTile:
+// — layer-01 background
+// — subtle border
+// — sharp corners (border-radius: 0)
+// — Carbon spacing-05 (16px) padding
+// — fast-01 (70ms) transition on background and border color
+// — pointer cursor to indicate interactivity
+
+.o_kanban_record:not(.o_kanban_ghost) {
+  // Override Odoo's built-in CSS custom properties with Carbon spacing
+  --KanbanRecord-padding-v: var(--cds-spacing-05); // 16px
+  --KanbanRecord-padding-h: var(--cds-spacing-05); // 16px
+
+  background-color: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0;
+  color: var(--cds-text-primary);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+
+  // Carbon fast-01 (70ms) productive transition for background and border.
+  // Wrapped in prefers-reduced-motion to honour user accessibility settings.
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9),
+                border-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9);
+  }
+
+  // Reset Bootstrap-inherited rounded corners and shadows
+  box-shadow: none;
+}
+
+// ============================================================================
+// 5. HOVER STATE
+// ============================================================================
+// Carbon ClickableTile hover: layer-hover-01 background with a 2px top
+// border accent in the interactive color, giving the "lift" effect.
+// Guarded by @media (hover: hover) to prevent sticky hover on touch devices.
+
+@media (hover: hover) {
+  .o_kanban_record:not(.o_kanban_ghost):hover {
+    background-color: var(--cds-layer-hover-01);
+    border-block-start: 2px solid var(--cds-border-interactive);
+  }
+}
+
+// ============================================================================
+// 6. FOCUS STATES
+// ============================================================================
+// Carbon's standard focus ring: 2px solid outline using the --cds-focus token,
+// inset by -2px to sit inside the component boundary. Applied to both :focus
+// and :focus-within to support keyboard navigation inside kanban records.
+
+.o_kanban_record:not(.o_kanban_ghost):focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+  // Remove Odoo's default box-shadow focus indicator
+  box-shadow: none;
+}
+
+.o_kanban_record:not(.o_kanban_ghost):focus-within {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+// Also style :focus-visible for keyboard-only focus ring (UI best practice).
+// This allows mouse clicks to skip the focus ring while keyboard Tab shows it.
+.o_kanban_record:not(.o_kanban_ghost):focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+// ============================================================================
+// 7. SELECTED / ACTIVE STATE
+// ============================================================================
+// When a kanban record is selected (e.g., multi-select mode), Carbon uses
+// layer-selected-01 as background and border-interactive for the border.
+
+.o_kanban_record.o_record_selected {
+  background-color: var(--cds-layer-selected-01);
+  border-color: var(--cds-border-interactive);
+}
+
+// ============================================================================
+// 8. QUICK CREATE TILE
+// ============================================================================
+// The "quick create" card that appears when adding a new record in a column.
+// Styled as a Carbon tile with layer-01 background, subtle border, and
+// consistent Carbon spacing.
+
+.o_kanban_quick_create {
+  background-color: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0;
+  padding: var(--cds-spacing-05); // 16px
+  box-shadow: none;
+}
+
+// ============================================================================
+// 9. COLUMN PROGRESS BAR
+// ============================================================================
+// The progress bar shown inside kanban column counters uses the Carbon
+// interactive token (Blue 60) for its fill color.
+
+.o_kanban_counter_progress .progress-bar {
+  background-color: var(--cds-interactive);
+}
+
+// ============================================================================
+// 10. SUPPLEMENTARY OVERRIDES
+// ============================================================================
+// Additional selectors ensuring full Carbon consistency across kanban
+// sub-elements that inherit or override the tile pattern.
+
+// Kanban renderer-level overrides for grouped/ungrouped layouts
+.o_kanban_renderer {
+  // Ensure the renderer background uses Carbon background token
+  background-color: var(--cds-background);
+  border-color: var(--cds-background);
+
+  // Quick create cards inside the renderer
+  .o_kanban_quick_create {
+    background-color: var(--cds-layer-01);
+    border-color: var(--cds-border-subtle-01);
+  }
+}
+
+// Grouped column surface in renderer context
+.o_kanban_renderer.o_kanban_grouped .o_kanban_group {
+  background-color: var(--cds-layer-01);
+}
+
+// Remove Bootstrap-inherited border-radius on the "new" button tile variant
+.o_kanban_record.o-kanban-button-new {
+  border-radius: 0;
+
+  &:hover,
+  &:focus-within {
+    background-color: var(--cds-layer-hover-01);
+  }
+}
+
+// Drag state: retain Carbon tile look but add slight shadow for depth cue
+.o_kanban_renderer .o_dragged {
+  box-shadow: 0 2px 6px var(--cds-shadow, rgba(0, 0, 0, 0.3));
+}
+
+// Column hover highlight using Carbon tokens
+.o_kanban_renderer .o_kanban_group.o_kanban_hover {
+  background-color: var(--cds-layer-hover-01);
+}
+
+// Ghost cards (invisible spacers for flex alignment) — keep transparent
+.o_kanban_record.o_kanban_ghost {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+// Ensure kanban color strips (left edge colour indicators) maintain visibility
+// over the Carbon tile background. The ::after pseudo-element paints
+// coloured strips and must sit above the tile surface.
+.o_kanban_record[class*="o_kanban_color_"]::after {
+  z-index: 1;
+}
+
+// Attachment images inside tiles — remove border-radius to match Carbon
+.o_kanban_record .o_attachment_image > img {
+  border-radius: 0;
+}
+
+// Footer inside kanban records — apply Carbon secondary text colour
+.o_kanban_record > footer,
+.o_kanban_record > main > footer {
+  color: var(--cds-text-secondary, var(--cds-text-primary));
+}

@@ -292,6 +292,12 @@ export class CarbonThemeToggle extends Component {
             `max-age=${Math.floor(COOKIE_TTL)}`,
             "SameSite=Lax",
         ];
+        // Add Secure flag when served over HTTPS to prevent cookie
+        // transmission over unencrypted connections in production.
+        // Omitted for HTTP to preserve local development compatibility.
+        if (window.location.protocol === "https:") {
+            parts.push("Secure");
+        }
         document.cookie = parts.join("; ");
     }
 }

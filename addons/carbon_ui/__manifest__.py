@@ -136,6 +136,17 @@ Zero modifications to Odoo core source code under addons/web/ or odoo/.
         ],
 
         # -----------------------------------------------------------------
+        # LAZY-LOADED DARK BUNDLE (Graph/Pivot dark mode)
+        # -----------------------------------------------------------------
+        # Dark mode overrides for lazy-loaded chart/graph views.
+        # Active when Odoo's color_scheme cookie is "dark".
+        # Provides explicit dark-mode token adjustments for Carbon Charts
+        # SVG rendering, tooltips, legends, and toolbar elements.
+        'web.assets_backend_lazy_dark': [
+            'carbon_ui/static/src/views/graph/carbon_graph_renderer.dark.scss',
+        ],
+
+        # -----------------------------------------------------------------
         # TEST BUNDLE
         # -----------------------------------------------------------------
         'web.assets_unit_tests': [

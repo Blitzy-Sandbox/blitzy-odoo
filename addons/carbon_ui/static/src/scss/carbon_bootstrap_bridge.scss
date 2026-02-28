@@ -176,12 +176,16 @@ $link-hover-color: #0043ce;       // Carbon $link-primary-hover (Blue 70)
 // --- Spacing ---
 // Bootstrap spacer mapped to Carbon spacing-05 (16px).
 // Source: $cds-spacing-05 from carbon_tokens.scss Section 2.
-$spacer: 1rem;                    // 16px = Carbon $spacing-05
+// IMPORTANT: Must remain in px units (not rem) because Odoo's SCSS pipeline
+// uses px extensively in calculations. Mixing rem and px causes libsass to
+// throw "Incompatible units: 'px' and 'rem'" when Bootstrap generates the
+// $spacers map from $spacer and Odoo code combines $spacers values with px.
+$spacer: 16px;                    // Carbon $spacing-05 (kept in px for Odoo compat)
 
 // Grid gutter mapped to Carbon spacing-07 (32px).
 // Source: $cds-spacing-07 from carbon_tokens.scss Section 2.
 // Preserves Odoo's computed value ($o-horizontal-padding * 2 = 32px).
-$grid-gutter-width: 2rem;         // 32px = Carbon $spacing-07
+$grid-gutter-width: 32px;         // Carbon $spacing-07 (kept in px for Odoo compat)
 
 
 // ============================================================================

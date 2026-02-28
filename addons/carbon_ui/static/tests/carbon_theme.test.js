@@ -19,7 +19,7 @@
 // ---------------------------------------------------------------------------
 
 import { beforeEach, describe, expect, test } from "@odoo/hoot";
-import { animationFrame } from "@odoo/hoot-mock";
+import { advanceTime, animationFrame } from "@odoo/hoot-mock";
 import { Component, xml } from "@odoo/owl";
 import {
     contains,
@@ -422,6 +422,9 @@ describe("CarbonThemeToggle", () => {
         await animationFrame();
 
         await contains(TOGGLE_SELECTOR).click();
+        // The component uses browser.setTimeout(..., 100) before calling
+        // reload — advance the mock timer to fire the deferred callback.
+        await advanceTime(150);
         await animationFrame();
 
         expect.verifySteps(["location reload"]);

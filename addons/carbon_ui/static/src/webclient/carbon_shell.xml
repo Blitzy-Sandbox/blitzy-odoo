@@ -99,4 +99,30 @@
         </div>
     </t>
 
+    <!--
+        Override web.WebClient OWL template
+        ====================================
+        Replaces the default WebClient layout:
+            <NavBar/> + <ActionContainer/> + <MainComponentsContainer/>
+        with a single <CarbonShell/> component that wraps them all in
+        the Carbon UI Shell layout (Header + SideNav + Content).
+
+        CarbonShell renders its own ActionContainer and
+        MainComponentsContainer internally, so we remove the originals
+        from web.WebClient to avoid duplicate rendering.
+
+        When the carbon_ui module is uninstalled, this template extension
+        is removed and the original web.WebClient layout is restored.
+    -->
+    <t t-inherit="web.WebClient" t-inherit-mode="extension">
+        <!-- Replace the NavBar fullscreen-check wrapper with CarbonShell -->
+        <xpath expr="//t[@t-if='!state.fullscreen']" position="replace">
+            <CarbonShell/>
+        </xpath>
+        <!-- Remove standalone ActionContainer — CarbonShell renders its own -->
+        <xpath expr="//ActionContainer" position="replace"/>
+        <!-- Remove standalone MainComponentsContainer — CarbonShell renders its own -->
+        <xpath expr="//MainComponentsContainer" position="replace"/>
+    </t>
+
 </templates>

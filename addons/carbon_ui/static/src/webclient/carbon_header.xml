@@ -55,7 +55,7 @@
             -->
             <button class="cds--header__menu-trigger cds--header__action"
                     aria-label="Open menu"
-                    t-att-aria-expanded="props.isSideNavExpanded"
+                    t-att-aria-expanded="props.isSideNavExpanded ? 'true' : 'false'"
                     t-on-click="toggleSideNav"
                     title="Open menu"
                     type="button">
@@ -158,7 +158,7 @@
                 -->
                 <button class="cds--header__action cds--header__action--switcher"
                         aria-label="App Switcher"
-                        t-att-aria-expanded="state.isSwitcherOpen"
+                        t-att-aria-expanded="state.isSwitcherOpen ? 'true' : 'false'"
                         t-on-click="toggleSwitcher"
                         title="App Switcher"
                         type="button">

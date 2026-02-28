@@ -111,4 +111,4 @@ export const carbonGraphView = {
  * on web, this registration executes after the original graph_view.js, effectively
  * replacing it with the Carbon Charts-based renderer.
  */
-viewRegistry.add("graph", carbonGraphView);
+viewRegistry.add("graph", carbonGraphView, { force: true });

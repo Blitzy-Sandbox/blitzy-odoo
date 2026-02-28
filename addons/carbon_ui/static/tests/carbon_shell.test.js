@@ -33,7 +33,7 @@
 // ---------------------------------------------------------------------------
 
 import { beforeEach, describe, expect, test } from "@odoo/hoot";
-import { queryAll, queryAllTexts, queryAllAttributes, resize } from "@odoo/hoot-dom";
+import { queryAll, queryAllTexts, resize } from "@odoo/hoot-dom";
 import { advanceTime, animationFrame, runAllTimers } from "@odoo/hoot-mock";
 
 // ---------------------------------------------------------------------------
@@ -49,11 +49,13 @@ import { Component, xml } from "@odoo/owl";
 import {
     clearRegistry,
     contains,
+    defineActions,
     defineMenus,
     getService,
     makeMockEnv,
     mountWithCleanup,
     patchWithCleanup,
+    useTestClientAction,
 } from "@web/../tests/web_test_helpers";
 
 // ---------------------------------------------------------------------------
@@ -102,16 +104,34 @@ describe("CarbonShell", () => {
     // -----------------------------------------------------------------------
 
     beforeEach(async () => {
+        // Create a reusable test client action for WebClient mounting.
+        // This prevents "The action X does not exist" RPC errors during
+        // WebClient initialisation, following the pattern from
+        // addons/web/static/tests/webclient/mobile/burger_menu.test.js.
+        const testAction = useTestClientAction();
+        defineActions([
+            { ...testAction, id: 100, params: { description: "CRM Home" } },
+            { ...testAction, id: 101, params: { description: "Pipeline" } },
+            { ...testAction, id: 102, params: { description: "Leads" } },
+            { ...testAction, id: 200, params: { description: "Sales Home" } },
+            { ...testAction, id: 201, params: { description: "Orders" } },
+            { ...testAction, id: 202, params: { description: "Quotations" } },
+            { ...testAction, id: 300, params: { description: "Inventory Home" } },
+        ]);
+
         // Define realistic mock menu data with two apps and sub-sections.
         // Mirrors the defineMenus pattern from navbar.test.js (lines 28-33).
+        // The root menu (id: 0) prevents WebClient from auto-loading the
+        // first app action on mount — matching the burger_menu.test.js pattern.
         defineMenus([
+            { id: 0 },
             {
                 id: 1,
                 name: "CRM",
                 actionID: 100,
                 children: [
-                    { id: 10, name: "Pipeline", actionID: 101 },
-                    { id: 11, name: "Leads", actionID: 102 },
+                    { id: 10, name: "Pipeline", actionID: 101, appID: 1 },
+                    { id: 11, name: "Leads", actionID: 102, appID: 1 },
                 ],
             },
             {
@@ -119,8 +139,8 @@ describe("CarbonShell", () => {
                 name: "Sales",
                 actionID: 200,
                 children: [
-                    { id: 20, name: "Orders", actionID: 201 },
-                    { id: 21, name: "Quotations", actionID: 202 },
+                    { id: 20, name: "Orders", actionID: 201, appID: 2 },
+                    { id: 21, name: "Quotations", actionID: 202, appID: 2 },
                 ],
             },
             {
@@ -167,11 +187,7 @@ describe("CarbonShell", () => {
             await mountWithCleanup(WebClient);
 
             // Carbon UI Shell header is specified at 48px height
-            const headerEl = queryAll(".cds--header")[0];
-            expect(headerEl).toBeTruthy();
-
-            // Verify the header element exists and check its rendered height
-            // The header style is enforced by Carbon Shell CSS (height: 48px)
+            // Verify the header element exists using HOOT's selector-based assertion
             expect(".cds--header").toHaveCount(1, {
                 message: "Carbon header should exist",
             });
@@ -483,22 +499,26 @@ describe("CarbonShell", () => {
         test("active state highlighting: current app marked active in SideNav", async () => {
             await mountWithCleanup(WebClient);
 
-            // Set the current app
+            // Step 1 — Load Pipeline's action (101) into the action
+            // service FIRST, so that the controller is in the stack
+            // before the SideNav re-renders.
+            await getService("action").doAction(101, { clearBreadcrumbs: true });
+            await animationFrame();
+
+            // Step 2 — Now set CRM as the current app.  This triggers
+            // MENUS:APP-CHANGED which causes the SideNav to re-render
+            // its section list.  At this point, currentController.action.id
+            // is already 101, so _isMenuInActivePath can match Pipeline.
             getService("menu").setCurrentMenu(1);
             await animationFrame();
 
-            // The current app's section should have an active/current indicator
-            // The sidenav template uses cds--side-nav__link--current for active items
+            // The Pipeline section (actionID 101) should be marked current.
             expect(".cds--side-nav__link--current").toHaveCount(1, {
                 message: "One side-nav link should be marked as current/active",
             });
 
             // Verify aria-current attribute for accessibility
-            const ariaCurrentValues = queryAllAttributes(
-                ".cds--side-nav__link--current",
-                "aria-current"
-            );
-            expect(ariaCurrentValues).toInclude("page", {
+            expect(".cds--side-nav__link--current").toHaveAttribute("aria-current", "page", {
                 message: "Active link should have aria-current='page' for accessibility",
             });
         });
@@ -536,15 +556,18 @@ describe("CarbonShell", () => {
                 message: "Side-nav should show all-apps list when no app is selected",
             });
 
-            // Verify all three apps are listed
+            // Verify all apps are listed.
+            // Note: { id: 0 } in defineMenus creates an additional "App0"
+            // entry in the menu service, so the total is 4 apps (App0 +
+            // CRM + Sales + Inventory).
             const appLinks = queryAll(
                 ".cds--side-nav__menu-items--all-apps .cds--side-nav__link"
             );
-            expect(appLinks.length).toBe(3, {
-                message: "All three apps (CRM, Sales, Inventory) should be listed",
+            expect(appLinks.length).toBe(4, {
+                message: "All four apps (App0, CRM, Sales, Inventory) should be listed",
             });
 
-            // Verify app names via queryAllTexts
+            // Verify the real app names appear via queryAllTexts
             const appTexts = queryAllTexts(
                 ".cds--side-nav__menu-items--all-apps .cds--side-nav__link"
             );

@@ -144,7 +144,22 @@ export class CarbonThemeToggle extends Component {
         // 4. Reload the page so the Odoo server delivers the correct CSS
         //    asset bundles. The web.assets_web_dark bundle is conditionally
         //    included based on the color_scheme cookie value.
-        browser.location.reload();
+        //
+        //    A short delay is introduced before reload to ensure the
+        //    document.cookie write is fully flushed to the browser's
+        //    cookie jar. In some execution contexts (especially when
+        //    running through OWL's `browser` proxy or in high-load
+        //    scenarios), calling location.reload() synchronously after
+        //    setting document.cookie can cause the navigation to begin
+        //    before the cookie store has processed the write, resulting
+        //    in the cookie being absent on the next page load.
+        //
+        //    Using setTimeout with a 100ms delay guarantees that the
+        //    JavaScript event loop yields back to the browser, allowing
+        //    the cookie write to settle before the reload navigates away.
+        browser.setTimeout(() => {
+            browser.location.reload();
+        }, 100);
     }
 
     // -----------------------------------------------------------------------

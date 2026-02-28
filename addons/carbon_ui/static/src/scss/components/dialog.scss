@@ -203,7 +203,10 @@
 }
 
 // Carbon footer buttons: share width equally, full footer height,
-// no border-radius, no gaps between buttons
+// no border-radius, no gaps between buttons.
+// Button order: secondary (cancel) on LEFT, primary (confirm) on RIGHT
+// per Carbon Modal convention. Odoo renders the primary button first in
+// DOM order, so we use CSS `order` to swap their visual positions.
 .modal .modal-footer .btn {
   // Each button expands to share available footer width equally
   flex: 1;
@@ -231,6 +234,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+// Carbon Modal button ordering: secondary buttons appear on the LEFT,
+// primary / danger buttons appear on the RIGHT. Odoo's DOM order places
+// primary first; we use CSS order to correct the visual layout.
+.modal .modal-footer .btn-secondary {
+  // Secondary button on the LEFT side of the footer
+  order: 0;
+}
+
+.modal .modal-footer .btn-primary,
+.modal .modal-footer .btn-danger {
+  // Primary / danger button on the RIGHT side of the footer
+  order: 1;
 }
 
 // ============================================================================

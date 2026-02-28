@@ -54,7 +54,13 @@
                 <t t-call="{{ props.buttonTemplate }}"/>
             </div>
             <div t-if="model.hasData()" class="o_graph_canvas_container o_graph_chart_container flex-grow-1 position-relative px-3 pb-3" t-ref="container">
-                <div t-ref="chart" class="o_carbon_chart w-100 h-100" />
+                <!-- data-chart-mode and data-chart-measure ensure OWL detects
+                     template output changes when the user switches chart type
+                     or measure, causing an onPatched lifecycle call that
+                     re-triggers renderChart() via useEffect. -->
+                <div t-ref="chart" class="o_carbon_chart w-100 h-100"
+                     t-att-data-chart-mode="model.metaData.mode"
+                     t-att-data-chart-measure="model.metaData.measure" />
             </div>
         </div>
     </t>

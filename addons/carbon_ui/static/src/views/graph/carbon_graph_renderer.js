@@ -155,6 +155,13 @@ export class CarbonGraphRenderer extends Component {
         this.tooltip = null;
         this.legendTooltip = null;
 
+        // Pending requestAnimationFrame ID for deferred chart creation.
+        // Chart creation is deferred to the next animation frame so that the
+        // DOM is fully laid-out after the previous chart is destroyed, which
+        // prevents Carbon Charts (D3.js-based) from rendering into a stale
+        // or zero-sized container.
+        this._renderRAF = null;
+
         // Internal lookup tables rebuilt on each renderChart() call
         this._datasetLabelToIndex = {};
         this._labelToIndex = {};
@@ -162,7 +169,10 @@ export class CarbonGraphRenderer extends Component {
         // Carbon Charts JS is loaded via the web.assets_backend_lazy bundle
         // (no dynamic loadBundle call needed).
 
-        // Re-render whenever the model notifies (data / metaData changes)
+        // Re-render whenever the model notifies (data / metaData changes).
+        // The template binds model.metaData.mode and model.metaData.measure
+        // as data-attributes on the chart container so that OWL detects the
+        // change and fires onPatched, which in turn runs this effect.
         useEffect(() => this.renderChart());
 
         // Destroy chart on unmount to avoid memory leaks
@@ -170,10 +180,17 @@ export class CarbonGraphRenderer extends Component {
     }
 
     /**
-     * Clean up Carbon Charts instance and any lingering tooltip elements
-     * when the OWL component is removed from the DOM.
+     * Clean up Carbon Charts instance, cancel any pending deferred render,
+     * and remove lingering tooltip elements when the OWL component is
+     * removed from the DOM.
      */
     onWillUnmount() {
+        // Cancel any pending deferred chart creation to prevent rendering
+        // into a detached DOM element after the component is unmounted.
+        if (this._renderRAF) {
+            cancelAnimationFrame(this._renderRAF);
+            this._renderRAF = null;
+        }
         if (this.chart) {
             try {
                 this.chart.destroy();
@@ -471,17 +488,43 @@ export class CarbonGraphRenderer extends Component {
 
     /**
      * Main render method. Called via useEffect() on every model change.
-     * Destroys the previous chart (if any), transforms data, builds options,
-     * instantiates the appropriate Carbon Charts class, and attaches click
-     * handlers for drill-down navigation.
+     *
+     * Destroys the previous chart (if any), clears the container, creates
+     * a fresh disposable wrapper div, and **defers** new chart creation to
+     * the next animation frame.
+     *
+     * **Critical**: Carbon Charts' `destroy()` method removes the holder
+     * element itself from the DOM (not just its SVG children). To prevent
+     * the OWL-managed `t-ref="chart"` element from being removed, we never
+     * pass the ref element directly to Carbon Charts. Instead, we create a
+     * disposable inner wrapper `<div>` and pass *that* as the chart holder.
+     * When `chart.destroy()` removes the wrapper, the OWL ref element
+     * remains intact for subsequent renders.
+     *
+     * Chart creation is deferred to the next animation frame so the
+     * browser recalculates layout after the container is emptied, ensuring
+     * Carbon Charts (D3.js-based) receives accurate width/height
+     * measurements.
      */
     renderChart() {
-        // Destroy previous chart instance
+        // Cancel any previously scheduled deferred render to avoid
+        // creating multiple chart instances if renderChart() is called
+        // rapidly in succession (e.g., multiple model updates).
+        if (this._renderRAF) {
+            cancelAnimationFrame(this._renderRAF);
+            this._renderRAF = null;
+        }
+
+        // Destroy the current chart instance synchronously so there are
+        // no lingering D3 event listeners or DOM references. Note:
+        // destroy() will remove the disposable wrapper div from the DOM,
+        // but the OWL-managed ref element is preserved.
         if (this.chart) {
             try {
                 this.chart.destroy();
             } catch (_e) {
-                // Defensive cleanup
+                // Defensive cleanup — destroy() may throw if the DOM node
+                // is already detached (e.g., OWL removed the t-if block).
             }
             this.chart = null;
         }
@@ -492,10 +535,58 @@ export class CarbonGraphRenderer extends Component {
             return;
         }
 
-        // Clear the container to avoid stale SVG elements
+        // Clear any residual content from the ref element. After
+        // chart.destroy() removes its wrapper, there may be leftover
+        // fragments. This guarantees a clean slate.
         el.innerHTML = "";
 
-        // If the model has no data, nothing to render
+        // If the model has no data, leave the container empty — the
+        // template's t-if="model.hasData()" will hide the container.
+        if (!this.model.hasData()) {
+            return;
+        }
+
+        // Create a fresh disposable wrapper div for the new chart
+        // instance. Carbon Charts will own this wrapper — its destroy()
+        // method will remove it — but the OWL-managed ref element stays.
+        const wrapper = document.createElement("div");
+        wrapper.className = "o_carbon_chart_inner w-100 h-100";
+        el.appendChild(wrapper);
+
+        // Defer actual chart creation to the next animation frame so the
+        // browser has a chance to recalculate layout. This ensures Carbon
+        // Charts sees the correct container dimensions.
+        this._renderRAF = requestAnimationFrame(() => {
+            this._renderRAF = null;
+            this._createChartInWrapper(wrapper);
+        });
+    }
+
+    /**
+     * Creates a new Carbon Charts instance inside the provided wrapper.
+     *
+     * This method is called from a `requestAnimationFrame` callback
+     * scheduled by `renderChart()`. It re-validates the wrapper element
+     * and model data before proceeding — both may have changed between
+     * the time the RAF was scheduled and the time it fires (e.g., the
+     * component may have been unmounted or the model may have been
+     * updated again).
+     *
+     * @param {HTMLElement} wrapper  The disposable inner div to use as
+     *   the chart holder. Carbon Charts will render SVG content inside
+     *   this element, and its `destroy()` method will remove it.
+     * @private
+     */
+    _createChartInWrapper(wrapper) {
+        // Guard: wrapper may have been removed from the DOM if the
+        // component was unmounted or the t-if condition changed between
+        // the RAF schedule and execution.
+        if (!wrapper || !wrapper.isConnected) {
+            return;
+        }
+
+        // Guard: model data may have been cleared between the RAF
+        // schedule and execution (e.g., during a search update).
         if (!this.model.hasData()) {
             return;
         }
@@ -517,9 +608,9 @@ export class CarbonGraphRenderer extends Component {
         // Build options
         const options = this.getChartOptions(carbonData, groupCount);
 
-        // Instantiate the chart
+        // Instantiate the chart inside the disposable wrapper
         try {
-            this.chart = new ChartClass(el, {
+            this.chart = new ChartClass(wrapper, {
                 data: carbonData,
                 options,
             });
@@ -565,7 +656,9 @@ export class CarbonGraphRenderer extends Component {
     }
 
     /**
-     * Fallback click handler using native DOM events on the chart container.
+     * Fallback click handler using native DOM events on the chart
+     * container's disposable wrapper. Uses the OWL ref element as the
+     * event delegation root so the handler survives wrapper replacements.
      * @private
      */
     _attachNativeClickHandler() {

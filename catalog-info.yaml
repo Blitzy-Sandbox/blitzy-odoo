@@ -6,9 +6,8 @@ metadata:
   tags:
     - python
     - web-app
-    - in-progress
+    - refactor
   labels:
-    blitzy.com/status: in-progress
     blitzy.com/language: python
   annotations:
     github.com/project-slug: Blitzy-Sandbox/blitzy-odoo

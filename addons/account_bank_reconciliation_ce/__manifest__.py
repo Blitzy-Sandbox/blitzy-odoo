@@ -19,6 +19,11 @@
     "application": False,
     "installable": True,
     "auto_install": False,
+    # post_init_hook ensures every accounting-manager/accounting-user and
+    # bank-reconciliation group member also belongs to base.group_user so
+    # that ir.attachment uploads (bank statement files) never raise
+    # AccessError.  See addons/account_bank_reconciliation_ce/__init__.py.
+    "post_init_hook": "post_init_hook",
     # IMPORTANT: Only Community Edition dependencies - NO Enterprise modules
     # This module explicitly excludes account_accountant (Enterprise) and any
     # other Enterprise-only modules to maintain AGPL-3.0 compatibility.

@@ -731,7 +731,7 @@ class TestBatchReconciliation(BankReconciliationTestCommon):
     """BR-003: Test batch confirmation of high-confidence matches.
 
     Validates the ``action_batch_confirm`` method which auto-confirms
-    all proposed matches that meet the ``CONFIDENCE_HIGH`` threshold (≥90%).
+    all proposed matches that meet the ``CONFIDENCE_HIGH`` threshold (≥95%).
     """
 
     def _create_matching_record(self, statement_line, move_line, score=95.0,
@@ -762,7 +762,7 @@ class TestBatchReconciliation(BankReconciliationTestCommon):
         """BR-003: Batch confirm reconciles all high-confidence matches.
 
         Given multiple statement lines with high-confidence proposed matches
-        (score ≥ 90),
+        (score ≥ 95),
         When action_batch_confirm is called,
         Then all matched statement lines are reconciled.
         """
@@ -797,12 +797,12 @@ class TestBatchReconciliation(BankReconciliationTestCommon):
             lambda line: line.account_id.account_type == 'asset_receivable',
         )
 
-        # Create high-confidence matching records
+        # Create high-confidence matching records (both ≥ CONFIDENCE_HIGH=95)
         match_a = self._create_matching_record(
             st_line_a, inv_line_a, score=95.0, amount=600.0,
         )
         match_b = self._create_matching_record(
-            st_line_b, inv_line_b, score=92.0, amount=400.0,
+            st_line_b, inv_line_b, score=96.0, amount=400.0,
         )
 
         # Create wizard and run batch confirm
@@ -842,7 +842,7 @@ class TestBatchReconciliation(BankReconciliationTestCommon):
     def test_br003_batch_confirm_skips_low_confidence(self):
         """BR-003: Batch confirm skips matches below the high threshold.
 
-        Given a mix of high-confidence (≥90) and low-confidence (<90) matches,
+        Given a mix of high-confidence (≥95) and low-confidence (<95) matches,
         When action_batch_confirm is called,
         Then only high-confidence matches are auto-confirmed.
         """

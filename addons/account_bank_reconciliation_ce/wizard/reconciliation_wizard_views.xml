@@ -236,9 +236,9 @@
                             to book a write-off for the remaining
                             difference.
                         -->
-                        <page string="Write-Off Settings" name="write_off_settings"
-                              invisible="not selected_line_id">
-                            <group string="Write-Off Configuration">
+                        <page string="Write-Off Settings" name="write_off_settings">
+                            <group string="Write-Off Configuration"
+                                   invisible="not selected_line_id">
                                 <group>
                                     <field name="write_off_account_id"
                                            domain="[('account_type', '!=', 'off_balance')]"
@@ -258,6 +258,15 @@
                                            widget="percentage"
                                            help="Maximum acceptable percentage difference between the statement line amount and the matched journal entry amount. Differences within this tolerance are auto-written off."/>
                                 </group>
+                            </group>
+
+                            <!-- Matching engine tuning — applies to the
+                                 next ``Find Matches`` run.  Kept visible
+                                 regardless of line selection so users
+                                 can tune it before selecting a line. -->
+                            <group string="Matching Engine">
+                                <field name="candidate_date_window"
+                                       help="Maximum number of days (±) between a statement line date and a candidate journal item date.  Must be a positive integer."/>
                             </group>
                         </page>
                     </notebook>
@@ -343,10 +352,7 @@
         <field name="res_model">account.reconciliation.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="context">{
-            'default_journal_id': context.get('active_id', False),
-            'default_date_to': (context_today()).strftime('%Y-%m-%d'),
-        }</field>
+        <field name="context">{'default_journal_id': context.get('active_id', False)}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Start Bank Reconciliation
@@ -376,11 +382,7 @@
         <field name="res_model">account.reconciliation.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">current</field>
-        <field name="context">{
-            'default_journal_id': context.get('active_id', False),
-            'default_date_to': (context_today()).strftime('%Y-%m-%d'),
-            'form_view_initial_mode': 'edit',
-        }</field>
+        <field name="context">{'default_journal_id': context.get('active_id', False), 'form_view_initial_mode': 'edit'}</field>
     </record>
 
 </odoo>

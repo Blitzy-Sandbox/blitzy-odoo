@@ -145,6 +145,25 @@
                                        required="report_type == 'cash_flow'"/>
                             </group>
                         </group>
+                        <!-- Aging Buckets (Days):
+                             Configurable overdue-tier thresholds for Aged
+                             Receivable / Aged Payable reports only.  The
+                             group is completely hidden for other report
+                             types so the wizard UI remains uncluttered.
+                             Defaults match industry-standard 30/60/90/120-
+                             day tiers, which are passed through to the
+                             account.aged.partner.balance.report model. -->
+                        <group string="Aging Buckets (Days)"
+                               invisible="report_type not in ('aged_receivable', 'aged_payable')">
+                            <group>
+                                <field name="bucket_1_days"/>
+                                <field name="bucket_2_days"/>
+                            </group>
+                            <group>
+                                <field name="bucket_3_days"/>
+                                <field name="bucket_4_days"/>
+                            </group>
+                        </group>
                     </page>
 
                 </notebook>
@@ -179,10 +198,7 @@
         <field name="res_model">account.financial.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="context">{
-            'default_date_to': (context_today()).strftime('%Y-%m-%d'),
-            'default_date_from': (context_today().replace(day=1)).strftime('%Y-%m-%d'),
-        }</field>
+        <field name="context">{}</field>
     </record>
 
     <!-- Quick Access: Balance Sheet -->
@@ -191,10 +207,7 @@
         <field name="res_model">account.financial.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="context">{
-            'default_report_type': 'balance_sheet',
-            'default_date_to': (context_today()).strftime('%Y-%m-%d'),
-        }</field>
+        <field name="context">{'default_report_type': 'balance_sheet'}</field>
     </record>
 
     <!-- Quick Access: Profit and Loss -->
@@ -203,11 +216,7 @@
         <field name="res_model">account.financial.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="context">{
-            'default_report_type': 'profit_loss',
-            'default_date_to': (context_today()).strftime('%Y-%m-%d'),
-            'default_date_from': (context_today().replace(day=1)).strftime('%Y-%m-%d'),
-        }</field>
+        <field name="context">{'default_report_type': 'profit_loss'}</field>
     </record>
 
     <!-- Quick Access: Cash Flow Statement -->
@@ -216,11 +225,7 @@
         <field name="res_model">account.financial.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="context">{
-            'default_report_type': 'cash_flow',
-            'default_date_to': (context_today()).strftime('%Y-%m-%d'),
-            'default_date_from': (context_today().replace(day=1)).strftime('%Y-%m-%d'),
-        }</field>
+        <field name="context">{'default_report_type': 'cash_flow'}</field>
     </record>
 
     <!-- Quick Access: General Ledger -->
@@ -229,11 +234,7 @@
         <field name="res_model">account.financial.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="context">{
-            'default_report_type': 'general_ledger',
-            'default_date_to': (context_today()).strftime('%Y-%m-%d'),
-            'default_date_from': (context_today().replace(day=1)).strftime('%Y-%m-%d'),
-        }</field>
+        <field name="context">{'default_report_type': 'general_ledger'}</field>
     </record>
 
     <!-- Quick Access: Trial Balance -->
@@ -242,10 +243,7 @@
         <field name="res_model">account.financial.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="context">{
-            'default_report_type': 'trial_balance',
-            'default_date_to': (context_today()).strftime('%Y-%m-%d'),
-        }</field>
+        <field name="context">{'default_report_type': 'trial_balance'}</field>
     </record>
 
     <!-- Quick Access: Aged Receivable
@@ -256,10 +254,7 @@
         <field name="res_model">account.financial.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="context">{
-            'default_report_type': 'aged_receivable',
-            'default_date_to': (context_today()).strftime('%Y-%m-%d'),
-        }</field>
+        <field name="context">{'default_report_type': 'aged_receivable'}</field>
     </record>
 
     <!-- Quick Access: Aged Payable
@@ -270,10 +265,7 @@
         <field name="res_model">account.financial.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="context">{
-            'default_report_type': 'aged_payable',
-            'default_date_to': (context_today()).strftime('%Y-%m-%d'),
-        }</field>
+        <field name="context">{'default_report_type': 'aged_payable'}</field>
     </record>
 
 </odoo>

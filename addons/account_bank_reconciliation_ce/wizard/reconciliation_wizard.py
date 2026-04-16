@@ -187,6 +187,19 @@ class ReconciliationWizard(models.TransientModel):
         ),
     )
 
+    candidate_date_window = fields.Integer(
+        string='Candidate Date Window (Days)',
+        default=90,
+        help=(
+            "Maximum number of days (±) between a statement line date and a "
+            "candidate journal item date when searching for matches.  The "
+            "algorithmic matching engine uses this window to scope its "
+            "candidate pool.  Must be a positive integer.  Wider windows "
+            "increase the candidate pool (and runtime) while narrower "
+            "windows may miss matches for delayed journal postings."
+        ),
+    )
+
     # =========================================================================
     # Compute Methods
     # =========================================================================
@@ -290,6 +303,25 @@ class ReconciliationWizard(models.TransientModel):
                       "the end date."),
                 )
 
+    @api.constrains('candidate_date_window')
+    def _check_candidate_date_window(self):
+        """Ensure ``candidate_date_window`` is a strictly positive integer.
+
+        Zero or negative values are rejected because they would either
+        yield an empty candidate window (0 days) or invert the window
+        boundaries (negative days), both of which break the matching
+        engine's date-boundary algorithm in
+        :meth:`account.reconciliation.matching._get_candidate_move_lines`.
+        """
+        for wizard in self:
+            if wizard.candidate_date_window is None or wizard.candidate_date_window <= 0:
+                raise ValidationError(
+                    _(
+                        "The candidate date window must be a positive "
+                        "integer (got %s).  Choose a value of at least 1 day.",
+                    ) % wizard.candidate_date_window,
+                )
+
     @api.onchange('journal_id')
     def _onchange_journal_id(self):
         """Reset dependent fields when the journal changes.
@@ -353,7 +385,9 @@ class ReconciliationWizard(models.TransientModel):
         new_matches = MatchingModel.browse()  # empty recordset default
         if unreconciled:
             new_matches = MatchingModel.find_matches(
-                unreconciled, self.journal_id.id,
+                unreconciled,
+                journal_id=self.journal_id.id,
+                date_window=self.candidate_date_window,
             )
 
         # 3. Apply reconciliation rules in priority order
@@ -562,7 +596,7 @@ class ReconciliationWizard(models.TransientModel):
         """Automatically confirm all high-confidence matches in a single
         batch operation.
 
-        Uses the ``CONFIDENCE_HIGH`` threshold (90%) from the matching
+        Uses the ``CONFIDENCE_HIGH`` threshold (95%) from the matching
         engine to identify auto-confirmable matches.  Each confirmed match
         triggers the full reconciliation flow via
         ``_execute_reconciliation()``.

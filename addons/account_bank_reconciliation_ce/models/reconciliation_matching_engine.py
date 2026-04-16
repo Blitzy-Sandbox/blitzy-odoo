@@ -50,21 +50,36 @@ class ReconciliationMatching(models.Model):
     # -------------------------------------------------------------------------
     # CONFIDENCE THRESHOLDS (class-level constants)
     # -------------------------------------------------------------------------
-    CONFIDENCE_HIGH = 90.0
+    # ``CONFIDENCE_HIGH`` is the cut-off at or above which matches are
+    # eligible for auto-confirmation.  Per the Phase 1 spec (BR-002), any
+    # match with a confidence score >= 95 % is considered a high-confidence
+    # auto-match and should not require manual review.  The previous value
+    # (90) produced false positives in the partner-name edge cases.
+    CONFIDENCE_HIGH = 95.0
     CONFIDENCE_MEDIUM = 70.0
     CONFIDENCE_LOW = 50.0
 
     # Scoring weights — sum must equal 1.0.
+    # Amount is the strongest signal (raised to 0.35); partner is elevated
+    # to High priority (0.25) because in real statements the bank puts the
+    # counter-party name directly on the line, so partner matches carry
+    # nearly as much information as amount equality.  Reference and date
+    # proximity round out the remaining weight.
     DEFAULT_WEIGHTS = {
-        'amount': 0.40,
+        'amount': 0.35,
         'reference': 0.25,
-        'partner': 0.20,
+        'partner': 0.25,
         'date': 0.15,
     }
 
     # Maximum number of items considered in one-to-many combination search.
     _MAX_COMBINATION_SIZE = 5
-    # Date window (days) for candidate retrieval.
+    # Default date window (days) for candidate retrieval.  This is the
+    # fallback value used when the caller does not supply an explicit
+    # ``date_window`` argument to :meth:`find_matches` /
+    # :meth:`_get_candidate_move_lines`.  Callers — notably the
+    # reconciliation wizard — can override this per-invocation via the
+    # ``candidate_date_window`` user-facing setting.
     _CANDIDATE_DATE_WINDOW = 90
     # Amount tolerance for combination matching (5 %).
     _COMBINATION_AMOUNT_TOLERANCE = 0.05
@@ -199,7 +214,7 @@ class ReconciliationMatching(models.Model):
     # -------------------------------------------------------------------------
 
     @api.model
-    def find_matches(self, statement_lines, journal_id=None):
+    def find_matches(self, statement_lines, journal_id=None, date_window=None):
         """Find and score matches for the supplied statement lines.
 
         This is the primary public API of the matching engine.  For each
@@ -219,6 +234,12 @@ class ReconciliationMatching(models.Model):
             statement_lines: ``account.bank.statement.line`` recordset.
             journal_id: Optional ``account.journal`` record id to restrict
                 candidate search.
+            date_window: Optional positive integer number of days.  Candidate
+                journal items whose date lies outside ``st_line.date ± days``
+                are excluded from the candidate pool.  When ``None`` the
+                engine falls back to :data:`_CANDIDATE_DATE_WINDOW`.  This
+                argument is threaded verbatim to
+                :meth:`_get_candidate_move_lines`.
 
         Returns:
             Recordset of created ``account.reconciliation.matching`` records.
@@ -232,6 +253,13 @@ class ReconciliationMatching(models.Model):
         journal = None
         if journal_id:
             journal = self.env['account.journal'].browse(journal_id).exists()
+
+        # Resolve the effective date window.  ``None`` falls back to the
+        # class-level default so existing callers that did not pass the new
+        # argument continue to behave identically to the previous release.
+        effective_window = (
+            date_window if date_window is not None else self._CANDIDATE_DATE_WINDOW
+        )
 
         # Filter to unreconciled lines only.
         unreconciled = statement_lines.filtered(lambda sl: not sl.is_reconciled)
@@ -253,7 +281,9 @@ class ReconciliationMatching(models.Model):
 
         for st_line in unreconciled:
             line_journal = journal or st_line.journal_id
-            candidates = self._get_candidate_move_lines(st_line, line_journal)
+            candidates = self._get_candidate_move_lines(
+                st_line, line_journal, date_window=effective_window,
+            )
             if not candidates:
                 _logger.debug(
                     "find_matches: no candidates for statement line %s (id=%s).",
@@ -322,7 +352,7 @@ class ReconciliationMatching(models.Model):
     # CANDIDATE RETRIEVAL
     # -------------------------------------------------------------------------
 
-    def _get_candidate_move_lines(self, st_line, journal):
+    def _get_candidate_move_lines(self, st_line, journal, date_window=None):
         """Return candidate ``account.move.line`` records for *st_line*.
 
         Candidates must satisfy all of the following:
@@ -330,12 +360,17 @@ class ReconciliationMatching(models.Model):
         * Not yet fully reconciled (``reconciled == False``).
         * Same company (multi-company isolation).
         * On a reconcilable account.
-        * Within a reasonable date window (±90 days by default).
+        * Within a reasonable date window (±``date_window`` days; the
+          class-level :data:`_CANDIDATE_DATE_WINDOW` constant is used as a
+          fallback when the caller does not supply an explicit value).
         * Not originating from the statement line's own move.
 
         Args:
             st_line: Single ``account.bank.statement.line`` record.
             journal: ``account.journal`` record to scope the search.
+            date_window: Optional positive integer overriding the
+                class-level date window.  ``None`` falls back to
+                :data:`_CANDIDATE_DATE_WINDOW`.
 
         Returns:
             ``account.move.line`` recordset.
@@ -345,10 +380,15 @@ class ReconciliationMatching(models.Model):
             ('id', 'child_of', company.id),
         ])
 
-        # Determine date window boundaries.
+        # Determine date window boundaries.  A ``None`` argument falls back
+        # to the class-level default so that callers which have not opted
+        # into the new per-invocation parameter keep their prior behaviour.
+        effective_window = (
+            date_window if date_window is not None else self._CANDIDATE_DATE_WINDOW
+        )
         st_date = st_line.date or fields.Date.context_today(self)
-        date_from = st_date - timedelta(days=self._CANDIDATE_DATE_WINDOW)
-        date_to = st_date + timedelta(days=self._CANDIDATE_DATE_WINDOW)
+        date_from = st_date - timedelta(days=effective_window)
+        date_to = st_date + timedelta(days=effective_window)
 
         # Collect reconcilable account ids for the company.
         reconcilable_accounts = self.env['account.account'].sudo().search([

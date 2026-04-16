@@ -3,6 +3,7 @@
 
 from . import (
     test_aged_partner,
+    test_aging_bucket_wizard,
     test_balance_sheet,
     test_cash_flow,
     test_export,

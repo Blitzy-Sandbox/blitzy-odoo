@@ -175,6 +175,40 @@ class FinancialReportWizard(models.TransientModel):
         help="Show individual move lines in Aged Partner Balance.",
     )
 
+    # -------------------------------------------------------------------------
+    # AGING BUCKET THRESHOLDS (days) — Aged Receivable / Aged Payable only
+    # -------------------------------------------------------------------------
+    # Each bucket field represents the upper day boundary for the
+    # corresponding aging tier.  Defaults match the conventional
+    # 30 / 60 / 90 / 120-day industry tiers.  These values pass through to
+    # the ``account.aged.partner.balance.report`` model which already
+    # declares identical ``bucket_N_days`` fields, enabling per-run
+    # customization of the aging thresholds without code changes.
+
+    bucket_1_days = fields.Integer(
+        string='Bucket 1 (Days)',
+        default=30,
+        help="Upper day boundary for the first aging tier (e.g. 1-30 days).",
+    )
+
+    bucket_2_days = fields.Integer(
+        string='Bucket 2 (Days)',
+        default=60,
+        help="Upper day boundary for the second aging tier (e.g. 31-60 days).",
+    )
+
+    bucket_3_days = fields.Integer(
+        string='Bucket 3 (Days)',
+        default=90,
+        help="Upper day boundary for the third aging tier (e.g. 61-90 days).",
+    )
+
+    bucket_4_days = fields.Integer(
+        string='Bucket 4 (Days)',
+        default=120,
+        help="Upper day boundary for the fourth aging tier (e.g. 91-120 days).",
+    )
+
     cash_flow_method = fields.Selection(
         selection=[
             ('indirect', 'Indirect Method'),
@@ -393,6 +427,15 @@ class FinancialReportWizard(models.TransientModel):
             )
             vals['partner_ids'] = [(6, 0, self.partner_ids.ids)]
             vals['show_move_lines'] = self.show_move_lines
+            # Pass through user-configured aging bucket thresholds.  The
+            # target ``account.aged.partner.balance.report`` model declares
+            # matching ``bucket_N_days`` Integer fields that drive the
+            # overdue-tier classification logic.  Only include these keys
+            # for aged reports — other report models do not accept them.
+            vals['bucket_1_days'] = self.bucket_1_days
+            vals['bucket_2_days'] = self.bucket_2_days
+            vals['bucket_3_days'] = self.bucket_3_days
+            vals['bucket_4_days'] = self.bucket_4_days
 
         # --- Create report with error handling ---
         try:

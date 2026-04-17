@@ -4,1471 +4,766 @@
 
 ## 0.1 Intent Clarification
 
-### 0.1.1 Core Documentation Objective
+### 0.1.1 Core Feature Objective
 
-Based on the provided requirements, the Blitzy platform understands that the documentation objective is to **create comprehensive user epics and user stories** for implementing enterprise-grade accounting capabilities in Odoo Community Edition.
+Based on the prompt, the Blitzy platform understands that the new feature requirement is to implement **Phase 1 of the Enterprise Accounting Parity initiative** for Odoo Community Edition 19.0, encompassing two critical capabilities:
 
-**Documentation Type:** User Epic / User Story Documentation
+- **Financial Reporting Engine (FEATURE-001)**: Deliver a full suite of GAAP/IFRS-compliant financial reports—Balance Sheet, Profit & Loss, Cash Flow Statement, General Ledger, Trial Balance, and Aged AR/AP—with drill-down navigation to source transactions, comparative period analysis, and multi-format export (PDF and Excel). This feature extends and completes the existing scaffolded module at `addons/account_financial_report_ce/`, which already contains transient model stubs, wizard definitions, QWeb report templates, security groups, and test scaffolds totaling approximately 6,667 lines across 37 files.
 
-**Request Category:** Create new documentation (user story artifacts saved to `tickets/` directory)
+- **Bank Reconciliation System (FEATURE-002)**: Build a new module providing smart algorithmic matching of bank statement lines to journal entries (≥95% accuracy target), configurable reconciliation rules (regex, amount, partner matching), multi-format statement import (CSV, OFX, QIF, CAMT.053), manual reconciliation workflows, and partial reconciliation with write-off handling. This module does not yet exist in the repository and must be created from scratch.
 
-The primary documentation objectives include:
+- The user's instruction explicitly references `EPIC-001-enterprise-accounting-parity.md` as the governing epic, with 7 stories for FEATURE-001 (FR-001 through FR-007) and 5 stories for FEATURE-002 (BR-001 through BR-005). All stories contain acceptance criteria that define the "done" threshold.
 
-- Transform the single objective statement into a comprehensive user epic with six features
-- Decompose each feature into 3-7 user stories following INVEST principles (Independent, Negotiable, Valuable, Estimable, Small, Testable)
-- Write BDD-style (Behavior-Driven Development) acceptance criteria using Given/When/Then format
-- Generate all documentation artifacts in the `tickets/` directory at repository root
-- Ensure stories specify WHAT and WHY without prescribing HOW—implementation details emerge from agent discovery
+- The user requires architectural proposals to be based on **codebase discovery** of the existing `addons/account` module structure and OCA (Odoo Community Association) patterns—not prescribed implementations.
 
-**Restated Requirements with Technical Precision:**
-
-| Requirement # | Original Requirement | Technical Interpretation |
-|---------------|---------------------|--------------------------|
-| REQ-1 | Financial Reporting (Balance Sheet, P&L, Cash Flow, General Ledger, Trial Balance, Aged Reports) | Create user stories for report generation models, QWeb templates, and wizard interfaces for GAAP/IFRS-compliant financial statements |
-| REQ-2 | Bank Reconciliation | Create user stories for matching bank statement lines with journal items, algorithmic matching, reconciliation rules/models |
-| REQ-3 | Budget Management | Create user stories for budget definition models, period-based budget allocation, variance analysis reporting |
-| REQ-4 | Asset Management | Create user stories for asset register, depreciation methods, depreciation journal entries, asset disposal workflows |
-| REQ-5 | Deferred Revenue/Expenses | Create user stories for deferral schedule models, automatic period allocation, cut-off entry generation |
-| REQ-6 | Payment Follow-ups | Create user stories for follow-up level configuration, automated email generation, action history tracking |
+**Implicit Requirements Detected:**
+- The existing `account_financial_report_ce` scaffold must be enhanced from its current stub state to fully functional report generation with working `_compute_report_data` pipelines, validated accounting equations, and functional export handlers
+- A new companion module (e.g., `account_bank_reconciliation_ce`) must be scaffolded and implemented for FEATURE-002
+- Both modules must integrate with the core `account` module's models (`account.move`, `account.move.line`, `account.account`, `account.bank.statement`, `account.bank.statement.line`, `account.reconcile.model`) without modifying those core models—only extending them via Odoo's inheritance mechanism
+- Security groups, access control lists, and record rules must be created for both modules
+- Python 3.10–3.13 compatibility is mandatory per `odoo/release.py` (MIN_PY_VERSION = 3.10)
 
 ### 0.1.2 Special Instructions and Constraints
 
-**CRITICAL DIRECTIVES:**
+**User Directives:**
+- "Analyze `addons/account` module structure and OCA patterns before implementation" — This mandates a discovery-first approach where architectural decisions are grounded in the existing codebase patterns found in `addons/account/models/`, `addons/account/report/`, `addons/account/wizard/`, and `addons/account/views/`
+- "All stories contain acceptance criteria" — Each of the 12 stories (7 FR + 5 BR) has BDD-style Given/When/Then acceptance scenarios that serve as the definitive validation criteria
+- "Propose architecture based on codebase discovery" — Implementation patterns must mirror those observed in the `account` module (e.g., `_auto = False` SQL view models, `TransientModel` wizards, `_inherits` delegation, `read_group` aggregation)
 
-- **AGPL-3.0 License Compatibility**: All user stories must specify license compatibility requirements. The repository uses LGPL-3 for the `account` module, and new modules should maintain AGPL-3.0 compatibility as specified.
-- **No Enterprise Dependencies**: User stories must explicitly state "No dependencies on Odoo Enterprise modules" as an acceptance criterion.
-- **OCA Coding Standards**: Reference Odoo and OCA (Odoo Community Association) coding standards in acceptance criteria.
-- **Target Version**: User requirements specify Odoo 18.0; however, the repository is Odoo 19.0 (as identified in `odoo/release.py`). Documentation should note this discrepancy and proceed with 18.0 compatibility stories (which may need version adjustment).
-- **Test Coverage**: All stories should include acceptance criteria requiring minimum 80% test coverage.
+**Architectural Requirements:**
+- AGPL-3.0 licensing for all new code (per EPIC-001 constraints)
+- Zero dependencies on Odoo Enterprise modules—specifically excluded: `account_reports`, `account_accountant`, `account_asset`, `account_budget`, `account_followup`, `account_deferred_revenue`
+- OCA coding standards compliance (pre-commit hooks, pylint-odoo)
+- Minimum 80% test coverage per module
+- Odoo 19.0 repository baseline with version-agnostic story specifications (stories reference Odoo 18.0 but repo is 19.0)
+- BDD alignment: tests must map to story acceptance criteria
 
-**Template Requirements:**
-
-User stories must follow the BDD format:
-
-```
-## User Story: [ID] [Title]
-
-**As a** [role]
-**I want** [capability]
-**So that** [business value]
-
-#### Acceptance Criteria
-
-**Scenario 1:** [Scenario Name]
-- **Given** [precondition]
-- **When** [action]
-- **Then** [expected outcome]
-```
-
-**Style Preferences:**
-- Use markdown format for all documentation
-- Include Mermaid diagrams where workflows benefit from visualization
-- Keep acceptance criteria concise (3-6 scenarios per story as per BDD best practices)
-- Avoid UI/implementation details in acceptance criteria
+**Performance Requirements:**
+- Financial reports: <30 seconds for 100,000 transactions; PDF export <15 seconds; Excel export <10 seconds; drill-down response <2 seconds
+- Bank reconciliation: statement import <10 seconds for 500 lines; algorithmic matching <5 seconds for 1,000 lines; rule evaluation <1 second per rule
 
 ### 0.1.3 Technical Interpretation
 
-These documentation requirements translate to the following technical documentation strategy:
-
-- **To document Financial Reporting**, we will create user stories that describe report generation from the user's perspective (CFO, Accountant, Auditor), specifying report outputs, comparative period functionality, and drill-down capabilities without prescribing the underlying model implementation.
-
-- **To document Bank Reconciliation**, we will create user stories covering the reconciliation workflow from the Bookkeeper's perspective, including statement import, algorithmic matching suggestions, and reconciliation rule creation.
-
-- **To document Budget Management**, we will create user stories for the Controller and Finance Director personas, covering budget definition, period allocation, and variance analysis reporting.
-
-- **To document Asset Management**, we will create user stories from the Accountant's perspective for asset tracking, depreciation scheduling, and disposal workflows.
-
-- **To document Deferred Revenue/Expenses**, we will create user stories addressing revenue recognition requirements per ASC 606/IFRS 15 standards from the CFO and Accountant perspectives.
-
-- **To document Payment Follow-ups**, we will create user stories for automated customer communication from the Accountant and Credit Controller perspectives.
-
-### 0.1.4 Inferred Documentation Needs
-
-Based on codebase analysis, the following implicit documentation needs have been identified:
-
-**Module Structure Gaps:**
-- The `addons/` directory contains no `account_asset`, `account_budget`, `account_followup`, or `account_financial_reports` modules
-- These are Enterprise-only features, validating the epic's objective to bridge the Community/Enterprise gap
-
-**Related OCA Reference:**
-- User stories should reference OCA patterns from `OCA/account-financial-reporting`, `OCA/account-reconcile`, and `OCA/mis-builder` repositories for compatibility considerations
-
-**Integration Stories Needed:**
-- Stories documenting integration between new modules and existing `account.move`, `account.move.line`, `account.bank.statement` models
-- Stories for analytic account integration (budget allocation by analytic dimension)
-
-**Discovery Notes for Implementation:**
-- Codebase analysis required before implementation to understand existing `account` module structure
-- OCA module compatibility evaluation needed for integration vs. replacement decisions
-- Report engine strategy determination (extend Odoo reporting vs. dedicated engine)
-- OWL component pattern assessment for reconciliation and reporting interfaces
-
-## 0.2 Documentation Discovery and Analysis
-
-### 0.2.1 Existing Documentation Infrastructure Assessment
-
-**CRITICAL FINDING:** Repository analysis reveals minimal existing technical documentation infrastructure with no established user story/epic patterns.
-
-**Search Patterns Employed:**
-- Documentation files: `README.md`, `*.rst` files in `doc/`, `addons/*/README.md`
-- Documentation generators: No `mkdocs.yml`, `docusaurus.config.js`, or `sphinx.conf.py` found
-- User story templates: No existing `tickets/`, `stories/`, or `epics/` directories
-- Style guides: `CONTRIBUTING.md` points to Odoo Wiki for contribution guidelines
-
-**Documentation Findings:**
-
-| Location | Content | Status |
-|----------|---------|--------|
-| `/README.md` | Basic project overview, build status badges, links to official documentation | Minimal |
-| `/CONTRIBUTING.md` | Links to Odoo Wiki and PR guidelines | Reference only |
-| `/doc/cla/` | Contributor License Agreement files only | Non-technical |
-| `/addons/account/README.md` | High-level accounting module description (3 paragraphs) | Sparse |
-| `/addons/crm/doc/` | CRM-specific RST documentation (changelog, stages) | Limited example |
-
-**Repository Analysis Summary:**
-> "Repository analysis reveals a documentation-light codebase with README files at module level providing minimal feature descriptions. No existing epic/story documentation framework exists, requiring creation of the entire `tickets/` structure."
-
-**Current Documentation Framework:** None established for user stories/epics
-
-**Documentation Generator Configuration:** Not applicable (markdown-based file storage)
-
-**API Documentation Tools:** None integrated; module README files serve as primary documentation
-
-### 0.2.2 Repository Code Analysis for Documentation
-
-**Search Patterns Used for Code to Document:**
-
-| Pattern | Target | Findings |
-|---------|--------|----------|
-| `addons/account/models/*.py` | Public APIs for accounting | 35+ model files including `account_move.py`, `account_payment.py`, `account_bank_statement.py` |
-| `addons/account/wizard/*.py` | Transient wizard models | 15+ wizard implementations including `account_payment_register.py`, `account_resequence.py` |
-| `addons/account/report/*.py` | Report models | `account_invoice_report.py` with SQL-view analytics |
-| `addons/analytic/models/*.py` | Analytic accounting APIs | `analytic_account.py`, `analytic_plan.py`, `analytic_line.py` |
-
-**Key Directories Examined:**
-
-```
-addons/
-├── account/                    # Core accounting (LGPL-3) - 35+ models
-│   ├── models/                # Business logic
-│   ├── views/                 # XML view definitions
-│   ├── wizard/                # Transient models for workflows
-│   ├── report/                # QWeb reports and analytics
-│   └── tests/                 # Test coverage
-├── account_payment/           # Payment processing extension
-├── analytic/                  # Analytic accounting foundation
-└── [No asset/budget/followup modules exist]
-```
-
-**Related Documentation Found:**
-- `addons/account/__manifest__.py` - Module dependencies: `base_setup`, `onboarding`, `product`, `analytic`, `portal`, `digest`
-- Module version: `1.4` (within Odoo 19.0 framework)
-- License: `LGPL-3` (compatible with AGPL-3.0 requirement)
-
-**Enterprise Features Absent from Community:**
-
-| Feature | Enterprise Module | OCA Alternative |
-|---------|-------------------|-----------------|
-| Financial Reports | `account_reports` | `OCA/account-financial-reporting` |
-| Bank Reconciliation UI | `account_accountant` | `OCA/account-reconcile` |
-| Budget Management | `account_budget` | `OCA/mis-builder` |
-| Asset Management | `account_asset` | `OCA/account-financial-tools` |
-| Payment Follow-ups | `account_followup` | `OCA/account-payment` |
-| Deferred Revenue | `account_deferred_revenue` | Custom development needed |
-
-### 0.2.3 Web Search Research Conducted
-
-**Best Practices for User Story Documentation:**
-
-<cite index="15-2,15-3">"The acronym INVEST helps to remember a widely accepted set of criteria, or checklist, to assess the quality of a user story. If the story fails to meet one of these criteria, the team may want to reword it, or even consider a rewrite."</cite>
-
-**INVEST Principles Applied to This Epic:**
-
-| Principle | Application |
-|-----------|-------------|
-| **I**ndependent | Each feature (Financial Reporting, Bank Reconciliation, etc.) can be developed independently |
-| **N**egotiable | Stories describe outcomes, not implementations; allows developer flexibility |
-| **V**aluable | Each story tied to user persona and business value (CFO, Accountant, Auditor needs) |
-| **E**stimable | Stories scoped to 3-7 per feature, small enough to estimate |
-| **S**mall | Features decomposed into discrete stories (e.g., separate Balance Sheet from P&L) |
-| **T**estable | BDD acceptance criteria enable objective verification |
-
-**BDD Acceptance Criteria Best Practices:**
-
-<cite index="16-10,16-11">"BDD often uses the Gherkin syntax, which structures acceptance criteria in a Given-When-Then format. This format describes the preconditions (Given), the action or event (When), and the expected outcome (Then)."</cite>
-
-<cite index="12-12,12-13,12-14">"Firstly, it is to articulate with clarity to a non-technical audience that the criteria will be used to validate a feature's behavior. Secondly, and equally important, it is to ensure that this requirement can be easily transformed into building and testing code. BDD happens to be a good medium to address these outcomes."</cite>
-
-**OCA Module Patterns Research:**
-
-<cite index="3-18,3-19">"This module adds a set of financial reports. They are accessible under Invoicing / Reporting / OCA accounting reports."</cite>
-
-The OCA `account_financial_report` module provides precedent for:
-- General Ledger reports
-- Trial Balance reports
-- Aged Partner Balance reports
-- Multi-currency support in reports
-
-## 0.3 Documentation Scope Analysis
-
-### 0.3.1 Code-to-Documentation Mapping
-
-**Modules Requiring User Story Documentation:**
-
-**Feature 1: Financial Reporting**
-
-| Source Code Reference | Documentation Needed | User Story Count |
-|----------------------|---------------------|------------------|
-| `addons/account/report/account_invoice_report.py` | Reference existing report pattern | - |
-| New: Financial Report Engine | Epic-level documentation for report generation | 5-7 stories |
-| Reports: Balance Sheet, P&L, Cash Flow, General Ledger, Trial Balance, Aged Reports | Individual report user stories | Included above |
-
-**Feature 2: Bank Reconciliation**
-
-| Source Code Reference | Documentation Needed | User Story Count |
-|----------------------|---------------------|------------------|
-| `addons/account/models/account_bank_statement.py` | Reference for statement model integration | - |
-| `addons/account/models/account_reconcile_model.py` | Reference for reconciliation rules pattern | - |
-| `addons/account/views/account_reconcile_model_views.xml` | Reference for UI patterns | - |
-| New: Reconciliation Interface & Algorithm | User stories for matching and reconciliation | 4-6 stories |
-
-**Feature 3: Budget Management**
-
-| Source Code Reference | Documentation Needed | User Story Count |
-|----------------------|---------------------|------------------|
-| `addons/analytic/models/analytic_account.py` | Reference for analytic dimension integration | - |
-| `addons/analytic/models/analytic_plan.py` | Reference for multi-dimensional budgeting | - |
-| New: Budget Definition & Variance Analysis | User stories for budget lifecycle | 4-5 stories |
-
-**Feature 4: Asset Management**
-
-| Source Code Reference | Documentation Needed | User Story Count |
-|----------------------|---------------------|------------------|
-| `addons/account/models/account_move.py` | Reference for depreciation journal entries | - |
-| `addons/account/models/account_account.py` | Reference for asset accounts | - |
-| New: Asset Register & Depreciation Engine | User stories for asset lifecycle | 5-6 stories |
-
-**Feature 5: Deferred Revenue/Expenses**
-
-| Source Code Reference | Documentation Needed | User Story Count |
-|----------------------|---------------------|------------------|
-| `addons/account/wizard/account_automatic_entry_wizard.py` | Reference for automatic entry patterns | - |
-| New: Deferral Schedule & Recognition | User stories for revenue recognition | 3-5 stories |
-
-**Feature 6: Payment Follow-ups**
-
-| Source Code Reference | Documentation Needed | User Story Count |
-|----------------------|---------------------|------------------|
-| `addons/account/data/mail_template_data.xml` | Reference for email templates | - |
-| `addons/account/models/partner.py` | Reference for partner credit data | - |
-| New: Follow-up Automation | User stories for payment collection | 4-5 stories |
-
-**Total Estimated Stories:** 25-34 user stories across 6 features
-
-### 0.3.2 Configuration Options Requiring Documentation
-
-| Configuration Area | Options to Document | Current Status |
-|-------------------|---------------------|----------------|
-| Report Periods | Monthly, Quarterly, Annual comparisons | User story acceptance criteria |
-| Depreciation Methods | Straight-line, Declining balance, Units of production | User story acceptance criteria |
-| Budget Periods | Monthly, Quarterly, Annual allocation | User story acceptance criteria |
-| Follow-up Levels | Configurable reminder, warning, final notice | User story acceptance criteria |
-| Statement Import Formats | CSV, OFX, QIF, CAMT.053 | User story acceptance criteria |
-| Reconciliation Rules | Pattern-based auto-matching | User story acceptance criteria |
-
-### 0.3.3 Documentation Gap Analysis
-
-Given the requirements and repository analysis, documentation gaps include:
-
-**Complete Absence (No Existing Documentation):**
-- User epic/story structure for Enterprise-equivalent features
-- BDD acceptance criteria templates for accounting features
-- Feature decomposition aligned with INVEST principles
-- Target user persona documentation (CFO, Accountant, Controller, Auditor, Business Owner)
-
-**Undocumented Integration Points:**
-
-```mermaid
-graph TD
-    A[New Financial Reporting Module] --> B[account.move]
-    A --> C[account.move.line]
-    A --> D[account.account]
-    
-    E[New Bank Reconciliation Module] --> F[account.bank.statement]
-    E --> G[account.bank.statement.line]
-    E --> H[account.reconcile.model]
-    
-    I[New Budget Module] --> J[account.analytic.account]
-    I --> K[account.analytic.plan]
-    I --> L[account.account]
-    
-    M[New Asset Module] --> B
-    M --> D
-    
-    N[New Deferred Revenue Module] --> B
-    N --> C
-    
-    O[New Follow-up Module] --> P[res.partner]
-    O --> B
-```
-
-**Missing User Journey Documentation:**
-
-| Persona | Missing Documentation |
-|---------|----------------------|
-| CFO / Finance Director | GAAP/IFRS-compliant reporting requirements |
-| Accountant / Bookkeeper | Daily operational workflows (reconciliation, follow-ups) |
-| Controller | Budget variance analysis requirements |
-| Auditor | Transaction trail and data integrity requirements |
-| Business Owner | Cash flow visibility and AR management |
-
-### 0.3.4 Feature-to-Story Decomposition Strategy
-
-**Decomposition Principles:**
-
-Based on INVEST and BDD best practices, each feature will be decomposed as follows:
-
-```
-EPIC: Enterprise Accounting Capabilities
-├── Feature 1: Financial Reporting (5-7 stories)
-│   ├── FR-001: Balance Sheet Report
-│   ├── FR-002: Profit & Loss Statement
-│   ├── FR-003: Cash Flow Statement
-│   ├── FR-004: General Ledger Report
-│   ├── FR-005: Trial Balance Report
-│   ├── FR-006: Aged Receivable/Payable Reports
-│   └── FR-007: Report Export & Drill-down
-│
-├── Feature 2: Bank Reconciliation (4-6 stories)
-│   ├── BR-001: Statement Import
-│   ├── BR-002: Algorithmic Matching
-│   ├── BR-003: Manual Reconciliation
-│   ├── BR-004: Reconciliation Rules
-│   └── BR-005: Partial Reconciliation
-│
-├── Feature 3: Budget Management (4-5 stories)
-│   ├── BM-001: Budget Definition
-│   ├── BM-002: Budget Period Allocation
-│   ├── BM-003: Actual vs Budget Reporting
-│   ├── BM-004: Variance Analysis
-│   └── BM-005: Budget Alerts
-│
-├── Feature 4: Asset Management (5-6 stories)
-│   ├── AM-001: Asset Registration
-│   ├── AM-002: Depreciation Configuration
-│   ├── AM-003: Depreciation Board
-│   ├── AM-004: Automatic Depreciation Entries
-│   ├── AM-005: Asset Modification
-│   └── AM-006: Asset Disposal
-│
-├── Feature 5: Deferred Revenue/Expenses (3-5 stories)
-│   ├── DR-001: Deferral Schedule Definition
-│   ├── DR-002: Automatic Period Allocation
-│   ├── DR-003: Cut-off Entry Generation
-│   └── DR-004: Recognition Dashboard
-│
-└── Feature 6: Payment Follow-ups (4-5 stories)
-    ├── PF-001: Follow-up Level Configuration
-    ├── PF-002: Automated Email Generation
-    ├── PF-003: Follow-up Report Generation
-    ├── PF-004: Action History Tracking
-    └── PF-005: Overdue Calculation
-```
-
-## 0.4 Documentation Implementation Design
-
-### 0.4.1 Documentation Structure Planning
-
-**Documentation Hierarchy:**
-
-```
-tickets/
-├── README.md                                    # Epic overview and navigation
-├── EPIC-001-enterprise-accounting.md           # Master epic document
-├── features/
-│   ├── FEATURE-001-financial-reporting.md      # Feature specification
-│   ├── FEATURE-002-bank-reconciliation.md
-│   ├── FEATURE-003-budget-management.md
-│   ├── FEATURE-004-asset-management.md
-│   ├── FEATURE-005-deferred-revenue.md
-│   └── FEATURE-006-payment-followups.md
-├── stories/
-│   ├── financial-reporting/
-│   │   ├── FR-001-balance-sheet-report.md
-│   │   ├── FR-002-profit-loss-statement.md
-│   │   ├── FR-003-cash-flow-statement.md
-│   │   ├── FR-004-general-ledger-report.md
-│   │   ├── FR-005-trial-balance-report.md
-│   │   ├── FR-006-aged-reports.md
-│   │   └── FR-007-report-export-drilldown.md
-│   ├── bank-reconciliation/
-│   │   ├── BR-001-statement-import.md
-│   │   ├── BR-002-algorithmic-matching.md
-│   │   ├── BR-003-manual-reconciliation.md
-│   │   ├── BR-004-reconciliation-rules.md
-│   │   └── BR-005-partial-reconciliation.md
-│   ├── budget-management/
-│   │   ├── BM-001-budget-definition.md
-│   │   ├── BM-002-budget-period-allocation.md
-│   │   ├── BM-003-actual-vs-budget-reporting.md
-│   │   ├── BM-004-variance-analysis.md
-│   │   └── BM-005-budget-alerts.md
-│   ├── asset-management/
-│   │   ├── AM-001-asset-registration.md
-│   │   ├── AM-002-depreciation-configuration.md
-│   │   ├── AM-003-depreciation-board.md
-│   │   ├── AM-004-automatic-depreciation-entries.md
-│   │   ├── AM-005-asset-modification.md
-│   │   └── AM-006-asset-disposal.md
-│   ├── deferred-revenue/
-│   │   ├── DR-001-deferral-schedule-definition.md
-│   │   ├── DR-002-automatic-period-allocation.md
-│   │   ├── DR-003-cutoff-entry-generation.md
-│   │   └── DR-004-recognition-dashboard.md
-│   └── payment-followups/
-│       ├── PF-001-followup-level-configuration.md
-│       ├── PF-002-automated-email-generation.md
-│       ├── PF-003-followup-report-generation.md
-│       ├── PF-004-action-history-tracking.md
-│       └── PF-005-overdue-calculation.md
-└── templates/
-    ├── epic-template.md                        # Reusable epic template
-    ├── feature-template.md                     # Reusable feature template
-    └── story-template.md                       # Reusable story template
-```
-
-### 0.4.2 Content Generation Strategy
-
-**Information Extraction Approach:**
-
-- Extract existing model patterns from `addons/account/models/` for integration references
-- Generate example workflows by analyzing `addons/account/wizard/` for wizard conventions
-- Reference OCA modules (`account_financial_report`, `mis_builder`) for feature patterns
-- Map user personas to specific acceptance criteria scenarios
-
-**Epic Template Structure:**
-
-The epic document will follow this structure:
-
-| Section | Content |
-|---------|---------|
-| Business Context | Problem statement and target users table |
-| Success Metrics | Measurable outcomes aligned with user requirements |
-| Features | List of 6 features with story counts and priorities |
-| Constraints | AGPL-3.0, no Enterprise dependencies, OCA standards, 80% test coverage |
-| Out of Scope | Real-time bank feeds, AI/ML OCR, multi-company consolidation, tax service integrations, mobile interfaces |
-| References | OCA repository links, Odoo documentation links |
-
-**Story Template Structure:**
-
-Each story will contain:
-
-| Section | Content |
-|---------|---------|
-| User Story | As a [persona], I want [capability], So that [business value] |
-| Acceptance Criteria | 3-6 BDD scenarios using Given/When/Then format |
-| Technical Notes | Discovery notes for implementing agents (codebase analysis areas) |
-| Dependencies | Related stories, existing modules, external systems |
-| Test Requirements | 80% coverage minimum, specific test scenarios |
-
-**Documentation Standards:**
-
-| Element | Standard |
-|---------|----------|
-| Markdown Headers | # for Epic, ## for Feature, ### for Story sections |
-| BDD Scenarios | Given/When/Then with bold formatting |
-| Diagrams | Mermaid syntax for workflow and relationship diagrams |
-| Tables | Pipe-delimited markdown tables |
-| Code References | Backticks for inline code, fenced blocks for examples |
-| Source Citations | File paths in code format with line references |
-
-### 0.4.3 Diagram and Visual Strategy
-
-**Mermaid Diagrams to Create:**
-
-**1. Epic Feature Relationship Diagram:**
+These feature requirements translate to the following technical implementation strategy:
+
+- To **complete the Financial Reporting Engine**, we will enhance the existing 8 transient model classes in `addons/account_financial_report_ce/models/` with production-grade `_compute_report_data()` implementations, optimize `read_group` aggregation queries against `account.move.line`, implement functional PDF export via QWeb report templates in `report/`, and build Excel export using `openpyxl`/`XlsxWriter` libraries already present in `requirements.txt`. Drill-down actions will return window actions filtered to source `account.move.line` records.
+
+- To **implement the Bank Reconciliation System**, we will create a new Odoo module `addons/account_bank_reconciliation_ce/` following the identical structural pattern of `account_financial_report_ce` (models, wizard, report, views, security, tests, data, static, demo). The module will extend `account.bank.statement` and `account.bank.statement.line` with import parsing capabilities, implement a matching engine as a new model with configurable confidence scoring, extend `account.reconcile.model` for enhanced rule evaluation, and provide a reconciliation wizard with manual match/unmatch workflows.
+
+- To **ensure integration**, both modules will read from but not modify the core `account` module's table schemas, using Odoo's `_inherit` mechanism for model extension and `ir.actions.act_window` for navigation between reports and source documents. Cross-feature integration will ensure the General Ledger report reflects reconciliation status and reconciled transaction markers.
+
+## 0.2 Repository Scope Discovery
+
+### 0.2.1 Comprehensive File Analysis
+
+The repository is an Odoo 19.0 Community Edition monolith (`version_info = (19, 0, 0, FINAL, 0, '')` per `odoo/release.py`). The following tables exhaustively document every file and folder relevant to the Phase 1 implementation.
+
+**Existing Module Files to Modify — `addons/account_financial_report_ce/`**
+
+This module is scaffolded with 37 files totaling ~6,667 lines. All files require enhancement from stub/placeholder state to production-quality implementations.
+
+| File Path | Lines | Modification Purpose |
+|---|---|---|
+| `addons/account_financial_report_ce/__manifest__.py` | 76 | Update version, add new dependencies if needed, register new data/view files |
+| `addons/account_financial_report_ce/__init__.py` | 7 | Verify import chain completeness |
+| `addons/account_financial_report_ce/models/__init__.py` | 11 | Verify all report model imports |
+| `addons/account_financial_report_ce/models/financial_report.py` | 476 | Complete abstract base: optimize `_compute_account_balance` with SQL, implement drill-down, export contracts |
+| `addons/account_financial_report_ce/models/balance_sheet.py` | 651 | Production-grade `_compute_report_data`, accounting equation enforcement, comparative periods |
+| `addons/account_financial_report_ce/models/profit_loss.py` | 241 | Complete revenue/expense aggregation, gross/operating/net income calculations |
+| `addons/account_financial_report_ce/models/cash_flow.py` | 415 | Implement indirect/direct method cash flow, activity categorization |
+| `addons/account_financial_report_ce/models/general_ledger.py` | 296 | Complete per-account transaction listing, running balances, opening/closing |
+| `addons/account_financial_report_ce/models/trial_balance.py` | 254 | Complete debit/credit column computation, balance verification |
+| `addons/account_financial_report_ce/models/aged_partner_balance.py` | 385 | Implement 30/60/90/120+ day aging bucket computation, partner drill-down |
+| `addons/account_financial_report_ce/wizard/financial_report_wizard.py` | 260 | Complete wizard-to-report model bridging, validation, and action dispatch |
+| `addons/account_financial_report_ce/wizard/financial_report_wizard_views.xml` | 217 | Refine form layout, dynamic visibility, filter controls |
+| `addons/account_financial_report_ce/report/report_balance_sheet.py` | 38 | Complete `_get_report_values` with line data and currency context |
+| `addons/account_financial_report_ce/report/report_profit_loss.py` | 21 | Complete `_get_report_values` |
+| `addons/account_financial_report_ce/report/report_cash_flow.py` | 21 | Complete `_get_report_values` |
+| `addons/account_financial_report_ce/report/report_general_ledger.py` | 21 | Complete `_get_report_values` |
+| `addons/account_financial_report_ce/report/report_trial_balance.py` | 21 | Complete `_get_report_values` |
+| `addons/account_financial_report_ce/report/report_aged_partner_balance.py` | 21 | Complete `_get_report_values` |
+| `addons/account_financial_report_ce/report/__init__.py` | 10 | Verify all report parser imports |
+| `addons/account_financial_report_ce/report/report_templates.xml` | 137 | Refine `ir.actions.report` bindings, XLSX export actions |
+| `addons/account_financial_report_ce/report/balance_sheet_report.xml` | 238 | Complete QWeb template with section hierarchy, comparison columns |
+| `addons/account_financial_report_ce/report/profit_loss_report.xml` | 316 | Complete QWeb template with revenue/expense sections |
+| `addons/account_financial_report_ce/report/cash_flow_report.xml` | 279 | Complete QWeb template with activity sections |
+| `addons/account_financial_report_ce/report/general_ledger_report.xml` | 240 | Complete QWeb template with account/transaction detail |
+| `addons/account_financial_report_ce/report/trial_balance_report.xml` | 274 | Complete QWeb template with debit/credit columns |
+| `addons/account_financial_report_ce/report/aged_partner_balance_report.xml` | 367 | Complete QWeb template with aging buckets |
+| `addons/account_financial_report_ce/security/account_financial_report_security.xml` | 24 | Extend security groups, add record rules for multi-company |
+| `addons/account_financial_report_ce/security/ir.model.access.csv` | 16 | Add ACL rows for any new models/wizards |
+| `addons/account_financial_report_ce/data/report_paperformat.xml` | 95 | Verify paper format bindings |
+| `addons/account_financial_report_ce/static/src/scss/report.scss` | 236 | Refine interactive report styling |
+| `addons/account_financial_report_ce/static/src/scss/report_print.scss` | 360 | Refine print layout styling |
+| `addons/account_financial_report_ce/views/menuitem.xml` | 89 | Verify menu items and action bindings |
+| `addons/account_financial_report_ce/tests/__init__.py` | 5 | Register new test modules |
+| `addons/account_financial_report_ce/tests/test_financial_reports.py` | 528 | Expand to achieve 80% coverage, add per-story test cases |
+| `addons/account_financial_report_ce/demo/demo_data.xml` | 16 | Optionally add demo financial data |
+
+**Core Account Module — Read-Only Integration Touchpoints**
+
+These files in `addons/account/` are not modified but serve as the data source and pattern reference for both features:
+
+| File Path | Lines | Integration Role |
+|---|---|---|
+| `addons/account/models/account_account.py` | 1,628 | `account_type` field and classification used for report section grouping |
+| `addons/account/models/account_move.py` | 7,211 | `account.move` model — journal entries, posting workflow, state management |
+| `addons/account/models/account_move_line.py` | 3,600 | `account.move.line` — primary data source for all financial reports |
+| `addons/account/models/account_bank_statement.py` | 373 | `account.bank.statement` — statement header model to extend for BR |
+| `addons/account/models/account_bank_statement_line.py` | 863 | `account.bank.statement.line` — statement lines with `_inherits` on `account.move` |
+| `addons/account/models/account_reconcile_model.py` | ~400 | `account.reconcile.model` — reconciliation rule engine to extend for BR-004 |
+| `addons/account/models/account_partial_reconcile.py` | 701 | `account.partial.reconcile` — partial matching mechanics for BR-005 |
+| `addons/account/models/account_full_reconcile.py` | ~100 | `account.full.reconcile` — full reconciliation records |
+| `addons/account/models/account_journal.py` | 1,308 | `account.journal` — bank journal association for statement import |
+| `addons/account/models/partner.py` | 1,076 | `res.partner` extension — partner matching for reconciliation |
+| `addons/account/models/account_payment.py` | 1,173 | `account.payment` — payment records linked via reconciliation |
+| `addons/account/models/company.py` | 1,146 | `res.company` — fiscal year, currency, report header settings |
+| `addons/account/models/account_report.py` | 967 | `account.report` — Odoo's native report framework reference |
+| `addons/account/report/account_invoice_report.py` | ~300 | SQL-view report pattern reference (`_auto = False`, `_table_query`) |
+| `addons/account/views/account_bank_statement_views.xml` | 144 | Statement UI patterns to extend |
+| `addons/account/views/account_reconcile_model_views.xml` | 160 | Reconciliation rule UI patterns |
+| `addons/account/security/account_security.xml` | ~200 | Security group hierarchy reference |
+| `addons/account/security/ir.model.access.csv` | ~100 | ACL pattern reference |
+| `addons/account/tests/common.py` | ~500 | `AccountTestInvoicingCommon` — test fixture base class |
+| `addons/account/tests/test_account_bank_statement.py` | ~300 | Bank statement test patterns |
+
+### 0.2.2 Web Search Research Conducted
+
+The following research areas are relevant to implementation:
+
+- **OCA account-financial-reporting patterns** (`https://github.com/OCA/account-financial-reporting`): General Ledger, Trial Balance, and Aged Partner Balance module patterns for potential integration or pattern alignment
+- **OCA bank-statement-import modules** (`https://github.com/OCA/bank-statement-import`): Multi-format statement import patterns for CSV, OFX, QIF, and CAMT.053
+- **OCA account-reconcile** (`https://github.com/OCA/account-reconcile`): Community reconciliation interface patterns
+- **ISO 20022 CAMT.053 specification** (`https://www.iso20022.org/catalogue-messages`): XML schema for European bank statement import
+- **OFX specification** (`https://www.ofx.net/downloads.html`): Open Financial Exchange format parsing
+- **GAAP/IFRS financial statement formats**: Presentation requirements for Balance Sheet (ASC 210), P&L (ASC 220), and Cash Flow (ASC 230)
+
+### 0.2.3 New File Requirements
+
+**New Module — `addons/account_bank_reconciliation_ce/`**
+
+This module must be created from scratch following the Odoo module convention and the structural pattern established by `account_financial_report_ce`:
+
+| File to Create | Purpose |
+|---|---|
+| `addons/account_bank_reconciliation_ce/__init__.py` | Module entry point importing models, wizard, report packages |
+| `addons/account_bank_reconciliation_ce/__manifest__.py` | Module descriptor: name, version (19.0.1.0.0), AGPL-3, depends [account, base], data/security/views registration |
+| `addons/account_bank_reconciliation_ce/models/__init__.py` | Import all model modules |
+| `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` | Statement import logic: file parsing (CSV, OFX, QIF, CAMT.053), validation, duplicate detection, line creation |
+| `addons/account_bank_reconciliation_ce/models/reconciliation_matching_engine.py` | Algorithmic matching engine: scoring by amount, date, reference, partner; confidence levels; multi-match handling |
+| `addons/account_bank_reconciliation_ce/models/reconciliation_rule.py` | Extended reconciliation rule model: inherits `account.reconcile.model` with enhanced trigger types, regex matching, priority ordering |
+| `addons/account_bank_reconciliation_ce/models/partial_reconcile_ext.py` | Partial reconciliation extensions: split transaction support, write-off generation, tolerance handling |
+| `addons/account_bank_reconciliation_ce/wizard/__init__.py` | Wizard package init |
+| `addons/account_bank_reconciliation_ce/wizard/bank_statement_import_wizard.py` | Import wizard: file upload, format detection, column mapping (CSV), preview, execution |
+| `addons/account_bank_reconciliation_ce/wizard/bank_statement_import_wizard_views.xml` | Import wizard form view with file upload widget, format selection, preview table |
+| `addons/account_bank_reconciliation_ce/wizard/reconciliation_wizard.py` | Reconciliation interface wizard: match/unmatch actions, filter controls, batch operations |
+| `addons/account_bank_reconciliation_ce/wizard/reconciliation_wizard_views.xml` | Reconciliation wizard form with suggestion display, manual match controls |
+| `addons/account_bank_reconciliation_ce/views/menuitem.xml` | Menu items under Accounting menu for import and reconciliation |
+| `addons/account_bank_reconciliation_ce/views/bank_reconciliation_views.xml` | Tree/form/search views for reconciliation status and statement browsing |
+| `addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml` | Security groups: `group_bank_reconciliation_user`, `group_bank_reconciliation_manager` |
+| `addons/account_bank_reconciliation_ce/security/ir.model.access.csv` | ACL entries for all new models and wizards |
+| `addons/account_bank_reconciliation_ce/data/reconciliation_data.xml` | Default reconciliation rules, matching thresholds, import format definitions |
+| `addons/account_bank_reconciliation_ce/report/__init__.py` | Report package init |
+| `addons/account_bank_reconciliation_ce/report/reconciliation_report.py` | Reconciliation status report parser |
+| `addons/account_bank_reconciliation_ce/report/reconciliation_report.xml` | QWeb template for reconciliation status PDF |
+| `addons/account_bank_reconciliation_ce/static/src/scss/reconciliation.scss` | Reconciliation interface styling |
+| `addons/account_bank_reconciliation_ce/tests/__init__.py` | Test package init |
+| `addons/account_bank_reconciliation_ce/tests/common.py` | Shared test fixtures: sample statement data, journal setup, reconciliation helpers |
+| `addons/account_bank_reconciliation_ce/tests/test_statement_import.py` | Import tests: CSV, OFX, QIF, CAMT.053 format parsing, validation, duplicate detection |
+| `addons/account_bank_reconciliation_ce/tests/test_matching_engine.py` | Matching algorithm tests: confidence scoring, multi-match, edge cases |
+| `addons/account_bank_reconciliation_ce/tests/test_reconciliation_rules.py` | Rule engine tests: regex matching, amount tolerance, auto-reconcile triggers |
+| `addons/account_bank_reconciliation_ce/tests/test_partial_reconciliation.py` | Partial reconciliation tests: split transactions, write-offs, multi-currency |
+| `addons/account_bank_reconciliation_ce/tests/test_manual_reconciliation.py` | Manual workflow tests: match, unmatch, undo, audit trail |
+| `addons/account_bank_reconciliation_ce/tests/test_files/` | Sample statement files: `sample.csv`, `sample.ofx`, `sample.qif`, `sample_camt053.xml` |
+| `addons/account_bank_reconciliation_ce/demo/demo_data.xml` | Demo bank statements and reconciliation scenarios |
+
+**New Test Files for Financial Reporting Module:**
+
+| File to Create | Purpose |
+|---|---|
+| `addons/account_financial_report_ce/tests/test_balance_sheet.py` | Dedicated Balance Sheet tests: equation validation, section classification, comparative periods |
+| `addons/account_financial_report_ce/tests/test_profit_loss.py` | P&L tests: revenue/expense aggregation, gross/operating/net income |
+| `addons/account_financial_report_ce/tests/test_cash_flow.py` | Cash Flow tests: activity categorization, indirect method, reconciliation |
+| `addons/account_financial_report_ce/tests/test_general_ledger.py` | General Ledger tests: per-account transactions, running balances, date filtering |
+| `addons/account_financial_report_ce/tests/test_trial_balance.py` | Trial Balance tests: debit/credit equality, period filtering |
+| `addons/account_financial_report_ce/tests/test_aged_partner.py` | Aged AR/AP tests: aging bucket classification, partner drill-down |
+| `addons/account_financial_report_ce/tests/test_export.py` | Export tests: PDF generation, Excel export, drill-down navigation |
+
+## 0.3 Dependency Inventory
+
+### 0.3.1 Private and Public Packages
+
+All packages listed below are sourced from **PyPI** (public) or from Odoo's own module registry (internal). No private package registries are required. Version ranges reflect the Python-version-conditional pinning strategy documented in `requirements.txt`.
+
+**Core Platform Dependencies (Pre-existing in `requirements.txt`):**
+
+| Registry | Package | Version (Python 3.12) | Purpose for Phase 1 |
+|---|---|---|---|
+| PyPI | `psycopg2` | 2.9.9 | PostgreSQL adapter for all report/reconciliation queries |
+| PyPI | `openpyxl` | 3.1.2 | Excel (.xlsx) read/write for FR-007 report export and BR-001 statement import |
+| PyPI | `XlsxWriter` | 3.1.9 | Excel file generation for financial report XLSX export |
+| PyPI | `xlrd` | 2.0.1 | Legacy Excel (.xls) reading for bank statement import |
+| PyPI | `ofxparse` | 0.21 | OFX (Open Financial Exchange) file parsing for BR-001 |
+| PyPI | `lxml` | 5.2.1 | XML processing for CAMT.053 parsing and QWeb report rendering |
+| PyPI | `reportlab` | 4.1.0 | PDF generation engine for QWeb-to-PDF financial report export |
+| PyPI | `Pillow` | 10.2.0 | Image processing for report logo rendering |
+| PyPI | `Babel` | 2.10.3 | Locale-aware number/date formatting in financial reports |
+| PyPI | `python-dateutil` | 2.8.2 | Date range calculations for report period filtering |
+| PyPI | `num2words` | 0.5.13 | Number-to-words conversion for report amount rendering |
+| PyPI | `Werkzeug` | 3.0.1 | WSGI server for HTTP endpoints |
+| PyPI | `Jinja2` | 3.1.2 | Server-side template engine |
+| PyPI | `chardet` | 5.2.0 | Character encoding detection for imported bank statement files |
+| PyPI | `freezegun` | 1.2.1 | Datetime mocking for deterministic test execution |
+| PyPI | `pytz` | (unpinned) | Timezone database for date-aware reporting |
+
+**Odoo Internal Module Dependencies:**
+
+| Registry | Module | Version | Purpose for Phase 1 |
+|---|---|---|---|
+| Odoo Addons | `account` | 19.0 (LGPL-3) | Core accounting: `account.move`, `account.move.line`, `account.account`, `account.bank.statement`, `account.reconcile.model` |
+| Odoo Addons | `analytic` | 19.0 | Analytic account/plan integration for report filtering |
+| Odoo Addons | `base` | 19.0 | `res.partner`, `res.company`, `res.currency` base models |
+| Odoo Addons | `base_import` | 19.0 | Generic import framework patterns (reference for BR-001 CSV import) |
+
+**Explicitly Excluded Enterprise Modules:**
+
+| Module | Reason |
+|---|---|
+| `account_reports` | Enterprise-only; replaced by FEATURE-001 |
+| `account_accountant` | Enterprise-only; replaced by FEATURE-002 |
+| `account_budget` | Enterprise-only; out of scope for Phase 1 |
+| `account_asset` | Enterprise-only; out of scope for Phase 1 |
+| `account_deferred_revenue` | Enterprise-only; out of scope for Phase 1 |
+| `account_followup` | Enterprise-only; out of scope for Phase 1 |
+
+### 0.3.2 Dependency Updates
+
+**Import Updates for `account_financial_report_ce`:**
+
+Files requiring import updates when models are enhanced:
+
+- `addons/account_financial_report_ce/models/*.py` — Ensure all internal imports reference actual Odoo ORM classes (`from odoo import api, fields, models, _`), `UserError`/`ValidationError`, and any utility functions from `odoo.tools`
+- `addons/account_financial_report_ce/report/*.py` — Report parser imports must reference the correct `AbstractModel` base
+- `addons/account_financial_report_ce/tests/*.py` — Test imports must reference `TransactionCase`, `tagged`, and the common test fixtures from `addons/account/tests/common.py`
+
+**Import Structure for New `account_bank_reconciliation_ce` Module:**
+
+- `addons/account_bank_reconciliation_ce/models/*.py` — Standard Odoo imports plus `import re` for regex matching, `import csv` for CSV parsing, `from lxml import etree` for CAMT.053 XML parsing
+- `addons/account_bank_reconciliation_ce/wizard/*.py` — Standard TransientModel imports plus `import base64` for file upload handling
+- `addons/account_bank_reconciliation_ce/tests/*.py` — Test imports from `odoo.tests.common`, `freezegun`, and shared fixtures
+
+**External Reference Updates:**
+
+| File Pattern | Update Required |
+|---|---|
+| `addons/account_financial_report_ce/__manifest__.py` | Update version number, verify `data` list completeness |
+| `addons/account_bank_reconciliation_ce/__manifest__.py` | Create with proper dependency declarations |
+| `addons/account_financial_report_ce/security/ir.model.access.csv` | Add ACL rows for any new models |
+| `addons/account_bank_reconciliation_ce/security/ir.model.access.csv` | Create full ACL matrix for all new models/wizards |
+
+## 0.4 Integration Analysis
+
+### 0.4.1 Existing Code Touchpoints
+
+**Direct Model Integration — Financial Reporting (FEATURE-001):**
+
+| Core Model | File | Integration Type | Usage in FEATURE-001 |
+|---|---|---|---|
+| `account.move.line` | `addons/account/models/account_move_line.py` | Read (read_group) | Primary data source for all 6 report types; aggregation by `account_id`, `partner_id`, `date` |
+| `account.account` | `addons/account/models/account_account.py` | Read | `account_type` field (21 types) maps to Balance Sheet/P&L sections; `internal_group` for high-level classification |
+| `account.move` | `addons/account/models/account_move.py` | Read | Filter by `state='posted'`; drill-down target from report lines |
+| `res.partner` | `addons/account/models/partner.py` | Read | Aged AR/AP partner-level detail and drill-down |
+| `res.company` | `addons/account/models/company.py` | Read | Company currency, fiscal year start, report header settings |
+| `res.currency` | `addons/account/models/res_currency.py` | Read | Multi-currency conversion for report amounts |
+| `account.analytic.account` | `addons/account/models/account_analytic_account.py` | Read | Analytic dimension filtering for report scope |
+
+**Direct Model Integration — Bank Reconciliation (FEATURE-002):**
+
+| Core Model | File | Integration Type | Usage in FEATURE-002 |
+|---|---|---|---|
+| `account.bank.statement` | `addons/account/models/account_bank_statement.py` | Extend (`_inherit`) | Add import metadata fields, statement validation hooks |
+| `account.bank.statement.line` | `addons/account/models/account_bank_statement_line.py` | Extend (`_inherit`) | Add matching score fields, reconciliation status tracking |
+| `account.reconcile.model` | `addons/account/models/account_reconcile_model.py` | Extend (`_inherit`) | Enhanced rule evaluation with priority, confidence thresholds |
+| `account.partial.reconcile` | `addons/account/models/account_partial_reconcile.py` | Read/Create | Partial reconciliation record creation for split transactions |
+| `account.full.reconcile` | `addons/account/models/account_full_reconcile.py` | Read | Full reconciliation status check |
+| `account.move` | `addons/account/models/account_move.py` | Read | Open journal entries for matching candidates |
+| `account.move.line` | `addons/account/models/account_move_line.py` | Read/Write | Reconciliation linkage via `full_reconcile_id` and `matched_debit_ids`/`matched_credit_ids` |
+| `account.journal` | `addons/account/models/account_journal.py` | Read | Bank journal identification for statement association |
+| `res.partner` | `addons/account/models/partner.py` | Read | Partner name/reference matching in algorithmic engine |
+
+### 0.4.2 Dependency Injection and Service Registration
+
+**Module Registration:**
+
+- `addons/account_financial_report_ce/__manifest__.py` — Already registered in the Odoo addons path; `depends: ['account', 'analytic']` ensures load order
+- `addons/account_bank_reconciliation_ce/__manifest__.py` — Must be created with `depends: ['account']` (minimum); optionally `'base_import'` for import pattern reuse
+
+**Security Group Hierarchy:**
+
+Both modules must integrate with the existing accounting security groups defined in `addons/account/security/account_security.xml`:
+
+- `account.group_account_invoice` — Invoicing access (base read)
+- `account.group_account_readonly` — Read-only accounting features
+- `account.group_account_user` — Full accounting features
+- `account.group_account_manager` — Administrator access
+
+New security groups should be implied by these existing groups to maintain seamless access inheritance.
+
+### 0.4.3 Database/Schema Impact
+
+**No Schema Modifications to Existing Tables.** Both modules use Odoo's `_inherit` mechanism which adds fields to existing database tables without altering the core module's column definitions.
+
+**New Tables Created by FEATURE-001:**
+
+| ORM Model | Table Name | Type | Purpose |
+|---|---|---|---|
+| `account.balance.sheet.report` | `account_balance_sheet_report` | TransientModel | Ephemeral balance sheet wizard data |
+| `account.balance.sheet.report.line` | `account_balance_sheet_report_line` | TransientModel | Balance sheet report line items |
+| `account.profit.loss.report` | `account_profit_loss_report` | TransientModel | Ephemeral P&L wizard data |
+| `account.cash.flow.report` | `account_cash_flow_report` | TransientModel | Ephemeral cash flow wizard data |
+| `account.general.ledger.report` | `account_general_ledger_report` | TransientModel | General ledger wizard data |
+| `account.trial.balance.report` | `account_trial_balance_report` | TransientModel | Trial balance wizard data |
+| `account.aged.partner.balance.report` | `account_aged_partner_balance_report` | TransientModel | Aged AR/AP wizard data |
+| `account.financial.report.wizard` | `account_financial_report_wizard` | TransientModel | Unified report parameter wizard |
+
+**New Tables Created by FEATURE-002:**
+
+| ORM Model | Table Name | Type | Purpose |
+|---|---|---|---|
+| `account.bank.statement.import` | `account_bank_statement_import` | TransientModel | Statement import wizard state |
+| `account.reconciliation.matching` | `account_reconciliation_matching` | Model | Matching engine results and confidence scores |
+| `account.reconciliation.wizard` | `account_reconciliation_wizard` | TransientModel | Manual reconciliation interface state |
+
+### 0.4.4 Cross-Feature Integration
+
+The following diagram illustrates the integration relationships between both Phase 1 features and the core `account` module:
 
 ```mermaid
 graph TB
-    subgraph Enterprise Accounting Epic
-        E[EPIC-001: Enterprise Accounting]
-        E --> F1[Feature 1: Financial Reporting]
-        E --> F2[Feature 2: Bank Reconciliation]
-        E --> F3[Feature 3: Budget Management]
-        E --> F4[Feature 4: Asset Management]
-        E --> F5[Feature 5: Deferred Revenue]
-        E --> F6[Feature 6: Payment Follow-ups]
+    subgraph CoreAccount["Core: addons/account"]
+        AM["account.move"]
+        AML["account.move.line"]
+        AA["account.account"]
+        ABS["account.bank.statement"]
+        ABSL["account.bank.statement.line"]
+        ARM["account.reconcile.model"]
+        APR["account.partial.reconcile"]
+        AJ["account.journal"]
+        RP["res.partner"]
     end
+
+    subgraph FR["FEATURE-001: Financial Reporting"]
+        BS["Balance Sheet"]
+        PL["Profit & Loss"]
+        CF["Cash Flow"]
+        GL["General Ledger"]
+        TB["Trial Balance"]
+        AP["Aged Partner"]
+        FRW["Report Wizard"]
+    end
+
+    subgraph BR["FEATURE-002: Bank Reconciliation"]
+        SI["Statement Import"]
+        ME["Matching Engine"]
+        MR["Manual Reconciliation"]
+        RR["Reconciliation Rules"]
+        PR["Partial Reconciliation"]
+    end
+
+    AML -->|read_group| BS
+    AML -->|read_group| PL
+    AML -->|read_group| CF
+    AML -->|search_read| GL
+    AML -->|read_group| TB
+    AML -->|search_read| AP
+    AA -->|account_type| BS
+    AA -->|account_type| PL
+    RP -->|partner_id| AP
+
+    ABS -->|_inherit| SI
+    ABSL -->|_inherit| SI
+    AML -->|search| ME
+    ARM -->|_inherit| RR
+    APR -->|create| PR
+    AJ -->|journal_id| SI
+    RP -->|name match| ME
+
+    GL -.->|reconciled status| ME
 ```
 
-**2. Financial Reporting Workflow Diagram:**
-
-```mermaid
-sequenceDiagram
-    participant U as User CFO
-    participant R as Report Wizard
-    participant E as Report Engine
-    participant D as Data Layer
-    U->>R: Select Report Type
-    U->>R: Configure Parameters
-    R->>E: Generate Report
-    E->>D: Query account.move.line
-    D-->>E: Return Data
-    E-->>R: Render Report
-    R-->>U: Display Report
-    U->>R: Export PDF or Excel
-```
-
-**3. Bank Reconciliation Workflow Diagram:**
-
-```mermaid
-stateDiagram-v2
-    [*] --> Import
-    Import --> Unreconciled
-    Unreconciled --> Matching
-    Matching --> Suggestions
-    Suggestions --> Review
-    Review --> Reconciled
-    Review --> Manual
-    Manual --> Reconciled
-    Reconciled --> [*]
-```
-
-**4. Asset Depreciation Lifecycle Diagram:**
-
-```mermaid
-graph LR
-    A[Acquisition] --> B[Active Asset]
-    B --> C[Depreciation Schedule]
-    C --> D[Depreciation Entry]
-    D --> B
-    B --> E[Modification]
-    E --> B
-    B --> F[Disposal]
-    F --> G[Gain Loss Entry]
-    G --> H[Closed Asset]
-```
-
-### 0.4.4 Persona-Based Story Mapping
-
-**User Persona Definitions:**
-
-| Persona | Primary Features | Story Focus |
-|---------|-----------------|-------------|
-| CFO / Finance Director | Financial Reporting, Budget Management, Deferred Revenue | Strategic reporting, compliance, cash flow visibility |
-| Accountant / Bookkeeper | Bank Reconciliation, Asset Management, Payment Follow-ups | Daily operations, transaction processing, period close |
-| Controller | Budget Management | Variance analysis, budget monitoring, alerts |
-| Auditor | Financial Reporting | Transaction trails, data integrity, report drill-down |
-| Business Owner | Financial Reporting, Payment Follow-ups | Cash flow statements, aged receivables, AR management |
-
-**Story Assignment by Persona:**
-
-| Feature | CFO | Accountant | Controller | Auditor | Business Owner |
-|---------|-----|------------|------------|---------|----------------|
-| Financial Reporting | Balance Sheet, P&L, Cash Flow | General Ledger, Trial Balance | - | Drill-down, Export | Cash Flow, Aged Reports |
-| Bank Reconciliation | - | All stories | - | - | - |
-| Budget Management | Definition, Variance | - | All stories | - | - |
-| Asset Management | - | All stories | - | - | - |
-| Deferred Revenue | Schedules, Recognition | Period Allocation | - | - | - |
-| Payment Follow-ups | - | All stories | - | - | Overdue Reports |
-
-## 0.5 Documentation File Transformation Mapping
-
-### 0.5.1 File-by-File Documentation Plan
-
-**CRITICAL: Complete inventory of all documentation files to be created.**
-
-**Documentation Transformation Modes:**
-- **CREATE** - Create a new documentation file
-- **UPDATE** - Update an existing documentation file
-- **DELETE** - Remove an obsolete documentation file
-- **REFERENCE** - Use as an example for documentation style and structure
-
-| Target Documentation File | Transformation | Source Code/Docs | Content/Changes |
-|---------------------------|----------------|------------------|-----------------|
-| `tickets/README.md` | CREATE | N/A | Epic navigation, feature index, quick start guide |
-| `tickets/EPIC-001-enterprise-accounting.md` | CREATE | User requirements input | Master epic with 6 features, business context, constraints |
-| `tickets/features/FEATURE-001-financial-reporting.md` | CREATE | `addons/account/report/` | Feature spec with 7 story references |
-| `tickets/features/FEATURE-002-bank-reconciliation.md` | CREATE | `addons/account/models/account_bank_statement.py` | Feature spec with 5 story references |
-| `tickets/features/FEATURE-003-budget-management.md` | CREATE | `addons/analytic/models/` | Feature spec with 5 story references |
-| `tickets/features/FEATURE-004-asset-management.md` | CREATE | `addons/account/models/account_move.py` | Feature spec with 6 story references |
-| `tickets/features/FEATURE-005-deferred-revenue.md` | CREATE | `addons/account/wizard/account_automatic_entry_wizard.py` | Feature spec with 4 story references |
-| `tickets/features/FEATURE-006-payment-followups.md` | CREATE | `addons/account/models/partner.py` | Feature spec with 5 story references |
-| `tickets/stories/financial-reporting/FR-001-balance-sheet-report.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/financial-reporting/FR-002-profit-loss-statement.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/financial-reporting/FR-003-cash-flow-statement.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/financial-reporting/FR-004-general-ledger-report.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/financial-reporting/FR-005-trial-balance-report.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/financial-reporting/FR-006-aged-reports.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/financial-reporting/FR-007-report-export-drilldown.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/bank-reconciliation/BR-001-statement-import.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/bank-reconciliation/BR-002-algorithmic-matching.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/bank-reconciliation/BR-003-manual-reconciliation.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/bank-reconciliation/BR-004-reconciliation-rules.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/bank-reconciliation/BR-005-partial-reconciliation.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/budget-management/BM-001-budget-definition.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/budget-management/BM-002-budget-period-allocation.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/budget-management/BM-003-actual-vs-budget-reporting.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/budget-management/BM-004-variance-analysis.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/budget-management/BM-005-budget-alerts.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/asset-management/AM-001-asset-registration.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/asset-management/AM-002-depreciation-configuration.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/asset-management/AM-003-depreciation-board.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/asset-management/AM-004-automatic-depreciation-entries.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/asset-management/AM-005-asset-modification.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/asset-management/AM-006-asset-disposal.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/deferred-revenue/DR-001-deferral-schedule-definition.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/deferred-revenue/DR-002-automatic-period-allocation.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/deferred-revenue/DR-003-cutoff-entry-generation.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/deferred-revenue/DR-004-recognition-dashboard.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/payment-followups/PF-001-followup-level-configuration.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/payment-followups/PF-002-automated-email-generation.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/payment-followups/PF-003-followup-report-generation.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/payment-followups/PF-004-action-history-tracking.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/stories/payment-followups/PF-005-overdue-calculation.md` | CREATE | N/A | User story with BDD acceptance criteria |
-| `tickets/templates/epic-template.md` | CREATE | N/A | Reusable epic documentation template |
-| `tickets/templates/feature-template.md` | CREATE | N/A | Reusable feature documentation template |
-| `tickets/templates/story-template.md` | CREATE | N/A | Reusable story documentation template |
-| `addons/account/README.md` | REFERENCE | Existing file | Use as style reference for module descriptions |
-| `CONTRIBUTING.md` | REFERENCE | Existing file | Reference for Odoo contribution guidelines |
-
-**Total Files to Create:** 43 documentation files
-
-### 0.5.2 New Documentation Files Detail
-
-**Epic File: `tickets/EPIC-001-enterprise-accounting.md`**
-
-| Attribute | Value |
-|-----------|-------|
-| File | `tickets/EPIC-001-enterprise-accounting.md` |
-| Type | Epic Document |
-| Source Code | User requirements input, repository analysis |
-
-**Sections:**
-- Business Context (Problem Statement, Target Users, Success Metrics)
-- Feature Summary (6 features with priorities)
-- Constraints (AGPL-3.0, no Enterprise, OCA standards, 80% coverage)
-- Out of Scope (Real-time bank feeds, AI/ML OCR, consolidation, tax integrations, mobile)
-- Discovery Notes (Codebase analysis requirements)
-- References (OCA repositories, Odoo documentation)
-
-**Key Citations:** User requirements document, `odoo/release.py`, `addons/account/__manifest__.py`
-
----
-
-**Feature File Example: `tickets/features/FEATURE-001-financial-reporting.md`**
-
-| Attribute | Value |
-|-----------|-------|
-| File | `tickets/features/FEATURE-001-financial-reporting.md` |
-| Type | Feature Specification |
-| Source Code | `addons/account/report/account_invoice_report.py` (pattern reference) |
-
-**Sections:**
-- Feature Overview (GAAP/IFRS-compliant financial statements)
-- User Personas (CFO, Accountant, Auditor, Business Owner)
-- Story List (FR-001 through FR-007)
-- Acceptance Criteria Overview (Comparative periods, drill-down, export)
-- Technical Discovery Notes (Report engine analysis, QWeb patterns)
-
----
-
-**Story File Example: `tickets/stories/financial-reporting/FR-001-balance-sheet-report.md`**
-
-| Attribute | Value |
-|-----------|-------|
-| File | `tickets/stories/financial-reporting/FR-001-balance-sheet-report.md` |
-| Type | User Story |
-| Source Code | `addons/account/models/account_account.py` (account types reference) |
-
-**Sections:**
-- User Story (As a CFO, I want..., So that...)
-- Acceptance Criteria (4-6 BDD scenarios)
-  - Scenario 1: Generate Balance Sheet for current period
-  - Scenario 2: Compare with prior period
-  - Scenario 3: Drill-down to source transactions
-  - Scenario 4: Export to PDF format
-  - Scenario 5: Export to Excel format
-- Technical Notes (Analysis requirements for implementing agents)
-- Dependencies (Trial Balance, General Ledger)
-- Test Requirements (80% coverage, report accuracy validation)
-
-### 0.5.3 Documentation Configuration Files
-
-No documentation generator configuration files are required for this markdown-based file structure. The `tickets/` directory uses plain markdown files compatible with:
-- GitHub/GitLab native rendering
-- Any markdown preview tool
-- Conversion to other formats via pandoc if needed
-
-### 0.5.4 Cross-Documentation Dependencies
-
-**Shared Content:**
-
-| Element | Location | Used By |
-|---------|----------|---------|
-| User Personas | `tickets/EPIC-001-enterprise-accounting.md` | All feature and story files |
-| Constraints | `tickets/EPIC-001-enterprise-accounting.md` | All story acceptance criteria |
-| Templates | `tickets/templates/*.md` | All new epic/feature/story files |
-
-**Navigation Links:**
-
-| From | To | Link Type |
-|------|-----|-----------|
-| `tickets/README.md` | All feature files | Index navigation |
-| Feature files | Related story files | Story list links |
-| Story files | Parent feature file | Back navigation |
-| Story files | Dependent story files | Dependency links |
-
-**Table of Contents Updates:**
-- `tickets/README.md` will contain complete navigation index
-- Each feature file will list all child stories
-- Each story file will reference parent feature and dependencies
-
-## 0.6 Dependency Inventory
-
-### 0.6.1 Documentation Dependencies
-
-**Documentation Tools and Packages:**
-
-| Registry | Package Name | Version | Purpose |
-|----------|--------------|---------|---------|
-| N/A | Markdown | N/A | Native markdown format for all documentation files |
-| N/A | Mermaid | N/A | Diagram syntax embedded in markdown (rendered by GitHub/GitLab) |
-| pip | mkdocs | 1.6.0 | Optional: Documentation site generator if web publishing needed |
-| pip | mkdocs-material | 9.5.0 | Optional: Material theme for mkdocs |
-| npm | mermaid-cli | 11.4.0 | Optional: CLI tool for offline mermaid diagram generation |
-
-**Note:** The primary documentation output is plain markdown files that require no build tooling. The optional packages are listed for scenarios where web-based documentation publishing is desired.
-
-### 0.6.2 Odoo Module Dependencies (Reference)
-
-The user stories reference these existing Odoo modules for integration points:
-
-| Module | Version | Integration Reference |
-|--------|---------|----------------------|
-| `account` | 1.4 (Odoo 19.0) | Core accounting models (`account.move`, `account.move.line`, `account.account`) |
-| `analytic` | 19.0 | Analytic accounting (`account.analytic.account`, `account.analytic.plan`) |
-| `base` | 19.0 | Partner model (`res.partner`), company model (`res.company`) |
-| `mail` | 1.19 | Email templates, automated communications |
-| `portal` | 19.0 | Customer portal access for reports |
-
-### 0.6.3 OCA Module References (External)
-
-The user stories may reference these OCA modules for compatibility and pattern analysis:
-
-| OCA Repository | Module | Purpose |
-|----------------|--------|---------|
-| `OCA/account-financial-reporting` | `account_financial_report` | Financial report patterns (General Ledger, Trial Balance, Aged Reports) |
-| `OCA/account-reconcile` | `account_reconcile_oca` | Bank reconciliation interface patterns |
-| `OCA/mis-builder` | `mis_builder` | Management Information System / Budget reporting patterns |
-| `OCA/account-financial-tools` | Various | Asset management, budget tools patterns |
-
-### 0.6.4 Documentation Reference Updates
-
-**Cross-Reference Requirements:**
-
-| Documentation File | References To |
-|--------------------|---------------|
-| All story files | `addons/account/__manifest__.py` for module structure |
-| Financial Reporting stories | `addons/account/report/account_invoice_report.py` for report patterns |
-| Bank Reconciliation stories | `addons/account/models/account_bank_statement.py` for statement models |
-| Budget Management stories | `addons/analytic/models/analytic_account.py` for analytic integration |
-| Asset Management stories | `addons/account/models/account_move.py` for journal entry patterns |
-| Deferred Revenue stories | `addons/account/wizard/account_automatic_entry_wizard.py` for automatic entries |
-| Payment Follow-up stories | `addons/account/data/mail_template_data.xml` for email templates |
-
-### 0.6.5 Version Compatibility Notes
-
-**Repository Version Discrepancy:**
-
-| Attribute | User Requirement | Repository Actual |
-|-----------|-----------------|-------------------|
-| Odoo Version | 18.0 | 19.0 (identified in `odoo/release.py`) |
-| License | AGPL-3.0 | LGPL-3 (base `account` module) |
-
-**Recommendation:** User stories should be written version-agnostic where possible, with specific version notes in technical discovery sections. The AGPL-3.0 requirement can be satisfied by new modules while the existing `account` module remains LGPL-3.
-
-### 0.6.6 External Standards References
-
-The user stories reference these accounting standards:
-
-| Standard | Application | Story Reference |
-|----------|-------------|-----------------|
-| GAAP (US Generally Accepted Accounting Principles) | Financial statement formats | FR-001, FR-002, FR-003 |
-| IFRS (International Financial Reporting Standards) | Financial statement formats | FR-001, FR-002, FR-003 |
-| ASC 606 / IFRS 15 | Revenue recognition | DR-001, DR-002, DR-003 |
-| ISO 20022 / CAMT.053 | Bank statement import format | BR-001 |
-| OFX (Open Financial Exchange) | Bank statement import format | BR-001 |
-| QIF (Quicken Interchange Format) | Bank statement import format | BR-001 |
-
-## 0.7 Coverage and Quality Targets
-
-### 0.7.1 Documentation Coverage Metrics
-
-**Current Coverage Analysis:**
-
-| Metric | Current | Target | Gap |
-|--------|---------|--------|-----|
-| Epic documents | 0 | 1 | 1 document to create |
-| Feature specifications | 0 | 6 | 6 documents to create |
-| User stories | 0 | 32 | 32 documents to create |
-| Template files | 0 | 3 | 3 documents to create |
-| Navigation/index files | 0 | 1 | 1 document to create |
-| **Total** | **0** | **43** | **43 files (100% gap)** |
-
-**Coverage by Feature Area:**
-
-| Feature | Stories Required | Priority |
-|---------|-----------------|----------|
-| Financial Reporting | 7 stories | Critical |
-| Bank Reconciliation | 5 stories | Critical |
-| Budget Management | 5 stories | High |
-| Asset Management | 6 stories | High |
-| Deferred Revenue | 4 stories | High |
-| Payment Follow-ups | 5 stories | High |
-
-### 0.7.2 Documentation Quality Criteria
-
-**Completeness Requirements:**
-
-| Element | Requirement |
-|---------|-------------|
-| User Story Format | All stories use "As a [persona], I want [capability], So that [business value]" format |
-| Acceptance Criteria | Each story has 3-6 BDD scenarios using Given/When/Then format |
-| Technical Discovery Notes | Each story includes notes for implementing agents on codebase analysis areas |
-| Dependencies | All inter-story and external dependencies documented |
-| Test Requirements | All stories specify 80% minimum test coverage requirement |
-
-**Accuracy Validation:**
-
-| Validation Area | Criteria |
-|-----------------|----------|
-| Persona Accuracy | Stories align with defined user personas (CFO, Accountant, Controller, Auditor, Business Owner) |
-| Business Value Alignment | Each story's "So that" clause maps to documented success metrics |
-| Constraint Compliance | All stories include acceptance criteria for AGPL-3.0, no Enterprise dependencies, OCA standards |
-| Scope Alignment | Stories stay within defined scope boundaries (no out-of-scope items) |
-
-**Clarity Standards:**
-
-| Standard | Application |
-|----------|-------------|
-| INVEST Compliance | All stories validated against Independent, Negotiable, Valuable, Estimable, Small, Testable criteria |
-| BDD Best Practices | Given clauses describe preconditions, When clauses have single triggers, Then clauses describe outcomes |
-| Non-Technical Language | Acceptance criteria avoid implementation details per BDD guidelines |
-| Progressive Disclosure | Story complexity increases appropriately from simple to complex scenarios |
-
-### 0.7.3 INVEST Compliance Checklist
-
-Each user story must pass this checklist:
-
-| Criterion | Validation Question |
-|-----------|---------------------|
-| **I**ndependent | Can this story be developed without completing other stories first? |
-| **N**egotiable | Does the story describe outcomes without prescribing implementation? |
-| **V**aluable | Does the "So that" clause clearly state business value? |
-| **E**stimable | Is the story small enough that effort can be estimated? |
-| **S**mall | Can this story be completed within one sprint/iteration? |
-| **T**estable | Do acceptance criteria enable objective pass/fail determination? |
-
-### 0.7.4 Acceptance Criteria Quality Standards
-
-**BDD Scenario Requirements:**
-
-| Component | Guideline |
-|-----------|-----------|
-| Given | List all preconditions affecting the trigger; avoid multiple triggers |
-| When | Single action/trigger only; no compound actions |
-| Then | Observable outcomes only; avoid implementation details |
-| Scenario Count | 3-6 scenarios per story (optimal per BDD best practices) |
-
-**Anti-Pattern Avoidance:**
-
-| Anti-Pattern | Correct Approach |
-|--------------|------------------|
-| Multiple triggers in When clause | Split into separate scenarios |
-| UI element references in criteria | Describe behavior, not interface |
-| Implementation details in Then clause | Describe user-observable outcomes |
-| Overly broad scenarios | Break into focused, testable scenarios |
-
-### 0.7.5 Success Metrics Traceability
-
-**Mapping Success Metrics to Stories:**
-
-| Success Metric | Related Stories | Verification Method |
-|----------------|-----------------|---------------------|
-| All standard financial statements producible | FR-001, FR-002, FR-003, FR-004, FR-005 | Each report type has dedicated story with completeness criteria |
-| Bank reconciliation matching accuracy ≥95% | BR-002 | Acceptance criteria includes accuracy threshold |
-| Budget variance reports within 24 hours | BM-003, BM-004 | Stories include performance requirements |
-| Asset depreciation entries automated | AM-004 | Acceptance criteria specifies automatic generation |
-| Deferred revenue per ASC 606/IFRS 15 | DR-001, DR-002 | Stories reference standard compliance |
-| Overdue receivables reduced 15-25% | PF-001, PF-002, PF-005 | Follow-up automation stories with measurement criteria |
-
-### 0.7.6 Test Coverage Requirements
-
-**Per-Story Test Requirements:**
-
-| Requirement | Specification |
-|-------------|---------------|
-| Minimum Coverage | 80% test coverage for implemented functionality |
-| Unit Tests | Required for all business logic |
-| Integration Tests | Required for module interactions |
-| Acceptance Tests | BDD scenarios convertible to automated tests |
-
-**Test Traceability:**
-
-Each story's acceptance criteria will be structured to support automated test generation:
-- Gherkin-compatible Given/When/Then syntax
-- Specific, measurable outcomes
-- No ambiguous conditions
-
-## 0.8 Scope Boundaries
-
-### 0.8.1 Exhaustively In Scope
-
-**New Documentation Files:**
-
-| Path Pattern | Description |
-|--------------|-------------|
-| `tickets/README.md` | Epic index and navigation |
-| `tickets/EPIC-001-enterprise-accounting.md` | Master epic document |
-| `tickets/features/FEATURE-*.md` | All 6 feature specification files |
-| `tickets/stories/**/*.md` | All 32 user story files |
-| `tickets/templates/*.md` | 3 reusable template files |
-
-**Documentation Content Areas:**
-
-| Feature Area | Stories In Scope |
-|--------------|------------------|
-| Financial Reporting | Balance Sheet, P&L Statement, Cash Flow Statement, General Ledger, Trial Balance, Aged Reports, Export/Drill-down |
-| Bank Reconciliation | Statement Import (CSV, OFX, QIF, CAMT.053), Algorithmic Matching, Manual Reconciliation, Reconciliation Rules, Partial Reconciliation |
-| Budget Management | Budget Definition, Period Allocation, Actual vs Budget Reporting, Variance Analysis, Budget Alerts |
-| Asset Management | Asset Registration, Depreciation Configuration (straight-line, declining balance, units of production), Depreciation Board, Automatic Entries, Asset Modification (revaluation, impairment), Disposal |
-| Deferred Revenue/Expenses | Deferral Schedule Definition, Automatic Period Allocation, Cut-off Entry Generation, Recognition Dashboard |
-| Payment Follow-ups | Follow-up Level Configuration, Automated Email Generation, Follow-up Report Generation, Action History, Overdue Calculation |
-
-**User Personas In Scope:**
-
-| Persona | Role | Features |
-|---------|------|----------|
-| CFO / Finance Director | GAAP/IFRS-compliant reporting | Financial Reporting, Budget Management, Deferred Revenue |
-| Accountant / Bookkeeper | Daily financial operations | All features |
-| Controller | Budget variance analysis | Budget Management |
-| Auditor | Transaction trail verification | Financial Reporting |
-| Business Owner | Cash flow and AR visibility | Financial Reporting, Payment Follow-ups |
-
-**Acceptance Criteria Standards In Scope:**
-
-| Standard | Application |
-|----------|-------------|
-| INVEST Principles | All user stories |
-| BDD Given/When/Then | All acceptance criteria |
-| AGPL-3.0 License Compliance | All stories as constraint |
-| No Enterprise Dependencies | All stories as constraint |
-| OCA Coding Standards | All stories as constraint |
-| 80% Test Coverage | All stories as requirement |
-
-### 0.8.2 Explicitly Out of Scope
-
-**Per User Requirements - Not Documented:**
-
-| Item | Reason |
-|------|--------|
-| Real-time bank feed API integrations (Plaid, Yodlee, Saltedge) | Explicitly excluded in user requirements |
-| AI/ML-powered OCR invoice recognition | Explicitly excluded in user requirements |
-| Multi-company consolidation with intercompany eliminations | Explicitly excluded in user requirements |
-| Tax service integrations (TaxCloud, AvaTax) | Explicitly excluded in user requirements |
-| Mobile-specific interfaces | Explicitly excluded in user requirements |
-
-**Documentation Artifacts Out of Scope:**
-
-| Item | Reason |
-|------|--------|
-| Source code modifications | Documentation task only; no code changes |
-| Test file creation | Documentation describes test requirements; implementation separate |
-| Module implementation | Stories describe WHAT/WHY, not HOW |
-| UI mockups or wireframes | Stories avoid UI details per BDD guidelines |
-| Database schema documentation | Implementation detail; not in user story scope |
-| API technical specifications | Implementation detail; agent discovery determines approach |
-
-**Technical Decisions Deferred to Implementation:**
-
-| Decision | Reason for Deferral |
-|----------|---------------------|
-| Module structure (new vs extension) | Per user requirements: "determined through codebase discovery" |
-| Report engine approach | Per user requirements: "determined through codebase discovery" |
-| UI component patterns | Per user requirements: "determined through codebase discovery" |
-| Data model extensions | Per user requirements: "determined through codebase discovery" |
-| OCA integration vs replacement | Per user requirements: "determined through codebase discovery" |
-
-### 0.8.3 Scope Validation Rules
-
-**Inclusion Criteria:**
-- Must be related to one of the 6 defined functional requirement areas
-- Must serve at least one of the 5 defined user personas
-- Must be achievable without Enterprise module dependencies
-- Must be documentable as a user story with testable acceptance criteria
-
-**Exclusion Criteria:**
-- Any feature requiring real-time external API integration for bank feeds
-- Any feature requiring AI/ML capabilities
-- Any feature specific to multi-company consolidation scenarios
-- Any feature requiring third-party tax calculation services
-- Any feature requiring mobile-specific implementation
-
-### 0.8.4 Boundary Conditions
-
-**Version Boundary:**
-
-| Condition | Handling |
-|-----------|----------|
-| User specifies Odoo 18.0 | Stories written version-agnostic; technical notes mention version consideration |
-| Repository is Odoo 19.0 | Discovery notes flag potential migration path |
-
-**License Boundary:**
-
-| Condition | Handling |
-|-----------|----------|
-| New modules must be AGPL-3.0 | Acceptance criteria includes license constraint |
-| Existing modules are LGPL-3 | Integration stories respect existing license |
-
-**OCA Compatibility Boundary:**
-
-| Condition | Handling |
-|-----------|----------|
-| OCA modules exist for similar functionality | Technical notes reference OCA patterns |
-| Integration vs replacement decision | Deferred to implementation agent discovery |
-
-## 0.9 Execution Parameters
-
-### 0.9.1 Documentation-Specific Instructions
-
-**Documentation Generation Commands:**
-
-| Command | Purpose |
-|---------|---------|
-| `mkdir -p tickets/features tickets/stories/{financial-reporting,bank-reconciliation,budget-management,asset-management,deferred-revenue,payment-followups} tickets/templates` | Create directory structure |
-| `cat tickets/README.md` | Verify epic index file |
-| `find tickets -name "*.md" \| wc -l` | Count documentation files (target: 43) |
-
-**Documentation Preview Commands:**
-
-| Command | Purpose |
-|---------|---------|
-| `cat tickets/EPIC-001-enterprise-accounting.md` | View master epic |
-| `cat tickets/features/FEATURE-001-financial-reporting.md` | View feature specification |
-| `ls -la tickets/stories/financial-reporting/` | List all Financial Reporting stories |
-
-**Optional: Documentation Site Generation (if mkdocs installed):**
-
-| Command | Purpose |
-|---------|---------|
-| `mkdocs build --site-dir docs_site` | Build documentation site |
-| `mkdocs serve` | Local preview (non-blocking) |
-
-### 0.9.2 Documentation Validation Commands
-
-**Structure Validation:**
-
-| Validation | Command |
-|------------|---------|
-| Directory exists | `test -d tickets && echo "OK"` |
-| Epic file exists | `test -f tickets/EPIC-001-enterprise-accounting.md && echo "OK"` |
-| All features exist | `ls tickets/features/FEATURE-00*.md \| wc -l` (expect 6) |
-| All stories exist | `find tickets/stories -name "*.md" \| wc -l` (expect 32) |
-
-**Content Validation:**
-
-| Validation | Command |
-|------------|---------|
-| User story format | `grep -l "As a\|I want\|So that" tickets/stories/**/*.md \| wc -l` |
-| BDD format | `grep -l "Given\|When\|Then" tickets/stories/**/*.md \| wc -l` |
-| Test coverage mention | `grep -l "80%" tickets/stories/**/*.md \| wc -l` |
-
-### 0.9.3 Default Documentation Format
-
-**Primary Format:** Markdown (.md files)
-
-**Markdown Conventions:**
-
-| Element | Convention |
-|---------|------------|
-| Headers | ATX-style (`#`, `##`, `###`) |
-| Lists | Dash-prefixed (`-`) for unordered, numbered for ordered |
-| Tables | Pipe-delimited with header separator |
-| Code | Fenced blocks with language specification |
-| Diagrams | Mermaid syntax in fenced blocks |
-| Links | Relative paths within `tickets/` directory |
-
-**File Naming Convention:**
-
-| Type | Pattern | Example |
-|------|---------|---------|
-| Epic | `EPIC-[NNN]-[slug].md` | `EPIC-001-enterprise-accounting.md` |
-| Feature | `FEATURE-[NNN]-[slug].md` | `FEATURE-001-financial-reporting.md` |
-| Story | `[PREFIX]-[NNN]-[slug].md` | `FR-001-balance-sheet-report.md` |
-| Template | `[type]-template.md` | `story-template.md` |
-
-### 0.9.4 Citation Requirements
-
-**Source Code Citations:**
-
-All technical references must include file path citations:
-
-| Format | Example |
-|--------|---------|
-| Model reference | Source: `addons/account/models/account_move.py` |
-| Wizard reference | Source: `addons/account/wizard/account_payment_register.py` |
-| Report reference | Source: `addons/account/report/account_invoice_report.py` |
-| View reference | Source: `addons/account/views/account_move_views.xml` |
-
-**External Citations:**
-
-| Source | Citation Format |
-|--------|-----------------|
-| OCA Repositories | GitHub URL: `https://github.com/OCA/[repo]` |
-| Odoo Documentation | Official docs reference |
-| Accounting Standards | Standard name and section (e.g., "ASC 606", "IFRS 15") |
-
-### 0.9.5 Style Guide Reference
-
-**Documentation Style:**
-
-| Aspect | Standard |
-|--------|----------|
-| Voice | Active voice preferred |
-| Tense | Present tense for requirements |
-| Person | Second person ("You can...") for guides, third person ("The user...") for stories |
-| Technical depth | Business-focused; avoid implementation details in stories |
-
-**Terminology Consistency:**
-
-| Term | Usage |
-|------|-------|
-| User Story | Preferred over "ticket" or "card" |
-| Acceptance Criteria | Preferred over "test cases" or "conditions" |
-| Feature | Grouping of related stories |
-| Epic | Collection of features for a major capability |
-| Persona | Named user role (CFO, Accountant, etc.) |
-
-### 0.9.6 Output Location
-
-**All documentation saved to:** `tickets/` directory at repository root
-
-**Directory Structure After Completion:**
-
-```
-/tickets/
-├── README.md                                   (1 file)
-├── EPIC-001-enterprise-accounting.md          (1 file)
-├── features/                                   (6 files)
-├── stories/
-│   ├── financial-reporting/                    (7 files)
-│   ├── bank-reconciliation/                    (5 files)
-│   ├── budget-management/                      (5 files)
-│   ├── asset-management/                       (6 files)
-│   ├── deferred-revenue/                       (4 files)
-│   └── payment-followups/                      (5 files)
-└── templates/                                  (3 files)
-                                        Total: 43 files
-```
-
-## 0.10 Rules for Documentation
-
-### 0.10.1 User-Specified Documentation Rules
-
-The following rules are explicitly emphasized in the user requirements and must be strictly followed:
-
-**R-001: INVEST Principles Compliance**
-> "Each feature should decompose into 3-7 user stories following INVEST principles."
-
-All user stories must be validated against:
-- **I**ndependent: Minimize dependencies between stories
-- **N**egotiable: Describe outcomes, not implementations
-- **V**aluable: Clear business value in "So that" clause
-- **E**stimable: Appropriately sized for estimation
-- **S**mall: Completable within one sprint
-- **T**estable: Objective pass/fail determination
-
-**R-002: BDD Acceptance Criteria Format**
-> "Stories should specify WHAT and WHY without prescribing HOW—implementation details emerge from agent discovery of the codebase."
-
-All acceptance criteria must:
-- Use Given/When/Then format
-- Avoid UI element references
-- Avoid implementation details
-- Describe observable behavior only
-
-**R-003: License Compatibility**
-> "AGPL-3.0 license compatibility required"
-
-All stories must include acceptance criterion:
-- "Module distributed under AGPL-3.0 compatible license"
-
-**R-004: No Enterprise Dependencies**
-> "No dependencies on Odoo Enterprise modules"
-
-All stories must include acceptance criterion:
-- "No imports or dependencies on Odoo Enterprise edition modules"
-
-**R-005: OCA Coding Standards**
-> "Adherence to Odoo and OCA coding standards"
-
-Technical notes must reference:
-- OCA module guidelines
-- Odoo development guidelines
-
-**R-006: Test Coverage Requirement**
-> "Minimum 80% test coverage for new functionality"
-
-All stories must include acceptance criterion:
-- "Implementation achieves minimum 80% test coverage"
-
-**R-007: Target Version**
-> "Target version: Odoo 18.0"
-
-Technical notes must include:
-- Version compatibility considerations
-- Note: Repository is 19.0, stories written version-agnostic
-
-### 0.10.2 Discovery-Deferred Implementation Decisions
-
-Per user requirements, the following areas require codebase analysis before implementation decisions and should NOT be prescribed in user stories:
-
-**D-001: Existing Patterns Analysis**
-> "Analyze current `account` module structure, model inheritance patterns, view architecture, and wizard conventions before proposing new modules or extensions."
-
-Stories must NOT specify:
-- Module names or structure
-- Model inheritance approach
-- View architecture decisions
-
-**D-002: OCA Compatibility Strategy**
-> "Review OCA modules (account_financial_report, account_reconcile_oca, mis_builder) to determine integration vs replacement strategy."
-
-Stories must NOT specify:
-- Whether to integrate with OCA modules
-- Whether to replace OCA functionality
-- Specific OCA module dependencies
-
-**D-003: Report Engine Decision**
-> "Determine whether to extend existing Odoo reporting infrastructure or implement dedicated financial report engine based on codebase analysis."
-
-Stories must NOT specify:
-- Report engine technology
-- QWeb vs dedicated engine choice
-- Report generation architecture
-
-**D-004: UI Component Patterns**
-> "Assess current OWL component patterns in accounting views before designing reconciliation and reporting interfaces."
-
-Stories must NOT specify:
-- OWL component structure
-- JavaScript framework choices
-- UI implementation approach
-
-**D-005: Data Model Extensions**
-> "Analyze existing account.move, account.move.line, account.bank.statement structures to determine extension approach."
-
-Stories must NOT specify:
-- New model names
-- Field definitions
-- Database schema
-
-### 0.10.3 Content Preservation Rules
-
-**Preserve User Examples EXACTLY:**
-
-When user requirements include specific examples, they must be preserved verbatim in documentation.
-
-**User Provided Business Value Statements:**
-- "SMEs using Odoo Community Edition cannot produce standard financial reports required for regulatory compliance, investor reporting, bank loan applications, and internal financial management."
-
-**User Provided Success Metrics:**
-- "All standard financial statements (Balance Sheet, P&L, Cash Flow) producible"
-- "Bank reconciliation matching accuracy ≥95% with algorithmic suggestions"
-- "Budget variance reports available within 24 hours of period close"
-- "Asset depreciation entries generated automatically per schedule"
-- "Deferred revenue schedules execute per ASC 606 / IFRS 15 requirements"
-- "Overdue receivables reduced 15-25% through automated follow-ups"
-
-### 0.10.4 Scope Constraint Rules
-
-**SC-001: Functional Scope Limits**
-
-Stories must stay within these boundaries:
-
-| In Scope | Out of Scope |
-|----------|--------------|
-| Balance Sheet, P&L, Cash Flow, General Ledger, Trial Balance, Aged Reports | Tax calculation integrations |
-| Bank statement import (CSV, OFX, QIF, CAMT.053) | Real-time bank feed APIs |
-| Algorithmic matching suggestions | AI/ML powered matching |
-| Manual budget definition | Automated budget forecasting |
-| Single-company operation | Multi-company consolidation |
-| Standard depreciation methods | Custom depreciation formulas |
-| Email-based follow-ups | SMS or mobile notifications |
-
-**SC-002: Documentation-Only Constraint**
-
-This task produces documentation artifacts only:
-- No source code files created
-- No test files created
-- No configuration files modified
-- No deployment changes
-
-### 0.10.5 Quality Assurance Rules
-
-**QA-001: Story Completeness Check**
-
-Each story file must contain:
-- [ ] User story statement (As a / I want / So that)
-- [ ] 3-6 acceptance criteria scenarios
-- [ ] Given/When/Then format for each scenario
-- [ ] Technical notes section (discovery areas)
-- [ ] Dependencies section
-- [ ] Test requirements section (80% coverage)
-
-**QA-002: Feature Completeness Check**
-
-Each feature file must contain:
-- [ ] Feature overview
-- [ ] User persona mapping
-- [ ] Story list with IDs
-- [ ] Acceptance criteria summary
-- [ ] Technical discovery notes
-
-**QA-003: Epic Completeness Check**
-
-Epic file must contain:
-- [ ] Business context (problem, users, metrics)
-- [ ] All 6 features listed
-- [ ] Constraints documented
-- [ ] Out of scope documented
-- [ ] References section
-
-## 0.11 References
-
-### 0.11.1 Repository Files Searched
-
-**Core Module Analysis:**
-
-| File Path | Purpose | Key Findings |
-|-----------|---------|--------------|
-| `odoo/release.py` | Version identification | Odoo 19.0 (Master), LGPL-3 license |
-| `addons/account/__manifest__.py` | Module configuration | Dependencies: base_setup, onboarding, product, analytic, portal, digest |
-| `addons/account/README.md` | Module description | High-level accounting feature overview |
-| `addons/account/models/` | Business logic layer | 35+ model files for accounting operations |
-| `addons/account/wizard/` | Transient workflows | 15+ wizard implementations |
-| `addons/account/report/` | Report layer | Invoice reports, hash integrity reports |
-| `addons/account/views/` | UI definitions | XML view definitions for accounting |
-| `addons/analytic/models/` | Analytic accounting | analytic_account.py, analytic_plan.py, analytic_line.py |
-
-**Supporting File Analysis:**
-
-| File Path | Purpose | Key Findings |
-|-----------|---------|--------------|
-| `README.md` | Repository overview | Standard Odoo README with build badges |
-| `CONTRIBUTING.md` | Contribution guidelines | Links to Odoo Wiki for standards |
-| `setup.py` | Package configuration | References odoo/release.py for version |
-| `requirements.txt` | Python dependencies | Core Odoo dependencies |
-
-**Documentation Structure Analysis:**
-
-| File Path | Purpose | Key Findings |
-|-----------|---------|--------------|
-| `doc/cla/` | Contributor License Agreements | Non-technical documentation only |
-| `addons/crm/doc/` | CRM documentation | Example RST documentation pattern |
-| `.github/PULL_REQUEST_TEMPLATE.md` | PR template | Contribution workflow reference |
-
-### 0.11.2 Folders Searched
-
-| Folder Path | Purpose | Children Examined |
-|-------------|---------|-------------------|
-| `/` (root) | Repository root | All first-level directories |
-| `addons/` | Module collection | 607 addon directories |
-| `addons/account/` | Core accounting module | models/, views/, wizard/, report/, tests/ |
-| `addons/account/models/` | Accounting models | 35+ Python model files |
-| `addons/account/wizard/` | Accounting wizards | 15+ transient model files |
-| `addons/account/report/` | Accounting reports | Invoice reports, integrity reports |
-| `addons/analytic/` | Analytic accounting | models/, views/, security/ |
-| `doc/` | Documentation folder | CLA files only |
-| `odoo/` | Odoo framework | Core framework code |
-
-### 0.11.3 External References
-
-**OCA Repositories:**
-
-| Repository | URL | Relevance |
-|------------|-----|-----------|
-| OCA/account-financial-reporting | https://github.com/OCA/account-financial-reporting | Financial report patterns |
-| OCA/account-reconcile | https://github.com/OCA/account-reconcile | Bank reconciliation patterns |
-| OCA/mis-builder | https://github.com/OCA/mis-builder | Budget/MIS reporting patterns |
-| OCA/account-financial-tools | https://github.com/OCA/account-financial-tools | Asset management patterns |
-
-**Documentation Standards:**
-
-| Standard | Reference | Application |
-|----------|-----------|-------------|
-| INVEST Principles | Agile Alliance Glossary | User story quality criteria |
-| BDD/Gherkin | Cucumber Documentation | Acceptance criteria format |
-| GAAP | US FASB Standards | Financial statement requirements |
-| IFRS | IFRS Foundation | International financial standards |
-| ASC 606 / IFRS 15 | Revenue Recognition Standards | Deferred revenue requirements |
-
-**Bank Statement Formats:**
-
-| Format | Standard | Application |
-|--------|----------|-------------|
-| CSV | Generic | Universal import format |
-| OFX | Open Financial Exchange | US banking standard |
-| QIF | Quicken Interchange Format | Legacy import format |
-| CAMT.053 | ISO 20022 | European banking standard |
-
-### 0.11.4 Web Search Research
-
-**User Story Best Practices:**
-
-| Topic | Source | Key Insight |
-|-------|--------|-------------|
-| INVEST Principles | Agile Alliance | Checklist for user story quality assessment |
-| BDD Acceptance Criteria | Thoughtworks | Given/When/Then format best practices |
-| Story Decomposition | Various | 3-7 stories per feature guideline |
-
-**OCA Module Information:**
-
-| Topic | Source | Key Insight |
-|-------|--------|-------------|
-| account_financial_report | OCA Apps Store | General Ledger, Trial Balance, Aged Partner Balance capabilities |
-| OCA License Model | OCA Website | Each module can have different LGPL-3 compatible license |
-
-### 0.11.5 User Input Summary
-
-**Primary Input:** User Epic Generation Prompt
-
-| Element | Content Summary |
-|---------|-----------------|
-| Objective Statement | Enterprise-grade accounting for Odoo Community Edition |
-| Functional Requirements | 6 areas: Financial Reporting, Bank Reconciliation, Budget Management, Asset Management, Deferred Revenue, Payment Follow-ups |
-| Out of Scope | Real-time bank feeds, AI/ML OCR, multi-company consolidation, tax integrations, mobile interfaces |
-| Constraints | AGPL-3.0, no Enterprise dependencies, OCA standards, Odoo 18.0, 80% test coverage |
-| Target Users | CFO, Accountant, Controller, Auditor, Business Owner |
-| Success Metrics | 6 measurable outcomes defined |
-| Discovery Notes | 6 areas requiring codebase analysis |
-| Output Location | `tickets/` directory |
-
-### 0.11.6 Attachments and External Metadata
-
-**Attachments Provided:** None
-
-**Figma URLs Provided:** None
-
-**Environment Variables Provided:** None
-
-**Secrets Provided:** None
-
-### 0.11.7 Version Discrepancy Note
-
-| Attribute | User Specified | Repository Actual | Resolution |
-|-----------|---------------|-------------------|------------|
-| Odoo Version | 18.0 | 19.0 | Stories written version-agnostic; technical notes flag consideration |
-| Source | User requirements | `odoo/release.py` line 10: `version_info = (19, 0, 0, FINAL, 0, '')` | Documentation proceeds with awareness of discrepancy |
+## 0.5 Technical Implementation
+
+### 0.5.1 File-by-File Execution Plan
+
+Every file listed below **MUST** be created or modified. Files are organized into logical groups by feature and implementation dependency.
+
+**Group 1 — Financial Reporting Core Models (FEATURE-001)**
+
+| Action | File | Implementation Details |
+|---|---|---|
+| MODIFY | `addons/account_financial_report_ce/models/financial_report.py` | Complete `_compute_account_balance` with optimized SQL via `read_group`; implement `action_drilldown` returning `ir.actions.act_window` targeting `account.move.line`; implement `action_export_pdf` delegating to `ir.actions.report`; implement `action_export_xlsx` using `openpyxl` |
+| MODIFY | `addons/account_financial_report_ce/models/balance_sheet.py` | Complete `_compute_report_data` classifying accounts by `account_type` into Assets/Liabilities/Equity sections using the 21 account types from `account.account`; enforce `Assets = Liabilities + Equity` validation; populate `line_ids` with section hierarchy; implement comparative period calculation |
+| MODIFY | `addons/account_financial_report_ce/models/profit_loss.py` | Complete `_compute_report_data` aggregating income/expense accounts; compute Revenue, COGS (`expense_direct_cost`), Gross Profit, Operating Expenses, Operating Income, Other Income/Expenses, and Net Income; support date-range filtering |
+| MODIFY | `addons/account_financial_report_ce/models/cash_flow.py` | Implement indirect method: start with Net Income, add back depreciation (`expense_depreciation`), compute working capital changes (receivable/payable deltas), investing activities (fixed asset changes), and financing activities; reconcile to closing cash balance |
+| MODIFY | `addons/account_financial_report_ce/models/general_ledger.py` | Complete per-account transaction listing with opening balance, period transactions (sorted by date/sequence), running balance computation, and closing balance; support account code range filtering and partner filtering |
+| MODIFY | `addons/account_financial_report_ce/models/trial_balance.py` | Compute opening debit/credit, period movement, and closing debit/credit per account; validate Total Debits = Total Credits; support hide-zero-balance toggle |
+| MODIFY | `addons/account_financial_report_ce/models/aged_partner_balance.py` | Implement aging bucket computation using `date_maturity` on `account.move.line`; classify into Current/30/60/90/120+ day buckets; support both AR (`asset_receivable`) and AP (`liability_payable`) modes; partner-level drill-down |
+
+**Group 2 — Financial Reporting Wizard and UI (FEATURE-001)**
+
+| Action | File | Implementation Details |
+|---|---|---|
+| MODIFY | `addons/account_financial_report_ce/wizard/financial_report_wizard.py` | Complete `action_generate_report` bridging wizard parameters to report model creation; validate date ranges; handle comparison period logic; implement `action_print_pdf` and `action_export_xlsx` dispatchers |
+| MODIFY | `addons/account_financial_report_ce/wizard/financial_report_wizard_views.xml` | Refine dynamic visibility rules per report type; ensure proper date field toggling for structural vs. period reports; add journal/partner/account filter notebooks |
+| MODIFY | `addons/account_financial_report_ce/views/menuitem.xml` | Verify menu hierarchy under Accounting > Reporting; ensure each report type has a dedicated menu entry |
+
+**Group 3 — Financial Reporting QWeb Templates and Export (FEATURE-001)**
+
+| Action | File | Implementation Details |
+|---|---|---|
+| MODIFY | `addons/account_financial_report_ce/report/report_balance_sheet.py` | Complete `_get_report_values` returning line data, company currency, comparison columns, and equation validation status |
+| MODIFY | `addons/account_financial_report_ce/report/report_profit_loss.py` | Complete `_get_report_values` with income/expense breakdown and subtotals |
+| MODIFY | `addons/account_financial_report_ce/report/report_cash_flow.py` | Complete `_get_report_values` with activity section data |
+| MODIFY | `addons/account_financial_report_ce/report/report_general_ledger.py` | Complete `_get_report_values` with per-account transaction data |
+| MODIFY | `addons/account_financial_report_ce/report/report_trial_balance.py` | Complete `_get_report_values` with debit/credit column data |
+| MODIFY | `addons/account_financial_report_ce/report/report_aged_partner_balance.py` | Complete `_get_report_values` with aging bucket data per partner |
+| MODIFY | `addons/account_financial_report_ce/report/balance_sheet_report.xml` | Refine QWeb template: section headers, indentation, comparison columns, totals row, equation validation badge |
+| MODIFY | `addons/account_financial_report_ce/report/profit_loss_report.xml` | Refine QWeb template: revenue/expense sections, subtotals, net income |
+| MODIFY | `addons/account_financial_report_ce/report/cash_flow_report.xml` | Refine QWeb template: activity sections, opening/closing cash |
+| MODIFY | `addons/account_financial_report_ce/report/general_ledger_report.xml` | Refine QWeb template: per-account detail with transaction lines |
+| MODIFY | `addons/account_financial_report_ce/report/trial_balance_report.xml` | Refine QWeb template: debit/credit columns, totals row |
+| MODIFY | `addons/account_financial_report_ce/report/aged_partner_balance_report.xml` | Refine QWeb template: aging buckets, partner detail, progress bars |
+| MODIFY | `addons/account_financial_report_ce/report/report_templates.xml` | Verify `ir.actions.report` bindings for all 6 report types, PDF and XLSX |
+
+**Group 4 — Financial Reporting Security and Config (FEATURE-001)**
+
+| Action | File | Implementation Details |
+|---|---|---|
+| MODIFY | `addons/account_financial_report_ce/security/account_financial_report_security.xml` | Add record rules for multi-company isolation; ensure groups inherit from `account.group_account_readonly` and `account.group_account_manager` |
+| MODIFY | `addons/account_financial_report_ce/security/ir.model.access.csv` | Add ACL rows for any new transient models or report line models |
+| MODIFY | `addons/account_financial_report_ce/__manifest__.py` | Update version, verify all data files registered, add new test files to discovery |
+| MODIFY | `addons/account_financial_report_ce/static/src/scss/report.scss` | Refine styling for section hierarchy, comparison columns, drill-down links |
+| MODIFY | `addons/account_financial_report_ce/static/src/scss/report_print.scss` | Optimize print layout for all 6 report types |
+
+**Group 5 — Bank Reconciliation Module Structure (FEATURE-002)**
+
+| Action | File | Implementation Details |
+|---|---|---|
+| CREATE | `addons/account_bank_reconciliation_ce/__init__.py` | Module init: `from . import models, wizard, report` |
+| CREATE | `addons/account_bank_reconciliation_ce/__manifest__.py` | Module manifest: version 19.0.1.0.0, AGPL-3, depends=['account'], data/security/view registration |
+| CREATE | `addons/account_bank_reconciliation_ce/models/__init__.py` | Import: `bank_statement_import`, `reconciliation_matching_engine`, `reconciliation_rule`, `partial_reconcile_ext` |
+| CREATE | `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` | Statement import model: file type detection, CSV column mapping, OFX parsing via `ofxparse`, QIF text parsing, CAMT.053 XML parsing via `lxml.etree`; duplicate detection by hash; line creation with validation |
+| CREATE | `addons/account_bank_reconciliation_ce/models/reconciliation_matching_engine.py` | Matching engine model: scoring algorithm with configurable weights (amount=highest, reference=high, partner=high, date=medium); confidence levels (High ≥90%, Medium 70-89%, Low 50-69%); multi-match resolution; one-to-many/many-to-one handling |
+| CREATE | `addons/account_bank_reconciliation_ce/models/reconciliation_rule.py` | Rule extension: `_inherit = 'account.reconcile.model'` with priority ordering, enhanced condition evaluation, confidence threshold override, auto-reconcile trigger |
+| CREATE | `addons/account_bank_reconciliation_ce/models/partial_reconcile_ext.py` | Partial reconciliation support: split transaction logic, write-off account selection, tolerance percentage configuration, multi-currency difference handling |
+
+**Group 6 — Bank Reconciliation Wizard and UI (FEATURE-002)**
+
+| Action | File | Implementation Details |
+|---|---|---|
+| CREATE | `addons/account_bank_reconciliation_ce/wizard/__init__.py` | Import: `bank_statement_import_wizard`, `reconciliation_wizard` |
+| CREATE | `addons/account_bank_reconciliation_ce/wizard/bank_statement_import_wizard.py` | Import wizard: file upload via `base64`, format auto-detection, CSV column mapping interface, preview with first N rows, batch execution with progress, rollback on failure |
+| CREATE | `addons/account_bank_reconciliation_ce/wizard/bank_statement_import_wizard_views.xml` | Import wizard form: file upload binary widget, format radio selection, column mapping table, preview notebook, action buttons |
+| CREATE | `addons/account_bank_reconciliation_ce/wizard/reconciliation_wizard.py` | Reconciliation wizard: load unreconciled lines, display match suggestions with confidence badges, manual match/unmatch, partial match with write-off dialog, batch confirm |
+| CREATE | `addons/account_bank_reconciliation_ce/wizard/reconciliation_wizard_views.xml` | Reconciliation form: split view with statement lines and matching candidates, confidence indicators, action buttons |
+
+**Group 7 — Bank Reconciliation Views, Security, and Data (FEATURE-002)**
+
+| Action | File | Implementation Details |
+|---|---|---|
+| CREATE | `addons/account_bank_reconciliation_ce/views/menuitem.xml` | Menu items: Accounting > Bank Reconciliation > Import Statements, Reconciliation, Rules |
+| CREATE | `addons/account_bank_reconciliation_ce/views/bank_reconciliation_views.xml` | Tree/form/search views for reconciliation status, statement browsing |
+| CREATE | `addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml` | Groups: `group_bank_reconciliation_user` (implied by `account.group_account_user`), `group_bank_reconciliation_manager` (implied by `account.group_account_manager`) |
+| CREATE | `addons/account_bank_reconciliation_ce/security/ir.model.access.csv` | Full ACL matrix for all models and wizards |
+| CREATE | `addons/account_bank_reconciliation_ce/data/reconciliation_data.xml` | Default matching thresholds, sample reconciliation rules |
+| CREATE | `addons/account_bank_reconciliation_ce/report/__init__.py` | Report package init |
+| CREATE | `addons/account_bank_reconciliation_ce/report/reconciliation_report.py` | Reconciliation status report parser |
+| CREATE | `addons/account_bank_reconciliation_ce/report/reconciliation_report.xml` | QWeb template for reconciliation report |
+| CREATE | `addons/account_bank_reconciliation_ce/static/src/scss/reconciliation.scss` | Reconciliation interface styling |
+| CREATE | `addons/account_bank_reconciliation_ce/demo/demo_data.xml` | Demo bank statements and reconciliation data |
+
+**Group 8 — Tests (Both Features)**
+
+| Action | File | Implementation Details |
+|---|---|---|
+| MODIFY | `addons/account_financial_report_ce/tests/__init__.py` | Register all new test modules |
+| MODIFY | `addons/account_financial_report_ce/tests/test_financial_reports.py` | Expand existing test suite for comprehensive coverage |
+| CREATE | `addons/account_financial_report_ce/tests/test_balance_sheet.py` | FR-001 acceptance criteria: Assets=L+E validation, GAAP/IFRS section format |
+| CREATE | `addons/account_financial_report_ce/tests/test_profit_loss.py` | FR-002 acceptance criteria: revenue/expense aggregation accuracy |
+| CREATE | `addons/account_financial_report_ce/tests/test_cash_flow.py` | FR-003 acceptance criteria: activity categorization, reconciliation |
+| CREATE | `addons/account_financial_report_ce/tests/test_general_ledger.py` | FR-004 acceptance criteria: transaction listing, date filtering |
+| CREATE | `addons/account_financial_report_ce/tests/test_trial_balance.py` | FR-005 acceptance criteria: debit/credit equality |
+| CREATE | `addons/account_financial_report_ce/tests/test_aged_partner.py` | FR-006 acceptance criteria: aging bucket accuracy |
+| CREATE | `addons/account_financial_report_ce/tests/test_export.py` | FR-007 acceptance criteria: PDF/Excel export, drill-down |
+| CREATE | `addons/account_bank_reconciliation_ce/tests/__init__.py` | Register all BR test modules |
+| CREATE | `addons/account_bank_reconciliation_ce/tests/common.py` | Shared fixtures: sample statements, journals, partners |
+| CREATE | `addons/account_bank_reconciliation_ce/tests/test_statement_import.py` | BR-001 acceptance criteria: CSV/OFX/QIF/CAMT.053 parsing |
+| CREATE | `addons/account_bank_reconciliation_ce/tests/test_matching_engine.py` | BR-002 acceptance criteria: ≥95% matching accuracy |
+| CREATE | `addons/account_bank_reconciliation_ce/tests/test_manual_reconciliation.py` | BR-003 acceptance criteria: match/unmatch, audit trail |
+| CREATE | `addons/account_bank_reconciliation_ce/tests/test_reconciliation_rules.py` | BR-004 acceptance criteria: rule evaluation, regex, priority |
+| CREATE | `addons/account_bank_reconciliation_ce/tests/test_partial_reconciliation.py` | BR-005 acceptance criteria: split transactions, write-offs |
+
+### 0.5.2 Implementation Approach per File
+
+**Foundation Layer — Establish Core Abstractions:**
+- Complete the `FinancialReportAbstract` model with production-grade `read_group` queries and SQL-optimized balance computation, following the pattern established by `account.invoice.report` in `addons/account/report/account_invoice_report.py` (which uses `_auto = False` and `_table_query` for SQL views)
+- Create the bank reconciliation module scaffold with `__manifest__.py`, security, and initial model stubs
+
+**Integration Layer — Connect to Existing Systems:**
+- Wire all report models to `account.move.line` via domain-filtered `read_group` calls
+- Extend `account.bank.statement` and `account.reconcile.model` via `_inherit` for bank reconciliation
+- Register menu items under the existing Accounting menu tree defined in `addons/account/views/account_menuitem.xml`
+
+**Quality Layer — Comprehensive Test Coverage:**
+- Each test module maps to a specific user story's acceptance criteria
+- Test fixtures extend `AccountTestInvoicingCommon` from `addons/account/tests/common.py` for realistic accounting data
+- All tests tagged with `@tagged('post_install', '-at_install')` per Odoo convention
+
+**Documentation Layer — Usage and Configuration:**
+- Module `README.md` files documenting installation, configuration, and usage
+- Python docstrings on all public methods following OCA standards
+- QWeb report templates documented with section comments
+
+### 0.5.3 User Interface Design
+
+No Figma screens were provided for this implementation. The UI approach follows the established Odoo accounting UI patterns:
+
+- **Report Wizard**: Form view with radio-button report type selector, date range pickers, filter notebooks, and action buttons (Generate, Print PDF, Export Excel) — following the pattern established in `addons/account_financial_report_ce/wizard/financial_report_wizard_views.xml`
+- **Report Display**: Inline form views for generated reports with drill-down hyperlinks on report lines — following patterns in `addons/account/views/account_move_views.xml`
+- **Bank Statement Import**: Wizard form with file upload binary widget and format selection — following patterns in `addons/account/wizard/` directory
+- **Reconciliation Interface**: Split-panel form with statement lines on one side and matching candidates on the other, confidence badges, and action buttons — following reconciliation model views in `addons/account/views/account_reconcile_model_views.xml`
+
+## 0.6 Scope Boundaries
+
+### 0.6.1 Exhaustively In Scope
+
+**FEATURE-001: Financial Reporting Engine — All Files**
+
+| Pattern | Description |
+|---|---|
+| `addons/account_financial_report_ce/models/**/*.py` | All report transient models and abstract base |
+| `addons/account_financial_report_ce/wizard/**/*.py` | Unified report wizard and action dispatchers |
+| `addons/account_financial_report_ce/wizard/**/*.xml` | Wizard form views and window actions |
+| `addons/account_financial_report_ce/report/**/*.py` | All 6 QWeb report parsers |
+| `addons/account_financial_report_ce/report/**/*.xml` | All 6 QWeb report templates plus report action bindings |
+| `addons/account_financial_report_ce/views/menuitem.xml` | Menu items and action bindings |
+| `addons/account_financial_report_ce/security/*.xml` | Security groups and record rules |
+| `addons/account_financial_report_ce/security/*.csv` | Access control list entries |
+| `addons/account_financial_report_ce/data/*.xml` | Paper format and report configuration data |
+| `addons/account_financial_report_ce/static/src/scss/*.scss` | Interactive and print report styling |
+| `addons/account_financial_report_ce/tests/**/*.py` | All unit, integration, and acceptance tests |
+| `addons/account_financial_report_ce/demo/*.xml` | Demo financial data |
+| `addons/account_financial_report_ce/__manifest__.py` | Module manifest with version, dependencies, data registration |
+| `addons/account_financial_report_ce/__init__.py` | Module entry point |
+
+**FEATURE-002: Bank Reconciliation — All Files (New Module)**
+
+| Pattern | Description |
+|---|---|
+| `addons/account_bank_reconciliation_ce/**/*.py` | All models, wizards, reports, and tests |
+| `addons/account_bank_reconciliation_ce/**/*.xml` | All views, menus, security, data, demo, and report templates |
+| `addons/account_bank_reconciliation_ce/**/*.csv` | Access control list entries |
+| `addons/account_bank_reconciliation_ce/**/*.scss` | Reconciliation interface styling |
+| `addons/account_bank_reconciliation_ce/tests/test_files/*` | Sample statement files for import testing |
+
+**Integration Touchpoints (Read-Only References):**
+
+| File | Scope |
+|---|---|
+| `addons/account/models/account_move_line.py` | Read via `read_group` and `search_read` for report data |
+| `addons/account/models/account_account.py` | Read `account_type` field for report section classification |
+| `addons/account/models/account_bank_statement.py` | Extend via `_inherit` for import metadata |
+| `addons/account/models/account_bank_statement_line.py` | Extend via `_inherit` for matching fields |
+| `addons/account/models/account_reconcile_model.py` | Extend via `_inherit` for enhanced rule evaluation |
+| `addons/account/models/account_partial_reconcile.py` | Create records for partial reconciliation |
+| `addons/account/tests/common.py` | Inherit test fixtures for test setup |
+
+**Documentation Scope:**
+
+| File | Description |
+|---|---|
+| `tickets/features/FEATURE-001-financial-reporting.md` | Feature specification with 7 stories |
+| `tickets/features/FEATURE-002-bank-reconciliation.md` | Feature specification with 5 stories |
+| `tickets/stories/financial-reporting/FR-001-*.md` through `FR-007-*.md` | All 7 financial reporting user stories |
+| `tickets/stories/bank-reconciliation/BR-001-*.md` through `BR-005-*.md` | All 5 bank reconciliation user stories |
+| `tickets/EPIC-001-enterprise-accounting.md` | Governing epic specification |
+
+### 0.6.2 Explicitly Out of Scope
+
+The following items are **not** part of Phase 1 and must not be implemented:
+
+| Out-of-Scope Item | Rationale |
+|---|---|
+| **FEATURE-003: Budget Management** | Wave 2 implementation; not referenced in Phase 1 |
+| **FEATURE-004: Asset Management** | Wave 2 implementation; not referenced in Phase 1 |
+| **FEATURE-005: Deferred Revenue/Expenses** | Wave 3 implementation; not referenced in Phase 1 |
+| **FEATURE-006: Payment Follow-ups** | Wave 3 implementation; not referenced in Phase 1 |
+| Modifications to `addons/account/` core module source | Core module is read-only; all changes use `_inherit` in separate modules |
+| Enterprise module compatibility | AGPL-3 only; zero Enterprise module integration |
+| Bank feed API integration (live bank connections) | Per EPIC-001 out-of-scope; only file-based import |
+| AI/ML-based matching or predictions | Per EPIC-001 out-of-scope; algorithmic matching only |
+| Consolidation reporting (multi-entity) | Per EPIC-001 out-of-scope |
+| Tax-specific report integrations (VAT, GST) | Per EPIC-001 out-of-scope |
+| UI mockups or Figma-based design | No Figma assets provided; follow existing Odoo UI patterns |
+| Performance optimization beyond feature requirements | No profiling or optimization beyond specified SLAs |
+| Refactoring of existing `account` module code | Only extension via `_inherit`; no core refactoring |
+| i18n/l10n translation files | Translation managed separately via Weblate |
+| Node.js or frontend build toolchain changes | No npm; all frontend assets are SCSS registered via `__manifest__.py` |
+
+## 0.7 Rules for Feature Addition
+
+### 0.7.1 Licensing and Compliance Rules
+
+- **AGPL-3.0 License**: Every new file must include the AGPL-3.0 license header: `# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).`
+- **Zero Enterprise Dependencies**: No imports from `account_reports`, `account_accountant`, `account_asset`, `account_budget`, `account_followup`, or `account_deferred_revenue`. This is validated by verifying that `__manifest__.py` `depends` lists contain only Community-licensed modules.
+- **OCA Coding Standards**: All Python code must pass OCA quality checks including `pylint-odoo` and `pre-commit` hooks. Ruff linting targets Python 3.10 syntax per `ruff.toml` (`target-version = "py310"`).
+- **PEP 8 Compliance**: Standard Python style with the Ruff configuration defined at the repository root.
+
+### 0.7.2 Testing and Coverage Rules
+
+- **Minimum 80% Test Coverage**: Both `account_financial_report_ce` and `account_bank_reconciliation_ce` must individually achieve ≥80% code coverage measured by `pytest-odoo` or equivalent.
+- **BDD Alignment**: Each test class must map to a specific user story's acceptance criteria. Test method names should reference story IDs (e.g., `test_fr001_balance_sheet_equation`, `test_br002_matching_accuracy`).
+- **Test Tagging**: All tests must use `@tagged('post_install', '-at_install')` decorator per Odoo convention, as demonstrated in `addons/account/tests/`.
+- **Test Fixture Reuse**: Test classes should extend `AccountTestInvoicingCommon` from `addons/account/tests/common.py` to leverage pre-built company, account, journal, partner, and product fixtures.
+- **Deterministic Dates**: Use `freezegun` for all date-sensitive tests to ensure reproducible results.
+
+### 0.7.3 Architectural and Integration Rules
+
+- **Odoo Inheritance Only**: All extensions to core `account` models must use `_inherit` (Python class inheritance) — never `_inherits` (delegation inheritance) unless creating a new model that wraps an existing one, and never direct SQL DDL modifications.
+- **TransientModel for Wizards**: All report wizards and import wizards must use `models.TransientModel` (auto-vacuumed) per the pattern in `addons/account_financial_report_ce/models/` — not persistent `models.Model`.
+- **Read-Only Core Access**: Financial report models must access `account.move.line` and `account.account` through read operations (`read_group`, `search_read`) — never creating, modifying, or deleting core accounting records.
+- **Write Access for Reconciliation Only**: Bank reconciliation is permitted to create `account.partial.reconcile` and `account.full.reconcile` records and update `account.move.line` reconciliation fields as part of the matching workflow — this follows the same pattern used by `addons/account/wizard/account_payment_register.py`.
+- **Multi-Company Isolation**: All domain queries must include `('company_id', '=', self.company_id.id)` or equivalent company-scoped filters. Record rules must enforce multi-company isolation per the pattern in `addons/account/security/account_security.xml`.
+- **No Custom JavaScript Components**: UI interactions must use Odoo's standard OWL components and view types (form, list, kanban, search). No custom OWL components are required for Phase 1.
+
+### 0.7.4 Performance Rules
+
+- **Report Generation**: Financial reports must complete in <30 seconds for 100,000 `account.move.line` records. This mandates using `read_group` with SQL-level aggregation rather than Python-level iteration.
+- **Statement Import**: File parsing and line creation must complete in <10 seconds for 500 statement lines.
+- **Matching Algorithm**: The matching engine must evaluate 1,000 statement lines against open journal entries in <5 seconds. This requires efficient SQL queries with indexed lookups on `amount`, `date`, and `partner_id`.
+- **Rule Evaluation**: Individual reconciliation rule evaluation must complete in <1 second.
+
+### 0.7.5 Data Integrity Rules
+
+- **Accounting Equation**: The Balance Sheet report must validate `Assets = Liabilities + Equity` and flag any imbalance.
+- **Trial Balance Integrity**: The Trial Balance must validate `Total Debits = Total Credits` and display a warning if the equation fails.
+- **Statement Balance Validation**: Imported bank statements must validate `balance_start + sum(line amounts) = balance_end_real` using the existing `is_complete` and `is_valid` computed fields on `account.bank.statement`.
+- **Reconciliation Audit Trail**: Every reconciliation action (match, unmatch, partial match, write-off) must be traceable through the standard Odoo `account.partial.reconcile` and `account.full.reconcile` records.
+- **Duplicate Import Prevention**: The statement import system must detect and reject duplicate imports by comparing statement reference, date, and line hashes against existing records.
+
+### 0.7.6 Version Compatibility Rules
+
+- **Python 3.10–3.13**: All code must be compatible across the full supported Python range as declared in `odoo/release.py` (`MIN_PY_VERSION = (3, 10)`).
+- **Odoo 19.0 API**: Use Odoo 19.0 API conventions — `fields.Command` instead of `(0, 0, vals)` tuples, `fields.Domain` where applicable, and the current `read_group` method signature.
+- **No Version-Specific Branching**: Stories are written version-agnostic; implementation should not contain `if odoo_version >= X` conditionals.
+
+## 0.8 References
+
+### 0.8.1 Repository Files and Folders Searched
+
+The following files and folders were systematically explored to derive the conclusions in this Agent Action Plan:
+
+**Root-Level Configuration Files:**
+
+| File | Purpose of Analysis |
+|---|---|
+| `requirements.txt` | Python dependency inventory with version-conditional pins (100 lines) |
+| `setup.py` | `install_requires`, `python_requires`, and `tests_require` declarations |
+| `setup.cfg` | Flake8 and install configuration |
+| `ruff.toml` | Linting target version (`py310`), rule families, import ordering |
+| `odoo/release.py` | Odoo version (19.0.0 FINAL), MIN_PY_VERSION (3.10), product metadata |
+
+**Ticket and Feature Specification Files:**
+
+| File | Purpose of Analysis |
+|---|---|
+| `tickets/EPIC-001-enterprise-accounting.md` | Governing epic: 6 features, 3 implementation waves, constraints, success metrics |
+| `tickets/README.md` | Documentation navigation hub: 6 features, 32 stories, contribution guidelines |
+| `tickets/features/FEATURE-001-financial-reporting.md` | Financial Reporting spec: 7 stories, 9 capabilities, account type mapping, acceptance criteria, performance requirements |
+| `tickets/features/FEATURE-002-bank-reconciliation.md` | Bank Reconciliation spec: 5 stories, 5 capabilities, import formats, matching algorithm, acceptance criteria |
+| `tickets/features/FEATURE-003-budget-management.md` | Budget Management spec (reviewed for cross-feature dependency awareness) |
+| `tickets/features/FEATURE-004-asset-management.md` | Asset Management spec (reviewed for cross-feature dependency awareness) |
+| `tickets/features/FEATURE-005-deferred-revenue.md` | Deferred Revenue spec (reviewed for cross-feature dependency awareness) |
+| `tickets/features/FEATURE-006-payment-followups.md` | Payment Follow-ups spec (reviewed for cross-feature dependency awareness) |
+| `tickets/stories/financial-reporting/` | 7 story files: FR-001 through FR-007 (existence verified) |
+| `tickets/stories/bank-reconciliation/` | 5 story files: BR-001 through BR-005 (existence verified) |
+
+**Existing Financial Reporting Module:**
+
+| File/Folder | Purpose of Analysis |
+|---|---|
+| `addons/account_financial_report_ce/__manifest__.py` | Module metadata: version 19.0.1.0.0, AGPL-3, depends, data registration |
+| `addons/account_financial_report_ce/__init__.py` | Module entry point and import chain |
+| `addons/account_financial_report_ce/models/` (8 files) | Transient report models: abstract base, 6 concrete reports; line counts and stub analysis |
+| `addons/account_financial_report_ce/wizard/` (3 files) | Unified wizard: Python model, XML views |
+| `addons/account_financial_report_ce/report/` (14 files) | QWeb templates and report parsers for all 6 report types |
+| `addons/account_financial_report_ce/security/` (2 files) | Security groups and 16 ACL entries |
+| `addons/account_financial_report_ce/views/menuitem.xml` | Menu hierarchy and action bindings |
+| `addons/account_financial_report_ce/data/report_paperformat.xml` | Paper format definitions (A4/US Letter, portrait/landscape) |
+| `addons/account_financial_report_ce/static/src/scss/` (2 files) | Interactive and print report stylesheets |
+| `addons/account_financial_report_ce/tests/` (2 files) | Test infrastructure and existing test suite |
+| `addons/account_financial_report_ce/demo/demo_data.xml` | Empty demo data placeholder |
+
+**Core Account Module (Read-Only Reference):**
+
+| File/Folder | Purpose of Analysis |
+|---|---|
+| `addons/account/__manifest__.py` | Core module dependencies and data registration |
+| `addons/account/__init__.py` | Post-install hook pattern |
+| `addons/account/models/` (52 files) | Complete ORM model inventory: account types, moves, lines, bank statements, reconciliation |
+| `addons/account/report/` (5 files) | SQL view report pattern (`account.invoice.report`) and QWeb report services |
+| `addons/account/wizard/` (28 files) | Wizard implementation patterns: payment register, reversals, import handlers |
+| `addons/account/views/` (42 files) | UI patterns for all accounting entities |
+| `addons/account/security/` (2 files) | Security group hierarchy and ACL patterns |
+| `addons/account/tests/` (60+ files) | Test infrastructure: `common.py` fixtures, 60+ test modules |
+
+**Odoo Platform Files:**
+
+| File | Purpose of Analysis |
+|---|---|
+| `odoo/release.py` | Version info, MIN_PY_VERSION, product metadata |
+| `addons/analytic/` | Analytic accounting module referenced as dependency |
+| `addons/` root listing | Full addons inventory to verify no conflicting modules |
+
+**Blitzy Documentation:**
+
+| File/Folder | Purpose of Analysis |
+|---|---|
+| `blitzy/documentation/` | Project Guide.md and Technical Specifications.md for progress tracking and scope context |
+
+### 0.8.2 Attachments
+
+No file attachments were provided for this project. The `EPIC-001-enterprise-accounting-parity.md` reference maps to `tickets/EPIC-001-enterprise-accounting.md` within the repository.
+
+| Attachment Reference | Resolved Location | Summary |
+|---|---|---|
+| `EPIC-001-enterprise-accounting-parity.md` | `tickets/EPIC-001-enterprise-accounting.md` | Master epic defining 6 features across 3 waves, with constraints (AGPL-3.0, no Enterprise deps, OCA standards, 80% coverage), success metrics, and implementation ordering |
+| `FEATURE-001-01-financial-reporting-engine.md` | `tickets/features/FEATURE-001-financial-reporting.md` | Financial Reporting feature spec: 7 stories (FR-001–FR-007), 9 capabilities, account type mapping, performance targets, OCA compatibility notes |
+| `FEATURE-001-02-bank-reconciliation.md` | `tickets/features/FEATURE-002-bank-reconciliation.md` | Bank Reconciliation feature spec: 5 stories (BR-001–BR-005), 4 import formats, matching algorithm specification, confidence levels, edge case handling |
+
+### 0.8.3 External References
+
+| Resource | URL | Relevance |
+|---|---|---|
+| OCA account-financial-reporting | `https://github.com/OCA/account-financial-reporting` | General Ledger, Trial Balance, Aged Partner Balance module patterns |
+| OCA reporting-engine | `https://github.com/OCA/reporting-engine` | `report_xlsx` Excel export module patterns |
+| OCA bank-statement-import | `https://github.com/OCA/bank-statement-import` | Multi-format statement import (CSV, OFX, CAMT.053) |
+| OCA account-reconcile | `https://github.com/OCA/account-reconcile` | Community reconciliation interface patterns |
+| ISO 20022 Message Catalogue | `https://www.iso20022.org/catalogue-messages` | CAMT.053 (bank-to-customer statement) specification |
+| OFX Specification | `https://www.ofx.net/downloads.html` | Open Financial Exchange format for US/Canadian banks |
+| Odoo Accounting Documentation | `https://www.odoo.com/documentation/18.0/applications/finance/accounting.html` | Official accounting module documentation |
+| FASB ASC | `https://asc.fasb.org/` | US GAAP accounting standards (ASC 210, 220, 230) |
+| IFRS Standards | `https://www.ifrs.org/issued-standards/` | International financial reporting standards |
+
+### 0.8.4 Technical Specification Sections Referenced
+
+The following sections of the existing Technical Specification document were consulted:
+
+| Section | Key Information Extracted |
+|---|---|
+| 2.1 Feature Catalog | Feature metadata, status, module assignments, dependency matrices |
+| 3.1 Programming Languages | Python 3.10–3.13 range, `py310` lint target, JavaScript/OWL conventions |
+| 3.2 Frameworks & Libraries | Odoo 19.0 platform, OWL 2.8.1, Bootstrap 5.3.3, Chart.js 4.4.5, asset pipeline |
+| 3.3 Open Source Dependencies | Complete PyPI dependency inventory with version ranges and feature relevance |
+| 5.2 Component Details | Architecture layers, ORM engine detail, report rendering sequence, module structure |
 

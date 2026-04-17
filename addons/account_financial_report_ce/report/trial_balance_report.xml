@@ -2,13 +2,18 @@
 <!--
     Copyright 2024 Enterprise Accounting Team
     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-    
+
     Trial Balance Report Template (FR-005)
     Implements trial balance with:
     - Account code and name
-    - Opening, period movement, and closing balances
-    - Debit/Credit column totals verification
-    - Optional account type grouping
+    - Opening debit/credit, period debit/credit, closing debit/credit columns
+    - Net balance column (9 data columns total)
+    - Debit/Credit column totals verification (opening, period, closing)
+    - Optional account type hierarchy grouping with group subtotals
+    - Optional partner detail breakdown per account
+    - Hide zero balance toggle support (model-side filtering)
+    - Balance verification badges: Opening, Period, Closing
+    - Summary statistics: total accounts, accounts with balance, net position
 -->
 <odoo>
     <template id="report_trial_balance">
@@ -60,37 +65,56 @@
                             </div>
                         </div>
 
-                        <!-- Trial Balance Table -->
+                        <!-- Trial Balance Table: 9 columns -->
+                        <!-- Code | Account | Opening Dr | Opening Cr | Period Dr | Period Cr | Closing Dr | Closing Cr | Net Balance -->
                         <table class="table table-sm table-striped">
                             <thead>
                                 <tr class="bg-primary text-white">
-                                    <th style="width: 8%">Code</th>
-                                    <th style="width: 27%">Account</th>
-                                    <th class="text-end" style="width: 13%">Opening Debit</th>
-                                    <th class="text-end" style="width: 13%">Opening Credit</th>
-                                    <th class="text-end" style="width: 13%">Period Debit</th>
-                                    <th class="text-end" style="width: 13%">Period Credit</th>
-                                    <th class="text-end" style="width: 13%">Closing Balance</th>
+                                    <th style="width: 7%">Code</th>
+                                    <th style="width: 22%">Account</th>
+                                    <th class="text-end" style="width: 10%">Opening Debit</th>
+                                    <th class="text-end" style="width: 10%">Opening Credit</th>
+                                    <th class="text-end" style="width: 10%">Period Debit</th>
+                                    <th class="text-end" style="width: 10%">Period Credit</th>
+                                    <th class="text-end" style="width: 10%">Closing Debit</th>
+                                    <th class="text-end" style="width: 10%">Closing Credit</th>
+                                    <th class="text-end" style="width: 11%">Net Balance</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Initialize totals -->
+                                <!-- Initialize running totals for all value columns -->
                                 <t t-set="total_opening_debit" t-value="0"/>
                                 <t t-set="total_opening_credit" t-value="0"/>
                                 <t t-set="total_period_debit" t-value="0"/>
                                 <t t-set="total_period_credit" t-value="0"/>
                                 <t t-set="total_closing_debit" t-value="0"/>
                                 <t t-set="total_closing_credit" t-value="0"/>
+                                <t t-set="total_net_balance" t-value="0"/>
 
-                                <!-- Group by account type if hierarchy enabled -->
+                                <!-- ========================================== -->
+                                <!-- HIERARCHY MODE: Group by account type       -->
+                                <!-- ========================================== -->
                                 <t t-if="doc.show_hierarchy">
+                                    <!-- Standard Odoo account types for hierarchy grouping -->
                                     <t t-set="account_types" t-value="['asset_receivable', 'asset_cash', 'asset_current', 'asset_non_current', 'asset_prepayments', 'asset_fixed', 'liability_payable', 'liability_credit_card', 'liability_current', 'liability_non_current', 'equity', 'equity_unaffected', 'income', 'income_other', 'expense', 'expense_depreciation', 'expense_direct_cost', 'off_balance']"/>
                                     <t t-foreach="account_types" t-as="acc_type">
                                         <t t-set="type_lines" t-value="doc.line_ids.filtered(lambda l: l.account_id.account_type == acc_type)"/>
                                         <t t-if="type_lines">
+                                            <!-- Account type group header row -->
                                             <tr class="table-secondary">
-                                                <td colspan="7"><strong t-esc="acc_type.replace('_', ' ').title()"/></td>
+                                                <td colspan="9"><strong t-esc="acc_type.replace('_', ' ').title()"/></td>
                                             </tr>
+
+                                            <!-- Initialize group subtotals for this account type -->
+                                            <t t-set="group_opening_debit" t-value="0"/>
+                                            <t t-set="group_opening_credit" t-value="0"/>
+                                            <t t-set="group_period_debit" t-value="0"/>
+                                            <t t-set="group_period_credit" t-value="0"/>
+                                            <t t-set="group_closing_debit" t-value="0"/>
+                                            <t t-set="group_closing_credit" t-value="0"/>
+                                            <t t-set="group_net_balance" t-value="0"/>
+
+                                            <!-- Render each account line within this type group -->
                                             <t t-foreach="type_lines.sorted(key=lambda l: l.account_code)" t-as="line">
                                                 <tr>
                                                     <td><span t-esc="line.account_code"/></td>
@@ -121,21 +145,123 @@
                                                         </t>
                                                     </td>
                                                     <td class="text-end">
+                                                        <t t-if="line.closing_debit">
+                                                            <span t-esc="line.closing_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </t>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <t t-if="line.closing_credit">
+                                                            <span t-esc="line.closing_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </t>
+                                                    </td>
+                                                    <td class="text-end">
                                                         <span t-esc="line.closing_balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                                     </td>
                                                 </tr>
+
+                                                <!-- Partner detail sub-rows when Show Partners is enabled -->
+                                                <t t-if="doc.show_partner_details">
+                                                    <t t-set="partner_lines" t-value="getattr(line, 'partner_detail_ids', False)"/>
+                                                    <t t-if="partner_lines">
+                                                        <t t-foreach="partner_lines.sorted(key=lambda p: p.partner_name or '')" t-as="partner_line">
+                                                            <tr class="text-muted small">
+                                                                <td/>
+                                                                <td class="ps-4">
+                                                                    <i class="fa fa-user-o fa-fw"/>
+                                                                    <span t-esc="partner_line.partner_name or 'No Partner'"/>
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    <t t-if="partner_line.opening_debit">
+                                                                        <span t-esc="partner_line.opening_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                                    </t>
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    <t t-if="partner_line.opening_credit">
+                                                                        <span t-esc="partner_line.opening_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                                    </t>
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    <t t-if="partner_line.period_debit">
+                                                                        <span t-esc="partner_line.period_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                                    </t>
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    <t t-if="partner_line.period_credit">
+                                                                        <span t-esc="partner_line.period_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                                    </t>
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    <t t-if="partner_line.closing_debit">
+                                                                        <span t-esc="partner_line.closing_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                                    </t>
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    <t t-if="partner_line.closing_credit">
+                                                                        <span t-esc="partner_line.closing_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                                    </t>
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    <span t-esc="partner_line.closing_balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                                </td>
+                                                            </tr>
+                                                        </t>
+                                                    </t>
+                                                </t>
+
+                                                <!-- Accumulate running totals -->
                                                 <t t-set="total_opening_debit" t-value="total_opening_debit + line.opening_debit"/>
                                                 <t t-set="total_opening_credit" t-value="total_opening_credit + line.opening_credit"/>
                                                 <t t-set="total_period_debit" t-value="total_period_debit + line.period_debit"/>
                                                 <t t-set="total_period_credit" t-value="total_period_credit + line.period_credit"/>
-                                                <t t-set="total_closing_debit" t-value="total_closing_debit + max(0, line.closing_balance)"/>
-                                                <t t-set="total_closing_credit" t-value="total_closing_credit + abs(min(0, line.closing_balance))"/>
+                                                <t t-set="total_closing_debit" t-value="total_closing_debit + line.closing_debit"/>
+                                                <t t-set="total_closing_credit" t-value="total_closing_credit + line.closing_credit"/>
+                                                <t t-set="total_net_balance" t-value="total_net_balance + line.closing_balance"/>
+
+                                                <!-- Accumulate group subtotals -->
+                                                <t t-set="group_opening_debit" t-value="group_opening_debit + line.opening_debit"/>
+                                                <t t-set="group_opening_credit" t-value="group_opening_credit + line.opening_credit"/>
+                                                <t t-set="group_period_debit" t-value="group_period_debit + line.period_debit"/>
+                                                <t t-set="group_period_credit" t-value="group_period_credit + line.period_credit"/>
+                                                <t t-set="group_closing_debit" t-value="group_closing_debit + line.closing_debit"/>
+                                                <t t-set="group_closing_credit" t-value="group_closing_credit + line.closing_credit"/>
+                                                <t t-set="group_net_balance" t-value="group_net_balance + line.closing_balance"/>
                                             </t>
+
+                                            <!-- Account type group subtotal row -->
+                                            <tr class="table-info fw-bold">
+                                                <td/>
+                                                <td class="ps-3">
+                                                    Subtotal: <t t-esc="acc_type.replace('_', ' ').title()"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-esc="group_opening_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-esc="group_opening_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-esc="group_period_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-esc="group_period_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-esc="group_closing_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-esc="group_closing_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-esc="group_net_balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                            </tr>
                                         </t>
                                     </t>
                                 </t>
 
-                                <!-- Flat list (no hierarchy) -->
+                                <!-- ========================================== -->
+                                <!-- FLAT LIST MODE: No hierarchy grouping       -->
+                                <!-- ========================================== -->
                                 <t t-else="">
                                     <t t-foreach="doc.line_ids.sorted(key=lambda l: l.account_code)" t-as="line">
                                         <tr>
@@ -167,21 +293,85 @@
                                                 </t>
                                             </td>
                                             <td class="text-end">
+                                                <t t-if="line.closing_debit">
+                                                    <span t-esc="line.closing_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </t>
+                                            </td>
+                                            <td class="text-end">
+                                                <t t-if="line.closing_credit">
+                                                    <span t-esc="line.closing_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </t>
+                                            </td>
+                                            <td class="text-end">
                                                 <span t-esc="line.closing_balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                             </td>
                                         </tr>
+
+                                        <!-- Partner detail sub-rows in flat mode -->
+                                        <t t-if="doc.show_partner_details">
+                                            <t t-set="partner_lines" t-value="getattr(line, 'partner_detail_ids', False)"/>
+                                            <t t-if="partner_lines">
+                                                <t t-foreach="partner_lines.sorted(key=lambda p: p.partner_name or '')" t-as="partner_line">
+                                                    <tr class="text-muted small">
+                                                        <td/>
+                                                        <td class="ps-4">
+                                                            <i class="fa fa-user-o fa-fw"/>
+                                                            <span t-esc="partner_line.partner_name or 'No Partner'"/>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <t t-if="partner_line.opening_debit">
+                                                                <span t-esc="partner_line.opening_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                            </t>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <t t-if="partner_line.opening_credit">
+                                                                <span t-esc="partner_line.opening_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                            </t>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <t t-if="partner_line.period_debit">
+                                                                <span t-esc="partner_line.period_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                            </t>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <t t-if="partner_line.period_credit">
+                                                                <span t-esc="partner_line.period_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                            </t>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <t t-if="partner_line.closing_debit">
+                                                                <span t-esc="partner_line.closing_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                            </t>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <t t-if="partner_line.closing_credit">
+                                                                <span t-esc="partner_line.closing_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                            </t>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <span t-esc="partner_line.closing_balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </t>
+                                        </t>
+
+                                        <!-- Accumulate running totals -->
                                         <t t-set="total_opening_debit" t-value="total_opening_debit + line.opening_debit"/>
                                         <t t-set="total_opening_credit" t-value="total_opening_credit + line.opening_credit"/>
                                         <t t-set="total_period_debit" t-value="total_period_debit + line.period_debit"/>
                                         <t t-set="total_period_credit" t-value="total_period_credit + line.period_credit"/>
-                                        <t t-set="total_closing_debit" t-value="total_closing_debit + max(0, line.closing_balance)"/>
-                                        <t t-set="total_closing_credit" t-value="total_closing_credit + abs(min(0, line.closing_balance))"/>
+                                        <t t-set="total_closing_debit" t-value="total_closing_debit + line.closing_debit"/>
+                                        <t t-set="total_closing_credit" t-value="total_closing_credit + line.closing_credit"/>
+                                        <t t-set="total_net_balance" t-value="total_net_balance + line.closing_balance"/>
                                     </t>
                                 </t>
                             </tbody>
                             <tfoot>
-                                <!-- Totals Row -->
-                                <tr class="table-primary">
+                                <!-- Compute balance status for conditional totals row formatting -->
+                                <t t-set="is_totals_unbalanced" t-value="abs(total_opening_debit - total_opening_credit) >= 0.01 or abs(total_period_debit - total_period_credit) >= 0.01 or abs(total_closing_debit - total_closing_credit) >= 0.01"/>
+                                <!-- Totals row: red/warning if any debit/credit column pair is out of balance -->
+                                <tr t-att-class="'table-danger fw-bold' if is_totals_unbalanced else 'table-primary fw-bold'">
                                     <td colspan="2"><strong>TOTALS</strong></td>
                                     <td class="text-end">
                                         <strong t-esc="total_opening_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
@@ -196,40 +386,82 @@
                                         <strong t-esc="total_period_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                     </td>
                                     <td class="text-end">
-                                        <strong t-esc="total_closing_debit - total_closing_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        <strong t-esc="total_closing_debit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_closing_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="total_net_balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                     </td>
                                 </tr>
                             </tfoot>
                         </table>
 
-                        <!-- Balance Verification -->
+                        <!-- Balance Verification Section -->
+                        <!-- Shows three independent verifications: Opening, Period, Closing -->
                         <div class="mt-4">
+                            <!-- Compute balance differences for each debit/credit column pair -->
                             <t t-set="opening_diff" t-value="abs(total_opening_debit - total_opening_credit)"/>
                             <t t-set="period_diff" t-value="abs(total_period_debit - total_period_credit)"/>
-                            
-                            <t t-if="opening_diff &lt; 0.01 and period_diff &lt; 0.01">
+                            <t t-set="closing_diff" t-value="abs(total_closing_debit - total_closing_credit)"/>
+                            <t t-set="opening_balanced" t-value="opening_diff &lt; 0.01"/>
+                            <t t-set="period_balanced" t-value="period_diff &lt; 0.01"/>
+                            <t t-set="closing_balanced" t-value="closing_diff &lt; 0.01"/>
+
+                            <!-- Use model's is_balanced computed field as authoritative overall status -->
+                            <t t-set="all_balanced" t-value="doc.is_balanced"/>
+
+                            <t t-if="all_balanced">
                                 <div class="alert alert-success">
-                                    <i class="fa fa-check"/> Trial Balance is in balance
-                                    <ul class="mb-0">
-                                        <li>Opening: Debits = Credits</li>
-                                        <li>Period: Debits = Credits</li>
+                                    <i class="fa fa-check-circle"/> <strong>Trial Balance is in balance</strong>
+                                    <ul class="mb-0 mt-1">
+                                        <li>
+                                            <i class="fa fa-check text-success"/> Opening: Debits = Credits &#x2713;
+                                        </li>
+                                        <li>
+                                            <i class="fa fa-check text-success"/> Period: Debits = Credits &#x2713;
+                                        </li>
+                                        <li>
+                                            <i class="fa fa-check text-success"/> Closing: Debits = Credits &#x2713;
+                                        </li>
                                     </ul>
                                 </div>
                             </t>
                             <t t-else="">
                                 <div class="alert alert-danger">
-                                    <i class="fa fa-warning"/> Trial Balance is out of balance
-                                    <ul class="mb-0">
-                                        <t t-if="opening_diff >= 0.01">
-                                            <li>Opening balance difference: 
+                                    <i class="fa fa-exclamation-triangle"/> <strong>Trial Balance has discrepancies</strong>
+                                    <ul class="mb-0 mt-1">
+                                        <!-- Opening balance verification -->
+                                        <li>
+                                            <t t-if="opening_balanced">
+                                                <i class="fa fa-check text-success"/> Opening: Debits = Credits &#x2713;
+                                            </t>
+                                            <t t-else="">
+                                                <i class="fa fa-times text-danger"/> Opening balance difference:
                                                 <span t-esc="opening_diff" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
-                                            </li>
-                                        </t>
-                                        <t t-if="period_diff >= 0.01">
-                                            <li>Period movement difference: 
+                                            </t>
+                                        </li>
+                                        <!-- Period movement verification -->
+                                        <li>
+                                            <t t-if="period_balanced">
+                                                <i class="fa fa-check text-success"/> Period: Debits = Credits &#x2713;
+                                            </t>
+                                            <t t-else="">
+                                                <i class="fa fa-times text-danger"/> Period movement difference:
                                                 <span t-esc="period_diff" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
-                                            </li>
-                                        </t>
+                                            </t>
+                                        </li>
+                                        <!-- Closing balance verification -->
+                                        <li>
+                                            <t t-if="closing_balanced">
+                                                <i class="fa fa-check text-success"/> Closing: Debits = Credits &#x2713;
+                                            </t>
+                                            <t t-else="">
+                                                <i class="fa fa-times text-danger"/> Closing balance difference:
+                                                <span t-esc="closing_diff" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </t>
+                                        </li>
                                     </ul>
                                 </div>
                             </t>
@@ -251,7 +483,7 @@
                                     <tr>
                                         <td>Net Position</td>
                                         <td class="text-end">
-                                            <span t-esc="total_closing_debit - total_closing_credit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            <span t-esc="total_net_balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                     </tr>
                                 </table>

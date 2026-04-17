@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Demo Data for Bank Reconciliation CE Module (FEATURE-002)
+
+    Provides realistic reconciliation scenarios for demonstration and testing.
+    This file is registered under the 'demo' key in __manifest__.py and loads
+    only when Odoo's demo mode is active.
+
+    Contents:
+      Section 1 — Two sample bank statements with 11 statement lines covering
+                   every key reconciliation scenario:
+                     • Exact match by amount and structured reference
+                     • Partner name matching (no structured reference)
+                     • Invoice reference regex pattern matching
+                     • Partial reconciliation (partial payment)
+                     • Unmatched bank fee (manual intervention)
+                     • Fuzzy / amount-tolerance matching
+                     • Outgoing supplier payment matching
+                     • One-to-many (combined payment) matching
+                     • Completely unidentified transfer
+                     • Rule-based auto-reconciliation (bank fee)
+
+      Section 2 — Three demo reconciliation rules extending account.reconcile.model
+                   with the CE module's enhanced features (regex patterns, amount
+                   tolerance, confidence thresholds, and priority ordering).
+
+    Integration:
+      • Bank journals are resolved dynamically via the search="..." attribute,
+        following the same pattern used in addons/account/demo/account_demo.py.
+      • Partners reference standard base module demo records
+        (base.res_partner_2, base.res_partner_3, etc.).
+      • Reconciliation rules use fields from both the core account.reconcile.model
+        and the CE extension (models/reconciliation_rule.py).
+-->
+<odoo>
+    <data noupdate="1">
+
+        <!-- ================================================================
+             SECTION 1: Demo Bank Statements and Statement Lines
+             ================================================================
+             Two bank statements providing a comprehensive set of reconciliation
+             scenarios.  Each statement line is documented with the specific
+             reconciliation feature it is designed to demonstrate.
+
+             Statement lines reference existing demo partners from the base
+             module.  The bank journal is located dynamically via the search
+             attribute so that demo data works regardless of chart-of-accounts
+             selection.
+        -->
+
+        <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Statement 1: Mixed Reconciliation Scenarios
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Six incoming/outgoing lines exercising different matching
+             strategies of the reconciliation engine.
+
+             balance_start:      10,000.00
+             line total:         +3,554.00   (see per-line amounts below)
+             balance_end_real:   13,554.00
+        -->
+        <record id="demo_recon_statement_1" model="account.bank.statement">
+            <field name="name">Demo: Bank Reconciliation — Mixed Scenarios</field>
+            <field name="balance_start">10000.00</field>
+            <field name="balance_end_real">13554.00</field>
+        </record>
+
+        <!-- Line 1: EXACT MATCH by amount and payment reference (+1,500.00)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  A customer pays exactly the invoiced amount and
+                        includes the structured invoice number INV/2025/00001
+                        in the payment reference.
+             Expected:  The matching engine scores this as HIGH confidence
+                        (≥90%) because both the amount and reference match
+                        an open receivable precisely.
+             Demonstrates: BR-002 exact amount matching and reference scoring,
+                           BR-004 invoice-number regex rule.
+        -->
+        <record id="demo_recon_stl_exact_match" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_1"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">INV/2025/00001 - Customer Payment</field>
+            <field name="amount">1500.00</field>
+            <field name="date" eval="(datetime.date.today() - datetime.timedelta(days=5)).strftime('%Y-%m-%d')"/>
+            <field name="partner_id" ref="base.res_partner_2"/>
+        </record>
+
+        <!-- Line 2: PARTNER NAME MATCH (+650.00)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  Payment received with the partner's trade name in the
+                        bank description but NO structured invoice reference.
+                        The matching engine must identify the partner by name
+                        similarity and match against their open invoices.
+             Expected:  MEDIUM confidence (70–89%) via the partner-name
+                        scoring dimension.
+             Demonstrates: BR-002 partner-name scoring,
+                           BR-004 partner-based matching rules.
+        -->
+        <record id="demo_recon_stl_partner_match" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_1"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">Customer payment - consulting services</field>
+            <field name="amount">650.00</field>
+            <field name="date" eval="(datetime.date.today() - datetime.timedelta(days=4)).strftime('%Y-%m-%d')"/>
+            <field name="partner_name">Deco Addict</field>
+        </record>
+
+        <!-- Line 3: REFERENCE PATTERN / REGEX MATCH (+200.00)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  Wire transfer whose description embeds an invoice
+                        reference (INV/2025/00042) among other text.  The
+                        regex rule (?i)(INV|BILL|FAC)[/-]?\d{4,} should
+                        extract the reference and score it.
+             Expected:  MEDIUM-to-HIGH confidence via reference regex.
+             Demonstrates: BR-004 regex pattern matching in reconciliation
+                           rules.
+        -->
+        <record id="demo_recon_stl_regex_match" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_1"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">Wire Transfer Re: INV/2025/00042</field>
+            <field name="amount">200.00</field>
+            <field name="date" eval="(datetime.date.today() - datetime.timedelta(days=3)).strftime('%Y-%m-%d')"/>
+        </record>
+
+        <!-- Line 4: PARTIAL RECONCILIATION (+800.00)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  Customer makes a partial payment of 800.00 against
+                        a larger outstanding balance.  The reconciliation
+                        workflow must create a partial reconciliation record,
+                        leaving the remaining amount open.
+             Expected:  Partial match proposed; write-off or open-balance
+                        handling required.
+             Demonstrates: BR-005 partial reconciliation and split
+                           transaction support.
+        -->
+        <record id="demo_recon_stl_partial" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_1"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">Partial payment for project PO-2025-003</field>
+            <field name="amount">800.00</field>
+            <field name="date" eval="(datetime.date.today() - datetime.timedelta(days=2)).strftime('%Y-%m-%d')"/>
+            <field name="partner_id" ref="base.res_partner_12"/>
+        </record>
+
+        <!-- Line 5: UNMATCHED LINE — bank fee (-95.50)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  Quarterly bank service charge with no corresponding
+                        journal entry in the system.  Either a bank-fee
+                        auto-recognition rule handles it, or the user must
+                        create a manual write-off entry.
+             Expected:  No journal-entry match; handled via bank-fee rule
+                        (demo_rule_bank_fee) or manual reconciliation.
+             Demonstrates: BR-003 manual reconciliation workflow,
+                           BR-004 bank fee auto-recognition rules.
+        -->
+        <record id="demo_recon_stl_unmatched_fee" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_1"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">BANK SERVICE CHARGE Q1 2025</field>
+            <field name="amount">-95.50</field>
+            <field name="date" eval="(datetime.date.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')"/>
+        </record>
+
+        <!-- Line 6: FUZZY / AMOUNT TOLERANCE MATCH (+499.50)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  Wire transfer for 499.50 when the open invoice is
+                        500.00.  The 0.50 difference (0.1 %) falls within
+                        the amount-tolerance threshold configured in the
+                        reconciliation rules, so the engine proposes a match
+                        with a small write-off for the difference.
+             Expected:  Match with tolerance; write-off of 0.50.
+             Demonstrates: BR-002 amount scoring with tolerance,
+                           BR-004 amount-tolerance matching rules,
+                           BR-005 write-off handling.
+        -->
+        <record id="demo_recon_stl_fuzzy_match" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_1"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">Wire transfer from customer</field>
+            <field name="amount">499.50</field>
+            <field name="date" eval="time.strftime('%Y-%m-%d')"/>
+            <field name="partner_id" ref="base.res_partner_5"/>
+        </record>
+
+        <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Statement 2: Outgoing Payments and Complex Scenarios
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Five lines demonstrating outgoing payments, multi-match
+             (one-to-many) logic, unidentified transfers, and rule-based
+             auto-reconciliation.
+
+             balance_start:      13,554.00
+             line total:           -744.50   (see per-line amounts below)
+             balance_end_real:   12,809.50
+        -->
+        <record id="demo_recon_statement_2" model="account.bank.statement">
+            <field name="name">Demo: Bank Reconciliation — Outgoing &amp; Complex</field>
+            <field name="balance_start">13554.00</field>
+            <field name="balance_end_real">12809.50</field>
+        </record>
+
+        <!-- Line 7: EXACT OUTGOING MATCH — supplier payment (-350.00)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  Payment to a supplier matching an outstanding vendor
+                        bill by amount and structured bill reference
+                        (BILL/2025/00015).
+             Expected:  HIGH confidence auto-match against open payable.
+             Demonstrates: BR-002 outgoing payment matching,
+                           BR-004 supplier bill reference rule.
+        -->
+        <record id="demo_recon_stl_outgoing_exact" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_2"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">BILL/2025/00015 - Supplier Payment</field>
+            <field name="amount">-350.00</field>
+            <field name="date" eval="(datetime.date.today() - datetime.timedelta(days=8)).strftime('%Y-%m-%d')"/>
+            <field name="partner_id" ref="base.res_partner_3"/>
+        </record>
+
+        <!-- Line 8: MULTI-MATCH / ONE-TO-MANY (-1,800.00)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  A single bank payment covering multiple supplier
+                        invoices.  The matching engine must detect that the
+                        combined total of two or more open payable entries
+                        equals the statement line amount and propose a
+                        one-to-many match.
+             Expected:  One-to-many match proposed by matching engine.
+             Demonstrates: BR-002 one-to-many matching logic,
+                           combination scoring algorithm.
+        -->
+        <record id="demo_recon_stl_multi_match" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_2"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">Combined payment - multiple invoices</field>
+            <field name="amount">-1800.00</field>
+            <field name="date" eval="(datetime.date.today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d')"/>
+            <field name="partner_id" ref="base.res_partner_4"/>
+        </record>
+
+        <!-- Line 9: COMPLETELY UNMATCHED — unknown transfer (+250.00)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  An incoming transfer with no identifiable partner,
+                        no matching reference, and no amount correlation in
+                        the system.  Requires full manual reconciliation by
+                        the accounting team.
+             Expected:  No automatic matches found; stays in "unreconciled"
+                        state until manual intervention.
+             Demonstrates: BR-003 manual reconciliation workflow.
+        -->
+        <record id="demo_recon_stl_unmatched" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_2"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">UNKNOWN TRANSFER REF:778899</field>
+            <field name="amount">250.00</field>
+            <field name="date" eval="(datetime.date.today() - datetime.timedelta(days=6)).strftime('%Y-%m-%d')"/>
+        </record>
+
+        <!-- Line 10: PARTNER NAME MATCH — second partner (+1,200.50)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  Payment received from a partner identifiable by
+                        trade name in the bank description.  Different
+                        partner from Line 2 to demonstrate the engine's
+                        ability to match across the full partner database.
+             Expected:  MEDIUM confidence via partner-name identification.
+             Demonstrates: BR-002 partner scoring dimension.
+        -->
+        <record id="demo_recon_stl_partner_match_2" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_2"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">Payment received - services rendered</field>
+            <field name="amount">1200.50</field>
+            <field name="date" eval="(datetime.date.today() - datetime.timedelta(days=5)).strftime('%Y-%m-%d')"/>
+            <field name="partner_name">Azure Interior</field>
+        </record>
+
+        <!-- Line 11: RULE-BASED AUTO-RECONCILIATION — bank fee (-45.00)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Scenario:  Monthly bank maintenance fee that matches the
+                        bank-fee auto-recognition rule (demo_rule_bank_fee).
+                        The rule's regex pattern
+                        (?i)(BANK.*FEE|SERVICE.*CHARGE|MAINTENANCE.*FEE)
+                        detects the description and auto-reconciles with a
+                        write-off to the bank-fee expense account.
+             Expected:  Auto-reconciled by demo_rule_bank_fee.
+             Demonstrates: BR-004 rule-based auto-reconciliation triggers.
+        -->
+        <record id="demo_recon_stl_bank_fee" model="account.bank.statement.line">
+            <field name="statement_id" ref="demo_recon_statement_2"/>
+            <field name="journal_id" search="[('type', '=', 'bank')]" model="account.journal"/>
+            <field name="payment_ref">Monthly bank maintenance fee</field>
+            <field name="amount">-45.00</field>
+            <field name="date" eval="(datetime.date.today() - datetime.timedelta(days=4)).strftime('%Y-%m-%d')"/>
+        </record>
+
+        <!-- ================================================================
+             SECTION 2: Demo Reconciliation Rules
+             ================================================================
+             Three demonstration rules extending account.reconcile.model with
+             the CE module's enhanced matching features (regex reference
+             matching, partner-name matching, confidence thresholds, priority
+             ordering, and amount tolerance).
+
+             These supplement the default production rules defined in
+             data/reconciliation_data.xml.  Each rule targets specific
+             reconciliation scenarios present in the demo bank statements
+             above.
+
+             All rules use the extension fields from
+             models/reconciliation_rule.py:
+               • priority — lower number = higher priority
+               • match_reference / match_reference_param — payment-ref matching
+               • match_partner_name / match_partner_name_param — partner matching
+               • match_date_range — date proximity window (days)
+               • match_amount_tolerance — percentage tolerance for amounts
+               • confidence_threshold — minimum score to apply rule
+               • auto_reconcile_threshold — score for auto-reconciliation
+               • is_ce_rule — flag identifying CE-enhanced rules
+        -->
+
+        <!-- Demo Rule 1: Invoice Number Auto-Match (INV/YYYY/NNNNN)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Purpose:  Automatically reconcile incoming payments whose
+                       description contains a structured invoice number in
+                       the format INV/YYYY/NNNNN (case-insensitive).
+             Trigger:  auto_reconcile — matching entries above the 95%
+                       confidence threshold are reconciled without manual
+                       review.
+             Regex:    (?i)INV/\d{4}/\d{5}
+             Targets:  demo_recon_stl_exact_match (Line 1)
+        -->
+        <record id="demo_rule_invoice_auto" model="account.reconcile.model">
+            <field name="name">Demo: Invoice Number Auto-Match (INV/YYYY/NNNNN)</field>
+            <field name="sequence">100</field>
+            <field name="priority">15</field>
+            <field name="trigger">auto_reconcile</field>
+            <field name="match_label">match_regex</field>
+            <field name="match_label_param">(?i)INV/\d{4}/\d{5}</field>
+            <field name="match_reference">match_regex</field>
+            <field name="match_reference_param">(?i)INV/\d{4}/\d{5}</field>
+            <field name="confidence_threshold">85.0</field>
+            <field name="auto_reconcile_threshold">95.0</field>
+            <field name="match_date_range">14</field>
+            <field name="match_amount_tolerance">0.0</field>
+            <field name="is_ce_rule" eval="True"/>
+        </record>
+
+        <!-- Demo Rule 2: Bank Fee Auto-Recognition
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Purpose:  Automatically reconcile bank fees and service charges
+                       by recognizing common fee-related keywords in the
+                       statement line description.  Creates a write-off entry
+                       directing the full amount to a general expense account.
+             Trigger:  auto_reconcile — fees above 90% confidence are handled
+                       without manual intervention.
+             Regex:    (?i)(BANK.*FEE|SERVICE.*CHARGE|MAINTENANCE.*FEE|BANK.*CHARGE)
+             Targets:  demo_recon_stl_unmatched_fee (Line 5),
+                       demo_recon_stl_bank_fee (Line 11)
+        -->
+        <record id="demo_rule_bank_fee" model="account.reconcile.model">
+            <field name="name">Demo: Bank Fee Auto-Recognition</field>
+            <field name="sequence">110</field>
+            <field name="priority">25</field>
+            <field name="trigger">auto_reconcile</field>
+            <field name="match_label">match_regex</field>
+            <field name="match_label_param">(?i)(BANK.*FEE|SERVICE.*CHARGE|MAINTENANCE.*FEE|BANK.*CHARGE)</field>
+            <field name="confidence_threshold">80.0</field>
+            <field name="auto_reconcile_threshold">90.0</field>
+            <field name="match_date_range">0</field>
+            <field name="match_amount_tolerance">0.0</field>
+            <field name="is_ce_rule" eval="True"/>
+        </record>
+
+        <!-- Write-off line for the bank fee rule:
+             Directs 100% of the fee amount to a general expense account.
+             The account is found dynamically via search so that the demo
+             works with any chart of accounts. -->
+        <record id="demo_rule_bank_fee_line_1" model="account.reconcile.model.line">
+            <field name="model_id" ref="demo_rule_bank_fee"/>
+            <field name="label">Bank Fee</field>
+            <field name="account_id" search="[('account_type', '=', 'expense')]" model="account.account"/>
+            <field name="amount_type">percentage</field>
+            <field name="amount_string">100</field>
+        </record>
+
+        <!-- Demo Rule 3: Supplier Bill Reference Match (BILL/YYYY/NNNNN)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Purpose:  Match outgoing payments whose description contains a
+                       structured supplier bill number in the format
+                       BILL/YYYY/NNNNN (case-insensitive).  Uses a 1%
+                       amount tolerance to accommodate small bank fee
+                       deductions or rounding differences.
+             Trigger:  manual — matches are presented for user confirmation
+                       before reconciliation.
+             Regex:    (?i)BILL/\d{4}/\d{5}
+             Targets:  demo_recon_stl_outgoing_exact (Line 7)
+        -->
+        <record id="demo_rule_bill_match" model="account.reconcile.model">
+            <field name="name">Demo: Supplier Bill Reference Match</field>
+            <field name="sequence">120</field>
+            <field name="priority">20</field>
+            <field name="trigger">manual</field>
+            <field name="match_label">match_regex</field>
+            <field name="match_label_param">(?i)BILL/\d{4}/\d{5}</field>
+            <field name="match_reference">match_regex</field>
+            <field name="match_reference_param">(?i)BILL/\d{4}/\d{5}</field>
+            <field name="confidence_threshold">70.0</field>
+            <field name="auto_reconcile_threshold">90.0</field>
+            <field name="match_date_range">30</field>
+            <field name="match_amount_tolerance">1.0</field>
+            <field name="is_ce_rule" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

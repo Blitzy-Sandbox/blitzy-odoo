@@ -1,0 +1,748 @@
+/**
+ * Bank Reconciliation SCSS - Backend Styling
+ * Copyright 2024 Enterprise Accounting Team
+ * License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+ *
+ * Styles for bank reconciliation interface in Odoo backend
+ */
+
+// Reconciliation Color Variables
+$reconciliation-primary-color: #875a7b;
+$reconciliation-success-color: #28a745;
+$reconciliation-warning-color: #ffc107;
+$reconciliation-danger-color: #dc3545;
+$reconciliation-info-color: #17a2b8;
+
+// Confidence Tier Colors (semantic mapping)
+$confidence-high-color: $reconciliation-success-color;   // High ≥90% — green
+$confidence-medium-color: $reconciliation-warning-color;  // Medium 70-89% — amber
+$confidence-low-color: #6c757d;                           // Low 50-69% — grey
+
+// Bank Reconciliation Container
+.o_bank_reconciliation {
+
+    // (a) Reconciliation Header
+    .reconciliation-header {
+        text-align: center;
+        margin-bottom: 2rem;
+
+        h2 {
+            color: $reconciliation-primary-color;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .reconciliation-subtitle {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    }
+
+    // (b) Split-Panel Layout for Reconciliation Wizard
+    .reconciliation-split-panel {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+
+        > .statement-lines-panel,
+        > .matching-candidates-panel {
+            flex: 1;
+            min-width: 0;
+        }
+
+        // Responsive: stack panels vertically on narrow screens
+        @media (max-width: 992px) {
+            flex-direction: column;
+
+            > .statement-lines-panel,
+            > .matching-candidates-panel {
+                min-width: 100%;
+            }
+        }
+    }
+
+    // (c) Statement Lines Panel
+    .statement-lines-panel {
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        overflow: hidden;
+
+        .panel-title {
+            background: $reconciliation-primary-color;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+        }
+
+        .statement-line-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.625rem 1rem;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+
+            &:last-child {
+                border-bottom: none;
+            }
+
+            &:hover {
+                background: #f8f9fa;
+            }
+
+            &.active,
+            &.selected {
+                background: lighten($reconciliation-primary-color, 40%);
+                border-left: 3px solid $reconciliation-primary-color;
+            }
+
+            .line-date {
+                color: #6c757d;
+                font-size: 0.85rem;
+                min-width: 80px;
+            }
+
+            .line-label {
+                flex: 1;
+                padding: 0 0.75rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .line-amount {
+                font-weight: 600;
+                white-space: nowrap;
+                text-align: right;
+                min-width: 100px;
+
+                &.positive {
+                    color: $reconciliation-success-color;
+                }
+
+                &.negative {
+                    color: $reconciliation-danger-color;
+                }
+            }
+
+            .line-partner {
+                color: #495057;
+                font-size: 0.85rem;
+            }
+        }
+    }
+
+    // (d) Matching Candidates Panel
+    .matching-candidates-panel {
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        overflow: hidden;
+
+        .panel-title {
+            background: $reconciliation-info-color;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+        }
+
+        .no-candidates {
+            padding: 2rem;
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+    }
+
+    // (e) Confidence Badge Styles
+    .confidence-badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 50rem; // rounded-pill
+        color: white;
+        font-weight: 600;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        text-align: center;
+        vertical-align: middle;
+
+        &.high {
+            background-color: $confidence-high-color;
+        }
+
+        &.medium {
+            background-color: $confidence-medium-color;
+            color: #212529; // dark text on amber for accessibility
+        }
+
+        &.low {
+            background-color: $confidence-low-color;
+        }
+    }
+
+    // (f) Match Suggestion Display
+    .match-suggestion {
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 0.75rem 1rem;
+        margin: 0.5rem;
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+
+        &:hover {
+            border-color: $reconciliation-primary-color;
+            background: #f8f9fa;
+            box-shadow: 0 0 0 0.15rem rgba($reconciliation-primary-color, 0.15);
+        }
+
+        &.selected {
+            border-color: $reconciliation-success-color;
+            background: lighten($reconciliation-success-color, 42%);
+            box-shadow: 0 0 0 0.15rem rgba($reconciliation-success-color, 0.2);
+        }
+
+        .suggestion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.35rem;
+        }
+
+        .suggestion-reference {
+            font-weight: 600;
+            color: #212529;
+        }
+
+        .suggestion-amount {
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .suggestion-details {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .suggestion-partner {
+            font-size: 0.85rem;
+            color: #495057;
+        }
+    }
+
+    // (g) Reconciliation Table
+    .reconciliation-table {
+        width: 100%;
+        margin-bottom: 1.5rem;
+
+        th {
+            background: $reconciliation-primary-color;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem;
+            border: none;
+        }
+
+        td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .section-header {
+            background: #e9ecef;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .subtotal-row {
+            background: #d1ecf1;
+            font-weight: 600;
+        }
+
+        .total-row {
+            background: $reconciliation-primary-color;
+            color: white;
+            font-weight: 700;
+        }
+
+        .text-end {
+            text-align: right;
+        }
+
+        // Amount columns always right-aligned
+        .col-amount {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        // Drill-down links within reconciliation table
+        a.drilldown {
+            color: $reconciliation-primary-color;
+            text-decoration: none;
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+    }
+
+    // (h) Reconciliation Status Indicators
+    .reconciliation-status {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+
+        &.reconciled {
+            background: lighten($reconciliation-success-color, 40%);
+            border: 1px solid $reconciliation-success-color;
+            color: darken($reconciliation-success-color, 20%);
+        }
+
+        &.unreconciled {
+            background: lighten($reconciliation-danger-color, 35%);
+            border: 1px solid $reconciliation-danger-color;
+            color: darken($reconciliation-danger-color, 15%);
+        }
+
+        &.partial {
+            background: lighten($reconciliation-warning-color, 35%);
+            border: 1px solid $reconciliation-warning-color;
+            color: darken($reconciliation-warning-color, 25%);
+        }
+    }
+
+    // (i) Progress Bar for Reconciliation Completion
+    .reconciliation-progress {
+        height: 25px;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 1rem 0;
+        background: #e9ecef;
+
+        .progress-segment {
+            display: inline-block;
+            height: 100%;
+            line-height: 25px;
+            text-align: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: width 0.3s ease;
+
+            &.reconciled-segment {
+                background: $reconciliation-success-color;
+            }
+
+            &.partial-segment {
+                background: $reconciliation-warning-color;
+                color: #212529;
+            }
+
+            &.unreconciled-segment {
+                background: $reconciliation-danger-color;
+            }
+        }
+    }
+
+    // (j) Action Buttons Area
+    .reconciliation-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0;
+
+        .btn-match {
+            background: $reconciliation-success-color;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+
+            &:hover {
+                background: darken($reconciliation-success-color, 10%);
+            }
+
+            &:disabled {
+                opacity: 0.65;
+                cursor: not-allowed;
+            }
+        }
+
+        .btn-unmatch {
+            background: $reconciliation-danger-color;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+
+            &:hover {
+                background: darken($reconciliation-danger-color, 10%);
+            }
+
+            &:disabled {
+                opacity: 0.65;
+                cursor: not-allowed;
+            }
+        }
+
+        .btn-partial-match {
+            background: $reconciliation-warning-color;
+            color: #212529;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+
+            &:hover {
+                background: darken($reconciliation-warning-color, 10%);
+            }
+
+            &:disabled {
+                opacity: 0.65;
+                cursor: not-allowed;
+            }
+        }
+
+        .btn-write-off {
+            background: $reconciliation-info-color;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+
+            &:hover {
+                background: darken($reconciliation-info-color, 10%);
+            }
+
+            &:disabled {
+                opacity: 0.65;
+                cursor: not-allowed;
+            }
+        }
+    }
+
+    // (k) Write-Off Dialog
+    .write-off-dialog {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 1.25rem;
+        margin: 1rem 0;
+
+        .write-off-title {
+            font-weight: 600;
+            color: $reconciliation-primary-color;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .write-off-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+
+            .form-group {
+                flex: 1;
+                min-width: 180px;
+
+                label {
+                    display: block;
+                    font-weight: 500;
+                    color: #495057;
+                    margin-bottom: 0.35rem;
+                    font-size: 0.875rem;
+                }
+
+                select,
+                input {
+                    width: 100%;
+                    padding: 0.375rem 0.75rem;
+                    border: 1px solid #ced4da;
+                    border-radius: 4px;
+                    font-size: 0.875rem;
+                    color: #495057;
+                    transition: border-color 0.15s ease;
+
+                    &:focus {
+                        border-color: $reconciliation-primary-color;
+                        outline: none;
+                        box-shadow: 0 0 0 0.15rem rgba($reconciliation-primary-color, 0.2);
+                    }
+                }
+            }
+        }
+
+        .write-off-actions {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .write-off-amount-display {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: $reconciliation-danger-color;
+            margin-bottom: 0.75rem;
+        }
+    }
+
+    // (l) Summary Cards
+    .reconciliation-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 1.5rem;
+
+        .summary-card {
+            flex: 1;
+            min-width: 200px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+
+            .card-title {
+                font-size: 0.875rem;
+                color: #6c757d;
+                margin-bottom: 0.5rem;
+            }
+
+            .card-value {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: #212529;
+            }
+
+            &.total-lines .card-value {
+                color: $reconciliation-primary-color;
+            }
+
+            &.reconciled-count .card-value {
+                color: $reconciliation-success-color;
+            }
+
+            &.unreconciled-count .card-value {
+                color: $reconciliation-danger-color;
+            }
+
+            &.match-rate .card-value {
+                color: $reconciliation-info-color;
+            }
+        }
+    }
+
+    // Report Footer (consistent with financial report pattern)
+    .reconciliation-footer {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #dee2e6;
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+}
+
+// Import Wizard Specific Styles
+.o_bank_statement_import_wizard {
+
+    // (a) File Upload Area
+    .file-upload-area {
+        border: 2px dashed #ced4da;
+        border-radius: 6px;
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        background: #f8f9fa;
+        margin-bottom: 1.5rem;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+
+        &:hover,
+        &.drag-hover {
+            border-color: $reconciliation-primary-color;
+            background: lighten($reconciliation-primary-color, 45%);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            color: #6c757d;
+            margin-bottom: 0.75rem;
+        }
+
+        .upload-text {
+            color: #495057;
+            font-size: 0.95rem;
+        }
+
+        .upload-hint {
+            color: #6c757d;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+    }
+
+    // (b) Format Selection
+    .format-selection {
+        margin-bottom: 1.5rem;
+
+        .format-option {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .o_radio_input {
+            margin-right: 0.5rem;
+        }
+
+        label {
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .format-description {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-left: 1.5rem;
+        }
+    }
+
+    // (c) Column Mapping Table (CSV Import)
+    .column-mapping-table {
+        width: 100%;
+        margin-bottom: 1.5rem;
+        border-collapse: collapse;
+
+        th {
+            background: $reconciliation-primary-color;
+            color: white;
+            font-weight: 600;
+            padding: 0.625rem 0.75rem;
+            border: none;
+            font-size: 0.875rem;
+        }
+
+        td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: middle;
+        }
+
+        select {
+            width: 100%;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .mapping-preview {
+            color: #6c757d;
+            font-size: 0.8rem;
+            font-style: italic;
+        }
+    }
+
+    // (d) Preview Table
+    .import-preview-table {
+        width: 100%;
+        margin-bottom: 1.5rem;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+
+        th {
+            background: #e9ecef;
+            font-weight: 600;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #dee2e6;
+            color: #495057;
+        }
+
+        td {
+            padding: 0.375rem 0.75rem;
+            border: 1px solid #dee2e6;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tbody tr:hover {
+            background: #e9ecef;
+        }
+
+        .preview-row-number {
+            color: #6c757d;
+            font-weight: 600;
+            text-align: center;
+            width: 40px;
+        }
+    }
+
+    // (e) Import Progress Indicator
+    .import-progress {
+        margin: 1.5rem 0;
+
+        .progress-bar-container {
+            height: 20px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #e9ecef;
+
+            .progress-bar-fill {
+                height: 100%;
+                line-height: 20px;
+                text-align: center;
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: white;
+                background: $reconciliation-success-color;
+                transition: width 0.4s ease;
+                border-radius: 4px;
+            }
+        }
+
+        .progress-text {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: #495057;
+            text-align: center;
+        }
+
+        .progress-error {
+            color: $reconciliation-danger-color;
+            font-weight: 600;
+        }
+    }
+
+    // (f) Filter and Notebook Tab Styling
+    .filter-section {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+
+    .o_notebook {
+        .nav-link {
+            font-weight: 500;
+        }
+    }
+}

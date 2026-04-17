@@ -1,0 +1,31 @@
+!Type:Bank
+D01/15/2024
+T1000.00
+PPayment INV/2024/001
+NREF001
+MInvoice payment received
+^
+D01/16/2024
+T-500.00
+PSupplier Payment
+NREF002
+MPayment to supplier
+^
+D01/17/2024
+T-25.00
+PBank Service Fee
+NFEE001
+MMonthly service charge
+^
+D01/18/2024
+T-150.00
+PCustomer Refund
+NREF003
+MRefund for order cancellation
+^
+D01/19/2024
+T2500.00
+PWire Transfer In
+NWIRE001
+MInternational wire transfer
+^

@@ -10,7 +10,7 @@
     <!-- Root Menu: Financial Reports (under Accounting/Invoicing Reporting) -->
     <menuitem id="menu_financial_reports_root"
               name="Financial Reports"
-              parent="account.account_reports"
+              parent="account.menu_finance_reports"
               sequence="10"
               groups="account.group_account_readonly"/>
 

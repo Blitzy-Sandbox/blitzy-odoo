@@ -12,6 +12,9 @@ $report-success-color: #28a745;
 $report-warning-color: #ffc107;
 $report-danger-color: #dc3545;
 $report-info-color: #17a2b8;
+$report-border-color: #dee2e6;
+$report-bg-light: #f8f9fa;
+$report-text-muted: #6c757d;
 
 // Financial Report Container
 .o_financial_report {
@@ -72,6 +75,24 @@ $report-info-color: #17a2b8;
             color: #495057;
         }
 
+        // Multi-level indentation for hierarchical account display
+        // Supports nested groups (e.g., Assets > Current Assets > Cash)
+        .indent-level-1 {
+            padding-left: 1rem;
+        }
+
+        .indent-level-2 {
+            padding-left: 2rem;
+        }
+
+        .indent-level-3 {
+            padding-left: 3rem;
+        }
+
+        .indent-level-4 {
+            padding-left: 4rem;
+        }
+
         .subtotal-row {
             background: #d1ecf1;
             font-weight: 600;
@@ -87,33 +108,120 @@ $report-info-color: #17a2b8;
             text-align: right;
         }
 
-        // Drill-down links
+        // Drill-down links for navigating to source account.move.line records
         a.drilldown {
             color: $report-primary-color;
             text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
 
             &:hover {
                 text-decoration: underline;
+                text-underline-offset: 2px;
             }
+        }
+
+        // Monetary values that act as drill-down navigation links
+        .drilldown-amount {
+            cursor: pointer;
+            color: $report-primary-color;
+            transition: color 0.2s ease;
+
+            &:hover {
+                text-decoration: underline;
+                text-underline-offset: 2px;
+            }
+        }
+
+        // Comparative period analysis columns
+        .comparison-column {
+            font-style: italic;
+            color: $report-text-muted;
+        }
+
+        // Variance / change column for period-over-period analysis
+        .variance-column {
+            font-weight: 600;
+        }
+
+        .variance-positive {
+            color: $report-success-color;
+        }
+
+        .variance-negative {
+            color: $report-danger-color;
         }
     }
 
-    // Balance Verification Alert
+    // Responsive table container for horizontal scrolling on smaller viewports
+    .report-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+
+        .report-table th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: $report-primary-color;
+        }
+    }
+
+    // Consistent column widths across all 6 report types
+    .col-account {
+        width: 30%;
+    }
+
+    .col-debit {
+        width: 15%;
+        text-align: right;
+    }
+
+    .col-credit {
+        width: 15%;
+        text-align: right;
+    }
+
+    .col-balance {
+        width: 15%;
+        text-align: right;
+    }
+
+    // Balance Verification Alert — validates Assets = Liabilities + Equity
     .balance-verification {
-        padding: 1rem;
+        padding: 1.25rem;
         border-radius: 4px;
         margin-top: 1rem;
+        font-weight: 600;
 
         &.balanced {
             background: lighten($report-success-color, 40%);
             border: 1px solid $report-success-color;
             color: darken($report-success-color, 20%);
+
+            &::before {
+                content: "✓ ";
+            }
         }
 
         &.unbalanced {
             background: lighten($report-danger-color, 35%);
             border: 1px solid $report-danger-color;
             color: darken($report-danger-color, 15%);
+            animation: pulse-warning 2s infinite;
+
+            &::before {
+                content: "⚠ ";
+            }
+        }
+    }
+
+    // Pulsing animation to draw attention to unbalanced states
+    @keyframes pulse-warning {
+        0% {
+            box-shadow: 0 0 0 0 rgba($report-danger-color, 0.4);
+        }
+        100% {
+            box-shadow: 0 0 0 10px rgba($report-danger-color, 0);
         }
     }
 
@@ -144,7 +252,7 @@ $report-info-color: #17a2b8;
         font-weight: 700;
     }
 
-    // Progress Bar for Aging Distribution
+    // Progress Bar for Aging Distribution (Current / 30 / 60 / 90 / 120+ day buckets)
     .aging-progress {
         height: 25px;
         border-radius: 4px;
@@ -159,6 +267,31 @@ $report-info-color: #17a2b8;
             color: white;
             font-size: 0.75rem;
             font-weight: 600;
+            min-width: 20px;
+            position: relative;
+            transition: width 0.3s ease;
+
+            // Tooltip support for aging bucket detail on hover
+            &[data-tooltip]::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 0.7rem;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease;
+            }
+
+            &[data-tooltip]:hover::after {
+                opacity: 1;
+            }
         }
     }
 
@@ -233,4 +366,13 @@ $report-info-color: #17a2b8;
             font-weight: 500;
         }
     }
+}
+
+// Utility Classes for Financial Reports
+.text-nowrap {
+    white-space: nowrap;
+}
+
+.font-monospace {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 }

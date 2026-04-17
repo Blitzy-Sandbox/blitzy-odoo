@@ -30,13 +30,80 @@ $print-alt-row-bg: #f5f5f5;
         display: none !important;
     }
 
-    // Page breaks
+    // Page breaks — legacy and modern CSS Fragmentation (Level 3) properties
     .page-break {
         page-break-after: always;
+        break-after: page;
     }
 
     .avoid-break {
         page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    // Keep account groups and report sections together on a single page
+    .report-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    // Force a new page before major report sections (e.g., between Assets
+    // and Liabilities in the Balance Sheet, or between activity sections
+    // in the Cash Flow Statement)
+    .section-break {
+        page-break-before: always;
+        break-before: page;
+    }
+}
+
+// -------------------------------------------------------------------
+// Page format rules — CSS Paged Media (Level 3)
+// Matches the paper format definitions in data/report_paperformat.xml:
+//   - 7mm left/right margins, 40mm top margin, 28mm bottom margin
+//   - A4 and US Letter variants in portrait and landscape orientations
+// -------------------------------------------------------------------
+
+// Default page margins matching report_paperformat.xml configuration
+@page {
+    margin: 40mm 7mm 28mm 7mm;
+}
+
+// Named page rules for A4 paper sizes
+@page a4-portrait {
+    size: A4 portrait;
+    margin: 40mm 7mm 28mm 7mm;
+}
+
+@page a4-landscape {
+    size: A4 landscape;
+    margin: 40mm 7mm 28mm 7mm;
+}
+
+// Named page rules for US Letter paper sizes
+@page letter-portrait {
+    size: letter portrait;
+    margin: 40mm 7mm 28mm 7mm;
+}
+
+@page letter-landscape {
+    size: letter landscape;
+    margin: 40mm 7mm 28mm 7mm;
+}
+
+// Orientation selectors — applied at the report container level.
+// Landscape: General Ledger, Trial Balance, Aged Partner Balance
+// (uses paperformat_financial_report_a4_landscape / letter_landscape)
+.report-landscape {
+    @page {
+        size: landscape;
+    }
+}
+
+// Portrait: Balance Sheet, Profit & Loss, Cash Flow Statement
+// (uses paperformat_financial_report_a4 / letter portrait formats)
+.report-portrait {
+    @page {
+        size: portrait;
     }
 }
 
@@ -44,6 +111,22 @@ $print-alt-row-bg: #f5f5f5;
 .page {
     .text-center {
         text-align: center;
+    }
+
+    // Main report title — largest in the visual hierarchy (18pt)
+    .report-title {
+        font-size: 18pt;
+        font-weight: bold;
+        margin-bottom: 8pt;
+        color: $print-text-color;
+    }
+
+    // Report subtitle for date range, company name, and filter descriptions
+    .report-subtitle {
+        font-size: 12pt;
+        font-weight: normal;
+        color: #666;
+        margin-bottom: 5pt;
     }
 
     h2 {
@@ -59,6 +142,44 @@ $print-alt-row-bg: #f5f5f5;
         margin-top: 15pt;
         margin-bottom: 8pt;
     }
+
+    // Print header block — company branding, report identification, and
+    // generation metadata positioned at the top of every printed page
+    .report-header-print {
+        margin-bottom: 12pt;
+
+        .company-name {
+            font-size: 14pt;
+            font-weight: bold;
+            color: $print-text-color;
+        }
+
+        .report-name {
+            font-size: 12pt;
+            font-weight: bold;
+            color: $print-text-color;
+            margin-top: 2pt;
+        }
+
+        .report-date-range {
+            font-size: 9pt;
+            color: #666;
+            margin-top: 2pt;
+        }
+
+        .report-timestamp {
+            font-size: 7pt;
+            color: #999;
+            text-align: right;
+        }
+    }
+
+    // Company logo placeholder — constrained for consistent header layout
+    .company-logo-print {
+        max-height: 40pt;
+        max-width: 150pt;
+        margin-bottom: 8pt;
+    }
 }
 
 // Financial report tables for print
@@ -67,6 +188,23 @@ $print-alt-row-bg: #f5f5f5;
     border-collapse: collapse;
     margin-bottom: 15pt;
     font-size: 8pt;
+
+    // Repeat column headers at the top of each printed page for multi-page
+    // reports — critical for readability of General Ledger and Aged Partner
+    // Balance reports that frequently span many pages
+    thead {
+        display: table-header-group;
+    }
+
+    // Ensure table body renders correctly across page breaks
+    tbody {
+        display: table-row-group;
+    }
+
+    // Prevent table footer from floating mid-page
+    tfoot {
+        display: table-footer-group;
+    }
 
     th {
         background: $print-header-bg !important;
@@ -158,6 +296,81 @@ $print-alt-row-bg: #f5f5f5;
     a {
         color: $print-text-color !important;
         text-decoration: none !important;
+    }
+}
+
+// -------------------------------------------------------------------
+// Financial report table — optimized column widths and borders for
+// all 6 report types. Column percentages scale proportionally on both
+// A4 (210mm × 297mm) and US Letter (8.5in × 11in) paper sizes.
+// -------------------------------------------------------------------
+.table-financial {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+
+    // Column width classes — account name gets the widest allocation so
+    // long chart-of-accounts descriptions do not truncate on print
+    .col-account-print {
+        width: 35%;
+    }
+
+    .col-debit-print {
+        width: 12%;
+        text-align: right;
+    }
+
+    .col-credit-print {
+        width: 12%;
+        text-align: right;
+    }
+
+    .col-balance-print {
+        width: 15%;
+        text-align: right;
+    }
+
+    // Section separator row — thicker top border to visually divide major
+    // report sections (e.g., Current Assets / Non-Current Assets)
+    .section-separator td {
+        border-top: 1.5pt solid $print-border-color;
+    }
+
+    // Totals row — bold with thicker top and bottom borders to clearly
+    // delineate summary lines (e.g., Total Assets, Net Income)
+    .total-row-print td {
+        border-top: 1.5pt solid $print-border-color;
+        border-bottom: 1.5pt solid $print-border-color;
+        font-weight: bold;
+    }
+
+    // Detail rows retain the fine 0.5pt border from the base .table class
+    td {
+        border: 0.5pt solid #ccc;
+        padding: 4pt;
+        vertical-align: top;
+    }
+
+    th {
+        background: $print-header-bg !important;
+        color: $print-text-color !important;
+        font-weight: bold;
+        padding: 6pt 4pt;
+        border: 1pt solid $print-border-color;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    // Ensure alternating row backgrounds print correctly
+    tbody tr:nth-child(even) {
+        background: $print-alt-row-bg;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    // Repeat headers on every printed page
+    thead {
+        display: table-header-group;
     }
 }
 

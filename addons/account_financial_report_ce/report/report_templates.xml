@@ -73,65 +73,19 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">account_financial_report_ce.report_aged_partner_balance</field>
         <field name="report_file">account_financial_report_ce.report_aged_partner_balance</field>
-        <field name="print_report_name">'Aged %s - %s' % ('Receivable' if object.partner_type == 'customer' else 'Payable', object.date_at)</field>
+        <field name="print_report_name">'Aged %s - %s' % ('Receivable' if object.report_type == 'receivable' else 'Payable', object.date_to)</field>
         <field name="binding_model_id" ref="model_account_aged_partner_balance_report"/>
         <field name="binding_type">report</field>
     </record>
 
-    <!-- Excel Export Actions -->
-    <record id="action_report_balance_sheet_xlsx" model="ir.actions.report">
-        <field name="name">Balance Sheet (XLSX)</field>
-        <field name="model">account.balance.sheet.report</field>
-        <field name="report_type">xlsx</field>
-        <field name="report_name">account_financial_report_ce.report_balance_sheet_xlsx</field>
-        <field name="report_file">account_financial_report_ce.report_balance_sheet_xlsx</field>
-        <field name="print_report_name">'Balance Sheet - %s' % (object.date_to)</field>
-        <field name="binding_model_id" ref="model_account_balance_sheet_report"/>
-        <field name="binding_type">report</field>
-    </record>
+    <!--
+        XLSX export is handled programmatically via the wizard's
+        action_export_xlsx() method using openpyxl/XlsxWriter in Python,
+        not through ir.actions.report — standard Odoo 19.0 only supports
+        qweb-html, qweb-pdf, and qweb-text report types.
 
-    <record id="action_report_profit_loss_xlsx" model="ir.actions.report">
-        <field name="name">Profit and Loss (XLSX)</field>
-        <field name="model">account.profit.loss.report</field>
-        <field name="report_type">xlsx</field>
-        <field name="report_name">account_financial_report_ce.report_profit_loss_xlsx</field>
-        <field name="report_file">account_financial_report_ce.report_profit_loss_xlsx</field>
-        <field name="print_report_name">'Profit and Loss - %s to %s' % (object.date_from, object.date_to)</field>
-        <field name="binding_model_id" ref="model_account_profit_loss_report"/>
-        <field name="binding_type">report</field>
-    </record>
-
-    <record id="action_report_general_ledger_xlsx" model="ir.actions.report">
-        <field name="name">General Ledger (XLSX)</field>
-        <field name="model">account.general.ledger.report</field>
-        <field name="report_type">xlsx</field>
-        <field name="report_name">account_financial_report_ce.report_general_ledger_xlsx</field>
-        <field name="report_file">account_financial_report_ce.report_general_ledger_xlsx</field>
-        <field name="print_report_name">'General Ledger - %s to %s' % (object.date_from, object.date_to)</field>
-        <field name="binding_model_id" ref="model_account_general_ledger_report"/>
-        <field name="binding_type">report</field>
-    </record>
-
-    <record id="action_report_trial_balance_xlsx" model="ir.actions.report">
-        <field name="name">Trial Balance (XLSX)</field>
-        <field name="model">account.trial.balance.report</field>
-        <field name="report_type">xlsx</field>
-        <field name="report_name">account_financial_report_ce.report_trial_balance_xlsx</field>
-        <field name="report_file">account_financial_report_ce.report_trial_balance_xlsx</field>
-        <field name="print_report_name">'Trial Balance - %s' % (object.date_to)</field>
-        <field name="binding_model_id" ref="model_account_trial_balance_report"/>
-        <field name="binding_type">report</field>
-    </record>
-
-    <record id="action_report_aged_partner_balance_xlsx" model="ir.actions.report">
-        <field name="name">Aged Partner Balance (XLSX)</field>
-        <field name="model">account.aged.partner.balance.report</field>
-        <field name="report_type">xlsx</field>
-        <field name="report_name">account_financial_report_ce.report_aged_partner_balance_xlsx</field>
-        <field name="report_file">account_financial_report_ce.report_aged_partner_balance_xlsx</field>
-        <field name="print_report_name">'Aged %s - %s' % ('Receivable' if object.partner_type == 'customer' else 'Payable', object.date_at)</field>
-        <field name="binding_model_id" ref="model_account_aged_partner_balance_report"/>
-        <field name="binding_type">report</field>
-    </record>
+        Paper format assignment is handled in data/report_paperformat.xml,
+        which is loaded after this file in __manifest__.py.
+    -->
 
 </odoo>

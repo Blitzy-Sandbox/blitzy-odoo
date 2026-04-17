@@ -1,0 +1,49 @@
+!Type:Bank
+D02/01/2024
+T1250.00
+PInvoice Payment INV/2024/0201
+NREF-0201
+MAcme Corp invoice payment received
+^
+D02/03/2024
+T-180.50
+POffice Supplies Purchase
+NPUR-0203
+MOffice Depot LLC stationery order
+^
+D02/05/2024
+T3500.00
+PConsulting Fee Received
+NCNS-0205
+MGlobal Consulting Inc Q1 retainer
+^
+D02/08/2024
+T-35.00
+PMonthly Bank Service Fee
+NFEE-0208
+MAccount maintenance fee
+^
+D02/12/2024
+T-425.75
+PUtility Bill Payment
+NUTL-0212
+MCity Power and Water monthly bill
+^
+D02/15/2024
+T2100.00
+PCustomer Payment INV/2024/0215
+NREF-0215
+MBeta Industries Ltd invoice settlement
+^
+D02/20/2024
+T-890.25
+PVendor Payment
+NVND-0220
+MHardware Supplies Co purchase order
+^
+D02/28/2024
+T12.50
+PInterest Earned
+NINT-0228
+MFirst National Bank interest for February
+^

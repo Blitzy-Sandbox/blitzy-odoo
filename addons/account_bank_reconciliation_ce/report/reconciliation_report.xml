@@ -1,0 +1,675 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Bank Reconciliation Status Report Template (BR-003)
+    Implements reconciliation status reporting with:
+    - Statement summary with match rate per statement
+    - Confidence level distribution visualization
+    - Unreconciled items detail with aging
+    - Overall summary statistics
+-->
+<odoo>
+
+    <!-- Reconciliation Status Report Action -->
+    <record id="action_report_reconciliation_status" model="ir.actions.report">
+        <field name="name">Reconciliation Status Report</field>
+        <field name="model">account.reconciliation.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">account_bank_reconciliation_ce.reconciliation_status</field>
+        <field name="report_file">account_bank_reconciliation_ce.reconciliation_status</field>
+        <field name="print_report_name">'Reconciliation Status - %s to %s' % (object.date_from, object.date_to)</field>
+        <field name="binding_model_id" ref="model_account_reconciliation_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Reconciliation Status QWeb Report Template -->
+    <template id="reconciliation_status">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+
+                        <!-- Set today's date for aging calculations -->
+                        <t t-set="today" t-value="datetime.date.today()"/>
+
+                        <!-- ============================================================ -->
+                        <!-- Report Header                                                -->
+                        <!-- ============================================================ -->
+                        <div class="text-center">
+                            <h2>Bank Reconciliation Status Report</h2>
+                            <p>
+                                <strong>Period: </strong>
+                                <t t-if="doc.date_from">
+                                    <span t-field="doc.date_from"/>
+                                </t>
+                                <t t-else="">
+                                    <span>Beginning</span>
+                                </t>
+                                <span> to </span>
+                                <t t-if="doc.date_to">
+                                    <span t-field="doc.date_to"/>
+                                </t>
+                                <t t-else="">
+                                    <span>Present</span>
+                                </t>
+                            </p>
+                            <p t-if="doc.company_id">
+                                <span t-field="doc.company_id.name"/>
+                            </p>
+                            <p t-if="doc.journal_id">
+                                <strong>Journal: </strong>
+                                <span t-field="doc.journal_id.name"/>
+                            </p>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- Report Parameters                                            -->
+                        <!-- ============================================================ -->
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Journal:</strong></td>
+                                        <td>
+                                            <span t-field="doc.journal_id.name"/>
+                                            <t t-if="doc.journal_id.bank_account_id">
+                                                (<span t-field="doc.journal_id.bank_account_id.acc_number"/>)
+                                            </t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Date Range:</strong></td>
+                                        <td>
+                                            <t t-if="doc.date_from">
+                                                <span t-field="doc.date_from"/>
+                                            </t>
+                                            <t t-else="">
+                                                <span>N/A</span>
+                                            </t>
+                                            <span> — </span>
+                                            <t t-if="doc.date_to">
+                                                <span t-field="doc.date_to"/>
+                                            </t>
+                                            <t t-else="">
+                                                <span>N/A</span>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Company:</strong></td>
+                                        <td><span t-field="doc.company_id.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Currency:</strong></td>
+                                        <td><span t-field="doc.company_id.currency_id.name"/></td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Wizard Status:</strong></td>
+                                        <td><span t-field="doc.state"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Total Lines in Scope:</strong></td>
+                                        <td><span t-esc="len(doc.statement_line_ids)"/></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- Statement Summary Section                                    -->
+                        <!-- ============================================================ -->
+                        <h4 class="mt-4 mb-3">Statement Summary</h4>
+
+                        <!-- Initialize global accumulators -->
+                        <t t-set="all_lines" t-value="doc.statement_line_ids"/>
+                        <t t-set="total_line_count" t-value="len(all_lines)"/>
+                        <t t-set="all_reconciled" t-value="all_lines.filtered(lambda l: l.reconciliation_status in ('reconciled', 'manual'))"/>
+                        <t t-set="all_unreconciled" t-value="all_lines.filtered(lambda l: l.reconciliation_status == 'unreconciled')"/>
+                        <t t-set="all_partial" t-value="all_lines.filtered(lambda l: l.reconciliation_status == 'partially')"/>
+                        <t t-set="total_reconciled_count" t-value="len(all_reconciled)"/>
+                        <t t-set="total_unreconciled_count" t-value="len(all_unreconciled)"/>
+                        <t t-set="total_partial_count" t-value="len(all_partial)"/>
+
+                        <!-- Unique statements -->
+                        <t t-set="statements" t-value="all_lines.mapped('statement_id')"/>
+
+                        <t t-if="statements">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr class="bg-primary text-white">
+                                        <th style="width: 25%">Statement</th>
+                                        <th class="text-center" style="width: 15%">Date</th>
+                                        <th class="text-end" style="width: 12%">Total Lines</th>
+                                        <th class="text-end" style="width: 12%">Reconciled</th>
+                                        <th class="text-end" style="width: 12%">Unreconciled</th>
+                                        <th class="text-end" style="width: 12%">Match Rate %</th>
+                                        <th class="text-center" style="width: 12%">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="statements" t-as="stmt">
+                                        <t t-set="stmt_lines" t-value="all_lines.filtered(lambda l: l.statement_id == stmt)"/>
+                                        <t t-set="stmt_total" t-value="len(stmt_lines)"/>
+                                        <t t-set="stmt_reconciled" t-value="len(stmt_lines.filtered(lambda l: l.reconciliation_status in ('reconciled', 'manual')))"/>
+                                        <t t-set="stmt_unreconciled" t-value="stmt_total - stmt_reconciled"/>
+                                        <t t-set="stmt_rate" t-value="round(stmt_reconciled / stmt_total * 100, 1) if stmt_total else 0.0"/>
+                                        <tr>
+                                            <td>
+                                                <span t-esc="stmt.name or 'Statement #%s' % stmt.id"/>
+                                            </td>
+                                            <td class="text-center">
+                                                <span t-field="stmt.date"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="stmt_total"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span class="text-success" t-esc="stmt_reconciled"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <t t-if="stmt_unreconciled > 0">
+                                                    <span class="text-danger" t-esc="stmt_unreconciled"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="text-success">0</span>
+                                                </t>
+                                            </td>
+                                            <td class="text-end">
+                                                <t t-if="stmt_rate >= 90">
+                                                    <span class="badge bg-success" t-esc="'%.1f%%' % stmt_rate"/>
+                                                </t>
+                                                <t t-elif="stmt_rate >= 70">
+                                                    <span class="badge bg-warning text-dark" t-esc="'%.1f%%' % stmt_rate"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="badge bg-danger" t-esc="'%.1f%%' % stmt_rate"/>
+                                                </t>
+                                            </td>
+                                            <td class="text-center">
+                                                <t t-if="stmt_rate == 100">
+                                                    <span class="badge bg-success">Complete</span>
+                                                </t>
+                                                <t t-elif="stmt_rate >= 50">
+                                                    <span class="badge bg-warning text-dark">In Progress</span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="badge bg-secondary">Pending</span>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                                <tfoot>
+                                    <t t-set="overall_rate" t-value="round(total_reconciled_count / total_line_count * 100, 1) if total_line_count else 0.0"/>
+                                    <tr class="table-primary">
+                                        <td><strong>TOTAL</strong></td>
+                                        <td class="text-center">
+                                            <span t-esc="len(statements)"/> statements
+                                        </td>
+                                        <td class="text-end">
+                                            <strong t-esc="total_line_count"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong class="text-success" t-esc="total_reconciled_count"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong class="text-danger" t-esc="total_unreconciled_count"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong t-esc="'%.1f%%' % overall_rate"/>
+                                        </td>
+                                        <td/>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </t>
+                        <t t-else="">
+                            <div class="alert alert-info">
+                                No bank statements found for the selected criteria.
+                            </div>
+                        </t>
+
+                        <!-- ============================================================ -->
+                        <!-- Match Confidence Distribution Section                        -->
+                        <!-- ============================================================ -->
+                        <h4 class="mt-4 mb-3">Match Confidence Distribution</h4>
+
+                        <t t-set="match_records" t-value="doc.match_ids"/>
+                        <t t-set="high_matches" t-value="match_records.filtered(lambda m: m.confidence_level == 'high')"/>
+                        <t t-set="medium_matches" t-value="match_records.filtered(lambda m: m.confidence_level == 'medium')"/>
+                        <t t-set="low_matches" t-value="match_records.filtered(lambda m: m.confidence_level == 'low')"/>
+                        <t t-set="none_matches" t-value="match_records.filtered(lambda m: m.confidence_level == 'none')"/>
+                        <t t-set="total_matches" t-value="len(match_records)"/>
+                        <t t-set="high_count" t-value="len(high_matches)"/>
+                        <t t-set="medium_count" t-value="len(medium_matches)"/>
+                        <t t-set="low_count" t-value="len(low_matches)"/>
+                        <t t-set="none_count" t-value="len(none_matches)"/>
+
+                        <t t-if="total_matches > 0">
+                            <div class="row">
+                                <div class="col-6">
+                                    <table class="table table-sm table-bordered">
+                                        <thead>
+                                            <tr class="table-secondary">
+                                                <th>Confidence Level</th>
+                                                <th class="text-center">Threshold</th>
+                                                <th class="text-end">Count</th>
+                                                <th class="text-end">% of Matches</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-success">High</span>
+                                                </td>
+                                                <td class="text-center">≥ 90%</td>
+                                                <td class="text-end"><span t-esc="high_count"/></td>
+                                                <td class="text-end">
+                                                    <span t-esc="'%.1f%%' % (high_count / total_matches * 100)"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-warning text-dark">Medium</span>
+                                                </td>
+                                                <td class="text-center">70 – 89%</td>
+                                                <td class="text-end"><span t-esc="medium_count"/></td>
+                                                <td class="text-end">
+                                                    <span t-esc="'%.1f%%' % (medium_count / total_matches * 100)"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-danger">Low</span>
+                                                </td>
+                                                <td class="text-center">50 – 69%</td>
+                                                <td class="text-end"><span t-esc="low_count"/></td>
+                                                <td class="text-end">
+                                                    <span t-esc="'%.1f%%' % (low_count / total_matches * 100)"/>
+                                                </td>
+                                            </tr>
+                                            <tr t-if="none_count > 0">
+                                                <td>
+                                                    <span class="badge bg-secondary">Below Threshold</span>
+                                                </td>
+                                                <td class="text-center">&lt; 50%</td>
+                                                <td class="text-end"><span t-esc="none_count"/></td>
+                                                <td class="text-end">
+                                                    <span t-esc="'%.1f%%' % (none_count / total_matches * 100)"/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-primary">
+                                                <td colspan="2"><strong>Total Matches</strong></td>
+                                                <td class="text-end"><strong t-esc="total_matches"/></td>
+                                                <td class="text-end"><strong>100%</strong></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                <div class="col-6">
+                                    <!-- Progress Bar Visualization -->
+                                    <p class="mb-2"><strong>Distribution</strong></p>
+                                    <div class="progress mb-2" style="height: 30px;">
+                                        <t t-if="high_count">
+                                            <div class="progress-bar bg-success" role="progressbar"
+                                                 t-att-style="'width: %s%%' % (high_count / total_matches * 100)"
+                                                 t-att-title="'High: %d matches' % high_count">
+                                                High (<span t-esc="high_count"/>)
+                                            </div>
+                                        </t>
+                                        <t t-if="medium_count">
+                                            <div class="progress-bar bg-warning" role="progressbar"
+                                                 t-att-style="'width: %s%%' % (medium_count / total_matches * 100)"
+                                                 t-att-title="'Medium: %d matches' % medium_count">
+                                                Medium (<span t-esc="medium_count"/>)
+                                            </div>
+                                        </t>
+                                        <t t-if="low_count">
+                                            <div class="progress-bar bg-danger" role="progressbar"
+                                                 t-att-style="'width: %s%%' % (low_count / total_matches * 100)"
+                                                 t-att-title="'Low: %d matches' % low_count">
+                                                Low (<span t-esc="low_count"/>)
+                                            </div>
+                                        </t>
+                                        <t t-if="none_count">
+                                            <div class="progress-bar bg-secondary" role="progressbar"
+                                                 t-att-style="'width: %s%%' % (none_count / total_matches * 100)"
+                                                 t-att-title="'Below Threshold: %d matches' % none_count">
+                                                &lt;50%
+                                            </div>
+                                        </t>
+                                    </div>
+                                    <p class="text-muted small">
+                                        Confidence levels: High ≥90%, Medium 70-89%, Low 50-69%
+                                    </p>
+
+                                    <!-- Match Quality Summary -->
+                                    <t t-if="high_count + medium_count > 0">
+                                        <t t-set="quality_rate" t-value="round((high_count + medium_count) / total_matches * 100, 1)"/>
+                                        <t t-if="quality_rate >= 90">
+                                            <div class="alert alert-success py-2 small">
+                                                <strong>Excellent:</strong>
+                                                <span t-esc="'%.1f%%' % quality_rate"/> of matches are Medium or High confidence.
+                                            </div>
+                                        </t>
+                                        <t t-elif="quality_rate >= 70">
+                                            <div class="alert alert-warning py-2 small">
+                                                <strong>Good:</strong>
+                                                <span t-esc="'%.1f%%' % quality_rate"/> of matches are Medium or High confidence.
+                                            </div>
+                                        </t>
+                                        <t t-else="">
+                                            <div class="alert alert-danger py-2 small">
+                                                <strong>Needs Review:</strong>
+                                                Only <span t-esc="'%.1f%%' % quality_rate"/> of matches are Medium or High confidence.
+                                            </div>
+                                        </t>
+                                    </t>
+                                </div>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="alert alert-info">
+                                No match suggestions have been generated. Run the matching engine to see confidence distribution.
+                            </div>
+                        </t>
+
+                        <!-- ============================================================ -->
+                        <!-- Unreconciled Items Detail Section                            -->
+                        <!-- ============================================================ -->
+                        <h4 class="mt-4 mb-3">Unreconciled Items Detail</h4>
+
+                        <t t-set="unrec_lines" t-value="all_unreconciled.sorted(key=lambda l: l.date or l.create_date)"/>
+                        <t t-set="unrec_total_amount" t-value="0"/>
+
+                        <t t-if="unrec_lines">
+                            <table class="table table-sm table-striped table-bordered">
+                                <thead>
+                                    <tr class="bg-primary text-white">
+                                        <th style="width: 12%">Date</th>
+                                        <th style="width: 20%">Reference</th>
+                                        <th style="width: 20%">Partner</th>
+                                        <th class="text-end" style="width: 18%">Amount</th>
+                                        <th class="text-end" style="width: 15%">Days Unreconciled</th>
+                                        <th class="text-center" style="width: 15%">Aging Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="unrec_lines" t-as="line">
+                                        <t t-set="line_date" t-value="line.date"/>
+                                        <t t-set="days_unrec" t-value="(today - line_date).days if line_date and today else 0"/>
+                                        <t t-set="unrec_total_amount" t-value="unrec_total_amount + (line.amount or 0)"/>
+                                        <tr>
+                                            <td>
+                                                <span t-field="line.date"/>
+                                            </td>
+                                            <td>
+                                                <span t-esc="line.payment_ref or line.name or ''"/>
+                                            </td>
+                                            <td>
+                                                <t t-if="line.partner_id">
+                                                    <span t-field="line.partner_id.name"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="text-muted fst-italic">No partner</span>
+                                                </t>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="line.amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="days_unrec"/> days
+                                            </td>
+                                            <td class="text-center">
+                                                <t t-if="days_unrec > 90">
+                                                    <span class="badge bg-danger">Critical</span>
+                                                </t>
+                                                <t t-elif="days_unrec > 60">
+                                                    <span class="badge bg-warning text-dark">Overdue</span>
+                                                </t>
+                                                <t t-elif="days_unrec > 30">
+                                                    <span class="badge bg-info text-dark">Aging</span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="badge bg-secondary">Recent</span>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-primary">
+                                        <td colspan="3">
+                                            <strong>Total Unreconciled (<span t-esc="len(unrec_lines)"/> items)</strong>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong t-esc="unrec_total_amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td colspan="2"/>
+                                    </tr>
+                                </tfoot>
+                            </table>
+
+                            <!-- Aging Breakdown of Unreconciled Items -->
+                            <div class="row mt-3">
+                                <div class="col-6">
+                                    <h5>Unreconciled Aging Breakdown</h5>
+                                    <t t-set="unrec_0_30" t-value="len(unrec_lines.filtered(lambda l: (today - (l.date or today)).days &lt;= 30))"/>
+                                    <t t-set="unrec_31_60" t-value="len(unrec_lines.filtered(lambda l: 30 &lt; (today - (l.date or today)).days &lt;= 60))"/>
+                                    <t t-set="unrec_61_90" t-value="len(unrec_lines.filtered(lambda l: 60 &lt; (today - (l.date or today)).days &lt;= 90))"/>
+                                    <t t-set="unrec_90_plus" t-value="len(unrec_lines.filtered(lambda l: (today - (l.date or today)).days > 90))"/>
+                                    <table class="table table-sm table-bordered">
+                                        <tr>
+                                            <td>0 – 30 days</td>
+                                            <td class="text-end"><span class="text-secondary" t-esc="unrec_0_30"/> items</td>
+                                        </tr>
+                                        <tr>
+                                            <td>31 – 60 days</td>
+                                            <td class="text-end"><span class="text-info" t-esc="unrec_31_60"/> items</td>
+                                        </tr>
+                                        <tr>
+                                            <td>61 – 90 days</td>
+                                            <td class="text-end"><span class="text-warning" t-esc="unrec_61_90"/> items</td>
+                                        </tr>
+                                        <tr>
+                                            <td>90+ days</td>
+                                            <td class="text-end"><span class="text-danger fw-bold" t-esc="unrec_90_plus"/> items</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-6">
+                                    <h5>Aging Distribution</h5>
+                                    <t t-set="unrec_total_for_bar" t-value="len(unrec_lines)"/>
+                                    <t t-if="unrec_total_for_bar > 0">
+                                        <div class="progress" style="height: 30px;">
+                                            <t t-if="unrec_0_30">
+                                                <div class="progress-bar bg-secondary" role="progressbar"
+                                                     t-att-style="'width: %s%%' % (unrec_0_30 / unrec_total_for_bar * 100)"
+                                                     t-att-title="'0-30 days: %d' % unrec_0_30">
+                                                    0-30d
+                                                </div>
+                                            </t>
+                                            <t t-if="unrec_31_60">
+                                                <div class="progress-bar bg-info" role="progressbar"
+                                                     t-att-style="'width: %s%%' % (unrec_31_60 / unrec_total_for_bar * 100)"
+                                                     t-att-title="'31-60 days: %d' % unrec_31_60">
+                                                    31-60d
+                                                </div>
+                                            </t>
+                                            <t t-if="unrec_61_90">
+                                                <div class="progress-bar bg-warning" role="progressbar"
+                                                     t-att-style="'width: %s%%' % (unrec_61_90 / unrec_total_for_bar * 100)"
+                                                     t-att-title="'61-90 days: %d' % unrec_61_90">
+                                                    61-90d
+                                                </div>
+                                            </t>
+                                            <t t-if="unrec_90_plus">
+                                                <div class="progress-bar bg-danger" role="progressbar"
+                                                     t-att-style="'width: %s%%' % (unrec_90_plus / unrec_total_for_bar * 100)"
+                                                     t-att-title="'90+ days: %d' % unrec_90_plus">
+                                                    90+d
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="alert alert-success">
+                                All statement lines have been reconciled. No unreconciled items.
+                            </div>
+                        </t>
+
+                        <!-- ============================================================ -->
+                        <!-- Summary Statistics Section                                   -->
+                        <!-- ============================================================ -->
+                        <h4 class="mt-4 mb-3">Summary Statistics</h4>
+
+                        <t t-set="reconciled_amount" t-value="sum(all_reconciled.mapped('amount')) if all_reconciled else 0"/>
+                        <t t-set="unreconciled_amount" t-value="sum(all_unreconciled.mapped('amount')) if all_unreconciled else 0"/>
+                        <t t-set="partial_amount" t-value="sum(all_partial.mapped('amount')) if all_partial else 0"/>
+                        <t t-set="total_amount" t-value="sum(all_lines.mapped('amount')) if all_lines else 0"/>
+
+                        <div class="row">
+                            <div class="col-6">
+                                <h5>Processing Summary</h5>
+                                <table class="table table-sm table-bordered">
+                                    <tr>
+                                        <td>Total Statements Processed</td>
+                                        <td class="text-end"><strong t-esc="len(statements) if statements else 0"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Total Statement Lines</td>
+                                        <td class="text-end"><strong t-esc="total_line_count"/></td>
+                                    </tr>
+                                    <tr class="table-success">
+                                        <td>Fully Reconciled Lines</td>
+                                        <td class="text-end">
+                                            <strong class="text-success" t-esc="total_reconciled_count"/>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="total_partial_count > 0">
+                                        <td>Partially Reconciled Lines</td>
+                                        <td class="text-end">
+                                            <strong class="text-warning" t-esc="total_partial_count"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="table-danger">
+                                        <td>Unreconciled Lines</td>
+                                        <td class="text-end">
+                                            <strong class="text-danger" t-esc="total_unreconciled_count"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="table-primary">
+                                        <td><strong>Overall Match Rate</strong></td>
+                                        <td class="text-end">
+                                            <t t-set="final_rate" t-value="round(total_reconciled_count / total_line_count * 100, 1) if total_line_count else 0.0"/>
+                                            <t t-if="final_rate >= 90">
+                                                <strong class="text-success" t-esc="'%.1f%%' % final_rate"/>
+                                            </t>
+                                            <t t-elif="final_rate >= 70">
+                                                <strong class="text-warning" t-esc="'%.1f%%' % final_rate"/>
+                                            </t>
+                                            <t t-else="">
+                                                <strong class="text-danger" t-esc="'%.1f%%' % final_rate"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-6">
+                                <h5>Amount Summary</h5>
+                                <table class="table table-sm table-bordered">
+                                    <tr>
+                                        <td>Total Statement Amount</td>
+                                        <td class="text-end">
+                                            <span t-esc="total_amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="table-success">
+                                        <td>Total Reconciled Amount</td>
+                                        <td class="text-end">
+                                            <strong class="text-success" t-esc="reconciled_amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="total_partial_count > 0">
+                                        <td>Partially Reconciled Amount</td>
+                                        <td class="text-end">
+                                            <span class="text-warning" t-esc="partial_amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="table-danger">
+                                        <td>Total Unreconciled Amount</td>
+                                        <td class="text-end">
+                                            <strong class="text-danger" t-esc="unreconciled_amount" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="table-primary">
+                                        <td><strong>Amount Match Rate</strong></td>
+                                        <td class="text-end">
+                                            <t t-set="amount_rate" t-value="round(abs(reconciled_amount) / abs(total_amount) * 100, 1) if total_amount else 0.0"/>
+                                            <strong t-esc="'%.1f%%' % amount_rate"/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Overall Status Indicator -->
+                        <div class="mt-3">
+                            <t t-set="final_overall_rate" t-value="round(total_reconciled_count / total_line_count * 100, 1) if total_line_count else 0.0"/>
+                            <t t-if="final_overall_rate == 100">
+                                <div class="alert alert-success text-center">
+                                    <strong>✓ Reconciliation Complete</strong> — All statement lines have been successfully reconciled.
+                                </div>
+                            </t>
+                            <t t-elif="final_overall_rate >= 90">
+                                <div class="alert alert-success text-center">
+                                    <strong>✓ Excellent Progress</strong> — <span t-esc="'%.1f%%' % final_overall_rate"/> of statement lines reconciled. <span t-esc="total_unreconciled_count"/> items remaining.
+                                </div>
+                            </t>
+                            <t t-elif="final_overall_rate >= 70">
+                                <div class="alert alert-warning text-center">
+                                    <strong>⚠ In Progress</strong> — <span t-esc="'%.1f%%' % final_overall_rate"/> of statement lines reconciled. <span t-esc="total_unreconciled_count"/> items require attention.
+                                </div>
+                            </t>
+                            <t t-elif="total_line_count > 0">
+                                <div class="alert alert-danger text-center">
+                                    <strong>✗ Action Required</strong> — Only <span t-esc="'%.1f%%' % final_overall_rate"/> of statement lines reconciled. <span t-esc="total_unreconciled_count"/> items need reconciliation.
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- Report Footer                                                -->
+                        <!-- ============================================================ -->
+                        <div class="mt-4 text-muted small">
+                            <p>
+                                Generated on: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/>
+                                <br/>
+                                Report ID: <span t-field="doc.id"/>
+                                <br/>
+                                <t t-if="doc.journal_id">
+                                    Journal: <span t-field="doc.journal_id.name"/>
+                                    |
+                                </t>
+                                Company: <span t-field="doc.company_id.name"/>
+                            </p>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

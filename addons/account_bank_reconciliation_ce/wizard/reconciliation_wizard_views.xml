@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Bank Reconciliation Wizard Views
+    Defines the split-panel user interface for manual bank
+    reconciliation: matching statement lines to journal entries,
+    reviewing algorithmic match suggestions with confidence scores,
+    and executing match / unmatch / partial match / batch confirm
+    workflows.
+    Part of FEATURE-002: Bank Reconciliation System (BR-003).
+-->
+<odoo>
+
+    <!--
+        ============================================================
+        Bank Reconciliation Wizard — Form View
+        ============================================================
+        Implements a split-panel reconciliation interface:
+
+          Top row     : Journal selector and date-range filters
+          Left panel  : Unreconciled bank statement lines with
+                        amount, date, reference, partner, and
+                        reconciliation status / confidence
+          Right panel : Matching candidate journal entries with
+                        confidence score badges (High / Medium / Low)
+          Bottom      : Write-off controls (visible only when a
+                        partial match is being configured)
+          Footer      : Action buttons — Find Matches, Confirm,
+                        Unmatch, Partial Match, Batch Confirm, Cancel
+
+        Follows Odoo 19.0 attribute syntax (invisible=, required=,
+        readonly=) — NOT the deprecated attrs={} dict syntax.
+        ============================================================
+    -->
+    <record id="view_reconciliation_wizard_form" model="ir.ui.view">
+        <field name="name">reconciliation.wizard.form</field>
+        <field name="model">account.reconciliation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bank Reconciliation">
+                <!-- =============================================
+                     Hidden / Invisible Fields
+                     ============================================= -->
+                <field name="state" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+
+                <!-- =============================================
+                     Header — Status Bar
+                     ============================================= -->
+                <header>
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,in_progress,done"/>
+                </header>
+
+                <sheet>
+                    <!-- =============================================
+                         Section 1 — Journal Selection &amp; Date Filters
+                         =============================================
+                         The journal determines which bank/cash account
+                         the reconciliation operates on.  The optional
+                         date range narrows the statement lines shown.
+                    -->
+                    <group>
+                        <group string="Bank Journal" colspan="2">
+                            <field name="journal_id"
+                                   domain="[('type', 'in', ('bank', 'cash'))]"
+                                   options="{'no_create': True}"
+                                   required="1"
+                                   placeholder="Select a bank or cash journal..."/>
+                        </group>
+                        <group string="Date Range">
+                            <field name="date_from"
+                                   placeholder="Start date (optional)"/>
+                            <field name="date_to"
+                                   placeholder="End date (optional)"/>
+                        </group>
+                    </group>
+
+                    <!-- =============================================
+                         Section 2 — Summary
+                         =============================================
+                         Quick overview of how many unreconciled lines
+                         remain for the selected journal / date window.
+                    -->
+                    <group>
+                        <group>
+                            <field name="unreconciled_count"
+                                   readonly="1"
+                                   string="Unreconciled Lines"/>
+                        </group>
+                    </group>
+
+                    <!-- =============================================
+                         Section 3 — Split Panel Layout
+                         =============================================
+                         Left panel  : bank statement lines
+                         Right panel : algorithmic match suggestions
+                    -->
+                    <notebook>
+                        <!--
+                            ========================================
+                            Page: Statement Lines (Left Panel)
+                            ========================================
+                            Shows all unreconciled bank statement lines
+                            for the selected journal and date range.
+                            Each row displays date, payment reference,
+                            partner name, amount, reconciliation status,
+                            and the best-matching confidence score from
+                            the engine.
+                        -->
+                        <page string="Bank Statement Lines" name="statement_lines">
+                            <field name="statement_line_ids"
+                                   nolabel="1"
+                                   readonly="1">
+                                <list string="Unreconciled Statement Lines"
+                                      decoration-danger="reconciliation_status == 'unreconciled'"
+                                      decoration-warning="reconciliation_status == 'partially'"
+                                      decoration-success="reconciliation_status == 'reconciled' or reconciliation_status == 'manual'"
+                                      create="false"
+                                      delete="false"
+                                      edit="false">
+                                    <field name="date"
+                                           string="Date"
+                                           width="100px"/>
+                                    <field name="payment_ref"
+                                           string="Reference"/>
+                                    <field name="partner_name"
+                                           string="Partner"
+                                           optional="show"/>
+                                    <field name="amount"
+                                           string="Amount"
+                                           widget="monetary"/>
+                                    <field name="reconciliation_status"
+                                           string="Status"
+                                           widget="badge"
+                                           decoration-danger="reconciliation_status == 'unreconciled'"
+                                           decoration-warning="reconciliation_status == 'partially'"
+                                           decoration-success="reconciliation_status in ('reconciled', 'manual')"/>
+                                    <field name="matching_confidence"
+                                           string="Confidence"
+                                           widget="progressbar"
+                                           options="{'max_value': 100}"/>
+                                </list>
+                            </field>
+
+                            <!-- Selected statement line for manual
+                                 match / unmatch operations -->
+                            <group string="Selected Statement Line">
+                                <field name="selected_line_id"
+                                       options="{'no_create': True}"
+                                       domain="[('id', 'in', statement_line_ids)]"
+                                       placeholder="Click a row above or select here..."/>
+                            </group>
+                        </page>
+
+                        <!--
+                            ========================================
+                            Page: Matching Suggestions (Right Panel)
+                            ========================================
+                            Lists algorithmic match suggestions for
+                            the current set of statement lines.  Each
+                            row shows the candidate journal entry, the
+                            overall confidence score (progress bar), a
+                            confidence-level badge (High / Medium / Low),
+                            the candidate amount, date, and partner.
+                            A boolean toggle allows the user to select
+                            specific matches for confirmation.
+                        -->
+                        <page string="Matching Suggestions" name="match_suggestions">
+                            <field name="match_ids"
+                                   nolabel="1">
+                                <list string="Match Suggestions"
+                                      decoration-success="confidence_level == 'high'"
+                                      decoration-warning="confidence_level == 'medium'"
+                                      decoration-danger="confidence_level == 'low' or confidence_level == 'none'"
+                                      editable="bottom"
+                                      create="false"
+                                      delete="false">
+                                    <field name="is_selected"
+                                           string="Select"
+                                           widget="boolean_toggle"
+                                           width="60px"/>
+                                    <field name="statement_line_id"
+                                           string="Statement Line"
+                                           readonly="1"
+                                           optional="show"/>
+                                    <field name="move_line_id"
+                                           string="Journal Item"
+                                           readonly="1"/>
+                                    <field name="confidence_score"
+                                           string="Score"
+                                           widget="progressbar"
+                                           options="{'max_value': 100}"
+                                           readonly="1"/>
+                                    <field name="confidence_level"
+                                           string="Level"
+                                           widget="badge"
+                                           decoration-success="confidence_level == 'high'"
+                                           decoration-warning="confidence_level == 'medium'"
+                                           decoration-danger="confidence_level in ('low', 'none')"
+                                           readonly="1"/>
+                                    <field name="matched_amount"
+                                           string="Amount"
+                                           widget="monetary"
+                                           readonly="1"/>
+                                    <field name="state"
+                                           string="Match State"
+                                           widget="badge"
+                                           decoration-info="state == 'proposed'"
+                                           decoration-success="state == 'confirmed'"
+                                           decoration-danger="state == 'rejected'"
+                                           readonly="1"
+                                           optional="show"/>
+                                </list>
+                            </field>
+
+                            <!-- Currently selected matches for the
+                                 Confirm / Partial Match operations -->
+                            <group string="Selected Matches">
+                                <field name="selected_match_ids"
+                                       widget="many2many_tags"
+                                       options="{'no_create': True}"
+                                       readonly="1"/>
+                            </group>
+                        </page>
+
+                        <!--
+                            ========================================
+                            Page: Write-Off / Partial Match Settings
+                            ========================================
+                            Controls that become relevant when the
+                            user performs a partial match and needs
+                            to book a write-off for the remaining
+                            difference.
+                        -->
+                        <page string="Write-Off Settings" name="write_off_settings">
+                            <group string="Write-Off Configuration"
+                                   invisible="not selected_line_id">
+                                <group>
+                                    <field name="write_off_account_id"
+                                           domain="[('account_type', '!=', 'off_balance')]"
+                                           options="{'no_create': True}"
+                                           placeholder="Select write-off account..."
+                                           help="Account used to book the difference when performing a partial match. Leave empty for exact matches."/>
+                                    <field name="write_off_label"
+                                           placeholder="Write-Off"
+                                           help="Label applied to the write-off journal entry line."/>
+                                    <field name="write_off_amount"
+                                           readonly="1"
+                                           widget="monetary"
+                                           help="Computed difference amount that will be booked as a write-off entry."/>
+                                </group>
+                                <group>
+                                    <field name="tolerance_percentage"
+                                           widget="percentage"
+                                           help="Maximum acceptable percentage difference between the statement line amount and the matched journal entry amount. Differences within this tolerance are auto-written off."/>
+                                </group>
+                            </group>
+
+                            <!-- Matching engine tuning — applies to the
+                                 next ``Find Matches`` run.  Kept visible
+                                 regardless of line selection so users
+                                 can tune it before selecting a line. -->
+                            <group string="Matching Engine">
+                                <field name="candidate_date_window"
+                                       help="Maximum number of days (±) between a statement line date and a candidate journal item date.  Must be a positive integer."/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+
+                <!-- =============================================
+                     Footer — Action Buttons
+                     =============================================
+                     Provides the primary reconciliation workflow
+                     actions.  Button visibility is driven by the
+                     wizard state so that only contextually-relevant
+                     actions are offered to the user.
+                -->
+                <footer>
+                    <!-- Primary actions -->
+                    <button name="action_find_matches"
+                            type="object"
+                            string="Find Matches"
+                            class="btn-primary"
+                            icon="fa-search"
+                            help="Trigger the algorithmic matching engine to find candidate journal entries for all unreconciled statement lines."
+                            invisible="state == 'done'"/>
+                    <button name="action_confirm_selected"
+                            type="object"
+                            string="Confirm Selected"
+                            class="btn-primary"
+                            icon="fa-check"
+                            help="Confirm the selected matches and execute the reconciliation for the chosen statement line."
+                            invisible="state == 'done'"/>
+
+                    <!-- Secondary actions -->
+                    <button name="action_unmatch"
+                            type="object"
+                            string="Unmatch"
+                            class="btn-secondary"
+                            icon="fa-undo"
+                            help="Remove existing reconciliation for the selected statement line and reset its status to unreconciled."
+                            invisible="state == 'done'"/>
+                    <button name="action_partial_match"
+                            type="object"
+                            string="Partial Match"
+                            class="btn-secondary"
+                            icon="fa-adjust"
+                            help="Open the partial reconciliation helper to reconcile with a write-off for the remaining difference."
+                            invisible="state == 'done'"/>
+                    <button name="action_batch_confirm"
+                            type="object"
+                            string="Batch Confirm All"
+                            class="btn-secondary"
+                            icon="fa-check-circle"
+                            help="Automatically confirm all high-confidence matches (score ≥ 90%%) in a single batch operation."
+                            invisible="state == 'done'"/>
+
+                    <!-- Close / Cancel -->
+                    <button string="Close"
+                            class="btn-secondary"
+                            special="cancel"
+                            invisible="state != 'done'"
+                            icon="fa-times"/>
+                    <button string="Cancel"
+                            class="btn-secondary"
+                            special="cancel"
+                            invisible="state == 'done'"
+                            icon="fa-ban"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!--
+        ============================================================
+        Reconciliation Wizard — Window Action
+        ============================================================
+        Launches the reconciliation wizard from the Accounting menu.
+        Opens in a new modal dialog (target=new) by default.  The
+        context passes the active journal ID when launched from a
+        bank journal's action button, and defaults the end date to
+        today's date.
+        ============================================================
+    -->
+    <record id="action_reconciliation_wizard" model="ir.actions.act_window">
+        <field name="name">Bank Reconciliation</field>
+        <field name="res_model">account.reconciliation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_journal_id': context.get('active_id', False)}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Start Bank Reconciliation
+            </p>
+            <p>
+                Select a bank journal and date range, then click
+                <strong>Find Matches</strong> to let the engine
+                propose journal entry matches for your unreconciled
+                statement lines.  Review the suggestions, confirm
+                exact matches, and handle partial differences with
+                write-offs.
+            </p>
+        </field>
+    </record>
+
+    <!--
+        ============================================================
+        Reconciliation Wizard — Full-Screen Action
+        ============================================================
+        Alternative action that opens the wizard in full-screen mode
+        (target=current) for users who prefer a wider workspace.
+        Accessible via a separate menu item or button.
+        ============================================================
+    -->
+    <record id="action_reconciliation_wizard_fullscreen" model="ir.actions.act_window">
+        <field name="name">Bank Reconciliation (Full Screen)</field>
+        <field name="res_model">account.reconciliation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{'default_journal_id': context.get('active_id', False), 'form_view_initial_mode': 'edit'}</field>
+    </record>
+
+</odoo>

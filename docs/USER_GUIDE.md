@@ -324,8 +324,8 @@ If you reconcile by mistake:
 ## (5) Generating a financial report from the Accounting menu
 
 The Financial Reports module registers a unified wizard and six
-dedicated shortcuts under **Accounting → Reporting → Financial
-Reports**. Any report can be produced via either entry point:
+dedicated shortcuts under **Reporting → Financial Reports**. Any
+report can be produced via either entry point:
 
 - **All Financial Reports** — unified wizard; lets you pick the report
   type and any filter at runtime.
@@ -338,9 +338,9 @@ Reports**. Any report can be produced via either entry point:
 
 ### Worked example: Balance Sheet
 
-1. Navigate to **Accounting → Reporting → Financial Reports →
-   Financial Statements → Balance Sheet**. The report wizard opens
-   with **Report Type** pre-set to `Balance Sheet`.
+1. Navigate to **Reporting → Financial Reports → Financial
+   Statements → Balance Sheet**. The report wizard opens with
+   **Report Type** pre-set to `Balance Sheet`.
 2. Fill in:
    - **Company** — defaults to the current user's company.
    - **As of Date** — pick a reporting date, e.g., `2024-03-31`.
@@ -402,8 +402,8 @@ organization's collection policy.
 
 ### Opening the aged receivable wizard
 
-1. Navigate to **Accounting → Reporting → Financial Reports → Aged
-   Reports → Aged Receivable** (or **Aged Payable** for AP).
+1. Navigate to **Reporting → Financial Reports → Aged Reports →
+   Aged Receivable** (or **Aged Payable** for AP).
 2. The report wizard opens with **Report Type** pre-set to
    `Aged Receivable`.
 3. Fill in the **General Options** group:

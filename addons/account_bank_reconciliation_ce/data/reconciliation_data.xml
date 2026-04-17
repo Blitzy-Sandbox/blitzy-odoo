@@ -10,7 +10,7 @@
 
       1. Matching engine configuration parameters — confidence thresholds
          (High ≥90%, Medium 70-89%, Low 50-69%) and scoring weights
-         (amount=0.40, reference=0.25, partner=0.20, date=0.15).
+         (amount=0.35, reference=0.25, partner=0.25, date=0.15).
 
       2. Sample reconciliation rules — demonstrating regex-based label
          matching, exact amount + reference matching, amount tolerance
@@ -55,9 +55,9 @@
          =================================================================
          Configurable weights that control how much each matching criterion
          contributes to the overall confidence score (FEATURE-002 BR-002):
-           - amount    = 0.40 (highest — exact amount match is strongest signal)
+           - amount    = 0.35 (highest — exact amount match is strongest signal)
            - reference = 0.25 (high   — payment reference correlation)
-           - partner   = 0.20 (high   — partner name/ID correlation)
+           - partner   = 0.25 (high   — partner name/ID correlation)
            - date      = 0.15 (medium — date proximity)
 
          The four weights sum to 1.00.

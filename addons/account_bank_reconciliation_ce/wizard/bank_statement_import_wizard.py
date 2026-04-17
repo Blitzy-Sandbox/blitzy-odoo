@@ -478,7 +478,7 @@ class BankStatementImportWizard(models.TransientModel):
                         'Format detected via import model delegate: %r', detected,
                     )
                     return detected
-            except Exception:
+            except Exception:  # noqa: BLE001  # intentional: fallback to heuristics on any delegate failure
                 _logger.debug(
                     'Delegation to _detect_file_format failed; '
                     'falling back to local heuristics for %r',
@@ -527,7 +527,7 @@ class BankStatementImportWizard(models.TransientModel):
                 if self.filename and self.filename.lower().endswith('.xml'):
                     return 'camt053'
 
-            except Exception:
+            except Exception:  # noqa: BLE001  # intentional: any decode/sniff failure returns False below
                 _logger.debug(
                     'Content-based format detection failed for %r',
                     self.filename,

@@ -17,15 +17,22 @@
          Positioned at sequence 30, after existing Accounting sub-menus:
            - Transactions (sequence 0)
            - Closing (sequence 20)
-         Visible only to full accounting users (account.group_account_user)
-         because reconciliation workflows require write access to journal
-         entries and reconciliation records.
+         Visibility is gated by this module's own
+         group_bank_reconciliation_user.  The accounting user group
+         (account.group_account_user) cannot be used here because in
+         Odoo 19.0 Community Edition that group is empty (its members
+         are only materialised when the Enterprise account_accountant
+         module is present).  Gating the menu on our own group lets
+         any user who has been granted bank-reconciliation access see
+         the menu on a CE-only install, and simultaneously keeps the
+         menu visible to accounting users who inherit this group via
+         the implied_ids extension in bank_reconciliation_security.xml.
          ============================================================ -->
     <menuitem id="menu_bank_reconciliation_root"
               name="Bank Reconciliation"
               parent="account.menu_finance_entries"
               sequence="30"
-              groups="account.group_account_user"/>
+              groups="account_bank_reconciliation_ce.group_bank_reconciliation_user"/>
 
     <!-- ============================================================
          Workflow Menus (sequence 1–3)
@@ -80,12 +87,17 @@
     <!-- Reconciliation Rules: Opens the enhanced reconciliation rules list (BR-004).
          Allows managers to configure matching rules with priority ordering,
          regex patterns, amount tolerance, confidence thresholds, and
-         auto-reconcile triggers. Restricted to accounting managers. -->
+         auto-reconcile triggers.  Restricted to this module's manager
+         group so the menu remains visible on a CE-only install where
+         the core account.group_account_manager group is empty.  Users
+         who belong to account.group_account_manager still see this
+         menu because bank_reconciliation_security.xml makes the core
+         manager group imply group_bank_reconciliation_manager. -->
     <menuitem id="menu_bank_reconciliation_rules"
               name="Reconciliation Rules"
               parent="menu_bank_reconciliation_root"
               action="action_bank_reconciliation_rules"
               sequence="10"
-              groups="account.group_account_manager"/>
+              groups="account_bank_reconciliation_ce.group_bank_reconciliation_manager"/>
 
 </odoo>

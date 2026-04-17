@@ -474,7 +474,7 @@ class PartialReconcileHelper(models.TransientModel):
         # - Cash-basis tax entries
         try:
             to_reconcile.reconcile()
-        except Exception:
+        except Exception:  # noqa: BLE001  # intentional: fall back gracefully on any reconcile failure
             # If the ORM reconcile() fails (e.g. due to account mismatch
             # or residual rounding), fall back to manual partial reconcile
             # creation so the user can complete reconciliation later.

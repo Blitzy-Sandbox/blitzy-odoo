@@ -168,8 +168,8 @@
                                  contribute to the overall confidence score.
                                  Each sub-score ranges 0-100 and is weighted
                                  according to DEFAULT_WEIGHTS:
-                                   amount=40%, reference=25%,
-                                   partner=20%, date=15%.  -->
+                                   amount=35%, reference=25%,
+                                   partner=25%, date=15%.  -->
                             <page string="Scoring Breakdown"
                                   name="matching_details">
                                 <group>

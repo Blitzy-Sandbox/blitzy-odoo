@@ -29,3 +29,7 @@ access_trial_balance_report_line_manager,account.trial.balance.report.line.manag
 access_aged_partner_balance_report_manager,account.aged.partner.balance.report.manager,model_account_aged_partner_balance_report,group_financial_report_manager,1,1,1,1
 access_aged_partner_balance_report_partner_manager,account.aged.partner.balance.report.partner.manager,model_account_aged_partner_balance_report_partner,group_financial_report_manager,1,1,1,1
 access_aged_partner_balance_report_line_manager,account.aged.partner.balance.report.line.manager,model_account_aged_partner_balance_report_line,group_financial_report_manager,1,1,1,1
+access_account_move_fr_user,account.move.fr.user,account.model_account_move,group_financial_report_user,1,0,0,0
+access_account_move_line_fr_user,account.move.line.fr.user,account.model_account_move_line,group_financial_report_user,1,0,0,0
+access_account_account_fr_user,account.account.fr.user,account.model_account_account,group_financial_report_user,1,0,0,0
+access_res_partner_fr_user,res.partner.fr.user,base.model_res_partner,group_financial_report_user,1,0,0,0

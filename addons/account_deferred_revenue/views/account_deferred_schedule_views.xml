@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    DR-001 Deferred Revenue Schedule Views
+    =======================================
+
+    Primary views for account.deferred.schedule — the header model for
+    deferred revenue / deferred expense recognition schedules.
+
+    Implements DR-001 acceptance criteria:
+      - Form view with draft -> confirmed -> closed state machine
+      - Header workflow buttons (Confirm, Generate Cut-off, Close, Reset to Draft)
+      - Chatter with activities and audit trail
+      - Recognition lines inline list within a notebook tab
+      - Analytic distribution widget
+      - List, kanban, and search views with state-based decoration
+      - Default action opening the schedule list
+
+    Model: account.deferred.schedule
+      - inherits mail.thread and mail.activity.mixin
+      - order = 'start_date desc, name'
+      - check_company_auto = True
+
+    Views registered here:
+      1. view_account_deferred_schedule_form    (form with state machine + chatter)
+      2. view_account_deferred_schedule_tree    (list with state decoration)
+      3. view_account_deferred_schedule_kanban  (kanban grouped by state)
+      4. view_account_deferred_schedule_search  (filters, group-by)
+      5. action_account_deferred_schedule       (primary window action)
+
+    Referenced by:
+      - views/menuitem.xml via menu_deferred_schedule (primary entry point)
+      - models/account_deferred_schedule.py action_generate_cutoff returns
+        the DR-003 cut-off wizard action (defined in cutoff_wizard_views.xml)
+
+    AAP alignment notes:
+      - Uses the modern Odoo 19 <chatter/> tag; the legacy
+        <div class="oe_chatter"> pattern has been removed from Odoo 19 core.
+      - Kanban template uses <t t-name="card"> (Odoo 19 standard), replacing
+        the legacy <t t-name="kanban-box">.
+      - The model does not expose an `action_view_lines` server method; the
+        recognition lines are surfaced via the form's notebook tab instead,
+        removing the need for a redundant smart button.
+
+    Rules compliance (AAP §0.7):
+      - R-01 Module Independence: only references account.deferred.schedule,
+        account.deferred.line, core models (account.move, account.account,
+        res.partner, res.company). No sibling new-module references.
+      - R-02 No Enterprise Dependencies: no Enterprise view/model references.
+      - R-03 _inherit Correctness: views target the net-new schedule model
+        (which uses _name + _inherit mixins on mail.thread/mail.activity.mixin).
+      - R-05 No Core Field Redefinition: declares views for a net-new model
+        only; no modification of core views here.
+      - R-07 No sudo() without justification: no sudo() in this file.
+-->
+<odoo>
+
+    <!-- =================================================================
+         SECTION 1: Form View — Primary Editing Interface
+         ================================================================= -->
+    <record id="view_account_deferred_schedule_form" model="ir.ui.view">
+        <field name="name">account.deferred.schedule.form</field>
+        <field name="model">account.deferred.schedule</field>
+        <field name="arch" type="xml">
+            <form string="Deferred Revenue Schedule">
+                <!-- =============================================
+                     Header — state machine workflow
+                     ============================================= -->
+                <header>
+                    <button name="action_confirm"
+                            type="object"
+                            string="Confirm"
+                            class="btn-primary"
+                            invisible="state != 'draft'"
+                            data-hotkey="v"/>
+                    <button name="action_generate_cutoff"
+                            type="object"
+                            string="Generate Cut-off Entries"
+                            class="btn-primary"
+                            invisible="state != 'confirmed'"
+                            data-hotkey="q"/>
+                    <button name="action_close"
+                            type="object"
+                            string="Close"
+                            class="btn-secondary"
+                            invisible="state != 'confirmed'"
+                            confirm="Close this schedule? This will prevent any further recognition posting."/>
+                    <button name="action_draft"
+                            type="object"
+                            string="Reset to Draft"
+                            class="btn-secondary"
+                            invisible="state != 'confirmed'"
+                            confirm="Reset to draft? This will remove all generated recognition lines."/>
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,confirmed,closed"/>
+                </header>
+
+                <sheet>
+                    <!-- =============================================
+                         Title — schedule reference
+                         ============================================= -->
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1>
+                            <field name="name"
+                                   readonly="1"
+                                   placeholder="DEF-YYYY-00001"/>
+                        </h1>
+                    </div>
+
+                    <!-- =============================================
+                         Main field groups — row 1
+                         ============================================= -->
+                    <group>
+                        <group string="Partner &amp; Source">
+                            <field name="partner_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create_edit': True}"/>
+                            <field name="source_move_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"
+                                   domain="[('state','=','posted'),
+                                            ('move_type','in',('out_invoice','in_invoice','out_refund','in_refund')),
+                                            ('company_id','=',company_id)]"/>
+                            <field name="source_move_line_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"
+                                   invisible="not source_move_id"
+                                   domain="[('move_id','=',source_move_id)]"/>
+                        </group>
+                        <group string="Amounts">
+                            <field name="total_amount"
+                                   readonly="state != 'draft'"
+                                   widget="monetary"/>
+                            <field name="currency_id"
+                                   groups="base.group_multi_currency"
+                                   options="{'no_create': True}"
+                                   readonly="state != 'draft'"/>
+                            <field name="posted_amount"
+                                   widget="monetary"
+                                   readonly="1"/>
+                            <field name="remaining_amount"
+                                   widget="monetary"
+                                   readonly="1"/>
+                            <field name="completion_status"
+                                   widget="badge"
+                                   decoration-info="completion_status == 'active'"
+                                   decoration-success="completion_status == 'completed'"
+                                   decoration-warning="completion_status == 'on_hold'"
+                                   readonly="1"/>
+                        </group>
+                    </group>
+
+                    <!-- =============================================
+                         Main field groups — row 2
+                         ============================================= -->
+                    <group>
+                        <group string="Accounts">
+                            <field name="deferred_account_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"
+                                   domain="[('account_type','in',
+                                             ('liability_current','liability_non_current',
+                                              'asset_current','asset_non_current')),
+                                            ('deprecated','=',False),
+                                            ('company_ids','in',company_id)]"/>
+                            <field name="recognition_account_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"
+                                   domain="[('account_type','in',
+                                             ('income','income_other',
+                                              'expense','expense_depreciation','expense_direct_cost')),
+                                            ('deprecated','=',False),
+                                            ('company_ids','in',company_id)]"/>
+                        </group>
+                        <group string="Recognition Configuration">
+                            <field name="recognition_method"
+                                   readonly="state != 'draft'"/>
+                            <field name="start_date"
+                                   readonly="state != 'draft'"/>
+                            <field name="end_date"
+                                   readonly="state != 'draft'"/>
+                            <field name="period_count" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <!-- =============================================
+                         Analytic Distribution
+                         ============================================= -->
+                    <group string="Analytic Distribution"
+                           groups="analytic.group_analytic_accounting">
+                        <field name="analytic_distribution"
+                               widget="analytic_distribution"
+                               readonly="state != 'draft'"
+                               nolabel="1"
+                               colspan="2"/>
+                    </group>
+
+                    <!-- =============================================
+                         Company (multi-company environments only)
+                         ============================================= -->
+                    <group groups="base.group_multi_company">
+                        <field name="company_id"
+                               readonly="state != 'draft'"
+                               options="{'no_create': True}"/>
+                    </group>
+
+                    <!-- =============================================
+                         Notebook — Recognition Lines tab
+                         ============================================= -->
+                    <notebook>
+                        <page name="lines" string="Recognition Lines">
+                            <field name="line_ids"
+                                   readonly="state == 'closed'"
+                                   context="{'default_schedule_id': id}">
+                                <list string="Recognition Lines"
+                                      editable="bottom"
+                                      default_order="recognition_date asc, sequence asc">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="recognition_date"
+                                           readonly="parent.state == 'closed' or state == 'posted'"/>
+                                    <field name="recognition_amount"
+                                           widget="monetary"
+                                           sum="Total"
+                                           readonly="parent.state == 'closed' or state == 'posted'"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                    <field name="days_in_period"
+                                           readonly="1"
+                                           optional="hide"/>
+                                    <field name="state"
+                                           widget="badge"
+                                           decoration-info="state == 'draft'"
+                                           decoration-success="state == 'posted'"/>
+                                    <field name="move_id"
+                                           readonly="1"
+                                           optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+
+                <!-- =============================================
+                     Chatter — mail.thread + mail.activity.mixin
+                     Uses the Odoo 19 <chatter/> shortcut; the legacy
+                     <div class="oe_chatter">...</div> pattern has been
+                     removed from core and is no longer rendered.
+                     ============================================= -->
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 2: List (Tree) View
+         ================================================================= -->
+    <record id="view_account_deferred_schedule_tree" model="ir.ui.view">
+        <field name="name">account.deferred.schedule.list</field>
+        <field name="model">account.deferred.schedule</field>
+        <field name="arch" type="xml">
+            <list string="Deferred Revenue Schedules"
+                  decoration-info="state == 'draft'"
+                  decoration-success="state == 'confirmed'"
+                  decoration-muted="state == 'closed'"
+                  default_order="start_date desc, name"
+                  sample="1">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="recognition_method" optional="show"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="total_amount" widget="monetary" sum="Total"/>
+                <field name="posted_amount" widget="monetary" optional="hide"/>
+                <field name="remaining_amount" widget="monetary" optional="hide"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="completion_status"
+                       widget="badge"
+                       decoration-info="completion_status == 'active'"
+                       decoration-success="completion_status == 'completed'"
+                       decoration-warning="completion_status == 'on_hold'"
+                       optional="show"/>
+                <field name="state"
+                       widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'confirmed'"
+                       decoration-muted="state == 'closed'"/>
+                <field name="company_id"
+                       groups="base.group_multi_company"
+                       optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 3: Kanban View — Grouped by State
+         Uses the Odoo 19 <t t-name="card"> template standard.  The
+         legacy <t t-name="kanban-box"> pattern has been superseded.
+         ================================================================= -->
+    <record id="view_account_deferred_schedule_kanban" model="ir.ui.view">
+        <field name="name">account.deferred.schedule.kanban</field>
+        <field name="model">account.deferred.schedule</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state"
+                    class="o_kanban_small_column"
+                    sample="1"
+                    default_order="start_date desc, name">
+                <!-- Dependency fields referenced by widgets but not
+                     rendered directly as a <field> in the card body. -->
+                <field name="currency_id"/>
+                <field name="state"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_top mb-2">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="name"/>
+                                    </strong>
+                                    <div class="o_kanban_record_subtitle">
+                                        <field name="partner_id"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <div>
+                                    <span class="text-muted">Total:</span>
+                                    <field name="total_amount" widget="monetary"/>
+                                </div>
+                                <div>
+                                    <span class="text-muted">Posted:</span>
+                                    <field name="posted_amount" widget="monetary"/>
+                                </div>
+                                <div>
+                                    <span class="text-muted">Period:</span>
+                                    <field name="start_date"/> &#8211;
+                                    <field name="end_date"/>
+                                </div>
+                                <div>
+                                    <span class="text-muted">Method:</span>
+                                    <field name="recognition_method"/>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_left">
+                                    <field name="completion_status"
+                                           widget="label_selection"
+                                           options="{'classes': {'active': 'info',
+                                                                 'completed': 'success',
+                                                                 'on_hold': 'warning'}}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 4: Search View — Filters and Group-By
+         ================================================================= -->
+    <record id="view_account_deferred_schedule_search" model="ir.ui.view">
+        <field name="name">account.deferred.schedule.search</field>
+        <field name="model">account.deferred.schedule</field>
+        <field name="arch" type="xml">
+            <search string="Deferred Revenue Schedules">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="source_move_id" string="Source Invoice"/>
+                <field name="deferred_account_id"/>
+                <field name="recognition_account_id"/>
+
+                <separator/>
+
+                <!-- State filters -->
+                <filter name="filter_draft"
+                        string="Draft"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_confirmed"
+                        string="Confirmed"
+                        domain="[('state', '=', 'confirmed')]"/>
+                <filter name="filter_closed"
+                        string="Closed"
+                        domain="[('state', '=', 'closed')]"/>
+
+                <separator/>
+
+                <!-- Revenue vs Expense filters.
+                     Partition schedules by recognition account type. -->
+                <filter name="filter_deferred_revenue"
+                        string="Deferred Revenue"
+                        domain="[('recognition_account_id.account_type', 'in', ('income', 'income_other'))]"/>
+                <filter name="filter_deferred_expenses"
+                        string="Deferred Expenses"
+                        domain="[('recognition_account_id.account_type', 'in', ('expense', 'expense_depreciation', 'expense_direct_cost'))]"/>
+
+                <separator/>
+
+                <!-- Completion status filters -->
+                <filter name="filter_active"
+                        string="Active"
+                        domain="[('completion_status', '=', 'active')]"/>
+                <filter name="filter_completed"
+                        string="Completed"
+                        domain="[('completion_status', '=', 'completed')]"/>
+                <filter name="filter_on_hold"
+                        string="On Hold"
+                        domain="[('completion_status', '=', 'on_hold')]"/>
+
+                <separator/>
+
+                <!-- Date filters -->
+                <filter name="filter_starts_this_year"
+                        string="Starts This Year"
+                        domain="[('start_date','&gt;=', (context_today()).strftime('%Y-01-01')),
+                                 ('start_date','&lt;=', (context_today()).strftime('%Y-12-31'))]"/>
+
+                <separator/>
+
+                <!-- Group-By -->
+                <group expand="0" string="Group By">
+                    <filter name="group_by_state"
+                            string="Status"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_by_method"
+                            string="Recognition Method"
+                            context="{'group_by': 'recognition_method'}"/>
+                    <filter name="group_by_partner"
+                            string="Partner"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_by_completion"
+                            string="Completion Status"
+                            context="{'group_by': 'completion_status'}"/>
+                    <filter name="group_by_start_month"
+                            string="Start Month"
+                            context="{'group_by': 'start_date:month'}"/>
+                    <filter name="group_by_company"
+                            string="Company"
+                            context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 5: Window Action — Primary Entry Point
+         Opens the list by default with Confirmed schedules pre-filtered
+         (the active recognition pipeline users usually want first).
+         ================================================================= -->
+    <record id="action_account_deferred_schedule" model="ir.actions.act_window">
+        <field name="name">Deferred Schedules</field>
+        <field name="res_model">account.deferred.schedule</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="view_account_deferred_schedule_search"/>
+        <field name="context">{'search_default_filter_confirmed': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first deferred revenue schedule
+            </p>
+            <p>
+                Deferred schedules let you recognize revenue or expenses
+                across multiple periods.  Link each schedule to a posted
+                invoice, choose the deferred and recognition accounts,
+                and pick a recognition method (straight-line, date-based,
+                or manual) to generate the period-by-period plan.
+            </p>
+            <p>
+                This module helps you comply with ASC 606 / IFRS 15
+                revenue recognition requirements.
+            </p>
+        </field>
+    </record>
+
+</odoo>

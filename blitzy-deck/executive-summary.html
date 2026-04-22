@@ -738,6 +738,21 @@
       height: auto !important;
       display: block;
       margin: 0 auto;
+      /* Mermaid v11.4.0 xychart-beta and pie diagrams set their SVG viewBox
+         to the exact data region, causing axis tick labels and legend text
+         to render outside that viewBox and be clipped by the default SVG
+         `overflow: hidden`.  Forcing `overflow: visible` lets those labels
+         paint beyond the viewBox boundary (remediation for QA CP2
+         Issues 2, 3, and 4 — slide 5 and slide 9 x-axis label clipping
+         plus slide 13 pie legend truncation). */
+      overflow: visible !important;
+    }
+
+    /* Mermaid internal <g> groups sometimes carry their own clip-path that
+       further truncates outside-viewBox content; neutralize them so the
+       overflow: visible above is actually honored down to the label glyphs. */
+    .reveal .mermaid svg g {
+      overflow: visible !important;
     }
 
     /* Mermaid htmlLabels render as <foreignObject><div class="nodeLabel">...
@@ -826,7 +841,12 @@
       background: transparent;
       font-size: 0.75rem;
       letter-spacing: 0.1em;
-      right: 1.5rem;
+      /* Counter sits at bottom-right of the viewport.  A 1.5rem inset clipped
+         the trailing digit of two-digit pages (e.g. "15/16", "16/16") on
+         1920x1080 because Reveal's position math plus the 0.1em letter-spacing
+         carries the final glyph past the computed right edge.  Increased to
+         2.25rem to restore the ~20px safe margin required by QA CP2 Issue 5. */
+      right: 2.25rem;
       bottom: 1rem;
     }
 
@@ -986,7 +1006,7 @@ graph LR
 xychart-beta
     title "Files by Review Domain"
     x-axis ["Infra", "Security", "Backend", "QA", "Business", "Frontend", "Other"]
-    y-axis "Files" 0 --> 60
+    y-axis 0 --> 60
     bar [12, 4, 30, 20, 55, 3, 13]
             </pre>
           </div>
@@ -1113,8 +1133,8 @@ xychart-beta
         <pre class="mermaid" aria-label="Bar chart: Security rule volume by control type showing 34 ACL rows versus 8 record rules">
 xychart-beta
     title "Security Rule Volume by Control Type"
-    x-axis ["ACL Rows (ir.model.access)", "Record Rules (ir.rule)", "Custom Groups"]
-    y-axis "Count" 0 --> 40
+    x-axis ["ACL Rows", "Record Rules", "Custom Groups"]
+    y-axis 0 --> 40
     bar [34, 8, 4]
         </pre>
       </section>
@@ -1139,9 +1159,9 @@ xychart-beta
       <section>
         <span class="eyebrow">Matching Engine Flow</span>
         <h2>Weighted Scoring Across Four Features</h2>
-        <p class="lead">Seven-step pipeline from statement line to partial reconcile, with explicit confidence tiers.</p>
-        <pre class="mermaid" aria-label="Sequence diagram: seven-step matching-engine pipeline across five actors showing weighted scoring and confidence tiers">
-%%{init: { 'sequence': { 'useMaxWidth': true, 'wrap': true, 'mirrorActors': false, 'diagramMarginX': 24, 'diagramMarginY': 16, 'boxMargin': 10, 'messageMargin': 40 } } }%%
+        <p class="lead">End-to-end pipeline from statement line to partial reconcile, with explicit confidence tiers.</p>
+        <pre class="mermaid" aria-label="Sequence diagram: matching-engine pipeline across five actors showing weighted scoring across amount, reference, partner, date features, and three confidence tiers for automatic, review, and manual reconciliation">
+%%{init: { 'sequence': { 'useMaxWidth': true, 'wrap': false, 'mirrorActors': false, 'diagramMarginX': 24, 'diagramMarginY': 12, 'boxMargin': 8, 'messageMargin': 32, 'noteMargin': 8 } } }%%
 sequenceDiagram
     autonumber
     participant SL as statement.line
@@ -1150,12 +1170,15 @@ sequenceDiagram
     participant RM as reconcile.model
     participant PR as partial.reconcile
     SL->>ME: score_candidates(line)
-    ME->>ML: fetch candidates within ±90 day window
-    Note over ME: weight amount 0.35 · reference 0.25<br/>partner 0.25 · date 0.15
-    ME->>RM: apply rule regex + amount bounds
-    RM-->>ME: candidate set + confidence
-    ME-->>SL: HIGH ≥95.0 auto · MEDIUM ≥70.0 review · LOW ≥50.0 manual
-    SL->>PR: create partial reconcile (when amounts differ)
+    ME->>ML: fetch ±90 day candidates
+    Note over ME: weight amount 0.35 + reference 0.25
+    Note over ME: weight partner 0.25 + date 0.15
+    ME->>RM: apply rule regex and amount bounds
+    RM-->>ME: candidate set with confidence
+    ME-->>SL: HIGH ≥95.0 — auto reconcile
+    ME-->>SL: MEDIUM ≥70.0 — review queue
+    ME-->>SL: LOW ≥50.0 — manual triage
+    SL->>PR: create partial reconcile
         </pre>
       </section>
 
@@ -1207,8 +1230,8 @@ sequenceDiagram
 %%{init: { 'themeVariables': { 'pie1': '#5B39F3', 'pie2': '#94FAD5', 'pieOpacity': '1' } } }%%
 pie showData
     title User Stories Covered by Tests (12 total)
-    "Financial Reporting · FR" : 7
-    "Bank Reconciliation · BR" : 5
+    "Financial · FR" : 7
+    "Bank Rec · BR" : 5
         </pre>
       </section>
 

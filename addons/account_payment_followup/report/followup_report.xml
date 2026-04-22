@@ -1,0 +1,505 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Follow-up Aged Receivables Report Template (PF-003)
+    ===================================================
+
+    This file declares, in a single data XML (following the single-file
+    precedent established by ``account_bank_reconciliation_ce/report/
+    reconciliation_report.xml``):
+
+      1. ir.actions.report action ``action_report_followup_aged_receivables``
+         that binds the wizard ``account.followup.report.wizard`` to the
+         QWeb template below, rendering output as a PDF via wkhtmltopdf.
+      2. QWeb template ``followup_aged_receivables`` that generates the
+         PDF content by consuming the dict returned by the sibling
+         AbstractModel parser ``report.account_payment_followup.
+         followup_aged_receivables`` in ``followup_report.py``.
+
+    Implements FEATURE-006 PF-003: Follow-up Report Generation.
+
+    Naming-Convention Cross-Reference — The three following identifiers
+    MUST align (see ``followup_report.py`` lines 133-157 for the
+    PostgreSQL 63-character table-name rationale):
+
+      * QWeb template ``id`` (below) = ``followup_aged_receivables``
+      * Action ``report_name`` (below)
+        = ``account_payment_followup.followup_aged_receivables``
+      * Parser ``_name`` (``followup_report.py``)
+        = ``report.account_payment_followup.followup_aged_receivables``
+
+    The segment ``followup_aged_receivables`` (25 chars) is deliberately
+    abbreviated — the auto-derived ``_table`` identifier becomes
+    ``report_account_payment_followup_followup_aged_receivables`` (57
+    chars), which is under PostgreSQL's 63-character identifier limit.
+
+    Data dictionary consumed from the parser
+    ========================================
+      - docs: account.followup.report.wizard recordset
+      - data: wizard form values dict (filters, flags, dates)
+      - company: res.company record (report scope)
+      - currency: res.currency (for monetary formatting)
+      - report_date: date - 'as-of' snapshot date
+      - partners: list of dicts with aging breakdown per customer
+        (partner_id, partner_name, level_id, level_name,
+         aging_current, aging_1_30, aging_31_60, aging_61_90,
+         aging_90_plus, total_overdue, invoice_count)
+      - totals: dict with grand totals (current, aging_1_30,
+        aging_31_60, aging_61_90, aging_90_plus, grand_total,
+        total_invoice_count, partner_count)
+      - effectiveness: dict with Recovery Rate, Avg Days to Payment,
+        Response Rate by Level, Active Follow-ups (or None if the
+        wizard filter disables the section)
+
+    Rules Compliance (AAP §0.7)
+    ===========================
+      * R-01: No references to sibling new modules
+              (account_asset_management, account_budget_management,
+               account_deferred_revenue).
+      * R-02: No Enterprise module references
+              (no account_reports, no account_followup).
+      * Only references: same-module models
+        (account.followup.report.wizard) and core (res.company,
+        res.partner, res.currency, web.html_container,
+        web.external_layout).
+-->
+<odoo>
+
+    <!-- ===================================================================
+         Follow-up Aged Receivables Report Action
+         ===================================================================
+         Wires the wizard model to the QWeb template for PDF generation.
+         Invoked by the wizard's ``action_generate_report()`` via:
+
+             self.env.ref(
+                 'account_payment_followup.'
+                 'action_report_followup_aged_receivables'
+             ).report_action(wizard)
+
+         Odoo's rendering pipeline will then look up the parser
+         AbstractModel with ``_name`` = 'report.' + report_name
+         (i.e., 'report.account_payment_followup.followup_aged_receivables')
+         and invoke its ``_get_report_values()`` method, passing the
+         returned dict as the template context.
+         =================================================================== -->
+    <record id="action_report_followup_aged_receivables" model="ir.actions.report">
+        <field name="name">Follow-up Aged Receivables</field>
+        <field name="model">account.followup.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">account_payment_followup.followup_aged_receivables</field>
+        <field name="report_file">account_payment_followup.followup_aged_receivables</field>
+        <field name="print_report_name">'Follow-up Aged Receivables - %s' % (object.report_date or fields.Date.context_today(object))</field>
+        <field name="binding_model_id" ref="model_account_followup_report_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- ===================================================================
+         Follow-up Aged Receivables QWeb PDF Template
+         ===================================================================
+         Template ``id`` MUST match the action's ``report_name`` suffix
+         exactly (i.e., ``followup_aged_receivables``).
+
+         Uses Odoo's standard ``web.html_container`` + ``web.external_layout``
+         wrappers to inherit the company branding, header, and footer
+         configured under Settings > General Settings > Companies >
+         Report Layout.
+
+         Consumes values from the AbstractModel parser
+         ``report.account_payment_followup.followup_aged_receivables``
+         (see ``followup_report.py::_get_report_values``).
+
+         Defensive rendering notes
+         =========================
+           * ``docs`` may be empty when invoked programmatically without
+             a wizard record — the ``<t t-set="o">`` guard handles this.
+           * ``company`` / ``currency`` fall back through a chain so the
+             template never references ``None.<attr>``.
+           * All dict accesses use ``or 0.0`` / ``or 0`` fallbacks so
+             missing keys render as zero instead of raising.
+           * ``effectiveness`` is conditional on the wizard's
+             ``include_effectiveness`` flag (default ``True``) — the
+             entire section is wrapped in a ``<t t-if>`` guard.
+           * ``partners`` empty list renders an ``alert-info`` panel
+             instead of an empty table (PF-003 Scenario 7 edge case).
+         =================================================================== -->
+    <template id="followup_aged_receivables">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <!-- Defensive initializers: guarantee o / report_company /
+                     report_currency are always bound, even when optional
+                     keys are missing from the parser dict. -->
+                <t t-set="o" t-value="docs[0] if docs else None"/>
+                <t t-set="report_company" t-value="company or (o.company_id if o else env.company)"/>
+                <t t-set="report_currency" t-value="currency or report_company.currency_id"/>
+                <div class="page">
+
+                    <!-- ===========================================================
+                         Phase 4 — Report Header Section
+                         ===========================================================
+                         Title + company + as-of date. The ``report_date``
+                         is the 'as-of' snapshot date resolved by the parser
+                         (defaults to today's context date when the wizard
+                         form omits it).
+                         =========================================================== -->
+                    <div class="text-center mb-4">
+                        <h2>Aged Receivables Follow-up Report</h2>
+                        <p class="mb-1">
+                            <strong>Company: </strong>
+                            <span t-field="report_company.name"/>
+                        </p>
+                        <p class="mb-0">
+                            <strong>As Of: </strong>
+                            <t t-if="report_date">
+                                <span t-esc="report_date" t-options='{"widget": "date"}'/>
+                            </t>
+                            <t t-else="">
+                                <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d')"/>
+                            </t>
+                        </p>
+                    </div>
+
+                    <!-- ===========================================================
+                         Phase 5 — Filter Summary Section
+                         ===========================================================
+                         Per PF-003 Business Rule BR-006 ("exports preserve
+                         filters"), the report must echo back the filter
+                         configuration used to produce it. Each row is
+                         rendered only when the corresponding form key has
+                         a meaningful value (t-if guards).
+
+                         The wizard's ``_get_form_values()`` hook (see
+                         followup_report.py::_normalize_form) populates the
+                         ``data`` dict with: date_from, date_to,
+                         amount_threshold (or minimum_amount),
+                         followup_level_names, group_by, group_by_label,
+                         partner_count, company_id, report_date.
+                         =========================================================== -->
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr>
+                                    <td style="width: 40%;"><strong>Date Range:</strong></td>
+                                    <td>
+                                        <t t-if="data and data.get('date_from')">
+                                            <span t-esc="data.get('date_from')" t-options='{"widget": "date"}'/>
+                                        </t>
+                                        <t t-else="">
+                                            <span>Beginning</span>
+                                        </t>
+                                        <span> &#8211; </span>
+                                        <t t-if="data and data.get('date_to')">
+                                            <span t-esc="data.get('date_to')" t-options='{"widget": "date"}'/>
+                                        </t>
+                                        <t t-else="">
+                                            <span>Present</span>
+                                        </t>
+                                    </td>
+                                </tr>
+                                <tr t-if="data and (data.get('amount_threshold') or data.get('minimum_amount'))">
+                                    <td><strong>Amount Threshold:</strong></td>
+                                    <td>
+                                        <span t-esc="data.get('amount_threshold') or data.get('minimum_amount') or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </td>
+                                </tr>
+                                <tr t-if="data and data.get('followup_level_names')">
+                                    <td><strong>Follow-up Levels:</strong></td>
+                                    <td><span t-esc="data.get('followup_level_names')"/></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-6">
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr>
+                                    <td style="width: 40%;"><strong>Currency:</strong></td>
+                                    <td><span t-field="report_currency.name"/></td>
+                                </tr>
+                                <tr t-if="data and data.get('group_by')">
+                                    <td><strong>Grouped By:</strong></td>
+                                    <td><span t-esc="data.get('group_by_label') or data.get('group_by')"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Customers:</strong></td>
+                                    <td>
+                                        <span t-esc="(totals.get('partner_count') if totals else None) or (data.get('partner_count') if data else None) or (len(partners) if partners else 0)"/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ===========================================================
+                         Phase 6 — Effectiveness Summary Cards
+                         ===========================================================
+                         PF-003 Scenario 6: "Collection effectiveness summary
+                         report" is toggled by the wizard's
+                         ``include_effectiveness`` flag (default True in
+                         followup_report.py line 209-240). When disabled,
+                         the parser returns ``effectiveness`` as None/empty
+                         and the entire block is skipped.
+
+                         Cards rendered:
+                           1. Total Overdue (grand total across all buckets)
+                           2. Active Follow-ups (partners currently at any
+                              follow-up level)
+                           3. Recovery Rate (% of follow-up-subject invoices
+                              paid within 30 days — BR-004)
+                           4. Avg Days to Payment (mean days between
+                              action_date and invoice payment date)
+
+                         Response Rate by Level is a nested conditional
+                         sub-table rendered only when the per-level
+                         breakdown list is non-empty.
+                         =========================================================== -->
+                    <t t-if="effectiveness">
+                        <h4 class="mt-4 mb-3">Collection Effectiveness</h4>
+                        <div class="row mb-4">
+                            <div class="col-3 text-center">
+                                <div class="border rounded p-3 bg-light">
+                                    <p class="text-muted mb-1 small">Total Overdue</p>
+                                    <h4 class="mb-0">
+                                        <span t-esc="(totals.get('grand_total') if totals else 0.0) or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </h4>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center">
+                                <div class="border rounded p-3 bg-light">
+                                    <p class="text-muted mb-1 small">Active Follow-ups</p>
+                                    <h4 class="mb-0">
+                                        <span t-esc="effectiveness.get('active_followups') or 0"/>
+                                    </h4>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center">
+                                <div class="border rounded p-3 bg-light">
+                                    <p class="text-muted mb-1 small">Recovery Rate</p>
+                                    <h4 class="mb-0">
+                                        <span t-esc="'%.1f%%' % (effectiveness.get('recovery_rate_pct') or 0.0)"/>
+                                    </h4>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center">
+                                <div class="border rounded p-3 bg-light">
+                                    <p class="text-muted mb-1 small">Avg Days to Payment</p>
+                                    <h4 class="mb-0">
+                                        <span t-esc="'%.1f' % (effectiveness.get('avg_days_to_payment') or 0.0)"/>
+                                    </h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Response Rate by Level Sub-Table — rendered only when
+                             the per-level breakdown list is non-empty. Each row
+                             shows: level name, follow-ups sent, responses
+                             (partner payments or promises), response rate %. -->
+                        <t t-if="effectiveness.get('response_rate_by_level')">
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h5>Response Rate by Follow-up Level</h5>
+                                    <table class="table table-sm table-bordered">
+                                        <thead>
+                                            <tr class="table-secondary">
+                                                <th>Level</th>
+                                                <th class="text-end">Follow-ups Sent</th>
+                                                <th class="text-end">Responses</th>
+                                                <th class="text-end">Response Rate</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="effectiveness.get('response_rate_by_level') or []" t-as="level_stat">
+                                                <td><span t-esc="level_stat.get('level_name') or 'Unassigned'"/></td>
+                                                <td class="text-end"><span t-esc="level_stat.get('sent_count') or 0"/></td>
+                                                <td class="text-end"><span t-esc="level_stat.get('response_count') or 0"/></td>
+                                                <td class="text-end">
+                                                    <span t-esc="'%.1f%%' % (level_stat.get('response_rate_pct') or 0.0)"/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+
+                    <!-- ===========================================================
+                         Phase 7 — Aging Detail Table
+                         ===========================================================
+                         PF-003 Scenarios 1, 3, 8 — primary aged-receivables
+                         grid. Columns (in order):
+
+                           1. Customer (partner_name)
+                           2. Current     (aging_current — not yet due)
+                           3. 1-30 Days   (aging_1_30)
+                           4. 31-60 Days  (aging_31_60)
+                           5. 61-90 Days  (aging_61_90)
+                           6. 90+ Days    (aging_90_plus — rendered in red)
+                           7. Total Overdue (sum of all buckets)
+                           8. Level (current follow-up level — BR-002)
+                           9. Invoices (count of open invoices per partner)
+
+                         The parser (followup_report.py line 486-487) sorts
+                         rows by ``total_overdue`` descending, so the most
+                         severely overdue customers appear first.
+
+                         Empty-state (PF-003 Scenario 7): when no partners
+                         match the filters, render an ``alert-info`` panel
+                         instead of an empty table — prevents a stray
+                         header with no body in the PDF.
+                         =========================================================== -->
+                    <h4 class="mt-4 mb-3">Aged Receivables Detail</h4>
+
+                    <t t-if="partners">
+                        <table class="table table-sm table-striped table-bordered">
+                            <thead>
+                                <tr class="bg-primary text-white">
+                                    <th style="width: 22%;">Customer</th>
+                                    <th class="text-end" style="width: 10%;">Current</th>
+                                    <th class="text-end" style="width: 10%;">1-30 Days</th>
+                                    <th class="text-end" style="width: 10%;">31-60 Days</th>
+                                    <th class="text-end" style="width: 10%;">61-90 Days</th>
+                                    <th class="text-end" style="width: 10%;">90+ Days</th>
+                                    <th class="text-end" style="width: 10%;">Total Overdue</th>
+                                    <th style="width: 10%;">Level</th>
+                                    <th class="text-end" style="width: 8%;">Invoices</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="partners" t-as="row">
+                                    <td>
+                                        <span t-esc="row.get('partner_name') or ''"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-esc="row.get('aging_current') or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-esc="row.get('aging_1_30') or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-esc="row.get('aging_31_60') or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-esc="row.get('aging_61_90') or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </td>
+                                    <td class="text-end">
+                                        <!-- 90+ bucket rendered in red to emphasise
+                                             aging severity (visual cue for Credit
+                                             Controller persona per PF-003). -->
+                                        <t t-set="amt_90" t-value="row.get('aging_90_plus') or 0.0"/>
+                                        <t t-if="amt_90 &gt; 0">
+                                            <span class="text-danger" t-esc="amt_90"
+                                                  t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                        </t>
+                                        <t t-else="">
+                                            <span t-esc="amt_90"
+                                                  t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                        </t>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="row.get('total_overdue') or 0.0"
+                                                t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </td>
+                                    <td>
+                                        <t t-if="row.get('level_name')">
+                                            <span class="badge bg-warning text-dark" t-esc="row.get('level_name')"/>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="text-muted fst-italic">None</span>
+                                        </t>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-esc="row.get('invoice_count') or 0"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <!-- Grand-total row: sums across all partners.
+                                     Uses totals dict keys ``current``,
+                                     ``aging_1_30``..``aging_90_plus``,
+                                     ``grand_total``, ``total_invoice_count``
+                                     populated by
+                                     followup_report.py::_compute_totals. -->
+                                <tr class="table-primary">
+                                    <th>TOTAL</th>
+                                    <th class="text-end">
+                                        <span t-esc="(totals.get('current') if totals else 0.0) or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </th>
+                                    <th class="text-end">
+                                        <span t-esc="(totals.get('aging_1_30') if totals else 0.0) or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </th>
+                                    <th class="text-end">
+                                        <span t-esc="(totals.get('aging_31_60') if totals else 0.0) or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </th>
+                                    <th class="text-end">
+                                        <span t-esc="(totals.get('aging_61_90') if totals else 0.0) or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </th>
+                                    <th class="text-end">
+                                        <span t-esc="(totals.get('aging_90_plus') if totals else 0.0) or 0.0"
+                                              t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </th>
+                                    <th class="text-end">
+                                        <strong t-esc="(totals.get('grand_total') if totals else 0.0) or 0.0"
+                                                t-options='{"widget": "monetary", "display_currency": report_currency}'/>
+                                    </th>
+                                    <th/>
+                                    <th class="text-end">
+                                        <span t-esc="(totals.get('total_invoice_count') if totals else 0) or 0"/>
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </t>
+                    <t t-else="">
+                        <!-- PF-003 Scenario 7 — empty filter result set. -->
+                        <div class="alert alert-info">
+                            <strong>No customers found.</strong>
+                            No customers with overdue receivables match the selected filters.
+                        </div>
+                    </t>
+
+                    <!-- ===========================================================
+                         Phase 8 — Report Footer
+                         ===========================================================
+                         Audit trail: timestamp of generation (timezone-aware
+                         via ``context_timestamp``), report ID (when the
+                         wizard record exists), and scope reminder.
+
+                         The trailing paragraph documents the reporting
+                         methodology for any reader not familiar with the
+                         aging-bucket / level-resolution conventions.
+                         =========================================================== -->
+                    <div class="mt-4 text-muted small">
+                        <p class="mb-0">
+                            <strong>Generated: </strong>
+                            <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/>
+                            <t t-if="o">
+                                <span> | Report ID: </span><span t-esc="o.id"/>
+                            </t>
+                            <span> | Company: </span><span t-field="report_company.name"/>
+                        </p>
+                        <p class="mb-0 mt-1">
+                            This report lists customer receivables classified by aging bucket.
+                            Amounts shown in <span t-field="report_currency.name"/>.
+                            Follow-up levels are determined by the most overdue open invoice per customer.
+                        </p>
+                    </div>
+
+                <!-- ===========================================================
+                     Phase 9 — Close all tags
+                     =========================================================== -->
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>

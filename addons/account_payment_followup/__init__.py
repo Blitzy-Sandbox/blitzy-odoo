@@ -17,4 +17,4 @@ importing non-existent sub-packages would raise ImportError at module
 installation time.
 """
 
-from . import models
+from . import models, report

@@ -8,7 +8,7 @@ Implements ``budget.alert`` — the immutable audit record capturing a
 single THRESHOLD CROSSING EVENT for a ``budget.budget.line``. When the
 actual consumption of a budget line crosses one of the configured
 thresholds (75%, 90%, 100%, 110%), the BM-005 cron
-(``_cron_check_budget_alerts``) creates a ``budget.alert`` record
+(``_cron_evaluate_thresholds``) creates a ``budget.alert`` record
 capturing the state at the moment of crossing (threshold percentage,
 consumption percentage, actual amount, planned amount, alert type /
 severity), selects recipients (the budget's responsible user plus any
@@ -93,7 +93,7 @@ class BudgetAlert(models.Model):
     ``budget.budget.line`` at the moment its actual consumption crossed
     one of the configured threshold percentages (75 %, 90 %, 100 %,
     110 %). The record is created by the BM-005 cron
-    (``_cron_check_budget_alerts``) and dispatches notifications to the
+    (``_cron_evaluate_thresholds``) and dispatches notifications to the
     configured recipients via ``_send_notification``.
 
     The record is immutable:
@@ -119,7 +119,7 @@ class BudgetAlert(models.Model):
     # Class-level constants
     # ==================================================================
 
-    #: Threshold percentages evaluated by ``_cron_check_budget_alerts``.
+    #: Threshold percentages evaluated by ``_cron_evaluate_thresholds``.
     #: These values MUST match the ``selection`` keys of
     #: ``alert_threshold_percent`` so that deduplication search domains
     #: are stable and indexable.
@@ -490,12 +490,12 @@ class BudgetAlert(models.Model):
     # ==================================================================
 
     @api.model
-    def _cron_check_budget_alerts(self):
+    def _cron_evaluate_thresholds(self):
         """BM-005 scheduled alert evaluation.
 
         Invoked from ``data/budget_alert_cron.xml`` (``ir.cron`` XML
         record — see R-06). The method name matches the cron record's
-        ``code`` field ``model._cron_check_budget_alerts()`` exactly;
+        ``code`` field ``model._cron_evaluate_thresholds()`` exactly;
         renaming one side of this contract requires updating the
         other in the same commit.
 

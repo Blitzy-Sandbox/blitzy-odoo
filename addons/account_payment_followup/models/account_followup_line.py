@@ -2,49 +2,53 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 """
-Account Follow-up Line — PF-005 Per-Partner Aggregate Snapshot
-==============================================================
+Account Follow-up Line — Per-Partner Aging Summary
+==================================================
 
-Denormalised per-partner aggregate snapshot backing the partner aging
-summary, follow-up dashboard, and PF-003 report generation. Each
-``account.followup.line`` record materialises a single partner's
-overdue state (aging buckets, total overdue, applicable level, last
-and next action dates, computed status) at a point in time, so that
-batch-scale queries (thousands of partners x millions of invoices)
-do not require per-record iteration of ``res.partner`` computed
-fields.
-
-One row per (``partner_id``, ``company_id``) pair; the model is
-materialised lazily via the class-method helpers
-``_get_or_create_for_partner`` and ``_refresh_from_partner``, and
-refreshed in bulk by ``_cron_refresh_all`` (registered as a scheduled
-action in subsequent checkpoints, or invoked manually by the
-follow-up cron before email dispatch).
+Denormalized aggregate record holding aging buckets, total overdue, and
+current follow-up level for each (partner, company) pair. Serves as a
+fast-lookup cache for follow-up reports, dashboards, and search operations
+that would otherwise require repeated ``_read_group`` aggregation on
+``account.move.line``.
 
 Implements:
-    - FEATURE-006 PF-005: Per-partner overdue aggregate snapshot with
-      aging buckets (Current/1-30/31-60/61-90/90+), total overdue,
-      max days overdue, applicable follow-up level, computed status
-      (``no_action_needed``, ``in_followup``, ``no_response``,
-      ``done``, ``need_review``).
+    - FEATURE-006 PF-005: Overdue Calculation (denormalized aging storage)
+
+Relationship to ``res.partner`` fields:
+    - ``res.partner`` holds the same aging buckets as *computed* fields for
+      real-time accuracy during interactive editing.
+    - ``account.followup.line`` holds the SAME aging buckets as *stored,
+      refreshed-on-demand* fields for fast bulk search/sort (report views).
+    - The two are kept in sync via ``_refresh_from_partner`` / the
+      ``_cron_refresh_all`` scheduled action. Downstream flows (batch
+      email, report rendering) consume this denormalized summary and
+      avoid the cost of partner-level recompute during a render.
+
+Rationale for denormalization:
+    PF-005 BR-004 performance target requires fast aging-sort/filter for
+    populations exceeding 10,000 invoices. Computing aging on demand for
+    every report render or search would require SQL aggregation at query
+    time; denormalized storage moves the cost to write-time (payment
+    posting, invoice creation, cron refresh), amortizing it across many
+    subsequent reads and keeping dashboard latency flat.
 
 Integration Notes:
     - Referenced by ``security/ir.model.access.csv`` (rows 4-5) and
-      ``security/followup_security.xml`` (``ir.rule`` at lines
-      32-42). The model's ``_name`` auto-generates the XML ID
-      ``model_account_followup_line`` that those security artifacts
-      depend on.
-    - Does NOT duplicate ``res.partner``'s computed fields — instead,
-      it reads them from the partner and stores a point-in-time
-      snapshot.
-    - Enforces ``UNIQUE(partner_id, company_id)`` at the SQL level so
-      that a partner has at most one snapshot per company.
+      ``security/followup_security.xml`` (``ir.rule`` scoping by
+      ``company_id``).
+    - Views defined in ``views/account_followup_line_views.xml`` — list
+      form, search, graph, pivot, plus a window action registered as
+      ``action_account_followup_line`` for the sidebar menu entry.
+    - The ``partner.followup_status`` (on ``res.partner``) and this
+      model's ``followup_status`` are semantically distinct axes. The
+      partner field captures the partner's overall state from aging; the
+      line's field captures the workflow state of the follow-up process
+      (e.g., ``promised``). They are intentionally NOT kept in sync.
 
 Rules Compliance (AAP §0.7):
     - R-01: No cross-module imports.
     - R-02: No Enterprise references.
-    - R-03: Uses ``_name`` for a net-new model (not extending an
-      existing one).
+    - R-03: Uses ``_name`` for a net-new model; no ``_inherit``.
     - R-07: No ``sudo()`` usage.
 """
 
@@ -57,32 +61,40 @@ _logger = logging.getLogger(__name__)
 
 
 class AccountFollowupLine(models.Model):
-    """Per-partner overdue aggregate snapshot.
+    """Denormalized per-partner aging summary record.
 
-    Materialises the partner's overdue state for fast search,
-    reporting, and dashboard rendering. Populated and refreshed via
-    ``_refresh_from_partner``; a partner's row is uniquely keyed on
-    (``partner_id``, ``company_id``).
+    Uniqueness: exactly one record per ``(partner_id, company_id)`` pair,
+    enforced via ``models.Constraint`` declarations. Records are created
+    lazily when ``_get_or_create_for_partner()`` is invoked (typically
+    from ``res.partner._compute_overdue_aggregates`` as a side-effect
+    hook, or from the ``_cron_refresh_all`` batch refresh).
+
+    Aggregate fields (aging buckets, ``total_overdue``,
+    ``max_days_overdue``) are NOT themselves computed; they are written
+    by ``_refresh_from_partner``. This avoids cascading recompute during
+    bulk payment registration and keeps query performance flat
+    regardless of invoice volume.
     """
 
     _name = 'account.followup.line'
-    _description = 'Account Follow-up Line (Per-Partner Aggregate Snapshot)'
-    _order = 'max_days_overdue desc, total_overdue desc, partner_id'
+    _description = 'Customer Follow-up Aging Summary'
+    _order = 'total_overdue desc, partner_id'
     _rec_name = 'partner_id'
 
     # -------------------------------------------------------------------------
-    # KEY FIELDS
+    # IDENTITY & SCOPE
     # -------------------------------------------------------------------------
 
     partner_id = fields.Many2one(
         comodel_name='res.partner',
-        string='Partner',
+        string='Customer',
         required=True,
         ondelete='cascade',
         index=True,
         help=(
-            'Customer partner this follow-up aggregate pertains to. '
-            'Deletion of the partner cascades to their aggregate rows.'
+            'The customer this aging summary represents. Cascade-deleted '
+            'with the partner record since the summary has no meaning '
+            'without its partner.'
         ),
     )
 
@@ -93,9 +105,8 @@ class AccountFollowupLine(models.Model):
         default=lambda self: self.env.company,
         index=True,
         help=(
-            'Company scope for this aggregate. A partner operating in '
-            'multiple companies has one aggregate row per company so '
-            'that multi-company ir.rule isolation works correctly.'
+            'Multi-company scope. Each (partner, company) pair has exactly '
+            'one summary record.'
         ),
     )
 
@@ -105,35 +116,24 @@ class AccountFollowupLine(models.Model):
         related='company_id.currency_id',
         store=True,
         readonly=True,
-        help=(
-            'Currency for monetary aggregates, derived from the '
-            'company.'
-        ),
+        help='Currency for monetary fields, derived from the company.',
     )
 
     # -------------------------------------------------------------------------
-    # AGGREGATE SNAPSHOT FIELDS
+    # AGING BUCKETS (PF-005 Scenario 3)
     # -------------------------------------------------------------------------
+    # Fields are written by ``_refresh_from_partner`` from the partner's
+    # computed aggregates. Direct user edits are blocked by the form view
+    # (``edit="false"``) but the SQL-level CHECK constraint protects
+    # against malformed writes from future code paths.
 
     total_overdue = fields.Monetary(
         string='Total Overdue',
         currency_field='currency_id',
         default=0.0,
         help=(
-            'Snapshot of the partner\'s total overdue amount at the time '
-            'of the last refresh. Mirrors '
-            '``res.partner.total_overdue`` at snapshot time.'
-        ),
-    )
-
-    max_days_overdue = fields.Integer(
-        string='Max Days Overdue',
-        default=0,
-        index=True,
-        help=(
-            'Maximum days overdue across the partner\'s open customer '
-            'invoices at snapshot time. Indexed to support fast sorting '
-            'in dashboards.'
+            'Sum of receivable amounts past due (net of credit notes). '
+            'Index-friendly for top-N ordering in follow-up dashboards.'
         ),
     )
 
@@ -141,76 +141,71 @@ class AccountFollowupLine(models.Model):
         string='Current (Not Due)',
         currency_field='currency_id',
         default=0.0,
+        help='Receivable amount not yet due (due date >= today).',
     )
 
     aging_bucket_1_30 = fields.Monetary(
-        string='1-30 Days Overdue',
+        string='1-30 Days',
         currency_field='currency_id',
         default=0.0,
+        help='Receivable amount 1 to 30 days past due.',
     )
 
     aging_bucket_31_60 = fields.Monetary(
-        string='31-60 Days Overdue',
+        string='31-60 Days',
         currency_field='currency_id',
         default=0.0,
+        help='Receivable amount 31 to 60 days past due.',
     )
 
     aging_bucket_61_90 = fields.Monetary(
-        string='61-90 Days Overdue',
+        string='61-90 Days',
         currency_field='currency_id',
         default=0.0,
+        help='Receivable amount 61 to 90 days past due.',
     )
 
     aging_bucket_90_plus = fields.Monetary(
-        string='90+ Days Overdue',
+        string='Over 90 Days',
         currency_field='currency_id',
         default=0.0,
+        help='Receivable amount more than 90 days past due.',
+    )
+
+    max_days_overdue = fields.Integer(
+        string='Max Days Overdue',
+        default=0,
+        index=True,
+        help=(
+            'Largest days-overdue value across open customer invoices; '
+            'used to determine ``followup_level_id``. Indexed to support '
+            'fast sort/filter in the list view.'
+        ),
     )
 
     # -------------------------------------------------------------------------
-    # FOLLOW-UP METADATA
+    # FOLLOW-UP STATE
     # -------------------------------------------------------------------------
 
     followup_level_id = fields.Many2one(
         comodel_name='account.followup.level',
-        string='Current Level',
+        string='Current Follow-up Level',
+        ondelete='restrict',
         index=True,
         help=(
-            'Applicable follow-up level at snapshot time (mirrors '
-            '``res.partner.followup_level_id`` but stored locally for '
-            'dashboard efficiency).'
+            'Applicable follow-up level based on ``max_days_overdue`` at '
+            'the last refresh. ``ondelete="restrict"`` protects historical '
+            'level assignments from accidental deletion of the level '
+            'configuration.'
         ),
     )
 
-    followup_status = fields.Selection(
-        selection=[
-            ('no_action_needed', 'No Action Needed'),
-            ('in_followup', 'In Follow-up'),
-            ('no_response', 'No Response'),
-            ('done', 'Done'),
-            ('need_review', 'Needs Review'),
-        ],
-        string='Follow-up Status',
-        default='no_action_needed',
-        index=True,
+    last_followup_date = fields.Datetime(
+        string='Last Follow-up Date',
         help=(
-            'Computed snapshot status:\n'
-            ' * No Action Needed: No overdue invoices.\n'
-            ' * In Follow-up: Currently being dunned at an assigned '
-            'level.\n'
-            ' * No Response: No partner response despite repeated '
-            'contact; aging 60+ days without a matching level.\n'
-            ' * Done: Previously overdue, now resolved.\n'
-            ' * Needs Review: Requires manual accountant review '
-            '(90+ days aging, disputed, or edge case).'
-        ),
-    )
-
-    last_action_date = fields.Date(
-        string='Last Action Date',
-        help=(
-            'Date of the most recent follow-up action recorded in '
-            '``account.followup.history`` for this partner.'
+            'Timestamp of the most recent follow-up action from '
+            '``account.followup.history`` for this partner + company; '
+            'used to determine when the next action should be due.'
         ),
     )
 
@@ -218,216 +213,315 @@ class AccountFollowupLine(models.Model):
         string='Next Action Date',
         index=True,
         help=(
-            'Next scheduled follow-up action date (mirrors '
-            '``res.partner.followup_next_action_date``).'
+            'Scheduled date for the next follow-up action. Written by '
+            'the cron handler after an action is executed, or mirrored '
+            'from ``res.partner.followup_next_action_date``.'
         ),
     )
 
-    last_refreshed = fields.Datetime(
-        string='Last Refreshed',
-        default=fields.Datetime.now,
-        help='Timestamp of the last aggregate refresh.',
+    followup_status = fields.Selection(
+        selection=[
+            ('no_action', 'No Action Needed'),
+            ('in_need', 'Needs Follow-up'),
+            ('in_progress', 'In Progress'),
+            ('promised', 'Payment Promised'),
+        ],
+        string='Follow-up Status',
+        default='no_action',
+        index=True,
+        help=(
+            'High-level state of the follow-up workflow for this '
+            'partner. Distinct axis from ``res.partner.followup_status`` '
+            '(which captures aging-derived state):\n'
+            '  * No Action Needed: no overdue amount.\n'
+            '  * Needs Follow-up: overdue, no action yet taken.\n'
+            '  * In Progress: follow-up action has been sent.\n'
+            '  * Payment Promised: customer committed to paying.'
+        ),
     )
 
     # -------------------------------------------------------------------------
-    # SQL CONSTRAINTS
+    # SQL CONSTRAINTS (Odoo 19 declarative syntax)
     # -------------------------------------------------------------------------
-    # Odoo 19 migrated from class-level ``_sql_constraints`` list to the
-    # new ``models.Constraint(...)`` declarative attribute. The attribute
-    # name becomes the constraint identifier suffix (e.g.
-    # ``account_followup_line_unique_partner_company``).
+    # Odoo 19 migrated from the class-level ``_sql_constraints`` list to
+    # the new ``models.Constraint(...)`` declarative attribute. The
+    # attribute name (without leading underscore) becomes the constraint
+    # identifier suffix registered by Odoo's ORM (e.g., ``partner_company_
+    # unique`` -> ``account_followup_line_partner_company_unique``).
 
-    _unique_partner_company = models.Constraint(
+    _partner_company_unique = models.Constraint(
         'UNIQUE(partner_id, company_id)',
-        'A follow-up line must be unique per partner and company.',
+        'Only one follow-up summary record is allowed per customer per company.',
+    )
+
+    _total_overdue_non_negative = models.Constraint(
+        'CHECK(total_overdue >= 0)',
+        'Total overdue amount cannot be negative.',
+    )
+
+    _max_days_overdue_non_negative = models.Constraint(
+        'CHECK(max_days_overdue >= 0)',
+        'Max days overdue cannot be negative.',
     )
 
     # -------------------------------------------------------------------------
-    # DISPLAY HELPERS
+    # COMPUTED DISPLAY HELPERS
     # -------------------------------------------------------------------------
 
-    def name_get(self):
-        """Display as 'Partner (Company) - Status'."""
-        result = []
+    @api.depends('partner_id', 'partner_id.display_name', 'total_overdue')
+    def _compute_display_name(self):
+        """Human-readable label: partner name + total overdue amount.
+
+        Overrides the default ``models.Model._compute_display_name`` to
+        produce a label that surfaces the partner's current overdue
+        exposure directly in selection widgets, breadcrumbs, and
+        chatter references without requiring a secondary query.
+        """
         for rec in self:
-            partner_name = (
-                rec.partner_id.display_name or rec.partner_id.name or _('Unknown')
-            )
-            company_name = rec.company_id.name or ''
-            status_label = dict(
-                self._fields['followup_status'].selection,
-            ).get(rec.followup_status, rec.followup_status or '')
-            name = _('%(partner)s (%(company)s) - %(status)s') % {
-                'partner': partner_name,
-                'company': company_name,
-                'status': status_label,
-            }
-            result.append((rec.id, name))
-        return result
+            if rec.partner_id:
+                total = rec.total_overdue or 0.0
+                rec.display_name = _(
+                    '%(partner)s (%(amount).2f)',
+                    partner=rec.partner_id.display_name or rec.partner_id.name or '',
+                    amount=total,
+                )
+            else:
+                rec.display_name = _('(unassigned summary)')
 
     # -------------------------------------------------------------------------
-    # CLASSMETHODS — AGGREGATE MATERIALISATION
+    # HELPER METHODS — LAZY CREATION & REFRESH
     # -------------------------------------------------------------------------
 
     @api.model
     def _get_or_create_for_partner(self, partner, company=None):
-        """Return (creating if necessary) the follow-up line for a partner.
+        """Fetch or create the aging-summary record for (partner, company).
 
-        Enforces the ``UNIQUE(partner_id, company_id)`` invariant by
-        performing a lookup-before-create, so callers can safely use
-        this helper in loops without risking duplicate-row errors.
+        Lazily instantiates the record on first access, so partners without
+        overdue invoices do not consume storage unnecessarily until needed.
 
-        :param partner: ``res.partner`` record (must be a single
-            partner).
-        :param company: Optional ``res.company`` record. If not
-            provided, uses ``partner.company_id`` or, as fallback,
-            ``self.env.company``.
-        :return: Single ``account.followup.line`` record.
+        The lookup-before-create sequence preserves the ``UNIQUE(partner_id,
+        company_id)`` invariant and lets callers safely loop over partner
+        sets without risking ORM ``IntegrityError`` from racing inserts.
+
+        :param partner: ``res.partner`` recordset (must contain exactly one
+            record).
+        :param company: Optional ``res.company`` recordset; defaults to
+            ``self.env.company`` when omitted.
+        :return: ``account.followup.line`` recordset (exactly one record).
+        :raises UserError: If ``partner`` is an empty or multi-record
+            recordset.
         """
         if not partner:
             raise UserError(
-                _('Cannot create a follow-up line without a partner.'),
+                _('Cannot create a follow-up summary without a partner.'),
             )
-        if len(partner) != 1:
-            raise UserError(
-                _('Follow-up line lookup requires exactly one partner.'),
-            )
+        partner.ensure_one()
+        resolved_company = company or self.env.company
 
-        resolved_company = (
-            company
-            or partner.company_id
-            or self.env.company
-        )
-
-        line = self.search(
+        existing = self.search(
             [
                 ('partner_id', '=', partner.id),
                 ('company_id', '=', resolved_company.id),
             ],
             limit=1,
         )
-        if not line:
-            line = self.create({
-                'partner_id': partner.id,
-                'company_id': resolved_company.id,
-            })
-        return line
+        if existing:
+            return existing
 
-    @api.model
-    def _refresh_from_partner(self, partner, company=None):
-        """Refresh the follow-up line snapshot from the partner's live state.
-
-        Reads the partner's computed fields (``total_overdue``,
-        ``max_days_overdue``, aging buckets, ``followup_level_id``,
-        ``followup_status``, ``followup_next_action_date``) and
-        persists them to the line snapshot. Also records the last
-        refresh timestamp and derives ``last_action_date`` from the
-        most recent ``account.followup.history`` entry for the partner.
-
-        :param partner: ``res.partner`` record (must be a single
-            partner).
-        :param company: Optional ``res.company`` record.
-        :return: Refreshed ``account.followup.line`` record.
-        """
-        line = self._get_or_create_for_partner(partner, company=company)
-
-        # Look up most recent history entry for last_action_date.
-        history = self.env['account.followup.history'].search(
-            [('partner_id', '=', partner.id)],
-            order='action_date desc',
-            limit=1,
-        )
-        last_action = history.action_date if history else False
-        last_action_date = (
-            fields.Date.to_date(last_action)
-            if last_action
-            else False
-        )
-
-        line.write({
-            'total_overdue': partner.total_overdue or 0.0,
-            'max_days_overdue': partner.max_days_overdue or 0,
-            'aging_bucket_current': partner.aging_bucket_current or 0.0,
-            'aging_bucket_1_30': partner.aging_bucket_1_30 or 0.0,
-            'aging_bucket_31_60': partner.aging_bucket_31_60 or 0.0,
-            'aging_bucket_61_90': partner.aging_bucket_61_90 or 0.0,
-            'aging_bucket_90_plus': partner.aging_bucket_90_plus or 0.0,
-            'followup_level_id': (
-                partner.followup_level_id.id
-                if partner.followup_level_id
-                else False
-            ),
-            'followup_status': (
-                partner.followup_status or 'no_action_needed'
-            ),
-            'next_action_date': partner.followup_next_action_date or False,
-            'last_action_date': last_action_date,
-            'last_refreshed': fields.Datetime.now(),
+        return self.create({
+            'partner_id': partner.id,
+            'company_id': resolved_company.id,
         })
-        return line
+
+    def _refresh_from_partner(self):
+        """Sync this summary record from the live partner aging computation.
+
+        Reads the partner's computed fields (aging buckets, totals,
+        ``max_days_overdue``, ``followup_level_id``) and persists them to
+        this denormalized cache record. The partner is expected to have
+        already had its ``_compute_overdue_aggregates`` invoked (which
+        happens automatically via ``@api.depends`` on invoice changes or
+        explicitly via ``invalidate_recordset`` + ``mapped`` in
+        ``_cron_refresh_all``).
+
+        Note on ``followup_status``: the partner's ``followup_status``
+        and this record's ``followup_status`` are semantically distinct
+        (aging-derived state vs workflow state), so this method does
+        NOT copy the partner's value. Instead, the status field is
+        updated by workflow actions (e.g., history record creation,
+        manual accountant override).
+
+        :return: The refreshed recordset (``self``) for method chaining.
+        """
+        for rec in self:
+            partner = rec.partner_id
+            if not partner:
+                continue
+            rec.write({
+                'total_overdue': partner.total_overdue or 0.0,
+                'aging_bucket_current': partner.aging_bucket_current or 0.0,
+                'aging_bucket_1_30': partner.aging_bucket_1_30 or 0.0,
+                'aging_bucket_31_60': partner.aging_bucket_31_60 or 0.0,
+                'aging_bucket_61_90': partner.aging_bucket_61_90 or 0.0,
+                'aging_bucket_90_plus': partner.aging_bucket_90_plus or 0.0,
+                'max_days_overdue': partner.max_days_overdue or 0,
+                'followup_level_id': (
+                    partner.followup_level_id.id
+                    if partner.followup_level_id
+                    else False
+                ),
+                'next_action_date': partner.followup_next_action_date or False,
+            })
+        return self
 
     @api.model
-    def _cron_refresh_all(self):
-        """Batch-refresh all partner aggregates across the active company set.
+    def _cron_refresh_all(self, batch_size=5000):
+        """Batch-refresh all follow-up summary records.
 
-        Invoked by the follow-up cron (or a dedicated refresh cron
-        added in a subsequent checkpoint) to keep dashboard and
-        reporting aggregates current. Iterates partners that have at
-        least one posted customer invoice, delegating to
-        ``_refresh_from_partner`` for each.
+        Optional scheduled cron target. Iterates customer partners,
+        triggers recompute of their aging aggregates (by invalidating
+        the cache and reading the fields back), then materializes /
+        refreshes the corresponding summary record for any partner with
+        an overdue or current-bucket balance.
 
-        Performance notes:
-            - Processes partners in chunks of 500 to bound memory
-              usage.
-            - Logs progress via ``_logger.info`` so operators can
-              track long-running refreshes in server logs.
-            - Each partner is handled in its own try/except so that
-              a failure on one partner does not abort the batch (PF-002
-              BR-005 fault-tolerance pattern, applied analogously
-              here).
+        Fault tolerance: each partner is processed in its own try/except
+        so a failure on one partner does not abort the batch (PF-002
+        BR-005 pattern, applied analogously here). Errors are logged
+        via ``_logger.exception`` so operators can investigate without
+        losing the audit trail.
 
-        :return: Total number of partners successfully refreshed.
+        :param batch_size: Maximum number of partners to process per
+            invocation (default 5000, per AAP Phase 7). Bounds memory
+            usage for very large customer populations.
+        :return: Dict with batch statistics:
+            ``{'partners_processed': N, 'summaries_refreshed': M,
+              'errors': K}``
         """
         Partner = self.env['res.partner']
-        batch_size = 500
+        partners = Partner.search(
+            [('customer_rank', '>', 0)],
+            limit=batch_size,
+        )
 
-        domain = [
-            ('invoice_ids.move_type', 'in', ('out_invoice', 'out_refund')),
-            ('invoice_ids.state', '=', 'posted'),
+        # Force recompute of stored aging fields by invalidating the
+        # ORM cache and then re-reading. Odoo 19's cache is aggressive,
+        # so a plain ``mapped`` on a stored computed field would return
+        # cached values; the explicit invalidate_recordset + mapped
+        # sequence guarantees fresh values when the calendar advances
+        # past a partner's invoice due date without any invoice change
+        # triggering @api.depends.
+        aging_fnames = [
+            'total_overdue',
+            'aging_bucket_current',
+            'aging_bucket_1_30',
+            'aging_bucket_31_60',
+            'aging_bucket_61_90',
+            'aging_bucket_90_plus',
+            'max_days_overdue',
+            'has_overdue_invoices',
+            'followup_level_id',
+            'followup_next_action_date',
         ]
-        # Deduplicate via ids since partners might have multiple invoices.
-        partner_ids = Partner.search(domain).ids
-        total = len(partner_ids)
-        refreshed = 0
+        partners.invalidate_recordset(fnames=aging_fnames)
+        # Force re-read of the stored computed fields. ``.mapped()``
+        # evaluates the compute methods transitively; we discard the
+        # return value.
+        partners.mapped('total_overdue')
+
+        partners_processed = len(partners)
+        summaries_refreshed = 0
+        errors = 0
+
         _logger.info(
-            'Follow-up aggregate refresh: %s partners to process.', total,
+            'account.followup.line._cron_refresh_all: %s customer partners '
+            'to process (batch_size=%s).',
+            partners_processed,
+            batch_size,
         )
 
-        for offset in range(0, total, batch_size):
-            chunk_ids = partner_ids[offset:offset + batch_size]
-            partners = Partner.browse(chunk_ids)
-            for partner in partners:
-                try:
-                    self._refresh_from_partner(partner)
-                    refreshed += 1
-                except Exception:
-                    _logger.exception(
-                        'Follow-up aggregate refresh failed for partner '
-                        'id=%s; skipping and continuing.',
-                        partner.id,
-                    )
-            # Flush the batch to the database to release ORM cache.
-            self.env.cr.commit()  # noqa: E501 - intentional commit per batch to avoid OOM on large datasets
-            _logger.info(
-                'Follow-up aggregate refresh progress: %s / %s.',
-                min(offset + batch_size, total),
-                total,
+        for partner in partners:
+            try:
+                # Skip partners with no overdue or current receivable —
+                # no point materializing an empty summary row.
+                if not (
+                    partner.has_overdue_invoices
+                    or partner.aging_bucket_current
+                ):
+                    continue
+                line = self._get_or_create_for_partner(partner)
+                line._refresh_from_partner()
+                summaries_refreshed += 1
+            except Exception:
+                errors += 1
+                _logger.exception(
+                    'account.followup.line._cron_refresh_all: refresh failed '
+                    'for partner id=%s; skipping and continuing.',
+                    partner.id,
+                )
+
+        _logger.info(
+            'account.followup.line._cron_refresh_all: complete. '
+            'Processed=%s, Refreshed=%s, Errors=%s.',
+            partners_processed,
+            summaries_refreshed,
+            errors,
+        )
+        return {
+            'partners_processed': partners_processed,
+            'summaries_refreshed': summaries_refreshed,
+            'errors': errors,
+        }
+
+    # -------------------------------------------------------------------------
+    # WINDOW ACTIONS — DRILL-DOWN FROM FORM
+    # -------------------------------------------------------------------------
+
+    def action_view_partner(self):
+        """Navigate to the partner form for this summary record.
+
+        Used as the "View Partner" smart-button handler on the line's
+        form view. Returns a standard ``ir.actions.act_window`` client
+        action payload pointing at the partner form.
+        """
+        self.ensure_one()
+        if not self.partner_id:
+            raise UserError(
+                _('Cannot view partner: no partner linked to this summary.'),
             )
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Customer'),
+            'res_model': 'res.partner',
+            'res_id': self.partner_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
 
-        _logger.info(
-            'Follow-up aggregate refresh complete: %s / %s partners '
-            'refreshed.',
-            refreshed,
-            total,
-        )
-        return refreshed
+    def action_view_invoices(self):
+        """Open the list of overdue invoices for this partner.
+
+        Used as the "Related Invoices" smart-button handler on the
+        line's form view. Filters the result to posted, not-fully-paid
+        customer invoices for the summary's partner.
+        """
+        self.ensure_one()
+        if not self.partner_id:
+            raise UserError(
+                _('Cannot view invoices: no partner linked to this summary.'),
+            )
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Overdue Invoices'),
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': [
+                ('partner_id', '=', self.partner_id.id),
+                ('move_type', 'in', ('out_invoice', 'out_refund')),
+                ('state', '=', 'posted'),
+                ('payment_state', 'in', ('not_paid', 'partial', 'in_payment')),
+            ],
+            'context': {
+                'default_partner_id': self.partner_id.id,
+                'search_default_partner_id': self.partner_id.id,
+            },
+        }

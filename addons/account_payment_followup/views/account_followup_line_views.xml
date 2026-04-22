@@ -7,13 +7,13 @@
     ================================================================
 
     List, form, search, graph, pivot, and window action definitions
-    for `account.followup.line` — the per-partner computed overdue
+    for `account.followup.line` — the per-partner denormalized aging
     summary model that backs the "Overdue Customers" workflow menu.
 
     Implements:
       - PF-005: Overdue calculation (aging buckets, total overdue,
                 max days overdue, next action date, follow-up level,
-                computed status)
+                follow-up status)
 
     Conventions: Odoo 19.0 — `invisible`/`column_invisible`,
     `optional="hidden"`, 4-space indentation.
@@ -28,27 +28,21 @@
               `account.move.line` / `res.partner` fields directly.
 
     Model Adaptation Notes:
-      The actual `account.followup.line` model uses these status
-      values (verified from `models/account_followup_line.py`):
-        - `no_action_needed`  'No Action Needed'
-        - `in_followup`       'In Follow-up'
-        - `no_response`       'No Response'
-        - `done`              'Done'
-        - `need_review`       'Needs Review'
+      The `account.followup.line` model uses a 4-value selection for
+      `followup_status` (per AAP Phase 5 spec):
+        - `no_action`     'No Action Needed'
+        - `in_need`       'Needs Follow-up'
+        - `in_progress`   'In Progress'
+        - `promised`      'Payment Promised'
 
-      Date field is `last_action_date` (NOT `last_followup_date`).
+      Date fields:
+        - `last_followup_date` (Datetime) — last follow-up history timestamp
+        - `next_action_date`   (Date)     — scheduled next action
 
-      The model does NOT define `action_view_partner` /
-      `action_view_invoices` object methods and does NOT inherit
-      `mail.thread`, therefore:
-        * No `<chatter/>` element in the form view.
-        * The "Related Invoices" smart button uses `type="action"`
-          with the core `account.action_move_out_invoice_type`
-          action plus a `search_default_partner_id` context filter
-          (pattern matches `addons/account/views/partner_view.xml`
-          line 150).
-        * Partner navigation is provided natively by the clickable
-          `partner_id` Many2one field rendered in the form title.
+      The model defines the following object-level actions invoked from
+      the form view smart buttons:
+        - `action_view_partner`   — navigates to the partner form
+        - `action_view_invoices`  — opens the overdue invoice list
 
     Access Control (per security/ir.model.access.csv):
       - account.group_account_user: read-only  (1,0,0,0)
@@ -72,9 +66,9 @@
                       default_order="max_days_overdue desc, total_overdue desc"
                       decoration-danger="max_days_overdue &gt; 90"
                       decoration-warning="max_days_overdue &gt; 30 and max_days_overdue &lt;= 90"
-                      decoration-info="followup_status == 'in_followup'"
-                      decoration-success="followup_status == 'done'"
-                      decoration-muted="followup_status == 'no_action_needed'"
+                      decoration-info="followup_status == 'in_progress'"
+                      decoration-success="followup_status == 'promised'"
+                      decoration-muted="followup_status == 'no_action'"
                       create="false"
                       delete="false">
                     <field name="partner_id"/>
@@ -119,17 +113,14 @@
                            optional="show"/>
                     <field name="followup_status"
                            widget="badge"
-                           decoration-info="followup_status == 'in_followup'"
-                           decoration-success="followup_status == 'done'"
-                           decoration-muted="followup_status == 'no_action_needed'"
-                           decoration-warning="followup_status == 'need_review'"
-                           decoration-danger="followup_status == 'no_response'"
+                           decoration-muted="followup_status == 'no_action'"
+                           decoration-warning="followup_status == 'in_need'"
+                           decoration-info="followup_status == 'in_progress'"
+                           decoration-success="followup_status == 'promised'"
                            optional="show"/>
                     <field name="next_action_date"
                            optional="show"/>
-                    <field name="last_action_date"
-                           optional="hidden"/>
-                    <field name="last_refreshed"
+                    <field name="last_followup_date"
                            optional="hidden"/>
                     <field name="company_id"
                            groups="base.group_multi_company"
@@ -154,20 +145,28 @@
                     <sheet>
                         <!-- Smart button bar.
 
-                             Uses `type="action"` with a core Odoo action
-                             reference because the model does not define
-                             object-level action methods. The
-                             `search_default_partner_id` context
-                             pre-filters the invoice list to the current
-                             partner when the button is clicked.
+                             Uses `type="object"` with the model's own
+                             `action_view_partner` / `action_view_invoices`
+                             methods. Each method returns an
+                             `ir.actions.act_window` dict that routes to the
+                             appropriate target (partner form / invoice list).
                         -->
                         <div name="button_box" class="oe_button_box">
                             <button class="oe_stat_button"
-                                    type="action"
-                                    name="%(account.action_move_out_invoice_type)d"
-                                    context="{'search_default_partner_id': partner_id}"
+                                    type="object"
+                                    name="action_view_partner"
+                                    icon="fa-user"
+                                    help="Open the customer record">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">View</span>
+                                    <span class="o_stat_text">Partner</span>
+                                </div>
+                            </button>
+                            <button class="oe_stat_button"
+                                    type="object"
+                                    name="action_view_invoices"
                                     icon="fa-file-text-o"
-                                    help="Open the customer invoices for this partner">
+                                    help="Open the overdue customer invoices for this partner">
                                 <div class="o_stat_info">
                                     <span class="o_stat_text">Related</span>
                                     <span class="o_stat_text">Invoices</span>
@@ -177,8 +176,8 @@
 
                         <!-- Title: the partner_id Many2one rendered as a
                              clickable link provides native navigation to
-                             the partner form, serving as the "View
-                             Partner" affordance.
+                             the partner form, complementing the smart
+                             button above.
                         -->
                         <div class="oe_title">
                             <label for="partner_id"/>
@@ -221,9 +220,8 @@
                                 <field name="followup_level_id"/>
                                 <field name="followup_status"
                                        widget="badge"/>
-                                <field name="last_action_date"/>
+                                <field name="last_followup_date"/>
                                 <field name="next_action_date"/>
-                                <field name="last_refreshed"/>
                                 <field name="company_id"
                                        groups="base.group_multi_company"/>
                             </group>
@@ -259,22 +257,19 @@
 
                     <separator/>
 
-                    <!-- Status filters (actual model values) -->
-                    <filter name="status_no_action_needed"
+                    <!-- Status filters (4-value selection per AAP) -->
+                    <filter name="status_no_action"
                             string="No Action Needed"
-                            domain="[('followup_status', '=', 'no_action_needed')]"/>
-                    <filter name="status_in_followup"
-                            string="In Follow-up"
-                            domain="[('followup_status', '=', 'in_followup')]"/>
-                    <filter name="status_no_response"
-                            string="No Response"
-                            domain="[('followup_status', '=', 'no_response')]"/>
-                    <filter name="status_done"
-                            string="Done"
-                            domain="[('followup_status', '=', 'done')]"/>
-                    <filter name="status_need_review"
-                            string="Needs Review"
-                            domain="[('followup_status', '=', 'need_review')]"/>
+                            domain="[('followup_status', '=', 'no_action')]"/>
+                    <filter name="status_in_need"
+                            string="Needs Follow-up"
+                            domain="[('followup_status', '=', 'in_need')]"/>
+                    <filter name="status_in_progress"
+                            string="In Progress"
+                            domain="[('followup_status', '=', 'in_progress')]"/>
+                    <filter name="status_promised"
+                            string="Payment Promised"
+                            domain="[('followup_status', '=', 'promised')]"/>
 
                     <separator/>
 
@@ -405,12 +400,12 @@
                     This view aggregates, per partner, the total overdue
                     balance broken down into aging buckets (Current,
                     1-30, 31-60, 61-90, 90+ days), the applicable
-                    follow-up level, and the computed status of the
-                    most recent action. Use it to prioritise collection
+                    follow-up level, and the workflow status of the
+                    follow-up process. Use it to prioritise collection
                     efforts.
                 </p>
                 <p>
-                    Rows are computed snapshots refreshed by the
+                    Rows are denormalized snapshots refreshed by the
                     follow-up cron — they cannot be created, edited, or
                     deleted directly from the user interface.
                 </p>

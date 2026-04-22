@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 OCA, [contributor]
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <!--
+        =================================================================
+        BM-003 — Actual vs Budget Reporting
+        BM-004 — Variance Analysis
+        =================================================================
+
+        Views in this file operate on the ``budget.budget.line`` model
+        using its ``variance_*`` computed fields (see
+        ``models/budget_budget_line.py`` lines 291-381):
+
+          * planned_amount
+          * variance_actual
+          * variance_absolute
+          * variance_percent
+          * variance_classification
+              ('favorable' / 'unfavorable' / 'neutral')
+          * variance_threshold_status
+              ('normal' / 'warning' / 'alert' / 'over_budget')
+          * variance_consumption_percent
+          * variance_explanation_note (user-editable)
+
+        Delivered as pivot + graph + list views rather than through a
+        wizard-driven TransientModel because no ``budget.variance.wizard``
+        or ``budget.vs.actual.report`` model is in scope for this module
+        iteration (``wizard/`` and ``report/`` folders are empty per the
+        current pending changes). The BM-003/BM-004 performance targets
+        (<3s fiscal-year render for ≤1,000 budget lines) are met via
+        ``read_group`` SQL aggregation performed inside the computed
+        field methods (see ``_compute_variance`` on the model), not at
+        the view layer.
+
+        Load order: THIRD among view files (after ``budget_views.xml``
+        and ``budget_period_views.xml``, before ``budget_alert_views.xml``
+        and ``menuitem.xml``). The menu records ``menu_budget_vs_actual``
+        and ``menu_budget_variance`` in ``views/menuitem.xml`` reference
+        ``action_budget_vs_actual_report`` and
+        ``action_budget_variance_analysis`` defined below.
+
+        R-08 compliance: every non-relational field referenced here is
+        either a base ``budget.budget.line`` field shared across stories
+        (planned_amount, account_id, account_type, state, date_from,
+        date_to, analytic_distribution, currency_id, company_id,
+        sequence) or carries the ``variance_*`` prefix specific to
+        BM-004. No ``alert_*`` fields are referenced — those belong to
+        BM-005 scope on ``budget.alert``.
+
+        R-01 compliance: no cross-module references. All XML IDs below
+        are module-local or refer to the pending ``budget_views.xml``
+        file (``view_budget_budget_line_search``) within the same
+        module.
+
+        R-02 compliance: no Enterprise module references.
+    -->
+
+    <!--
+        =================================================================
+        BM-003 — Actual vs Budget: Pivot View
+        =================================================================
+
+        Default pivot: rows = budget_id × account_id; columns =
+        account_type. Measures aggregate planned_amount against the
+        computed variance_actual (posted GL totals) and variance_absolute
+        (signed difference). This lets a controller slice
+        planned-vs-actual by entity (budget + account) and compare
+        across account types (expense/income/asset/liability) at a
+        glance. The ``sample="1"`` attribute shows sample data in an
+        empty state so the view is immediately navigable.
+    -->
+    <record id="view_budget_vs_actual_pivot" model="ir.ui.view">
+        <field name="name">budget.budget.line.pivot.actual</field>
+        <field name="model">budget.budget.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Actual vs Budget" sample="1">
+                <field name="budget_id" type="row"/>
+                <field name="account_id" type="row"/>
+                <field name="account_type" type="col"/>
+                <field name="planned_amount" type="measure"/>
+                <field name="variance_actual" type="measure"/>
+                <field name="variance_absolute" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        BM-003 — Actual vs Budget: Graph View
+        =================================================================
+
+        Side-by-side bar chart (``stacked="0"``) of planned_amount and
+        variance_actual grouped by account. This presentation makes
+        over/under-spend patterns visually obvious across the account
+        catalog; the two measures render as adjacent bars for each
+        account, with visual parity signalling on-budget execution.
+    -->
+    <record id="view_budget_vs_actual_graph" model="ir.ui.view">
+        <field name="name">budget.budget.line.graph.actual</field>
+        <field name="model">budget.budget.line</field>
+        <field name="arch" type="xml">
+            <graph string="Actual vs Budget" type="bar" sample="1" stacked="0">
+                <field name="account_id"/>
+                <field name="planned_amount" type="measure"/>
+                <field name="variance_actual" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        BM-003 — Actual vs Budget: List View
+        =================================================================
+
+        Read-only tabular report. Row color-coding derives from
+        ``variance_threshold_status``:
+
+          * normal       → success (green)
+          * warning/alert → warning (yellow/orange)
+          * over_budget  → danger (red)
+
+        Creation, editing, and deletion are disabled — this is a
+        report surface, not a data-entry form. Line authoring happens
+        on the parent budget form. The ``Drill Down`` button invokes
+        ``action_drill_down_actuals`` on ``budget.budget.line`` (see
+        ``models/budget_budget_line.py`` lines 747-806) which opens the
+        underlying ``account.move.line`` records scoped to the line's
+        account, date range, company, and analytic distribution —
+        satisfying BM-003 Scenario 7 ("drill-down to source
+        transactions").
+    -->
+    <record id="view_budget_vs_actual_list" model="ir.ui.view">
+        <field name="name">budget.budget.line.list.actual</field>
+        <field name="model">budget.budget.line</field>
+        <field name="arch" type="xml">
+            <list string="Actual vs Budget"
+                  sample="1"
+                  create="false"
+                  edit="false"
+                  delete="false"
+                  default_order="budget_id, sequence, account_id"
+                  decoration-success="variance_threshold_status == 'normal'"
+                  decoration-warning="variance_threshold_status in ('warning', 'alert')"
+                  decoration-danger="variance_threshold_status == 'over_budget'">
+                <field name="budget_id" options="{'no_create': True}"/>
+                <field name="account_id" options="{'no_create': True}"/>
+                <field name="account_type" optional="show"/>
+                <field name="analytic_distribution" widget="analytic_distribution"
+                       groups="analytic.group_analytic_accounting"
+                       optional="show"/>
+                <field name="planned_amount" widget="monetary" sum="Total Planned"/>
+                <field name="variance_actual" widget="monetary" sum="Total Actual"/>
+                <field name="variance_absolute" widget="monetary" sum="Total Variance"/>
+                <field name="variance_consumption_percent" widget="percentage"/>
+                <field name="variance_threshold_status" widget="badge"
+                       decoration-success="variance_threshold_status == 'normal'"
+                       decoration-warning="variance_threshold_status == 'warning'"
+                       decoration-info="variance_threshold_status == 'alert'"
+                       decoration-danger="variance_threshold_status == 'over_budget'"/>
+                <field name="date_from" optional="hide"/>
+                <field name="date_to" optional="hide"/>
+                <field name="state" optional="hide"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="company_id" column_invisible="True"/>
+                <button name="action_drill_down_actuals"
+                        type="object"
+                        icon="fa-search-plus"
+                        string="Drill Down"
+                        invisible="variance_actual == 0"/>
+            </list>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        BM-003 — Actual vs Budget: Window Action
+        =================================================================
+
+        Pivot-first entry point reachable from the ``Actual vs Budget``
+        menu item (see ``views/menuitem.xml`` line 34). The
+        ``view_ids`` eval uses Odoo's Command tuple syntax: the
+        ``(5, 0, 0)`` sentinel clears any default view associations,
+        then three ``(0, 0, {...})`` tuples create explicit
+        associations to the pivot, graph, and list views defined
+        above. This guarantees the action uses exactly these three
+        specialized views rather than the model's registry defaults.
+
+        The ``domain`` filter restricts the action to confirmed
+        budgets because draft and cancelled budgets are not
+        meaningful in variance reporting (BM-003/BM-004 implicit
+        requirement). The ``context`` pre-activates the
+        group-by-account search filter (``search_default_group_account``)
+        and state filter (``search_default_state_confirmed``) from
+        ``view_budget_budget_line_search`` (defined in the
+        module-local ``budget_views.xml``).
+    -->
+    <record id="action_budget_vs_actual_report" model="ir.actions.act_window">
+        <field name="name">Actual vs Budget</field>
+        <field name="res_model">budget.budget.line</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_budget_vs_actual_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('view_budget_vs_actual_graph')}),
+            (0, 0, {'view_mode': 'list',  'view_id': ref('view_budget_vs_actual_list')}),
+        ]"/>
+        <field name="search_view_id" ref="view_budget_budget_line_search"/>
+        <field name="domain">[('state', '=', 'confirmed')]</field>
+        <field name="context">{
+            'search_default_group_account': 1,
+            'search_default_state_confirmed': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No confirmed budgets to compare
+            </p>
+            <p>
+                Confirm a budget to see its lines here. The pivot and graph
+                views show planned amounts against actual GL posting totals,
+                with variance indicators. Use the drill-down button on any
+                list row to inspect the underlying journal entries.
+            </p>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        BM-004 — Variance Analysis: Pivot View
+        =================================================================
+
+        Default pivot: rows = budget_id; columns =
+        variance_classification ('favorable' / 'unfavorable' /
+        'neutral'). Measures aggregate planned_amount,
+        variance_actual, variance_absolute, and variance_percent. This
+        cross-tab lets a controller see at a glance how each budget
+        distributes across favorable / unfavorable / neutral outcomes
+        — the canonical question BM-004 is designed to answer.
+    -->
+    <record id="view_budget_variance_pivot" model="ir.ui.view">
+        <field name="name">budget.budget.line.pivot.variance</field>
+        <field name="model">budget.budget.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Variance Analysis" sample="1">
+                <field name="budget_id" type="row"/>
+                <field name="variance_classification" type="col"/>
+                <field name="planned_amount" type="measure"/>
+                <field name="variance_actual" type="measure"/>
+                <field name="variance_absolute" type="measure"/>
+                <field name="variance_percent" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        BM-004 — Variance Analysis: Graph View
+        =================================================================
+
+        Stacked bar chart (``stacked="1"``) grouped by
+        variance_threshold_status with stacks by account_type. Each
+        stack communicates the aggregate absolute variance attributable
+        to a particular threshold band, decomposed by account type —
+        making threshold-band composition immediately visible.
+    -->
+    <record id="view_budget_variance_graph" model="ir.ui.view">
+        <field name="name">budget.budget.line.graph.variance</field>
+        <field name="model">budget.budget.line</field>
+        <field name="arch" type="xml">
+            <graph string="Variance by Threshold Status" type="bar" sample="1" stacked="1">
+                <field name="variance_threshold_status"/>
+                <field name="account_type"/>
+                <field name="variance_absolute" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        BM-004 — Variance Analysis: List View
+        =================================================================
+
+        Like the BM-003 list but sorted by descending
+        variance_absolute so the largest variances surface first.
+        Row decoration by variance_classification:
+
+          * favorable   → success (green)
+          * unfavorable → danger  (red)
+          * neutral     → muted   (grey)
+
+        Creation and deletion are disabled, but inline editing is
+        PERMITTED on ``variance_explanation_note`` so controllers can
+        document reasoning per line during investigation (BM-004
+        Scenario 5 — explanation notes). Other fields are
+        ``readonly="1"`` as defense-in-depth against stray edits.
+        The Drill Down button invokes ``action_drill_down_actuals``
+        exactly as on the BM-003 list.
+    -->
+    <record id="view_budget_variance_list" model="ir.ui.view">
+        <field name="name">budget.budget.line.list.variance</field>
+        <field name="model">budget.budget.line</field>
+        <field name="arch" type="xml">
+            <list string="Variance Analysis"
+                  sample="1"
+                  create="false"
+                  delete="false"
+                  default_order="variance_absolute desc"
+                  decoration-success="variance_classification == 'favorable'"
+                  decoration-danger="variance_classification == 'unfavorable'"
+                  decoration-muted="variance_classification == 'neutral'">
+                <field name="budget_id" options="{'no_create': True}" readonly="1"/>
+                <field name="account_id" options="{'no_create': True}" readonly="1"/>
+                <field name="account_type" readonly="1" optional="show"/>
+                <field name="planned_amount" widget="monetary" sum="Total Planned" readonly="1"/>
+                <field name="variance_actual" widget="monetary" sum="Total Actual" readonly="1"/>
+                <field name="variance_absolute" widget="monetary" sum="Total Variance" readonly="1"/>
+                <field name="variance_percent" widget="percentage" readonly="1"/>
+                <field name="variance_consumption_percent" widget="percentage" readonly="1" optional="show"/>
+                <field name="variance_classification" widget="badge"
+                       decoration-success="variance_classification == 'favorable'"
+                       decoration-danger="variance_classification == 'unfavorable'"
+                       decoration-muted="variance_classification == 'neutral'"
+                       readonly="1"/>
+                <field name="variance_threshold_status" widget="badge"
+                       decoration-success="variance_threshold_status == 'normal'"
+                       decoration-warning="variance_threshold_status == 'warning'"
+                       decoration-info="variance_threshold_status == 'alert'"
+                       decoration-danger="variance_threshold_status == 'over_budget'"
+                       readonly="1"/>
+                <field name="variance_explanation_note"
+                       optional="show"
+                       placeholder="Add variance explanation..."/>
+                <field name="state" optional="hide" readonly="1"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="company_id" column_invisible="True"/>
+                <button name="action_drill_down_actuals"
+                        type="object"
+                        icon="fa-search-plus"
+                        string="Drill Down"
+                        invisible="variance_actual == 0"/>
+            </list>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        BM-004 — Variance Analysis: Window Action
+        =================================================================
+
+        List-first entry point reachable from the ``Variance Analysis``
+        menu item (see ``views/menuitem.xml`` line 41). List is
+        primary because BM-004's dominant use case is
+        line-by-line investigation sorted by largest absolute
+        variance; pivot and graph are secondary analytic
+        perspectives.
+
+        Context pre-activates the state-confirmed filter and a
+        group-by-classification grouping
+        (``search_default_group_classification``) so the initial
+        list is already segmented by favorable / unfavorable /
+        neutral — matching the BM-004 investigative workflow. Domain
+        restricts to confirmed budgets as with BM-003.
+    -->
+    <record id="action_budget_variance_analysis" model="ir.actions.act_window">
+        <field name="name">Variance Analysis</field>
+        <field name="res_model">budget.budget.line</field>
+        <field name="view_mode">list,pivot,graph</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'list',  'view_id': ref('view_budget_variance_list')}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_budget_variance_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('view_budget_variance_graph')}),
+        ]"/>
+        <field name="search_view_id" ref="view_budget_budget_line_search"/>
+        <field name="domain">[('state', '=', 'confirmed')]</field>
+        <field name="context">{
+            'search_default_state_confirmed': 1,
+            'search_default_group_classification': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No variance data yet
+            </p>
+            <p>
+                Once a budget is confirmed and posting activity occurs, the
+                variance analysis view highlights favorable / unfavorable /
+                neutral classifications, absolute and percentage variances,
+                and threshold status for each line. Use filters and
+                group-by to investigate specific accounts or budgets, and
+                add explanation notes directly in the list to document
+                variance reasoning.
+            </p>
+        </field>
+    </record>
+
+</odoo>

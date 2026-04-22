@@ -8,7 +8,7 @@ Implements ``budget.alert`` — the immutable audit record capturing a
 single THRESHOLD CROSSING EVENT for a ``budget.budget.line``. When the
 actual consumption of a budget line crosses one of the configured
 thresholds (75%, 90%, 100%, 110%), the BM-005 cron
-(``_cron_evaluate_thresholds``) creates a ``budget.alert`` record
+(``_cron_check_budget_alerts``) creates a ``budget.alert`` record
 capturing the state at the moment of crossing (threshold percentage,
 consumption percentage, actual amount, planned amount, alert type /
 severity), selects recipients (the budget's responsible user plus any
@@ -93,7 +93,7 @@ class BudgetAlert(models.Model):
     ``budget.budget.line`` at the moment its actual consumption crossed
     one of the configured threshold percentages (75 %, 90 %, 100 %,
     110 %). The record is created by the BM-005 cron
-    (``_cron_evaluate_thresholds``) and dispatches notifications to the
+    (``_cron_check_budget_alerts``) and dispatches notifications to the
     configured recipients via ``_send_notification``.
 
     The record is immutable:
@@ -119,7 +119,7 @@ class BudgetAlert(models.Model):
     # Class-level constants
     # ==================================================================
 
-    #: Threshold percentages evaluated by ``_cron_evaluate_thresholds``.
+    #: Threshold percentages evaluated by ``_cron_check_budget_alerts``.
     #: These values MUST match the ``selection`` keys of
     #: ``alert_threshold_percent`` so that deduplication search domains
     #: are stable and indexable.
@@ -222,11 +222,16 @@ class BudgetAlert(models.Model):
         string='Consumption at Alert (%)',
         required=True,
         readonly=True,
-        digits=(5, 2),
+        digits=(7, 2),
         help="Actual / Planned * 100 at the time of the alert event. "
              "Captured as a snapshot so that subsequent movements on "
              "the budget line's actuals do not retroactively change "
-             "the alert's audit value.",
+             "the alert's audit value. Widened to ``digits=(7, 2)`` "
+             "(max 99999.99 %) so the snapshot faithfully records "
+             "extreme over-budget consumption — a small budget "
+             "consumed by a much larger actual (e.g. 1500 %) is a "
+             "real-world data point whose integrity matters more "
+             "than the display compactness of a narrower field.",
     )
     alert_actual_amount = fields.Monetary(
         string='Actual Amount',
@@ -485,11 +490,16 @@ class BudgetAlert(models.Model):
     # ==================================================================
 
     @api.model
-    def _cron_evaluate_thresholds(self):
+    def _cron_check_budget_alerts(self):
         """BM-005 scheduled alert evaluation.
 
         Invoked from ``data/budget_alert_cron.xml`` (``ir.cron`` XML
-        record — see R-06). Scans all confirmed budgets' lines,
+        record — see R-06). The method name matches the cron record's
+        ``code`` field ``model._cron_check_budget_alerts()`` exactly;
+        renaming one side of this contract requires updating the
+        other in the same commit.
+
+        Scans all confirmed budgets' lines,
         computes consumption per line via a single aggregated query on
         ``account.move.line`` (delegated to
         ``budget.budget.line._compute_variance``), identifies newly
@@ -703,14 +713,13 @@ class BudgetAlert(models.Model):
     # ==================================================================
     # Phase 8 — SQL constraints
     # ==================================================================
+    # Declared via Odoo 19's ``models.Constraint`` TableObject pattern.
+    # The legacy ``_sql_constraints`` attribute was deprecated in Odoo 19
+    # (registry-load warning). See ``odoo/orm/table_objects.py`` and
+    # ``addons/l10n_vn_edi_viettel/models/sinvoice.py`` for precedent.
 
-    _sql_constraints = [
-        (
-            'unique_line_threshold_per_budget_window',
-            'UNIQUE(budget_line_id, alert_threshold_percent, alert_date)',
-            (
-                'An alert for this budget line at this threshold has '
-                'already been recorded at this timestamp.'
-            ),
-        ),
-    ]
+    _unique_line_threshold_per_budget_window = models.Constraint(
+        'UNIQUE(budget_line_id, alert_threshold_percent, alert_date)',
+        'An alert for this budget line at this threshold has '
+        'already been recorded at this timestamp.',
+    )

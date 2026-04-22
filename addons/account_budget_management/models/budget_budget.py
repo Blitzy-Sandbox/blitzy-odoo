@@ -105,9 +105,29 @@ class BudgetBudget(models.Model):
     # ------------------------------------------------------------------
     # Section 3.2 — Ownership
     # ------------------------------------------------------------------
+    # The field is named ``user_id`` (not ``responsible_user_id``) to
+    # honour Odoo's universal naming convention where the primary
+    # responsible-user reference on any record is ``user_id``. This
+    # matches the authoritative BM-001 ticket
+    # (``tickets/stories/budget-management/BM-001-budget-definition.md``
+    # Scenario 1 / Section 4 field schema, which specifies
+    # ``user_id: Many2one (res.users — responsible person)``) and
+    # aligns with the precedent used throughout Odoo core
+    # (e.g. ``sale.order.user_id``, ``crm.lead.user_id``,
+    # ``account.move.invoice_user_id``). The field's *semantic* role
+    # is "responsible user"; the *attribute name* follows Odoo
+    # convention.
+    #
+    # The ``string`` is set to "Budget Owner" (rather than the more
+    # literal "Responsible User") so that it does NOT collide with
+    # ``activity_user_id`` (also labelled "Responsible User"), which is
+    # inherited from ``mail.activity.mixin``. Two fields sharing a
+    # label on the same model causes Odoo to emit a "two fields have
+    # the same label" warning at registry load; the "Budget Owner"
+    # string keeps the UX intent clear while avoiding the collision.
     user_id = fields.Many2one(
         comodel_name='res.users',
-        string='Responsible User',
+        string='Budget Owner',
         default=lambda self: self.env.user,
         required=True,
         tracking=True,
@@ -188,26 +208,26 @@ class BudgetBudget(models.Model):
     )
     total_planned = fields.Monetary(
         string='Total Planned',
-        compute='_compute_totals',
+        compute='_compute_total_planned',
         store=True,
         currency_field='currency_id',
         tracking=True,
     )
     total_actual = fields.Monetary(
         string='Total Actual',
-        compute='_compute_totals',
+        compute='_compute_dynamic_totals',
         currency_field='currency_id',
         help="Aggregated actuals across all budget lines; computed from "
              "line.variance_actual.",
     )
     total_variance = fields.Monetary(
         string='Total Variance',
-        compute='_compute_totals',
+        compute='_compute_dynamic_totals',
         currency_field='currency_id',
     )
     consumption_percent = fields.Float(
         string='Overall Consumption (%)',
-        compute='_compute_totals',
+        compute='_compute_dynamic_totals',
         digits=(5, 2),
     )
 
@@ -254,21 +274,47 @@ class BudgetBudget(models.Model):
         for budget in self:
             budget.line_count = len(budget.line_ids)
 
+    @api.depends('line_ids', 'line_ids.planned_amount')
+    def _compute_total_planned(self):
+        """Aggregate planned amounts across budget lines (STORED field).
+
+        ``total_planned`` is stored=True so that search / group-by
+        operations on the budget list can leverage the indexed column
+        without triggering a recompute. It depends only on
+        ``budget.budget.line.planned_amount`` (a plain Monetary field,
+        not a compute), so recalculation is triggered ONLY when a line's
+        planned amount is written — no dependency on journal entries or
+        on any non-stored computed field.
+
+        Kept DISTINCT from ``_compute_dynamic_totals`` (which computes the
+        non-stored ``total_actual`` / ``total_variance`` /
+        ``consumption_percent`` fields) to comply with Odoo 19's
+        consistency rule for computed fields: a single compute method
+        MUST NOT mix stored and non-stored fields, otherwise accessing
+        the non-stored fields would silently recompute and persist the
+        stored field during what callers expect to be read-only access.
+        """
+        for budget in self:
+            if not budget.line_ids:
+                budget.total_planned = 0.0
+            else:
+                budget.total_planned = sum(
+                    budget.line_ids.mapped('planned_amount'),
+                )
+
     @api.depends(
+        'total_planned',
         'line_ids',
-        'line_ids.planned_amount',
         'line_ids.variance_actual',
     )
-    def _compute_totals(self):
-        """Aggregate planned / actual / variance / consumption per budget.
+    def _compute_dynamic_totals(self):
+        """Aggregate actuals / variance / consumption per budget (NON-STORED).
 
-        ``total_planned`` is stored so that search / group-by operations on
-        the budget list can leverage the indexed column without triggering
-        a recompute. ``total_actual``, ``total_variance``, and
-        ``consumption_percent`` are computed non-stored because they depend
-        on the child line's ``variance_actual`` field, which itself
-        aggregates posted ``account.move.line`` rows and is therefore
-        invalidated whenever journal entries change.
+        ``total_actual``, ``total_variance``, and ``consumption_percent``
+        are all computed non-stored because they depend on the child
+        line's ``variance_actual`` field, which itself aggregates posted
+        ``account.move.line`` rows and is therefore invalidated whenever
+        journal entries change.
 
         Reads the ``variance_actual`` computed field on each
         ``budget.budget.line`` child. That field (declared on
@@ -276,17 +322,22 @@ class BudgetBudget(models.Model):
         ``read_group`` over posted ``account.move.line`` rows, so the
         aggregation here is O(n) in the number of lines rather than O(n*m)
         in lines-times-moves.
+
+        Kept DISTINCT from ``_compute_total_planned`` (which computes the
+        stored ``total_planned`` field) per Odoo 19's consistency rule
+        for computed fields: a single compute method MUST NOT mix stored
+        and non-stored fields. The dependency on ``total_planned`` is
+        declared explicitly so that if planned amounts change, the
+        variance and consumption recompute correctly.
         """
         for budget in self:
             if not budget.line_ids:
-                budget.total_planned = 0.0
                 budget.total_actual = 0.0
                 budget.total_variance = 0.0
                 budget.consumption_percent = 0.0
                 continue
-            planned = sum(budget.line_ids.mapped('planned_amount'))
+            planned = budget.total_planned
             actual = sum(budget.line_ids.mapped('variance_actual'))
-            budget.total_planned = planned
             budget.total_actual = actual
             budget.total_variance = actual - planned
             budget.consumption_percent = (
@@ -318,13 +369,20 @@ class BudgetBudget(models.Model):
                     t=budget.date_to,
                 ))
 
-    _sql_constraints = [
-        (
-            'unique_reference_per_company',
-            'UNIQUE(reference, company_id)',
-            'Budget reference must be unique per company.',
-        ),
-    ]
+    # ------------------------------------------------------------------
+    # SQL constraints — expressed via Odoo 19's new ``models.Constraint``
+    # TableObject pattern. The legacy ``_sql_constraints`` attribute was
+    # deprecated in Odoo 19 (the server emits a warning at registry load
+    # time). The new pattern declares each constraint as a class-level
+    # attribute on the model, evaluated by the ORM at ``apply_to_database``
+    # time. See ``odoo/orm/table_objects.py`` for the definition and
+    # ``addons/l10n_vn_edi_viettel/models/sinvoice.py`` for a canonical
+    # core-precedent example (``_name_uniq = models.Constraint(...)``).
+    # ------------------------------------------------------------------
+    _unique_reference_per_company = models.Constraint(
+        'UNIQUE(reference, company_id)',
+        'Budget reference must be unique per company.',
+    )
 
     # ==================================================================
     # Phase 6 — Sequence hook on create

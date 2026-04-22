@@ -73,15 +73,19 @@ only Odoo Community Edition dependencies — specifically ``account`` and
         # models that already have ir.model.access.csv rows.
         'data/budget_data.xml',
         'data/budget_alert_cron.xml',
-        # Views — model-level views first, in dependency order so that
-        # act_window actions referenced by subsequent files already exist.
-        'views/budget_views.xml',
-        'views/budget_period_views.xml',
-        'views/budget_variance_views.xml',
-        'views/budget_alert_views.xml',
-        # Menu LAST — so every menuitem's action= attribute resolves to an
-        # ir.actions.act_window record that has already been declared above.
-        'views/menuitem.xml',
+        # NOTE (Checkpoint 5 scope): View XML files (``views/budget_views.xml``,
+        # ``views/budget_period_views.xml``, ``views/budget_variance_views.xml``,
+        # ``views/budget_alert_views.xml``, ``views/menuitem.xml``) are deferred
+        # to Checkpoint 6 per AAP §0.6.2 ("no speculative views"). They are NOT
+        # listed in this ``data`` manifest key because they do not yet exist on
+        # disk; including them here would cause ``--stop-after-init`` install
+        # to fail with FileNotFoundError at the data-loading phase (AAP §0.1.2
+        # Story Gate rule condition (b)). The models, security, sequences, and
+        # cron infrastructure necessary for ``--stop-after-init`` success are
+        # already loaded by the entries above. View files will be appended to
+        # this list in dependency order (model-level views first, menu LAST)
+        # when Checkpoint 6 adds the BM-003/BM-004 wizard+report models and
+        # all five stories' UI entry points.
     ],
     # Constraints (per EPIC-001 — Enterprise Accounting Parity, FEATURE-003):
     # - AGPL-3.0 license required (satisfied)

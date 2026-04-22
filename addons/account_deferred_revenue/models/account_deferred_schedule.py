@@ -54,7 +54,7 @@ class AccountDeferredSchedule(models.Model):
         help=(
             "Unique reference code for this schedule, assigned from the "
             "``account.deferred.schedule`` ``ir.sequence`` on creation. "
-            "Format: DEF/YYYY/NNNNN (configured in ``data/deferred_data.xml``)."
+            "Format: DEF-YYYY-NNNNN (configured in ``data/deferred_data.xml``)."
         ),
     )
 
@@ -374,6 +374,24 @@ class AccountDeferredSchedule(models.Model):
     # ------------------------------------------------------------------
     @api.constrains('start_date', 'end_date')
     def _check_dates(self):
+        # DR-001 Scenario 5 admin tunability: read the warning threshold from
+        # ir.config_parameter so administrators can tune it without a code change.
+        # The default value (60 months) is seeded in data/deferred_data.xml; if the
+        # parameter is cleared or invalid, fall back to 60 defensively.
+        # sudo required: ir.config_parameter read access is restricted to
+        # the admin group; sudo() is the documented pattern (see data/deferred_data.xml
+        # lines 88-91) and safe here because the value read is a scalar configuration
+        # threshold, not a permission-sensitive payload.
+        param = self.env['ir.config_parameter'].sudo().get_param(
+            'account_deferred_revenue.max_months_warning',
+            default='60',
+        )
+        try:
+            threshold = int(param)
+        except (TypeError, ValueError):
+            threshold = 60
+        if threshold <= 0:
+            threshold = 60
         for schedule in self:
             if not schedule.start_date or not schedule.end_date:
                 continue
@@ -384,13 +402,15 @@ class AccountDeferredSchedule(models.Model):
                     end=schedule.end_date,
                     start=schedule.start_date,
                 ))
-            # DR-001 Scenario 5: warn (log-only, not fatal) when period > 60 months
-            if schedule.period_count > 60:
+            # DR-001 Scenario 5: warn (log-only, not fatal) when period exceeds
+            # the administratively-configured threshold (default 60 months).
+            if schedule.period_count > threshold:
                 _logger.warning(
-                    "Deferred schedule %s spans %d months - exceeds typical 60-month "
-                    "recommendation (DR-001 Scenario 5).",
+                    "Deferred schedule %s spans %d months - exceeds configured "
+                    "%d-month threshold (DR-001 Scenario 5).",
                     schedule.name or schedule.id,
                     schedule.period_count,
+                    threshold,
                 )
 
     @api.constrains('total_amount')
@@ -449,7 +469,16 @@ class AccountDeferredSchedule(models.Model):
     # State-transition action methods
     # ------------------------------------------------------------------
     def action_confirm(self):
-        """Generate recognition lines and transition to ``confirmed`` (DR-001 -> DR-002 handoff)."""
+        """Generate recognition lines and transition to ``confirmed`` (DR-001 -> DR-002 handoff).
+
+        **DR-002 SUM INVARIANT (manual method safety)**: after line generation (or
+        inspection of user-supplied lines for the manual method), the sum of
+        ``recognition_amount`` across ``line_ids`` must equal ``total_amount`` using
+        the schedule's currency rounding. Enforced here (rather than as an
+        ``@api.constrains``) so that draft schedules may be edited freely without
+        tripping validation mid-edit; the invariant only becomes mandatory at the
+        moment the user requests confirmation.
+        """
         for schedule in self:
             if schedule.state != 'draft':
                 raise UserError(_(
@@ -459,6 +488,33 @@ class AccountDeferredSchedule(models.Model):
                 ))
             if not schedule.line_ids:
                 schedule._compute_recognition_schedule()
+            # DR-002 SUM INVARIANT: verify line totals match the schedule total
+            # before committing the draft -> confirmed transition. This is the
+            # safety net for the `manual` recognition method (where the user
+            # enters amounts by hand) and also validates auto-generated lines
+            # against rounding drift.
+            currency = schedule.currency_id or schedule.company_id.currency_id
+            total_allocated = sum(schedule.line_ids.mapped('recognition_amount'))
+            rounding = currency.rounding if currency else 0.01
+            if not float_is_zero(
+                schedule.total_amount - total_allocated,
+                precision_rounding=rounding,
+            ):
+                raise UserError(_(
+                    "Cannot confirm schedule %(name)s: recognition lines total "
+                    "%(lines_total)s but schedule total is %(schedule_total)s. "
+                    "Adjust the recognition lines so their sum equals the "
+                    "schedule total before confirming (DR-002 sum invariant).",
+                    name=schedule.name,
+                    lines_total=(
+                        currency.format(total_allocated)
+                        if currency else total_allocated
+                    ),
+                    schedule_total=(
+                        currency.format(schedule.total_amount)
+                        if currency else schedule.total_amount
+                    ),
+                ))
             schedule.state = 'confirmed'
             schedule.message_post(
                 body=_(
@@ -588,10 +644,47 @@ class AccountDeferredSchedule(models.Model):
         elif self.recognition_method == 'date_based':
             # Prorated by calendar days; each month's amount =
             # (days_in_month_within_range / total_days) * remaining.
-            total_days = (self.end_date - self.start_date).days + 1
+            #
+            # DR-002 Scenario 4 (past-preserving recalculation): when posted
+            # lines already exist we MUST advance the cursor past months that
+            # have posted lines, otherwise we would (a) create duplicate
+            # ``recognition_date`` values colliding with posted records and
+            # (b) under-allocate because ``remaining`` is the unposted amount
+            # but ``total_days`` would otherwise span the full schedule range.
+            # Re-anchor both the cursor and the denominator to the remaining
+            # (unposted) window so numerator and denominator agree.
+            posted_lines = self.line_ids.filtered(
+                lambda line: line.state == 'posted',
+            )
+            max_posted_date = max(
+                posted_lines.mapped('recognition_date'),
+                default=None,
+            )
+            if max_posted_date:
+                # Advance to first day of the month AFTER the latest posted
+                # recognition_date. relativedelta applies absolute terms
+                # (``day=1``) before relative terms (``months=1``), so this
+                # normalizes to 1st-of-next-month regardless of the posted
+                # date's day-of-month.
+                cursor = max_posted_date + relativedelta(day=1, months=1)
+            else:
+                # First-time generation: start at first of the schedule's
+                # start-date month (existing behavior).
+                cursor = self.start_date.replace(day=1)
+            if cursor > self.end_date:
+                # All recognition months are already posted; nothing to allocate.
+                return
+            # effective_start drives both the denominator and the first
+            # month's proration. Using ``max(cursor, self.start_date)``
+            # correctly handles: (a) posted-lines case — cursor is later
+            # than start_date, so effective_start = cursor (first of next
+            # unposted month); (b) initial generation with mid-month
+            # start_date — cursor is first-of-month, start_date is mid-month,
+            # so effective_start = start_date (prorated first month).
+            effective_start = max(cursor, self.start_date)
+            total_days = (self.end_date - effective_start).days + 1
             if total_days <= 0:
                 return
-            cursor = self.start_date.replace(day=1)  # move to first of start month
             sequence_counter = posted_count
             running_total = 0.0
             while cursor <= self.end_date:
@@ -601,7 +694,7 @@ class AccountDeferredSchedule(models.Model):
                 _first_weekday, last_day = monthrange(year, month)
                 month_start = cursor
                 month_end = cursor.replace(day=last_day)
-                period_start = max(month_start, self.start_date)
+                period_start = max(month_start, effective_start)
                 period_end = min(month_end, self.end_date)
                 days_in_period = (period_end - period_start).days + 1
                 amount = currency.round(remaining * days_in_period / total_days)

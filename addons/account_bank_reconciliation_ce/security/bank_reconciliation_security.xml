@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 Enterprise Accounting Team
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+
+    <!--
+        Bank Reconciliation Security Groups
+        ====================================
+        Two groups are defined for the Bank Reconciliation CE module:
+
+        1. group_bank_reconciliation_user
+           - Grants access to import bank statements and perform reconciliation
+           - Automatically assigned to users who have account.group_account_user
+             via the reverse-implication extension record below
+             (extension_account_group_account_user_implies_br_user)
+
+        2. group_bank_reconciliation_manager
+           - Grants access to configure reconciliation rules and manage settings
+           - Implies the user group (managers automatically have user permissions)
+           - Automatically assigned to users who have account.group_account_manager
+             via the reverse-implication extension record below
+             (extension_account_group_account_manager_implies_br_manager)
+
+        In Odoo 19.0 the forward implied_ids field is the only supported
+        relation on res.groups (the legacy reverse-implication field does
+        not exist and silently drops memberships on install).  To make an
+        existing group (e.g. account.group_account_user) imply a new one,
+        we re-open that existing record and append to its implied_ids
+        using Command.link so pre-existing implications are preserved.
+
+        These group-definition and group-inheritance records are intentionally
+        placed OUTSIDE `<data noupdate="1">` so that every module upgrade
+        (`-u account_bank_reconciliation_ce`) re-applies the inheritance,
+        guaranteeing that users who were granted accounting roles after the
+        first install still pick up the corresponding reconciliation group.
+    -->
+
+    <!-- Bank Reconciliation User Group -->
+    <record id="group_bank_reconciliation_user" model="res.groups">
+        <field name="name">Bank Reconciliation User</field>
+        <field name="comment">Users can import bank statements and perform reconciliation.</field>
+    </record>
+
+    <!-- Bank Reconciliation Manager Group
+         Implies group_bank_reconciliation_user so managers inherit all user
+         permissions in the reconciliation module. -->
+    <record id="group_bank_reconciliation_manager" model="res.groups">
+        <field name="name">Bank Reconciliation Manager</field>
+        <field name="implied_ids" eval="[Command.link(ref('group_bank_reconciliation_user'))]"/>
+        <field name="comment">Managers can configure reconciliation rules and manage bank reconciliation settings.</field>
+    </record>
+
+    <!-- Extension: Reverse-imply group_bank_reconciliation_user from
+         account.group_account_user.  Using Command.link (not Command.set)
+         preserves the existing implied group memberships on the
+         accounting user group (e.g. base.group_user, analytic groups). -->
+    <record id="account.group_account_user" model="res.groups">
+        <field name="implied_ids" eval="[Command.link(ref('group_bank_reconciliation_user'))]"/>
+    </record>
+
+    <!-- Extension: Reverse-imply group_bank_reconciliation_manager from
+         account.group_account_manager.  Using Command.link preserves
+         the manager group's existing implied memberships. -->
+    <record id="account.group_account_manager" model="res.groups">
+        <field name="implied_ids" eval="[Command.link(ref('group_bank_reconciliation_manager'))]"/>
+    </record>
+
+    <data noupdate="1">
+        <!--
+            Multi-Company Record Rules
+            ==========================
+            Enforce data isolation across companies for persistent models.
+            Uses the company_ids variable (current user's allowed companies)
+            following the pattern from account_security.xml's
+            account_move_comp_rule and account_bank_statement_comp_rule.
+            Kept inside noupdate="1" because record-rule domains should
+            never be overwritten on upgrade once an administrator has
+            customized them.
+        -->
+
+        <!-- Multi-company rule for account.reconciliation.matching -->
+        <record id="reconciliation_matching_comp_rule" model="ir.rule">
+            <field name="name">Reconciliation Matching multi-company</field>
+            <field name="model_id" ref="model_account_reconciliation_matching"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

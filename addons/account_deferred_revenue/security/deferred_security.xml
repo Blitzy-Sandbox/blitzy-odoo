@@ -20,6 +20,23 @@
 
     <!--
         ==================================================================
+        Groups Privilege
+        ==================================================================
+        In Odoo 19, res.groups no longer holds category_id directly;
+        instead, a res.groups.privilege record carries the category_id
+        and is referenced from res.groups via privilege_id.  This matches
+        the pattern established by addons/account/security/account_security.xml
+        (res_groups_privilege_accounting).  Defined OUTSIDE <data noupdate="1">
+        so that category-propagation metadata re-applies on upgrade.
+    -->
+    <record id="res_groups_privilege_deferred_revenue" model="res.groups.privilege">
+        <field name="name">Deferred Revenue</field>
+        <field name="category_id" ref="module_category_deferred_revenue"/>
+        <field name="sequence">25</field>
+    </record>
+
+    <!--
+        ==================================================================
         Groups
         ==================================================================
         Defined OUTSIDE <data noupdate="1"> so that implied_ids
@@ -33,14 +50,14 @@
     <!-- User Group: read/write/create on schedules; cannot unlink. -->
     <record id="group_deferred_revenue_user" model="res.groups">
         <field name="name">User: Own Deferrals</field>
-        <field name="category_id" ref="module_category_deferred_revenue"/>
+        <field name="privilege_id" ref="res_groups_privilege_deferred_revenue"/>
         <field name="implied_ids" eval="[Command.link(ref('account.group_account_user'))]"/>
     </record>
 
     <!-- Manager Group: full CRUD; can configure default accounts and period methods. -->
     <record id="group_deferred_revenue_manager" model="res.groups">
         <field name="name">Manager</field>
-        <field name="category_id" ref="module_category_deferred_revenue"/>
+        <field name="privilege_id" ref="res_groups_privilege_deferred_revenue"/>
         <field name="implied_ids" eval="[Command.link(ref('group_deferred_revenue_user')), Command.link(ref('account.group_account_manager'))]"/>
     </record>
 

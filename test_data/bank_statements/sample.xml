@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Sample ISO 20022 CAMT.053.001.02 Bank-to-Customer Statement
+    ============================================================
+    Manual testing fixture for the account_bank_reconciliation_ce module.
+
+    Provides a valid CAMT.053 XML document that exercises:
+      - CAMT.053 namespace-based format auto-detection (urn:iso:std:iso:20022:tech:xsd:camt.053.001.02)
+      - XML element parsing for statement header, account, balances, and entries
+      - CRDT/DBIT indicator handling (ISO 20022 convention uses absolute amounts)
+      - Structured reference extraction (EndToEndId, AcctSvcrRef)
+      - Unstructured remittance information parsing (Ustrd)
+      - Related party name extraction (Dbtr/Cdtr) for partner matching
+      - Opening (OPBD) and closing (CLBD) balance validation
+      - Balance equation: OPBD + credits - debits = CLBD
+        (10000.00 + 6862.50 - 1531.50 = 15331.00)
+
+    Transactions in this file mirror sample.csv, sample.ofx, and sample.qif so
+    that manual cross-format validation produces consistent results.
+
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+-->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02 camt.053.001.02.xsd">
+    <BkToCstmrStmt>
+        <!-- Group Header -->
+        <GrpHdr>
+            <MsgId>STMT20240228001</MsgId>
+            <CreDtTm>2024-02-28T23:59:59</CreDtTm>
+        </GrpHdr>
+
+        <!-- Statement -->
+        <Stmt>
+            <Id>STMT2024-02</Id>
+            <ElctrncSeqNb>2</ElctrncSeqNb>
+            <LglSeqNb>2</LglSeqNb>
+            <CreDtTm>2024-02-28T23:59:59</CreDtTm>
+
+            <!-- Account Identification -->
+            <Acct>
+                <Id>
+                    <IBAN>US89021000021234567890</IBAN>
+                </Id>
+                <Ccy>USD</Ccy>
+                <Ownr>
+                    <Nm>Sample Test Company</Nm>
+                </Ownr>
+                <Svcr>
+                    <FinInstnId>
+                        <BIC>FNBKUS44XXX</BIC>
+                    </FinInstnId>
+                </Svcr>
+            </Acct>
+
+            <!-- Opening Balance (OPBD): 10000.00 USD as of 2024-01-31 -->
+            <Bal>
+                <Tp>
+                    <CdOrPrtry>
+                        <Cd>OPBD</Cd>
+                    </CdOrPrtry>
+                </Tp>
+                <Amt Ccy="USD">10000.00</Amt>
+                <CdtDbtInd>CRDT</CdtDbtInd>
+                <Dt>
+                    <Dt>2024-01-31</Dt>
+                </Dt>
+            </Bal>
+
+            <!-- Entry 1: Invoice payment received (Credit 1250.00) -->
+            <Ntry>
+                <Amt Ccy="USD">1250.00</Amt>
+                <CdtDbtInd>CRDT</CdtDbtInd>
+                <Sts>BOOK</Sts>
+                <BookgDt>
+                    <Dt>2024-02-01</Dt>
+                </BookgDt>
+                <ValDt>
+                    <Dt>2024-02-01</Dt>
+                </ValDt>
+                <AcctSvcrRef>CAMT20240201001</AcctSvcrRef>
+                <NtryDtls>
+                    <TxDtls>
+                        <Refs>
+                            <EndToEndId>INV/2024/0201</EndToEndId>
+                        </Refs>
+                        <RltdPties>
+                            <Dbtr>
+                                <Nm>Acme Corp</Nm>
+                            </Dbtr>
+                        </RltdPties>
+                        <RmtInf>
+                            <Ustrd>Invoice Payment INV/2024/0201</Ustrd>
+                        </RmtInf>
+                    </TxDtls>
+                </NtryDtls>
+            </Ntry>
+
+            <!-- Entry 2: Office supplies purchase (Debit 180.50) -->
+            <Ntry>
+                <Amt Ccy="USD">180.50</Amt>
+                <CdtDbtInd>DBIT</CdtDbtInd>
+                <Sts>BOOK</Sts>
+                <BookgDt>
+                    <Dt>2024-02-03</Dt>
+                </BookgDt>
+                <ValDt>
+                    <Dt>2024-02-03</Dt>
+                </ValDt>
+                <AcctSvcrRef>CAMT20240203001</AcctSvcrRef>
+                <NtryDtls>
+                    <TxDtls>
+                        <Refs>
+                            <EndToEndId>PUR-0203</EndToEndId>
+                        </Refs>
+                        <RltdPties>
+                            <Cdtr>
+                                <Nm>Office Depot LLC</Nm>
+                            </Cdtr>
+                        </RltdPties>
+                        <RmtInf>
+                            <Ustrd>Office Supplies Purchase</Ustrd>
+                        </RmtInf>
+                    </TxDtls>
+                </NtryDtls>
+            </Ntry>
+
+            <!-- Entry 3: Consulting fee received (Credit 3500.00) -->
+            <Ntry>
+                <Amt Ccy="USD">3500.00</Amt>
+                <CdtDbtInd>CRDT</CdtDbtInd>
+                <Sts>BOOK</Sts>
+                <BookgDt>
+                    <Dt>2024-02-05</Dt>
+                </BookgDt>
+                <ValDt>
+                    <Dt>2024-02-05</Dt>
+                </ValDt>
+                <AcctSvcrRef>CAMT20240205001</AcctSvcrRef>
+                <NtryDtls>
+                    <TxDtls>
+                        <Refs>
+                            <EndToEndId>CNS-0205</EndToEndId>
+                        </Refs>
+                        <RltdPties>
+                            <Dbtr>
+                                <Nm>Global Consulting Inc</Nm>
+                            </Dbtr>
+                        </RltdPties>
+                        <RmtInf>
+                            <Ustrd>Consulting Fee Received Q1 retainer</Ustrd>
+                        </RmtInf>
+                    </TxDtls>
+                </NtryDtls>
+            </Ntry>
+
+            <!-- Entry 4: Monthly bank service fee (Debit 35.00, no related party) -->
+            <Ntry>
+                <Amt Ccy="USD">35.00</Amt>
+                <CdtDbtInd>DBIT</CdtDbtInd>
+                <Sts>BOOK</Sts>
+                <BookgDt>
+                    <Dt>2024-02-08</Dt>
+                </BookgDt>
+                <ValDt>
+                    <Dt>2024-02-08</Dt>
+                </ValDt>
+                <AcctSvcrRef>CAMT20240208001</AcctSvcrRef>
+                <NtryDtls>
+                    <TxDtls>
+                        <Refs>
+                            <EndToEndId>FEE-0208</EndToEndId>
+                        </Refs>
+                        <RmtInf>
+                            <Ustrd>Monthly Bank Service Fee</Ustrd>
+                        </RmtInf>
+                    </TxDtls>
+                </NtryDtls>
+            </Ntry>
+
+            <!-- Entry 5: Utility bill payment (Debit 425.75) -->
+            <Ntry>
+                <Amt Ccy="USD">425.75</Amt>
+                <CdtDbtInd>DBIT</CdtDbtInd>
+                <Sts>BOOK</Sts>
+                <BookgDt>
+                    <Dt>2024-02-12</Dt>
+                </BookgDt>
+                <ValDt>
+                    <Dt>2024-02-12</Dt>
+                </ValDt>
+                <AcctSvcrRef>CAMT20240212001</AcctSvcrRef>
+                <NtryDtls>
+                    <TxDtls>
+                        <Refs>
+                            <EndToEndId>UTL-0212</EndToEndId>
+                        </Refs>
+                        <RltdPties>
+                            <Cdtr>
+                                <Nm>City Power and Water</Nm>
+                            </Cdtr>
+                        </RltdPties>
+                        <RmtInf>
+                            <Ustrd>Utility Bill Payment</Ustrd>
+                        </RmtInf>
+                    </TxDtls>
+                </NtryDtls>
+            </Ntry>
+
+            <!-- Entry 6: Customer invoice payment (Credit 2100.00) -->
+            <Ntry>
+                <Amt Ccy="USD">2100.00</Amt>
+                <CdtDbtInd>CRDT</CdtDbtInd>
+                <Sts>BOOK</Sts>
+                <BookgDt>
+                    <Dt>2024-02-15</Dt>
+                </BookgDt>
+                <ValDt>
+                    <Dt>2024-02-15</Dt>
+                </ValDt>
+                <AcctSvcrRef>CAMT20240215001</AcctSvcrRef>
+                <NtryDtls>
+                    <TxDtls>
+                        <Refs>
+                            <EndToEndId>INV/2024/0215</EndToEndId>
+                        </Refs>
+                        <RltdPties>
+                            <Dbtr>
+                                <Nm>Beta Industries Ltd</Nm>
+                            </Dbtr>
+                        </RltdPties>
+                        <RmtInf>
+                            <Ustrd>Customer Payment INV/2024/0215</Ustrd>
+                        </RmtInf>
+                    </TxDtls>
+                </NtryDtls>
+            </Ntry>
+
+            <!-- Entry 7: Vendor payment (Debit 890.25) -->
+            <Ntry>
+                <Amt Ccy="USD">890.25</Amt>
+                <CdtDbtInd>DBIT</CdtDbtInd>
+                <Sts>BOOK</Sts>
+                <BookgDt>
+                    <Dt>2024-02-20</Dt>
+                </BookgDt>
+                <ValDt>
+                    <Dt>2024-02-20</Dt>
+                </ValDt>
+                <AcctSvcrRef>CAMT20240220001</AcctSvcrRef>
+                <NtryDtls>
+                    <TxDtls>
+                        <Refs>
+                            <EndToEndId>VND-0220</EndToEndId>
+                        </Refs>
+                        <RltdPties>
+                            <Cdtr>
+                                <Nm>Hardware Supplies Co</Nm>
+                            </Cdtr>
+                        </RltdPties>
+                        <RmtInf>
+                            <Ustrd>Vendor Payment</Ustrd>
+                        </RmtInf>
+                    </TxDtls>
+                </NtryDtls>
+            </Ntry>
+
+            <!-- Entry 8: Interest earned (Credit 12.50) -->
+            <Ntry>
+                <Amt Ccy="USD">12.50</Amt>
+                <CdtDbtInd>CRDT</CdtDbtInd>
+                <Sts>BOOK</Sts>
+                <BookgDt>
+                    <Dt>2024-02-28</Dt>
+                </BookgDt>
+                <ValDt>
+                    <Dt>2024-02-28</Dt>
+                </ValDt>
+                <AcctSvcrRef>CAMT20240228001</AcctSvcrRef>
+                <NtryDtls>
+                    <TxDtls>
+                        <Refs>
+                            <EndToEndId>INT-0228</EndToEndId>
+                        </Refs>
+                        <RltdPties>
+                            <Dbtr>
+                                <Nm>First National Bank</Nm>
+                            </Dbtr>
+                        </RltdPties>
+                        <RmtInf>
+                            <Ustrd>Interest Earned for February</Ustrd>
+                        </RmtInf>
+                    </TxDtls>
+                </NtryDtls>
+            </Ntry>
+
+            <!-- Closing Balance (CLBD): 15331.00 USD as of 2024-02-28 -->
+            <!-- Equation: 10000 + 1250 + 3500 + 2100 + 12.50 - 180.50 - 35 - 425.75 - 890.25 = 15331.00 -->
+            <Bal>
+                <Tp>
+                    <CdOrPrtry>
+                        <Cd>CLBD</Cd>
+                    </CdOrPrtry>
+                </Tp>
+                <Amt Ccy="USD">15331.00</Amt>
+                <CdtDbtInd>CRDT</CdtDbtInd>
+                <Dt>
+                    <Dt>2024-02-28</Dt>
+                </Dt>
+            </Bal>
+        </Stmt>
+    </BkToCstmrStmt>
+</Document>

@@ -639,7 +639,7 @@
                                     <field name="period_type"/>
                                     <field name="date_from"/>
                                     <field name="date_to"/>
-                                    <field name="planned_amount"
+                                    <field name="allocated_amount"
                                            widget="monetary"
                                            sum="Total Allocated"/>
                                     <field name="allocation_percentage"

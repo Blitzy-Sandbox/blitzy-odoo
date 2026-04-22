@@ -16,10 +16,10 @@
         exist on ``budget.budget.period`` (see ``models/budget_period.py``):
         ``budget_line_id``, ``budget_id``, ``account_id``, ``company_id``,
         ``currency_id``, ``sequence``, ``period_type``, ``date_from``,
-        ``date_to``, ``planned_amount``, ``allocation_percentage``,
+        ``date_to``, ``allocated_amount``, ``allocation_percentage``,
         ``name``, ``state``, ``audit_note``. The model also inherits
         ``mail.thread`` — the form below includes a chatter element so
-        tracked modifications on ``planned_amount`` / ``audit_note`` /
+        tracked modifications on ``allocated_amount`` / ``audit_note`` /
         ``period_type`` surface alongside the free-form audit note,
         satisfying BM-002 Scenario 5 (audit trail preservation).
 
@@ -70,7 +70,7 @@
                     </group>
                     <group string="Allocation">
                         <group name="allocation_left">
-                            <field name="planned_amount" widget="monetary"/>
+                            <field name="allocated_amount" widget="monetary"/>
                             <field name="allocation_percentage"
                                    widget="percentage"
                                    readonly="1"/>
@@ -118,9 +118,9 @@
                 <field name="period_type"/>
                 <field name="date_from"/>
                 <field name="date_to"/>
-                <field name="planned_amount"
+                <field name="allocated_amount"
                        widget="monetary"
-                       sum="Total Planned"/>
+                       sum="Total Allocated"/>
                 <field name="allocation_percentage"
                        widget="percentage"
                        optional="hide"/>

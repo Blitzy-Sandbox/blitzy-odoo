@@ -1,0 +1,6 @@
+Date,Label,Amount,Reference,Partner
+2024-01-15,Payment INV/2024/001,1000.00,REF001,Reconciliation Test Partner
+2024-01-16,Supplier Payment,-500.00,REF002,Test Supplier Ltd
+2024-01-17,Bank Fee,-25.00,FEE001,
+2024-01-18,Customer Refund,-150.00,REF003,Reconciliation Test Partner
+2024-01-19,Wire Transfer In,2500.00,WIRE001,International Corp

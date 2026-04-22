@@ -82,6 +82,18 @@
     <!-- =================================================================
          RECORD RULES (noupdate=1 — preserved across module upgrades)
          =================================================================
+
+         Multi-company domain_force pattern:
+             [('company_id', 'in', company_ids + [False])]
+
+         Appending ``[False]`` to ``company_ids`` ensures records whose
+         ``company_id`` is NULL (shared/cross-company records) remain
+         visible to every authorised user.  Without the ``+ [False]``
+         suffix such records are completely inaccessible — a multi-company
+         regression previously acknowledged in
+         ``tests/test_financial_reports.py`` via
+         ``contextlib.suppress(AccessError)``.  Adding the suffix closes
+         that gap (CP3 Finding #2, Security MINOR).
     -->
     <data noupdate="1">
         <!-- Multi-company record rules for financial reports -->
@@ -90,43 +102,43 @@
         <record id="financial_report_wizard_comp_rule" model="ir.rule">
             <field name="name">Financial Report Wizard multi-company</field>
             <field name="model_id" ref="model_account_financial_report_wizard"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
         </record>
 
         <record id="balance_sheet_report_comp_rule" model="ir.rule">
             <field name="name">Balance Sheet Report multi-company</field>
             <field name="model_id" ref="model_account_balance_sheet_report"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
         </record>
 
         <record id="profit_loss_report_comp_rule" model="ir.rule">
             <field name="name">Profit and Loss Report multi-company</field>
             <field name="model_id" ref="model_account_profit_loss_report"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
         </record>
 
         <record id="cash_flow_report_comp_rule" model="ir.rule">
             <field name="name">Cash Flow Report multi-company</field>
             <field name="model_id" ref="model_account_cash_flow_report"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
         </record>
 
         <record id="general_ledger_report_comp_rule" model="ir.rule">
             <field name="name">General Ledger Report multi-company</field>
             <field name="model_id" ref="model_account_general_ledger_report"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
         </record>
 
         <record id="trial_balance_report_comp_rule" model="ir.rule">
             <field name="name">Trial Balance Report multi-company</field>
             <field name="model_id" ref="model_account_trial_balance_report"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
         </record>
 
         <record id="aged_partner_balance_report_comp_rule" model="ir.rule">
             <field name="name">Aged Partner Balance Report multi-company</field>
             <field name="model_id" ref="model_account_aged_partner_balance_report"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
         </record>
 
     </data>

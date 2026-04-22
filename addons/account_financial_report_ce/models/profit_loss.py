@@ -886,25 +886,28 @@ class ProfitLossReport(models.TransientModel):
 
     def action_export_xlsx(self):
         """
-        Export the P&L report to Excel format.
+        Export the P&L report to Excel (.xlsx) format.
 
-        Returns a URL action pointing to the XLSX export controller
-        endpoint, which generates the spreadsheet file on the fly.
-
-        Returns:
-            dict: ``ir.actions.act_url`` action dictionary.
+        Delegates to the base-class ``action_export_xlsx`` which builds an
+        in-memory ``openpyxl`` workbook using the column definitions from
+        :meth:`_get_xlsx_columns` and the row data from
+        :meth:`_get_xlsx_data`, stores the result as an ``ir.attachment``,
+        and returns a download URL action that points at the generated
+        attachment via ``/web/content/<id>?download=true``.
 
         Per FR-007 Acceptance Criteria:
             "Given I am viewing a P&L report
              When I select Export to Excel
              Then I receive an XLSX file with data in tabular format"
+
+        Performance target: <10 seconds for 100 000 transactions.
+
+        Returns:
+            dict: ``ir.actions.act_url`` action dict pointing at the
+            generated ``ir.attachment`` download URL.
         """
         self.ensure_one()
-        return {
-            'type': 'ir.actions.act_url',
-            'url': '/financial_reports/profit_loss/xlsx/%d' % self.id,
-            'target': 'new',
-        }
+        return super().action_export_xlsx()
 
 
 class ProfitLossReportLine(models.TransientModel):

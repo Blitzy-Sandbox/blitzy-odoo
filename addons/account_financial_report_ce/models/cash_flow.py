@@ -517,6 +517,24 @@ class CashFlowReport(models.TransientModel):
         # equity_unaffected accounts during the period (these represent
         # distributions to shareholders).  If the stock module or a
         # specific dividend account is not configured, the value stays 0.
+        #
+        # KNOWN LIMITATION (CP3 Finding #8, Business Logic MINOR):
+        # This heuristic is deliberately conservative — the raw
+        # ``debit`` aggregate on equity-unaffected accounts may over- or
+        # under-state dividends in the presence of:
+        #   * Reversal entries that debit-then-credit the same account
+        #     on adjacent dates (both legs contribute to ``debit`` sums);
+        #   * Re-classifications between equity and equity-unaffected
+        #     (chart-of-accounts remapping) that touch these accounts for
+        #     reasons unrelated to distributions;
+        #   * Mid-period stock option exercises booked against retained
+        #     earnings in some jurisdictions.
+        # Semantically the heuristic prefers FALSE-NEGATIVES (under-
+        # reporting dividends, overstating financing cash-flow) over
+        # FALSE-POSITIVES.  Accountants needing strict classification
+        # should tag dividend journal items explicitly and extend this
+        # branch with a tag-aware filter.  See ``tests/test_cash_flow.py``
+        # for the current invariants the heuristic must preserve.
         dividend_accounts = self.env['account.account'].search(
             report._get_account_domain(report.EQUITY_UNAFFECTED_TYPES),
         )
@@ -1049,19 +1067,34 @@ class CashFlowReport(models.TransientModel):
         ).report_action(self, config=False)
 
     def action_export_xlsx(self):
-        """Export Cash Flow Statement to Excel format.
+        """Export Cash Flow Statement to Excel (.xlsx) format.
 
-        Returns a URL action that triggers the XLSX download controller.
+        Delegates to the base-class ``action_export_xlsx`` which builds
+        an in-memory ``openpyxl`` workbook using the column definitions
+        from :meth:`_get_xlsx_columns` and the row data from
+        :meth:`_get_xlsx_data`, stores the result as an
+        ``ir.attachment``, and returns a download URL action pointing
+        at the generated attachment via
+        ``/web/content/<id>?download=true``.
+
+        The base pipeline includes both the report data sheet and a
+        supplementary ``Report Parameters`` sheet containing company,
+        date range, target moves, and comparison metadata for
+        audit/traceability.
+
+        Per FR-007 Acceptance Criteria:
+            "Given I am viewing a Cash Flow Statement
+             When I select Export to Excel
+             Then I receive an XLSX file with data in tabular format"
+
+        Performance target: <10 seconds for 100 000 transactions.
 
         Returns:
-            ``dict`` — ``ir.actions.act_url`` action.
+            dict: ``ir.actions.act_url`` action dict pointing at the
+            generated ``ir.attachment`` download URL.
         """
         self.ensure_one()
-        return {
-            'type': 'ir.actions.act_url',
-            'url': '/financial_reports/cash_flow/xlsx/%d' % self.id,
-            'target': 'new',
-        }
+        return super().action_export_xlsx()
 
 
 class CashFlowReportLine(models.TransientModel):

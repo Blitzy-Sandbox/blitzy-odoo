@@ -414,7 +414,15 @@ class FinancialReportWizard(models.TransientModel):
 
         if self.report_type == 'trial_balance':
             vals['show_balance_zero'] = not self.hide_zero_balance
-            if self.account_ids:
+            # Trial Balance does not currently declare ``account_ids`` on the
+            # target transient model, but a future iteration may add it.
+            # Mirror the defensive introspection pattern used for
+            # ``journal_ids``/``analytic_account_ids``/``show_hierarchy``
+            # above so the branch stays forward-compatible and never
+            # attempts to write an unknown field (which Odoo 19.0 ORM
+            # rejects with ``ValueError`` in ``create()``).
+            if (self.account_ids
+                    and 'account_ids' in target_model._fields):
                 vals['account_ids'] = [(6, 0, self.account_ids.ids)]
 
         if self.report_type == 'cash_flow':

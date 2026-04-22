@@ -5,101 +5,110 @@
     
     Paper Formats for Financial Reports
     Optimized for A4 and US Letter with landscape option for detailed reports
+
+    All records are wrapped in <data noupdate="1"> so that administrator
+    customisations (margins, orientation, header spacing, DPI, and the
+    report→paperformat action overrides) are preserved across module
+    upgrades.  Without ``noupdate="1"`` every upgrade would revert any
+    operator tuning back to the shipped defaults, which is a regression
+    flagged by CP3 Finding #1 (Infrastructure/DevOps MINOR).
 -->
 <odoo>
-    <!-- A4 Portrait - Standard Financial Reports -->
-    <record id="paperformat_financial_report_a4" model="report.paperformat">
-        <field name="name">Financial Report A4</field>
-        <field name="default" eval="False"/>
-        <field name="format">A4</field>
-        <field name="orientation">Portrait</field>
-        <field name="margin_top">40</field>
-        <field name="margin_bottom">28</field>
-        <field name="margin_left">7</field>
-        <field name="margin_right">7</field>
-        <field name="header_line" eval="False"/>
-        <field name="header_spacing">35</field>
-        <field name="dpi">90</field>
-    </record>
+    <data noupdate="1">
+        <!-- A4 Portrait - Standard Financial Reports -->
+        <record id="paperformat_financial_report_a4" model="report.paperformat">
+            <field name="name">Financial Report A4</field>
+            <field name="default" eval="False"/>
+            <field name="format">A4</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">40</field>
+            <field name="margin_bottom">28</field>
+            <field name="margin_left">7</field>
+            <field name="margin_right">7</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">35</field>
+            <field name="dpi">90</field>
+        </record>
 
-    <!-- A4 Landscape - Detailed Reports (General Ledger, Trial Balance, Aged Partner Balance) -->
-    <record id="paperformat_financial_report_a4_landscape" model="report.paperformat">
-        <field name="name">Financial Report A4 Landscape</field>
-        <field name="default" eval="False"/>
-        <field name="format">A4</field>
-        <field name="orientation">Landscape</field>
-        <field name="margin_top">40</field>
-        <field name="margin_bottom">28</field>
-        <field name="margin_left">7</field>
-        <field name="margin_right">7</field>
-        <field name="header_line" eval="False"/>
-        <field name="header_spacing">35</field>
-        <field name="dpi">90</field>
-    </record>
+        <!-- A4 Landscape - Detailed Reports (General Ledger, Trial Balance, Aged Partner Balance) -->
+        <record id="paperformat_financial_report_a4_landscape" model="report.paperformat">
+            <field name="name">Financial Report A4 Landscape</field>
+            <field name="default" eval="False"/>
+            <field name="format">A4</field>
+            <field name="orientation">Landscape</field>
+            <field name="margin_top">40</field>
+            <field name="margin_bottom">28</field>
+            <field name="margin_left">7</field>
+            <field name="margin_right">7</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">35</field>
+            <field name="dpi">90</field>
+        </record>
 
-    <!-- US Letter Portrait -->
-    <record id="paperformat_financial_report_letter" model="report.paperformat">
-        <field name="name">Financial Report US Letter</field>
-        <field name="default" eval="False"/>
-        <field name="format">Letter</field>
-        <field name="orientation">Portrait</field>
-        <field name="margin_top">40</field>
-        <field name="margin_bottom">28</field>
-        <field name="margin_left">7</field>
-        <field name="margin_right">7</field>
-        <field name="header_line" eval="False"/>
-        <field name="header_spacing">35</field>
-        <field name="dpi">90</field>
-    </record>
+        <!-- US Letter Portrait -->
+        <record id="paperformat_financial_report_letter" model="report.paperformat">
+            <field name="name">Financial Report US Letter</field>
+            <field name="default" eval="False"/>
+            <field name="format">Letter</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">40</field>
+            <field name="margin_bottom">28</field>
+            <field name="margin_left">7</field>
+            <field name="margin_right">7</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">35</field>
+            <field name="dpi">90</field>
+        </record>
 
-    <!-- US Letter Landscape -->
-    <record id="paperformat_financial_report_letter_landscape" model="report.paperformat">
-        <field name="name">Financial Report US Letter Landscape</field>
-        <field name="default" eval="False"/>
-        <field name="format">Letter</field>
-        <field name="orientation">Landscape</field>
-        <field name="margin_top">40</field>
-        <field name="margin_bottom">28</field>
-        <field name="margin_left">7</field>
-        <field name="margin_right">7</field>
-        <field name="header_line" eval="False"/>
-        <field name="header_spacing">35</field>
-        <field name="dpi">90</field>
-    </record>
+        <!-- US Letter Landscape -->
+        <record id="paperformat_financial_report_letter_landscape" model="report.paperformat">
+            <field name="name">Financial Report US Letter Landscape</field>
+            <field name="default" eval="False"/>
+            <field name="format">Letter</field>
+            <field name="orientation">Landscape</field>
+            <field name="margin_top">40</field>
+            <field name="margin_bottom">28</field>
+            <field name="margin_left">7</field>
+            <field name="margin_right">7</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">35</field>
+            <field name="dpi">90</field>
+        </record>
 
-    <!--
-        Assign paper formats to report actions defined in report/report_templates.xml.
-        NOTE: This file must be loaded AFTER report/report_templates.xml in __manifest__.py
-        to ensure the ir.actions.report records exist before these updates are applied.
+        <!--
+            Assign paper formats to report actions defined in report/report_templates.xml.
+            NOTE: This file must be loaded AFTER report/report_templates.xml in __manifest__.py
+            to ensure the ir.actions.report records exist before these updates are applied.
 
-        Portrait (A4): Summary reports with 2-3 columns
-        Landscape (A4): Detailed reports with 7-8 columns requiring wider table layout
-    -->
+            Portrait (A4): Summary reports with 2-3 columns
+            Landscape (A4): Detailed reports with 7-8 columns requiring wider table layout
+        -->
 
-    <!-- Portrait Reports: Summary-style with few columns (Description + Amount [+ Comparison]) -->
-    <record id="action_report_balance_sheet" model="ir.actions.report">
-        <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
-    </record>
+        <!-- Portrait Reports: Summary-style with few columns (Description + Amount [+ Comparison]) -->
+        <record id="action_report_balance_sheet" model="ir.actions.report">
+            <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
+        </record>
 
-    <record id="action_report_profit_loss" model="ir.actions.report">
-        <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
-    </record>
+        <record id="action_report_profit_loss" model="ir.actions.report">
+            <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
+        </record>
 
-    <record id="action_report_cash_flow" model="ir.actions.report">
-        <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
-    </record>
+        <record id="action_report_cash_flow" model="ir.actions.report">
+            <field name="paperformat_id" ref="paperformat_financial_report_a4"/>
+        </record>
 
-    <!-- Landscape Reports: Multi-column detail tables requiring wider page layout -->
-    <record id="action_report_general_ledger" model="ir.actions.report">
-        <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
-    </record>
+        <!-- Landscape Reports: Multi-column detail tables requiring wider page layout -->
+        <record id="action_report_general_ledger" model="ir.actions.report">
+            <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
+        </record>
 
-    <record id="action_report_trial_balance" model="ir.actions.report">
-        <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
-    </record>
+        <record id="action_report_trial_balance" model="ir.actions.report">
+            <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
+        </record>
 
-    <record id="action_report_aged_partner_balance" model="ir.actions.report">
-        <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
-    </record>
+        <record id="action_report_aged_partner_balance" model="ir.actions.report">
+            <field name="paperformat_id" ref="paperformat_financial_report_a4_landscape"/>
+        </record>
 
+    </data>
 </odoo>

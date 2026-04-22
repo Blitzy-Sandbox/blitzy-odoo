@@ -360,7 +360,140 @@ class TestExport(AccountTestInvoicingCommon):
     #   "Given I am viewing a financial report
     #    When I select Export to Excel
     #    Then I receive an XLSX file with data in tabular format"
+    #
+    # CP3 Finding #9 (QA/Test Integrity MAJOR) — Assertion Tightening
     # -------------------------------------------------------------------------
+    # Prior revisions of this suite asserted only
+    #     result.get('type') in ('ir.actions.act_url', 'ir.actions.report')
+    # which was permissive enough to silently mask the broken ``act_url``
+    # overrides that previously existed on ``account.profit.loss.report`` and
+    # ``account.cash.flow.report``. Those overrides returned URLs pointing at
+    # ``/financial_reports/<model>/xlsx/<id>`` routes that no controller
+    # implemented, yielding HTTP 404 for end-users while CI remained green.
+    #
+    # The assertions below enforce the canonical base-class contract produced
+    # by ``account.financial.report.abstract.action_export_xlsx``:
+    #
+    #   * ``type`` MUST equal ``ir.actions.act_url`` (exact match — not a
+    #     set-membership check that accepts fallback alternatives).
+    #   * ``url`` MUST begin with ``/web/content/`` and contain
+    #     ``download=true`` — this is the Odoo attachment-download pattern
+    #     and distinguishes correct base-class delegation from any
+    #     hand-rolled custom route that might not be wired to a controller.
+    #   * ``target`` MUST equal ``'new'`` so the download opens in a new tab
+    #     and preserves the user's report context per FR-007 UX expectations.
+    #   * An ``ir.attachment`` with matching ``res_model`` / ``res_id`` MUST
+    #     exist after the call — proving the XLSX bytes were actually
+    #     produced (not merely a URL fabricated without content).
+    #
+    # A dedicated helper ``_assert_xlsx_download_action`` centralises these
+    # checks so every one of the 6 concrete report types is held to the same
+    # contract. Any future model that re-introduces the ``act_url`` anti-
+    # pattern with a custom controller URL will now fail at CI rather than
+    # at runtime for end-users.
+    # -------------------------------------------------------------------------
+
+    def _assert_xlsx_download_action(self, report, result, label):
+        """
+        Assert ``result`` conforms to the base-class XLSX download contract.
+
+        The base class ``account.financial.report.abstract.action_export_xlsx``
+        serialises the workbook to bytes, stores them on ``ir.attachment``,
+        and returns a ``{'type': 'ir.actions.act_url',
+        'url': '/web/content/<id>?download=true', 'target': 'new'}`` action.
+
+        :param report: the report record whose ``action_export_xlsx`` was
+                       invoked (used to verify the attachment linkage).
+        :param result: the dict returned by ``action_export_xlsx``.
+        :param label:  human-readable report-type label for assertion
+                       messages (e.g. ``"Profit & Loss"``).
+        """
+        # -- Envelope shape --
+        self.assertIsInstance(
+            result, dict,
+            "%s XLSX export must return an action dict" % label,
+        )
+
+        # -- Action type MUST be exactly 'ir.actions.act_url' --
+        # Strict equality (not assertIn with an or-clause) guarantees the
+        # XLSX payload is delivered via the attachment-download pipeline.
+        self.assertEqual(
+            result.get('type'), 'ir.actions.act_url',
+            "%s XLSX action 'type' must be 'ir.actions.act_url'; "
+            "got %r. A mismatch indicates a custom act_url override or a "
+            "report-action fallback that bypasses the base-class openpyxl "
+            "pipeline." % (label, result.get('type')),
+        )
+
+        # -- URL MUST target the canonical /web/content/<id> endpoint --
+        url = result.get('url') or ''
+        self.assertTrue(
+            url.startswith('/web/content/'),
+            "%s XLSX 'url' must begin with '/web/content/' so the browser "
+            "downloads from the ir.attachment endpoint; got %r. A custom "
+            "route (e.g. '/financial_reports/<model>/xlsx/<id>') would "
+            "return HTTP 404 unless an ir.http controller implements it, "
+            "which historically has not been the case." % (label, url),
+        )
+        self.assertIn(
+            'download=true', url,
+            "%s XLSX 'url' must include 'download=true' so the browser "
+            "triggers a file download instead of rendering inline; "
+            "got %r." % (label, url),
+        )
+
+        # -- Target MUST open in a new browser tab --
+        self.assertEqual(
+            result.get('target'), 'new',
+            "%s XLSX action 'target' must be 'new' so the download opens "
+            "in a new browser tab and preserves the report context; "
+            "got %r." % (label, result.get('target')),
+        )
+
+        # -- An ir.attachment linked to this report MUST exist --
+        # Proves the openpyxl pipeline actually serialised the workbook
+        # bytes and persisted them — a URL without a backing attachment
+        # would 404 on click.
+        xlsx_mimetype = (
+            'application/vnd.openxmlformats-officedocument'
+            '.spreadsheetml.sheet'
+        )
+        attachments = self.env['ir.attachment'].search([
+            ('res_model', '=', report._name),
+            ('res_id', '=', report.id),
+            ('mimetype', '=', xlsx_mimetype),
+        ])
+        self.assertTrue(
+            attachments,
+            "%s XLSX export must create an ir.attachment with mimetype "
+            "'application/vnd.openxmlformats-officedocument"
+            ".spreadsheetml.sheet' linked to the report "
+            "(res_model=%r, res_id=%r). No such attachment was found, "
+            "indicating the openpyxl serialization did not complete." % (
+                label, report._name, report.id,
+            ),
+        )
+
+        # -- The URL's attachment id MUST match a real attachment --
+        # Extract the numeric id from '/web/content/<id>?download=true' and
+        # confirm it points at one of the XLSX attachments we just found.
+        try:
+            attachment_id = int(
+                url.split('/web/content/', 1)[1].split('?', 1)[0],
+            )
+        except (IndexError, ValueError):
+            self.fail(
+                "%s XLSX 'url' %r does not contain a numeric attachment id "
+                "in the expected '/web/content/<id>?download=true' "
+                "position." % (label, url),
+            )
+        self.assertIn(
+            attachment_id, attachments.ids,
+            "%s XLSX 'url' references attachment id %d which is not among "
+            "the XLSX attachments linked to this report (ids=%s). This "
+            "indicates the action URL and the persisted workbook are out "
+            "of sync." % (label, attachment_id, attachments.ids),
+        )
 
     @freeze_time('2024-06-30')
     def test_fr007_xlsx_export_balance_sheet(self):
@@ -369,18 +502,13 @@ class TestExport(AccountTestInvoicingCommon):
 
         Given I am viewing a Balance Sheet report
         When I select Export to Excel
-        Then I receive an XLSX export action (URL or report action).
+        Then I receive an ``ir.actions.act_url`` pointing at a
+             ``/web/content/<id>?download=true`` attachment endpoint
+             with target=='new' and a backing ir.attachment record.
         """
         report = self._create_balance_sheet_report()
         result = report.action_export_xlsx()
-
-        self.assertIsInstance(result, dict,
-                              "XLSX export should return an action dict")
-        self.assertIn(
-            result.get('type'),
-            ('ir.actions.act_url', 'ir.actions.report'),
-            "Balance Sheet XLSX action should be a URL or report action",
-        )
+        self._assert_xlsx_download_action(report, result, "Balance Sheet")
 
     @freeze_time('2024-06-30')
     def test_fr007_xlsx_export_profit_loss(self):
@@ -389,18 +517,18 @@ class TestExport(AccountTestInvoicingCommon):
 
         Given I am viewing a Profit & Loss report
         When I select Export to Excel
-        Then I receive an XLSX export action.
+        Then I receive the canonical base-class XLSX download action.
+
+        Regression guard for CP3 Finding #6: prior to remediation, this
+        model's ``action_export_xlsx`` returned
+        ``{'type': 'ir.actions.act_url',
+          'url': '/financial_reports/profit_loss/xlsx/<id>'}``
+        pointing at an unimplemented controller route. The tightened
+        contract below would have flagged that failure at CI time.
         """
         report = self._create_profit_loss_report()
         result = report.action_export_xlsx()
-
-        self.assertIsInstance(result, dict,
-                              "XLSX export should return an action dict")
-        self.assertIn(
-            result.get('type'),
-            ('ir.actions.act_url', 'ir.actions.report'),
-            "P&L XLSX action should be a URL or report action",
-        )
+        self._assert_xlsx_download_action(report, result, "Profit & Loss")
 
     @freeze_time('2024-06-30')
     def test_fr007_xlsx_export_cash_flow(self):
@@ -409,18 +537,18 @@ class TestExport(AccountTestInvoicingCommon):
 
         Given I am viewing a Cash Flow Statement
         When I select Export to Excel
-        Then I receive an XLSX export action.
+        Then I receive the canonical base-class XLSX download action.
+
+        Regression guard for CP3 Finding #7: prior to remediation, this
+        model's ``action_export_xlsx`` returned
+        ``{'type': 'ir.actions.act_url',
+          'url': '/financial_reports/cash_flow/xlsx/<id>'}``
+        pointing at an unimplemented controller route. The tightened
+        contract below would have flagged that failure at CI time.
         """
         report = self._create_cash_flow_report()
         result = report.action_export_xlsx()
-
-        self.assertIsInstance(result, dict,
-                              "XLSX export should return an action dict")
-        self.assertIn(
-            result.get('type'),
-            ('ir.actions.act_url', 'ir.actions.report'),
-            "Cash Flow XLSX action should be a URL or report action",
-        )
+        self._assert_xlsx_download_action(report, result, "Cash Flow")
 
     @freeze_time('2024-06-30')
     def test_fr007_xlsx_export_general_ledger(self):
@@ -429,18 +557,11 @@ class TestExport(AccountTestInvoicingCommon):
 
         Given I am viewing a General Ledger report
         When I select Export to Excel
-        Then I receive an XLSX export action.
+        Then I receive the canonical base-class XLSX download action.
         """
         report = self._create_general_ledger_report()
         result = report.action_export_xlsx()
-
-        self.assertIsInstance(result, dict,
-                              "XLSX export should return an action dict")
-        self.assertIn(
-            result.get('type'),
-            ('ir.actions.act_url', 'ir.actions.report'),
-            "General Ledger XLSX action should be a URL or report action",
-        )
+        self._assert_xlsx_download_action(report, result, "General Ledger")
 
     @freeze_time('2024-06-30')
     def test_fr007_xlsx_export_trial_balance(self):
@@ -449,18 +570,11 @@ class TestExport(AccountTestInvoicingCommon):
 
         Given I am viewing a Trial Balance report
         When I select Export to Excel
-        Then I receive an XLSX export action.
+        Then I receive the canonical base-class XLSX download action.
         """
         report = self._create_trial_balance_report()
         result = report.action_export_xlsx()
-
-        self.assertIsInstance(result, dict,
-                              "XLSX export should return an action dict")
-        self.assertIn(
-            result.get('type'),
-            ('ir.actions.act_url', 'ir.actions.report'),
-            "Trial Balance XLSX action should be a URL or report action",
-        )
+        self._assert_xlsx_download_action(report, result, "Trial Balance")
 
     @freeze_time('2024-06-30')
     def test_fr007_xlsx_export_aged_partner(self):
@@ -469,18 +583,11 @@ class TestExport(AccountTestInvoicingCommon):
 
         Given I am viewing an Aged Receivables report
         When I select Export to Excel
-        Then I receive an XLSX export action.
+        Then I receive the canonical base-class XLSX download action.
         """
         report = self._create_aged_partner_report('receivable')
         result = report.action_export_xlsx()
-
-        self.assertIsInstance(result, dict,
-                              "XLSX export should return an action dict")
-        self.assertIn(
-            result.get('type'),
-            ('ir.actions.act_url', 'ir.actions.report'),
-            "Aged Partner XLSX action should be a URL or report action",
-        )
+        self._assert_xlsx_download_action(report, result, "Aged Partner")
 
     # -------------------------------------------------------------------------
     # DRILL-DOWN NAVIGATION TESTS — FR-007 Scenario: Navigate to Source

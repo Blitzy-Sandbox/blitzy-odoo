@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 OCA, Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Res Partner Views — account_payment_followup Module (PF-001 / PF-005)
+    =====================================================================
+
+    Extensions to the core ``res.partner`` form, list (tree) and search
+    views to surface follow-up state information alongside a dedicated
+    "Follow-ups" notebook page that consolidates aging buckets, smart
+    buttons, and quick actions.
+
+    Implements:
+      - PF-001 Scenarios 1-5: Follow-up level configuration — exposes the
+        currently-applicable ``followup_level_id``, ``followup_next_action_date``,
+        and ``followup_status`` on the partner form so accountants can
+        verify which level is active and when the next action is due.
+      - PF-005 Scenarios 1-6: Overdue calculation — surfaces
+        ``has_overdue_invoices``, ``max_days_overdue``, ``total_overdue``,
+        and the five aging buckets (``aging_bucket_current``,
+        ``aging_bucket_1_30``, ``aging_bucket_31_60``, ``aging_bucket_61_90``,
+        ``aging_bucket_90_plus``) on the partner form, list columns, and
+        search filters so users can triage and group receivables by
+        aging severity.
+
+    Inheritance (R-03):
+      - ``base.view_partner_form``   — adds a smart button + a
+                                       "Follow-ups" notebook page.
+      - ``base.view_partner_tree``   — appends four optional (hidden by
+                                       default) columns for AR triage.
+      - ``base.view_res_partner_filter`` — appends filters and a group-by
+                                           option.
+
+    External ID Resolution:
+      The ``base.*`` External IDs are guaranteed to be registered at the
+      time this file loads because ``base`` is a transitive dependency
+      via both ``account`` and ``mail`` declared in ``__manifest__.py``.
+
+    Group Gating:
+      All new UI surfaces are gated by
+      ``groups="account.group_account_invoice,account.group_account_readonly"``
+      so that accountants (read-write) and auditors (read-only) see the
+      follow-up fields on a Community Edition install, while other users
+      experience the standard partner form unchanged.
+
+    Rules Compliance (AAP §0.7):
+      - R-01: No cross-module references; only references core
+              (``base.*``) and installed dependency groups (``account.*``).
+      - R-02: No Enterprise module references (account_followup,
+              account_reports, account_accountant are absent).
+      - R-03: Every record uses ``inherit_id``; no net-new view definitions.
+      - R-05: All fields referenced are either pre-existing on core
+              ``res.partner`` (``currency_id``, ``is_company``,
+              ``customer_rank``) or computed / relational fields added
+              via ``_inherit`` in ``models/res_partner.py``.
+      - Odoo 19.0 conventions: ``invisible="..."`` (not ``<attrs>``),
+        ``<list>`` (not ``<tree>``), ``column_invisible`` for hidden
+        list columns, ``optional="hidden"`` for toggleable columns.
+-->
+<odoo>
+    <data>
+
+        <!-- ================================================================
+             SECTION 1: PARTNER FORM VIEW — FOLLOW-UP EXTENSIONS
+             Model: res.partner
+             Inherits: base.view_partner_form
+             =================================================================
+             Two injections:
+
+               1. A smart button in the form's ``button_box`` that
+                  navigates to the partner's follow-up history records.
+                  Hidden when ``followup_history_count == 0`` so partners
+                  who have never been dunned do not carry an empty
+                  counter.
+
+               2. A new "Follow-ups" notebook page showing the partner's
+                  current follow-up status (level, next action date,
+                  overdue flag), the total overdue amount, the five
+                  aging buckets, and a "Send Follow-up Now" action
+                  button for on-demand dunning.
+
+             The page is gated by ``not is_company and not customer_rank``
+             so it appears only for entities that can realistically carry
+             receivables (companies OR any partner flagged as a customer
+             via ``customer_rank``). Individual contacts without customer
+             status do not see the page.
+             ================================================================ -->
+
+        <record id="view_partner_form_followup" model="ir.ui.view">
+            <field name="name">res.partner.form.followup</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <!-- Smart button: Follow-up History count -->
+                <xpath expr="//div[@name='button_box']" position="inside">
+                    <button name="action_view_followup_history"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-history"
+                            invisible="followup_history_count == 0"
+                            groups="account.group_account_invoice,account.group_account_readonly">
+                        <field name="followup_history_count"
+                               widget="statinfo"
+                               string="Follow-up History"/>
+                    </button>
+                </xpath>
+
+                <!-- Follow-ups notebook page -->
+                <xpath expr="//notebook" position="inside">
+                    <page id="followup_page"
+                          name="followup"
+                          string="Follow-ups"
+                          invisible="not is_company and not customer_rank"
+                          groups="account.group_account_invoice,account.group_account_readonly">
+                        <!-- Row 1: Current Status + Total Overdue -->
+                        <group>
+                            <group string="Current Status"
+                                   name="followup_status_group">
+                                <field name="followup_level_id"/>
+                                <field name="followup_next_action_date"/>
+                                <field name="followup_status"/>
+                                <field name="has_overdue_invoices"/>
+                                <field name="max_days_overdue"/>
+                            </group>
+                            <group string="Total Overdue"
+                                   name="followup_total_group">
+                                <field name="total_overdue"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"/>
+                                <field name="currency_id" invisible="1"/>
+                            </group>
+                        </group>
+                        <!-- Row 2: Aging Buckets (two columns) -->
+                        <group string="Aging Buckets"
+                               name="followup_aging_group">
+                            <group>
+                                <field name="aging_bucket_current"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"/>
+                                <field name="aging_bucket_1_30"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="1-30 Days Overdue"/>
+                                <field name="aging_bucket_31_60"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="31-60 Days Overdue"/>
+                            </group>
+                            <group>
+                                <field name="aging_bucket_61_90"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="61-90 Days Overdue"/>
+                                <field name="aging_bucket_90_plus"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="Over 90 Days Overdue"/>
+                            </group>
+                        </group>
+                        <!-- Row 3: Action button "Send Follow-up Now"
+                             Invisible when partner has no follow-up
+                             level or no overdue invoices. Requires
+                             explicit confirmation before dispatch. -->
+                        <group>
+                            <button name="action_send_followup_now"
+                                    type="object"
+                                    string="Send Follow-up Now"
+                                    class="btn-primary"
+                                    invisible="not followup_level_id or not has_overdue_invoices"
+                                    confirm="This will send the follow-up email for the current level. Continue?"
+                                    groups="account.group_account_invoice"/>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             SECTION 2: PARTNER LIST (TREE) VIEW — FOLLOW-UP COLUMNS
+             Model: res.partner
+             Inherits: base.view_partner_tree
+             =================================================================
+             Appends four optional columns to the core partner list:
+
+               - total_overdue       (Monetary, with sum aggregation)
+               - followup_level_id   (Many2one)
+               - max_days_overdue    (Integer)
+               - currency_id         (column_invisible — needed by the
+                                      monetary widget only)
+
+             All columns are ``optional="hidden"`` so they are NOT shown
+             by default — users opt in via the list's column picker.
+             This prevents extra column-width pressure for users who are
+             not focused on AR and avoids redundant rendering for
+             partners with no receivable activity.
+
+             The columns are appended at the END of the list via
+             ``<xpath expr="//list" position="inside">`` because:
+               (a) the core list root is always ``<list>`` in Odoo 19;
+               (b) this survives re-ordering of core fields across
+                   minor Odoo versions;
+               (c) ``optional="hidden"`` columns added at the end of
+                   the list is the canonical OCA pattern.
+             ================================================================ -->
+
+        <record id="view_partner_tree_followup" model="ir.ui.view">
+            <field name="name">res.partner.list.followup</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//list" position="inside">
+                    <field name="total_overdue"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           optional="hidden"
+                           sum="Total Overdue"/>
+                    <field name="followup_level_id"
+                           optional="hidden"/>
+                    <field name="max_days_overdue"
+                           optional="hidden"/>
+                    <field name="currency_id"
+                           column_invisible="True"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             SECTION 3: PARTNER SEARCH VIEW — FOLLOW-UP FILTERS
+             Model: res.partner
+             Inherits: base.view_res_partner_filter
+             =================================================================
+             Adds two ad-hoc filters and one group-by option to the core
+             partner search view:
+
+               - "Has Overdue Invoices" — domain filter on the stored,
+                 indexed ``has_overdue_invoices`` Boolean. Fast because
+                 the field is computed-and-stored with an index (see
+                 models/res_partner.py).
+
+               - "At Follow-up Level" — domain filter returning partners
+                 with a non-null ``followup_level_id``.
+
+               - "Follow-up Level" (group-by) — groups the search result
+                 by the stored Many2one ``followup_level_id``.
+
+             The filters are inserted ``before`` the stable "inactive"
+             filter anchor (the pattern used by the core ``account``
+             module at ``addons/account/views/partner_view.xml``), and
+             the group-by option is inserted ``inside`` the existing
+             core ``group_by`` group so the merged search view preserves
+             a single, schema-valid element ordering.
+             ================================================================ -->
+
+        <record id="view_res_partner_filter_followup" model="ir.ui.view">
+            <field name="name">res.partner.search.followup</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_res_partner_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='inactive']" position="before">
+                    <filter name="has_overdue_invoices"
+                            string="Has Overdue Invoices"
+                            domain="[('has_overdue_invoices', '=', True)]"/>
+                    <filter name="at_followup_level"
+                            string="At Follow-up Level"
+                            domain="[('followup_level_id', '!=', False)]"/>
+                    <separator/>
+                </xpath>
+                <xpath expr="//group[@name='group_by']" position="inside">
+                    <filter name="group_followup_level"
+                            string="Follow-up Level"
+                            context="{'group_by': 'followup_level_id'}"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

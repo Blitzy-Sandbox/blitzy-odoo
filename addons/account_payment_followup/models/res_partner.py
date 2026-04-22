@@ -60,6 +60,7 @@ Rules Compliance (AAP §0.7):
 """
 
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class ResPartner(models.Model):
@@ -588,5 +589,67 @@ class ResPartner(models.Model):
                 'default_company_id': (
                     self.company_id.id or self.env.company.id
                 ),
+            },
+        }
+
+    def action_send_followup_now(self):
+        """Trigger an immediate follow-up email send for this partner.
+
+        Manual-trigger handler bound to the "Send Follow-up Now" button on
+        the partner form (PF-001/PF-002). Validates that the partner has a
+        current follow-up level and overdue invoices, then delegates to
+        :meth:`account.followup.level.process_followup_emails` with the
+        ``active_partner_ids`` context populated so the level's partner
+        resolver (``_get_applicable_partners``) restricts processing to
+        this single partner only.
+
+        The downstream ``process_followup_emails`` method handles all
+        business-rule enforcement (BR-004 active-level guard, minimum
+        amount threshold, email-template presence, attachment rendering,
+        history record creation, and trigger-action side-effects). This
+        wrapper only performs the minimal pre-flight checks necessary for
+        a clean user-facing error message and returns a UI notification
+        summarising the outcome.
+
+        Returns:
+            dict: ``ir.actions.client`` notification confirming dispatch
+            (or surfacing the user-visible error via ``UserError``).
+
+        Raises:
+            UserError: If the partner has no current follow-up level or
+                no overdue invoices to communicate.
+        """
+        self.ensure_one()
+        if not self.followup_level_id:
+            raise UserError(_(
+                "Partner %(partner)s has no current follow-up level; "
+                "nothing to send.",
+                partner=self.display_name,
+            ))
+        if not self.has_overdue_invoices:
+            raise UserError(_(
+                "Partner %(partner)s has no overdue invoices; "
+                "follow-up is not applicable.",
+                partner=self.display_name,
+            ))
+        # Delegate to the level's batch pipeline scoped to this partner
+        # via the documented ``active_partner_ids`` context key
+        # (see account.followup.level._get_applicable_partners).
+        self.followup_level_id.with_context(
+            active_partner_ids=[self.id],
+        ).process_followup_emails()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _("Follow-up Sent"),
+                'message': _(
+                    "Follow-up email for level '%(level)s' has been "
+                    "queued for %(partner)s.",
+                    level=self.followup_level_id.name,
+                    partner=self.display_name,
+                ),
+                'type': 'success',
+                'sticky': False,
             },
         }

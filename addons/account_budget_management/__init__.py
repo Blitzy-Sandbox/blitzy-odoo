@@ -7,13 +7,20 @@ loader. Without it, the module folder cannot be imported as a Python
 package and none of the model classes defined under ``models/`` are
 registered with the ORM.
 
-At this checkpoint (Checkpoint 5 — BM Foundation), only the ``models``
-subpackage exists. Subsequent checkpoints will introduce ``wizard``
-and ``report`` subpackages (BM-004 variance wizard, BM-003 actual-vs-
-budget report); their imports will be added here at that time.
+Subpackages loaded here:
 
-Precedent: ``addons/account_deferred_revenue/__init__.py`` — a minimal
-``from . import models`` entry. We follow the same OCA convention.
+* ``models`` — persistent and inherit-based models
+  (:class:`BudgetBudget`, :class:`BudgetBudgetLine`,
+  :class:`BudgetBudgetPeriod`, :class:`BudgetAlert`, and the
+  ``account.analytic.account`` inherit extension).
+* ``report`` — BM-003 Actual-vs-Budget AbstractModel helper
+  (:class:`BudgetVsActualReport`). The subpackage is loaded at module
+  install time so the helper is available to tests and any future
+  QWeb / pivot consumer without requiring a dedicated action.
+
+Precedent: ``addons/account_financial_report_ce/__init__.py`` uses the
+same ``from . import models, report, wizard`` pattern. We follow the
+OCA convention verbatim.
 """
 
-from . import models
+from . import models, report

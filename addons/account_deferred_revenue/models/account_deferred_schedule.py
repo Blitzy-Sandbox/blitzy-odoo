@@ -653,6 +653,20 @@ class AccountDeferredSchedule(models.Model):
             # but ``total_days`` would otherwise span the full schedule range.
             # Re-anchor both the cursor and the denominator to the remaining
             # (unposted) window so numerator and denominator agree.
+            #
+            # IMPLEMENTATION NOTE: the loop's date-cursor variable is named
+            # ``month_cursor`` rather than ``cursor`` to avoid a collision
+            # with Odoo's ``odoo.tools.translate._get_cr(frame)`` helper,
+            # which looks up ``frame.f_locals['cursor']`` as a fallback
+            # mechanism to discover the active DB cursor when the
+            # translation function ``_()`` needs to resolve the language.
+            # Naming a ``datetime.date`` local ``cursor`` causes an
+            # ``AssertionError`` (``isinstance(cr, BaseCursor)``) whenever
+            # ``_()`` is invoked from this method (e.g. ``self.message_post(
+            # body=_(...))`` at the bottom of this function) under a
+            # test/empty-lang context that skips the ``self.env.lang``
+            # early-return branch of ``_get_lang``. See translate.py line
+            # ``if 'cursor' in frame.f_locals: return frame.f_locals['cursor']``.
             posted_lines = self.line_ids.filtered(
                 lambda line: line.state == 'posted',
             )
@@ -666,40 +680,41 @@ class AccountDeferredSchedule(models.Model):
                 # (``day=1``) before relative terms (``months=1``), so this
                 # normalizes to 1st-of-next-month regardless of the posted
                 # date's day-of-month.
-                cursor = max_posted_date + relativedelta(day=1, months=1)
+                month_cursor = max_posted_date + relativedelta(day=1, months=1)
             else:
                 # First-time generation: start at first of the schedule's
                 # start-date month (existing behavior).
-                cursor = self.start_date.replace(day=1)
-            if cursor > self.end_date:
+                month_cursor = self.start_date.replace(day=1)
+            if month_cursor > self.end_date:
                 # All recognition months are already posted; nothing to allocate.
                 return
             # effective_start drives both the denominator and the first
-            # month's proration. Using ``max(cursor, self.start_date)``
-            # correctly handles: (a) posted-lines case — cursor is later
-            # than start_date, so effective_start = cursor (first of next
-            # unposted month); (b) initial generation with mid-month
-            # start_date — cursor is first-of-month, start_date is mid-month,
-            # so effective_start = start_date (prorated first month).
-            effective_start = max(cursor, self.start_date)
+            # month's proration. Using ``max(month_cursor, self.start_date)``
+            # correctly handles: (a) posted-lines case — month_cursor is
+            # later than start_date, so effective_start = month_cursor
+            # (first of next unposted month); (b) initial generation with
+            # mid-month start_date — month_cursor is first-of-month,
+            # start_date is mid-month, so effective_start = start_date
+            # (prorated first month).
+            effective_start = max(month_cursor, self.start_date)
             total_days = (self.end_date - effective_start).days + 1
             if total_days <= 0:
                 return
             sequence_counter = posted_count
             running_total = 0.0
-            while cursor <= self.end_date:
-                year, month = cursor.year, cursor.month
+            while month_cursor <= self.end_date:
+                year, month = month_cursor.year, month_cursor.month
                 # NOTE: use '_first_weekday' rather than '_' to avoid shadowing the
                 # module-level translation function `_` via Python local-scope rules.
                 _first_weekday, last_day = monthrange(year, month)
-                month_start = cursor
-                month_end = cursor.replace(day=last_day)
+                month_start = month_cursor
+                month_end = month_cursor.replace(day=last_day)
                 period_start = max(month_start, effective_start)
                 period_end = min(month_end, self.end_date)
                 days_in_period = (period_end - period_start).days + 1
                 amount = currency.round(remaining * days_in_period / total_days)
-                # Advance cursor to first day of next month for next iteration
-                next_month = cursor + relativedelta(months=1)
+                # Advance month_cursor to first day of next month for next iteration
+                next_month = month_cursor + relativedelta(months=1)
                 is_last_iter = next_month > self.end_date
                 if is_last_iter:
                     amount = currency.round(remaining - running_total)
@@ -712,7 +727,7 @@ class AccountDeferredSchedule(models.Model):
                     'recognition_date': period_end,
                     'recognition_amount': amount,
                 })
-                cursor = next_month
+                month_cursor = next_month
 
         else:
             # Unknown recognition method - defensive guard

@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Profit and Loss Statement Report Template (FR-002)
+    Implements GAAP/IFRS compliant income statement with:
+    - Revenue, COGS, Operating Expenses, Other Income/Expenses sections
+    - Gross Profit, Operating Income, Net Income model-computed subtotals
+    - Comparative period columns with variance (absolute and percentage)
+    - Hierarchical account display with level-based indentation
+    - Drill-down navigation to period-scoped source transactions
+    - Margin analysis with comparison period support
+-->
+<odoo>
+    <template id="report_profit_loss">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <!-- Report Header: GAAP-formatted period display -->
+                        <div class="text-center">
+                            <h2>Profit and Loss Statement</h2>
+                            <p>
+                                <strong>For the Period </strong>
+                                <span t-field="doc.date_from"
+                                      t-options="{'format': 'MMMM d, yyyy'}"/>
+                                <strong> to </strong>
+                                <span t-field="doc.date_to"
+                                      t-options="{'format': 'MMMM d, yyyy'}"/>
+                                <t t-if="doc.compare_period">
+                                    <br/>
+                                    <span class="text-muted">Compared with: </span>
+                                    <span t-field="doc.compare_date_from"
+                                          t-options="{'format': 'MMMM d, yyyy'}"/>
+                                    <span> to </span>
+                                    <span t-field="doc.compare_date_to"
+                                          t-options="{'format': 'MMMM d, yyyy'}"/>
+                                </t>
+                            </p>
+                            <p t-if="doc.company_id">
+                                <span t-field="doc.company_id.name"/>
+                            </p>
+                        </div>
+
+                        <!-- Report Parameters -->
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Target Moves:</strong></td>
+                                        <td>
+                                            <t t-if="doc.target_move == 'posted'">Posted Entries Only</t>
+                                            <t t-else="">All Entries</t>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic column count for proper colspan on section headers -->
+                        <t t-set="col_count" t-value="5 if doc.compare_period else 2"/>
+
+                        <!-- Profit &amp; Loss Table -->
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr class="bg-primary text-white">
+                                    <th t-att-style="'width: 35%' if doc.compare_period else 'width: 60%'">Account</th>
+                                    <th class="text-end" t-att-style="'width: 15%' if doc.compare_period else 'width: 40%'">Current Period</th>
+                                    <t t-if="doc.compare_period">
+                                        <th class="text-end" style="width: 15%">Prior Period</th>
+                                        <th class="text-end" style="width: 15%">Variance</th>
+                                        <th class="text-end" style="width: 20%">Variance %</th>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- ============================================================ -->
+                                <!-- REVENUE Section                                              -->
+                                <!-- GAAP/IFRS order: Revenue is listed first                     -->
+                                <!-- ============================================================ -->
+                                <tr class="table-secondary">
+                                    <td t-att-colspan="col_count"><strong>REVENUE</strong></td>
+                                </tr>
+                                <t t-set="total_revenue_compare" t-value="0"/>
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'revenue')" t-as="line">
+                                    <!-- Group header row: bold sub-section label spanning all columns -->
+                                    <t t-if="line.is_group">
+                                        <tr class="table-light">
+                                            <td t-att-colspan="col_count"
+                                                t-att-style="'padding-left: %dpx; font-weight: bold;' % (line.level * 20 + 8)">
+                                                <span t-esc="line.display_name"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <!-- Account detail row: indented by level, drill-down on name and amount -->
+                                    <t t-else="">
+                                        <tr>
+                                            <td t-att-style="'padding-left: %dpx' % (line.level * 20 + 8)">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }}),('date','&gt;=','{{ doc.date_from }}'),('date','&lt;=','{{ doc.date_to }}')]"
+                                                   class="text-primary">
+                                                    <span t-esc="line.account_code"/> - <span t-esc="line.account_name"/>
+                                                </a>
+                                            </td>
+                                            <td class="text-end">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }}),('date','&gt;=','{{ doc.date_from }}'),('date','&lt;=','{{ doc.date_to }}')]"
+                                                   class="text-primary text-decoration-none">
+                                                    <span t-esc="line.balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </a>
+                                            </td>
+                                            <t t-if="doc.compare_period">
+                                                <td class="text-end">
+                                                    <span t-esc="line.balance_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <!-- Revenue: positive variance is favorable (green) -->
+                                                <td t-att-class="'text-end ' + ('text-success' if line.variance_absolute &gt;= 0 else 'text-danger')">
+                                                    <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td t-att-class="'text-end ' + ('text-success' if line.variance_percentage &gt;= 0 else 'text-danger')">
+                                                    <span t-esc="'%.1f%%' % (line.variance_percentage or 0)"/>
+                                                </td>
+                                            </t>
+                                        </tr>
+                                    </t>
+                                    <t t-set="total_revenue_compare" t-value="total_revenue_compare + (line.balance_compare or 0)"/>
+                                </t>
+                                <!-- Revenue Section Total -->
+                                <tr class="table-info">
+                                    <td><strong>Total Revenue</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.total_revenue" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_revenue_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-set="revenue_var" t-value="doc.total_revenue - total_revenue_compare"/>
+                                        <td t-att-class="'text-end ' + ('text-success' if revenue_var &gt;= 0 else 'text-danger')">
+                                            <strong t-esc="revenue_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td t-att-class="'text-end ' + ('text-success' if revenue_var &gt;= 0 else 'text-danger')">
+                                            <strong t-esc="'%.1f%%' % ((revenue_var / total_revenue_compare * 100) if total_revenue_compare else 0)"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- ============================================================ -->
+                                <!-- COST OF GOODS SOLD Section                                   -->
+                                <!-- ============================================================ -->
+                                <tr class="table-secondary">
+                                    <td t-att-colspan="col_count"><strong>COST OF GOODS SOLD</strong></td>
+                                </tr>
+                                <t t-set="total_cogs_compare" t-value="0"/>
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'cogs')" t-as="line">
+                                    <t t-if="line.is_group">
+                                        <tr class="table-light">
+                                            <td t-att-colspan="col_count"
+                                                t-att-style="'padding-left: %dpx; font-weight: bold;' % (line.level * 20 + 8)">
+                                                <span t-esc="line.display_name"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <t t-else="">
+                                        <tr>
+                                            <td t-att-style="'padding-left: %dpx' % (line.level * 20 + 8)">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }}),('date','&gt;=','{{ doc.date_from }}'),('date','&lt;=','{{ doc.date_to }}')]"
+                                                   class="text-primary">
+                                                    <span t-esc="line.account_code"/> - <span t-esc="line.account_name"/>
+                                                </a>
+                                            </td>
+                                            <td class="text-end">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }}),('date','&gt;=','{{ doc.date_from }}'),('date','&lt;=','{{ doc.date_to }}')]"
+                                                   class="text-primary text-decoration-none">
+                                                    <span t-esc="line.balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </a>
+                                            </td>
+                                            <t t-if="doc.compare_period">
+                                                <td class="text-end">
+                                                    <span t-esc="line.balance_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <!-- COGS: negative variance is favorable (green = lower costs) -->
+                                                <td t-att-class="'text-end ' + ('text-success' if line.variance_absolute &lt;= 0 else 'text-danger')">
+                                                    <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td t-att-class="'text-end ' + ('text-success' if line.variance_percentage &lt;= 0 else 'text-danger')">
+                                                    <span t-esc="'%.1f%%' % (line.variance_percentage or 0)"/>
+                                                </td>
+                                            </t>
+                                        </tr>
+                                    </t>
+                                    <t t-set="total_cogs_compare" t-value="total_cogs_compare + (line.balance_compare or 0)"/>
+                                </t>
+                                <!-- COGS Section Total -->
+                                <tr class="table-info">
+                                    <td><strong>Total COGS</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.total_cogs" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_cogs_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-set="cogs_var" t-value="doc.total_cogs - total_cogs_compare"/>
+                                        <td t-att-class="'text-end ' + ('text-success' if cogs_var &lt;= 0 else 'text-danger')">
+                                            <strong t-esc="cogs_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td t-att-class="'text-end ' + ('text-success' if cogs_var &lt;= 0 else 'text-danger')">
+                                            <strong t-esc="'%.1f%%' % ((cogs_var / total_cogs_compare * 100) if total_cogs_compare else 0)"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- ============================================================ -->
+                                <!-- GROSS PROFIT Subtotal (Revenue - COGS)                       -->
+                                <!-- Uses model-computed doc.gross_profit for consistency          -->
+                                <!-- CSS: table-success for intermediate subtotal                  -->
+                                <!-- ============================================================ -->
+                                <t t-set="gross_profit_compare" t-value="total_revenue_compare - total_cogs_compare"/>
+                                <tr class="table-success">
+                                    <td><strong>GROSS PROFIT</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.gross_profit" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="gross_profit_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-set="gp_var" t-value="doc.gross_profit - gross_profit_compare"/>
+                                        <td t-att-class="'text-end ' + ('text-success' if gp_var &gt;= 0 else 'text-danger')">
+                                            <strong t-esc="gp_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td t-att-class="'text-end ' + ('text-success' if gp_var &gt;= 0 else 'text-danger')">
+                                            <strong t-esc="'%.1f%%' % ((gp_var / gross_profit_compare * 100) if gross_profit_compare else 0)"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- ============================================================ -->
+                                <!-- OPERATING EXPENSES Section                                   -->
+                                <!-- ============================================================ -->
+                                <tr class="table-secondary">
+                                    <td t-att-colspan="col_count"><strong>OPERATING EXPENSES</strong></td>
+                                </tr>
+                                <t t-set="total_opex_compare" t-value="0"/>
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'expense')" t-as="line">
+                                    <t t-if="line.is_group">
+                                        <tr class="table-light">
+                                            <td t-att-colspan="col_count"
+                                                t-att-style="'padding-left: %dpx; font-weight: bold;' % (line.level * 20 + 8)">
+                                                <span t-esc="line.display_name"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <t t-else="">
+                                        <tr>
+                                            <td t-att-style="'padding-left: %dpx' % (line.level * 20 + 8)">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }}),('date','&gt;=','{{ doc.date_from }}'),('date','&lt;=','{{ doc.date_to }}')]"
+                                                   class="text-primary">
+                                                    <span t-esc="line.account_code"/> - <span t-esc="line.account_name"/>
+                                                </a>
+                                            </td>
+                                            <td class="text-end">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }}),('date','&gt;=','{{ doc.date_from }}'),('date','&lt;=','{{ doc.date_to }}')]"
+                                                   class="text-primary text-decoration-none">
+                                                    <span t-esc="line.balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </a>
+                                            </td>
+                                            <t t-if="doc.compare_period">
+                                                <td class="text-end">
+                                                    <span t-esc="line.balance_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <!-- Expenses: negative variance is favorable (green = lower costs) -->
+                                                <td t-att-class="'text-end ' + ('text-success' if line.variance_absolute &lt;= 0 else 'text-danger')">
+                                                    <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td t-att-class="'text-end ' + ('text-success' if line.variance_percentage &lt;= 0 else 'text-danger')">
+                                                    <span t-esc="'%.1f%%' % (line.variance_percentage or 0)"/>
+                                                </td>
+                                            </t>
+                                        </tr>
+                                    </t>
+                                    <t t-set="total_opex_compare" t-value="total_opex_compare + (line.balance_compare or 0)"/>
+                                </t>
+                                <!-- Operating Expenses Section Total -->
+                                <tr class="table-info">
+                                    <td><strong>Total Operating Expenses</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.total_operating_expenses" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_opex_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-set="opex_var" t-value="doc.total_operating_expenses - total_opex_compare"/>
+                                        <td t-att-class="'text-end ' + ('text-success' if opex_var &lt;= 0 else 'text-danger')">
+                                            <strong t-esc="opex_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td t-att-class="'text-end ' + ('text-success' if opex_var &lt;= 0 else 'text-danger')">
+                                            <strong t-esc="'%.1f%%' % ((opex_var / total_opex_compare * 100) if total_opex_compare else 0)"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- ============================================================ -->
+                                <!-- OPERATING INCOME Subtotal (Gross Profit - OpEx)              -->
+                                <!-- Uses model-computed doc.operating_income for consistency      -->
+                                <!-- CSS: table-success for intermediate subtotal                  -->
+                                <!-- ============================================================ -->
+                                <t t-set="operating_income_compare" t-value="gross_profit_compare - total_opex_compare"/>
+                                <tr class="table-success">
+                                    <td><strong>OPERATING INCOME</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.operating_income" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="operating_income_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-set="oi_var" t-value="doc.operating_income - operating_income_compare"/>
+                                        <td t-att-class="'text-end ' + ('text-success' if oi_var &gt;= 0 else 'text-danger')">
+                                            <strong t-esc="oi_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td t-att-class="'text-end ' + ('text-success' if oi_var &gt;= 0 else 'text-danger')">
+                                            <strong t-esc="'%.1f%%' % ((oi_var / operating_income_compare * 100) if operating_income_compare else 0)"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- ============================================================ -->
+                                <!-- OTHER INCOME/EXPENSES Section                                -->
+                                <!-- ============================================================ -->
+                                <tr class="table-secondary">
+                                    <td t-att-colspan="col_count"><strong>OTHER INCOME/EXPENSES</strong></td>
+                                </tr>
+                                <t t-set="total_other_compare" t-value="0"/>
+                                <t t-foreach="doc.line_ids.filtered(lambda l: l.section == 'other')" t-as="line">
+                                    <t t-if="line.is_group">
+                                        <tr class="table-light">
+                                            <td t-att-colspan="col_count"
+                                                t-att-style="'padding-left: %dpx; font-weight: bold;' % (line.level * 20 + 8)">
+                                                <span t-esc="line.display_name"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <t t-else="">
+                                        <tr>
+                                            <td t-att-style="'padding-left: %dpx' % (line.level * 20 + 8)">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }}),('date','&gt;=','{{ doc.date_from }}'),('date','&lt;=','{{ doc.date_to }}')]"
+                                                   class="text-primary">
+                                                    <span t-esc="line.account_code"/> - <span t-esc="line.account_name"/>
+                                                </a>
+                                            </td>
+                                            <td class="text-end">
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','=',{{ line.account_id.id }}),('date','&gt;=','{{ doc.date_from }}'),('date','&lt;=','{{ doc.date_to }}')]"
+                                                   class="text-primary text-decoration-none">
+                                                    <span t-esc="line.balance" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </a>
+                                            </td>
+                                            <t t-if="doc.compare_period">
+                                                <td class="text-end">
+                                                    <span t-esc="line.balance_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <!-- Other Income: positive variance is favorable (green = more income) -->
+                                                <td t-att-class="'text-end ' + ('text-success' if line.variance_absolute &gt;= 0 else 'text-danger')">
+                                                    <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </td>
+                                                <td t-att-class="'text-end ' + ('text-success' if line.variance_percentage &gt;= 0 else 'text-danger')">
+                                                    <span t-esc="'%.1f%%' % (line.variance_percentage or 0)"/>
+                                                </td>
+                                            </t>
+                                        </tr>
+                                    </t>
+                                    <t t-set="total_other_compare" t-value="total_other_compare + (line.balance_compare or 0)"/>
+                                </t>
+                                <!-- Other Income/Expenses Section Total -->
+                                <!-- Uses model-computed doc.total_other for consistency -->
+                                <tr class="table-info">
+                                    <td><strong>Total Other Income/Expenses</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.total_other" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="total_other_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-set="other_var" t-value="doc.total_other - total_other_compare"/>
+                                        <td t-att-class="'text-end ' + ('text-success' if other_var &gt;= 0 else 'text-danger')">
+                                            <strong t-esc="other_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td t-att-class="'text-end ' + ('text-success' if other_var &gt;= 0 else 'text-danger')">
+                                            <strong t-esc="'%.1f%%' % ((other_var / total_other_compare * 100) if total_other_compare else 0)"/>
+                                        </td>
+                                    </t>
+                                </tr>
+
+                                <!-- ============================================================ -->
+                                <!-- NET INCOME Grand Total                                       -->
+                                <!-- Uses model-computed doc.net_income for consistency            -->
+                                <!-- CSS: table-primary for final grand total row                  -->
+                                <!-- ============================================================ -->
+                                <t t-set="net_income_compare" t-value="operating_income_compare + total_other_compare"/>
+                                <tr class="table-primary">
+                                    <td><strong>NET INCOME</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.net_income" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <t t-if="doc.compare_period">
+                                        <td class="text-end">
+                                            <strong t-esc="net_income_compare" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <t t-set="ni_var" t-value="doc.net_income - net_income_compare"/>
+                                        <td t-att-class="'text-end ' + ('text-success' if ni_var &gt;= 0 else 'text-danger')">
+                                            <strong t-esc="ni_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                        <td t-att-class="'text-end ' + ('text-success' if ni_var &gt;= 0 else 'text-danger')">
+                                            <strong t-esc="'%.1f%%' % ((ni_var / net_income_compare * 100) if net_income_compare else 0)"/>
+                                        </td>
+                                    </t>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Margin Analysis: Uses model-computed doc.total_revenue for consistency -->
+                        <!-- Division-by-zero guard: only rendered when total revenue is non-zero   -->
+                        <div class="mt-4" t-if="doc.total_revenue != 0">
+                            <h5>Margin Analysis</h5>
+                            <table class="table table-sm table-bordered" style="width: auto; min-width: 40%">
+                                <thead>
+                                    <tr class="table-secondary">
+                                        <th>Metric</th>
+                                        <th class="text-end">Current Period</th>
+                                        <t t-if="doc.compare_period and total_revenue_compare">
+                                            <th class="text-end">Prior Period</th>
+                                        </t>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Gross Margin</td>
+                                        <td class="text-end">
+                                            <span t-esc="'%.1f%%' % (doc.gross_profit / doc.total_revenue * 100)"/>
+                                        </td>
+                                        <t t-if="doc.compare_period and total_revenue_compare">
+                                            <td class="text-end">
+                                                <span t-esc="'%.1f%%' % (gross_profit_compare / total_revenue_compare * 100)"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                    <tr>
+                                        <td>Operating Margin</td>
+                                        <td class="text-end">
+                                            <span t-esc="'%.1f%%' % (doc.operating_income / doc.total_revenue * 100)"/>
+                                        </td>
+                                        <t t-if="doc.compare_period and total_revenue_compare">
+                                            <td class="text-end">
+                                                <span t-esc="'%.1f%%' % (operating_income_compare / total_revenue_compare * 100)"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                    <tr>
+                                        <td>Net Margin</td>
+                                        <td class="text-end">
+                                            <span t-esc="'%.1f%%' % (doc.net_income / doc.total_revenue * 100)"/>
+                                        </td>
+                                        <t t-if="doc.compare_period and total_revenue_compare">
+                                            <td class="text-end">
+                                                <span t-esc="'%.1f%%' % (net_income_compare / total_revenue_compare * 100)"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Report Footer -->
+                        <div class="mt-4 text-muted small">
+                            <p>
+                                Generated on: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/>
+                                <br/>
+                                Report ID: <span t-field="doc.id"/>
+                            </p>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

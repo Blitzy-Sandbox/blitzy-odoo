@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+    
+    Menu Items for Financial Reports
+    Accessible under Invoicing/Accounting > Reporting > Financial Reports
+-->
+<odoo>
+    <!-- Root Menu: Financial Reports (under Accounting/Invoicing Reporting) -->
+    <menuitem id="menu_financial_reports_root"
+              name="Financial Reports"
+              parent="account.menu_finance_reports"
+              sequence="10"
+              groups="account.group_account_readonly"/>
+
+    <!-- Main Financial Reports Wizard -->
+    <menuitem id="menu_financial_report_wizard"
+              name="All Financial Reports"
+              parent="menu_financial_reports_root"
+              action="action_financial_report_wizard"
+              sequence="1"/>
+
+    <!-- Separator -->
+    <menuitem id="menu_financial_reports_separator_1"
+              parent="menu_financial_reports_root"
+              sequence="5"/>
+
+    <!-- Financial Statements Section -->
+    <menuitem id="menu_financial_statements"
+              name="Financial Statements"
+              parent="menu_financial_reports_root"
+              sequence="10"/>
+
+    <menuitem id="menu_balance_sheet"
+              name="Balance Sheet"
+              parent="menu_financial_statements"
+              action="action_balance_sheet_wizard"
+              sequence="1"/>
+
+    <menuitem id="menu_profit_loss"
+              name="Profit and Loss"
+              parent="menu_financial_statements"
+              action="action_profit_loss_wizard"
+              sequence="2"/>
+
+    <menuitem id="menu_cash_flow"
+              name="Cash Flow Statement"
+              parent="menu_financial_statements"
+              action="action_cash_flow_wizard"
+              sequence="3"/>
+
+    <!-- Ledger Reports Section -->
+    <menuitem id="menu_ledger_reports"
+              name="Ledger Reports"
+              parent="menu_financial_reports_root"
+              sequence="20"/>
+
+    <menuitem id="menu_general_ledger"
+              name="General Ledger"
+              parent="menu_ledger_reports"
+              action="action_general_ledger_wizard"
+              sequence="1"/>
+
+    <menuitem id="menu_trial_balance"
+              name="Trial Balance"
+              parent="menu_ledger_reports"
+              action="action_trial_balance_wizard"
+              sequence="2"/>
+
+    <!-- Aged Reports Section -->
+    <menuitem id="menu_aged_reports"
+              name="Aged Reports"
+              parent="menu_financial_reports_root"
+              sequence="30"/>
+
+    <menuitem id="menu_aged_receivable"
+              name="Aged Receivable"
+              parent="menu_aged_reports"
+              action="action_aged_receivable_wizard"
+              sequence="1"/>
+
+    <menuitem id="menu_aged_payable"
+              name="Aged Payable"
+              parent="menu_aged_reports"
+              action="action_aged_payable_wizard"
+              sequence="2"/>
+
+</odoo>

@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Aged Partner Balance Report Template (FR-006)
+    Implements aged receivables/payables report with:
+    - Configurable aging buckets (30/60/90/120+ days)
+    - Partner breakdown with contact information
+    - Total by aging bucket
+    - Drill-down to invoices
+
+    Data model hierarchy consumed by this template:
+      doc (account.aged.partner.balance.report)
+        └─ partner_line_ids (account.aged.partner.balance.report.partner)
+              ├─ not_due, bucket_1 … bucket_5, total  (pre-computed)
+              └─ line_ids (account.aged.partner.balance.report.line)
+                    ├─ move_id, ref, date_due, days_overdue
+                    └─ residual_amount
+-->
+<odoo>
+    <template id="report_aged_partner_balance">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <!-- Report Header with AR/AP visual distinction -->
+                        <div class="text-center">
+                            <h2>
+                                <t t-if="doc.report_type == 'receivable'">
+                                    <i class="fa fa-arrow-circle-down text-success me-2"
+                                       title="Accounts Receivable (AR)"/>
+                                    Aged Receivable Balance
+                                </t>
+                                <t t-if="doc.report_type == 'payable'">
+                                    <i class="fa fa-arrow-circle-up text-danger me-2"
+                                       title="Accounts Payable (AP)"/>
+                                    Aged Payable Balance
+                                </t>
+                                <t t-if="doc.report_type == 'both'">
+                                    <i class="fa fa-exchange text-primary me-2"
+                                       title="Accounts Receivable &amp; Payable"/>
+                                    Aged Partner Balance
+                                </t>
+                            </h2>
+                            <p>
+                                <strong>As of: </strong>
+                                <span t-field="doc.date_to"/>
+                            </p>
+                            <p t-if="doc.company_id">
+                                <span t-field="doc.company_id.name"/>
+                            </p>
+                        </div>
+
+                        <!-- Report Parameters -->
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Partner Type:</strong></td>
+                                        <td>
+                                            <t t-if="doc.report_type == 'receivable'">Customers (Receivables)</t>
+                                            <t t-if="doc.report_type == 'payable'">Suppliers (Payables)</t>
+                                            <t t-if="doc.report_type == 'both'">Both (Receivables &amp; Payables)</t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Target Moves:</strong></td>
+                                        <td>
+                                            <t t-if="doc.target_move == 'posted'">Posted Entries Only</t>
+                                            <t t-else="">All Entries</t>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="doc.partner_ids">
+                                        <td><strong>Filtered Partners:</strong></td>
+                                        <td><span t-esc="len(doc.partner_ids)"/> partners selected</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Show Details:</strong></td>
+                                        <td>
+                                            <t t-if="doc.show_move_lines">Yes (Invoice Level)</t>
+                                            <t t-else="">No (Partner Summary Only)</t>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Aging Periods:</strong></td>
+                                        <td>
+                                            Current, 1-30, 31-60, 61-90, 91-120, 120+ days
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Aged Balance Table -->
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr class="bg-primary text-white">
+                                    <th style="width: 25%">Partner</th>
+                                    <th class="text-end" style="width: 10%"
+                                        title="Not yet due — payment date has not passed">Not Due</th>
+                                    <th class="text-end" style="width: 10%"
+                                        t-att-title="'Overdue 1 to %d days' % doc.bucket_1_days">1-30</th>
+                                    <th class="text-end" style="width: 10%"
+                                        t-att-title="'Overdue %d to %d days' % (doc.bucket_1_days + 1, doc.bucket_2_days)">31-60</th>
+                                    <th class="text-end" style="width: 10%"
+                                        t-att-title="'Overdue %d to %d days' % (doc.bucket_2_days + 1, doc.bucket_3_days)">61-90</th>
+                                    <th class="text-end" style="width: 10%"
+                                        t-att-title="'Overdue %d to %d days' % (doc.bucket_3_days + 1, doc.bucket_4_days)">91-120</th>
+                                    <th class="text-end" style="width: 10%"
+                                        t-att-title="'Overdue more than %d days' % doc.bucket_4_days">120+</th>
+                                    <th class="text-end" style="width: 15%"
+                                        title="Total outstanding balance across all aging periods">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!--
+                                    Iterate the pre-computed partner summary records.
+                                    Each pline (account.aged.partner.balance.report.partner)
+                                    already holds the per-bucket monetary amounts computed
+                                    by _compute_report_data in the Python model.
+                                -->
+                                <t t-foreach="doc.partner_line_ids" t-as="pline">
+
+                                    <!-- Partner Summary Row — drill-down opens filtered receivable/payable journal items -->
+                                    <tr class="table-light">
+                                        <td>
+                                            <strong>
+                                                <a t-att-href="'/web#model=account.move.line&amp;view_type=list&amp;domain=[[&quot;partner_id&quot;,&quot;=&quot;,%d],[&quot;reconciled&quot;,&quot;=&quot;,false],[&quot;parent_state&quot;,&quot;=&quot;,&quot;posted&quot;]]' % pline.partner_id.id"
+                                                   class="text-primary"
+                                                   t-att-title="'Total outstanding: %s' % pline.total">
+                                                    <span t-esc="pline.name"/>
+                                                </a>
+                                            </strong>
+                                            <br/>
+                                            <small class="text-muted" t-if="pline.partner_id.email">
+                                                <span t-esc="pline.partner_id.email"/>
+                                            </small>
+                                        </td>
+                                        <td class="text-end">
+                                            <t t-if="pline.not_due">
+                                                <span t-esc="pline.not_due"
+                                                      t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </t>
+                                        </td>
+                                        <td class="text-end">
+                                            <t t-if="pline.bucket_1">
+                                                <span t-esc="pline.bucket_1"
+                                                      t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </t>
+                                        </td>
+                                        <td class="text-end">
+                                            <t t-if="pline.bucket_2">
+                                                <span t-esc="pline.bucket_2"
+                                                      t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </t>
+                                        </td>
+                                        <td class="text-end">
+                                            <t t-if="pline.bucket_3">
+                                                <span t-esc="pline.bucket_3"
+                                                      t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </t>
+                                        </td>
+                                        <td class="text-end">
+                                            <t t-if="pline.bucket_4">
+                                                <span class="text-warning"
+                                                      t-esc="pline.bucket_4"
+                                                      t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </t>
+                                        </td>
+                                        <td class="text-end">
+                                            <t t-if="pline.bucket_5">
+                                                <span class="text-danger fw-bold"
+                                                      t-esc="pline.bucket_5"
+                                                      t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </t>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong t-esc="pline.total"
+                                                    t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </tr>
+
+                                    <!--
+                                        Detail Lines (invoice-level drill-down).
+                                        Rendered only when show_move_lines is enabled.
+                                        Each dline (account.aged.partner.balance.report.line)
+                                        carries the individual invoice amount placed in its
+                                        bucket column based on days_overdue relative to the
+                                        configurable bucket day boundaries on the report.
+                                    -->
+                                    <t t-if="doc.show_move_lines">
+                                        <t t-foreach="pline.line_ids" t-as="dline">
+                                            <tr class="small">
+                                                <td class="ps-4">
+                                                    <a t-att-href="'/web#model=account.move&amp;id=%s&amp;view_type=form' % dline.move_id.id"
+                                                       class="text-muted"
+                                                       t-att-title="'View journal entry %s' % (dline.move_id.name or '')">
+                                                        <span t-esc="dline.ref or dline.move_id.name"/>
+                                                    </a>
+                                                    <!-- Invoice date provides additional context alongside due date -->
+                                                    <span class="text-muted ms-2" t-if="dline.move_id.invoice_date">
+                                                        Inv: <span t-field="dline.move_id.invoice_date"/>
+                                                    </span>
+                                                    <span class="text-muted ms-2">
+                                                        Due: <span t-field="dline.date_due"/>
+                                                    </span>
+                                                </td>
+                                                <!-- Not Due column: days_overdue <= 0 -->
+                                                <td class="text-end">
+                                                    <t t-if="dline.days_overdue &lt;= 0">
+                                                        <span t-esc="dline.residual_amount"
+                                                              t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    </t>
+                                                </td>
+                                                <!-- 1-30 column -->
+                                                <td class="text-end">
+                                                    <t t-if="dline.days_overdue &gt; 0 and dline.days_overdue &lt;= doc.bucket_1_days">
+                                                        <span t-esc="dline.residual_amount"
+                                                              t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    </t>
+                                                </td>
+                                                <!-- 31-60 column -->
+                                                <td class="text-end">
+                                                    <t t-if="dline.days_overdue &gt; doc.bucket_1_days and dline.days_overdue &lt;= doc.bucket_2_days">
+                                                        <span t-esc="dline.residual_amount"
+                                                              t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    </t>
+                                                </td>
+                                                <!-- 61-90 column -->
+                                                <td class="text-end">
+                                                    <t t-if="dline.days_overdue &gt; doc.bucket_2_days and dline.days_overdue &lt;= doc.bucket_3_days">
+                                                        <span t-esc="dline.residual_amount"
+                                                              t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    </t>
+                                                </td>
+                                                <!-- 91-120 column -->
+                                                <td class="text-end">
+                                                    <t t-if="dline.days_overdue &gt; doc.bucket_3_days and dline.days_overdue &lt;= doc.bucket_4_days">
+                                                        <span class="text-warning"
+                                                              t-esc="dline.residual_amount"
+                                                              t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    </t>
+                                                </td>
+                                                <!-- 120+ column -->
+                                                <td class="text-end">
+                                                    <t t-if="dline.days_overdue &gt; doc.bucket_4_days">
+                                                        <span class="text-danger"
+                                                              t-esc="dline.residual_amount"
+                                                              t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    </t>
+                                                </td>
+                                                <!-- Total column — residual with original amount for partial payment visibility -->
+                                                <td class="text-end">
+                                                    <span t-esc="dline.residual_amount"
+                                                          t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    <t t-if="dline.original_amount and dline.original_amount != dline.residual_amount">
+                                                        <br/>
+                                                        <small class="text-muted"
+                                                               title="Original invoice amount before partial payments">
+                                                            of <span t-esc="dline.original_amount"
+                                                                     t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                        </small>
+                                                    </t>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </t>
+
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <!--
+                                    Grand Totals — sourced from pre-computed stored fields
+                                    on the report record (total_not_due, total_bucket_1 … 5,
+                                    total_balance).  No in-template accumulation required.
+                                -->
+                                <tr class="table-primary">
+                                    <td><strong>GRAND TOTAL</strong></td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.total_not_due"
+                                                t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.total_bucket_1"
+                                                t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.total_bucket_2"
+                                                t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.total_bucket_3"
+                                                t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="text-warning"
+                                                t-esc="doc.total_bucket_4"
+                                                t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="text-danger fw-bold"
+                                                t-esc="doc.total_bucket_5"
+                                                t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong t-esc="doc.total_balance"
+                                                t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                    </td>
+                                </tr>
+                                <!-- Percentage Row -->
+                                <tr class="table-secondary small" t-if="doc.total_balance">
+                                    <td><em>% of Total</em></td>
+                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_not_due / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_bucket_1 / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_bucket_2 / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_bucket_3 / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_bucket_4 / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_bucket_5 / doc.total_balance * 100)"/></td>
+                                    <td class="text-end">100%</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <!-- Aging Summary Chart (Visual representation using progress bars) -->
+                        <div class="mt-4">
+                            <h5>Aging Distribution</h5>
+                            <t t-if="doc.total_balance">
+                                <!--
+                                    Pre-compute segment percentages to avoid repeated
+                                    division inside each progress-bar element.
+                                -->
+                                <t t-set="pct_not_due" t-value="doc.total_not_due / doc.total_balance * 100"/>
+                                <t t-set="pct_b1" t-value="doc.total_bucket_1 / doc.total_balance * 100"/>
+                                <t t-set="pct_b2" t-value="doc.total_bucket_2 / doc.total_balance * 100"/>
+                                <t t-set="pct_b3" t-value="doc.total_bucket_3 / doc.total_balance * 100"/>
+                                <t t-set="pct_b4" t-value="doc.total_bucket_4 / doc.total_balance * 100"/>
+                                <t t-set="pct_b5" t-value="doc.total_bucket_5 / doc.total_balance * 100"/>
+                                <div class="progress" style="height: 30px;">
+                                    <!-- Not Due segment -->
+                                    <div class="progress-bar bg-success" role="progressbar"
+                                         t-att-style="'width: %s%%' % pct_not_due"
+                                         t-att-title="'Not Due: %s (%.1f%%)' % (doc.total_not_due, pct_not_due)">
+                                        <t t-if="pct_not_due &gt; 5"><span t-esc="'%.1f%%' % pct_not_due"/></t>
+                                    </div>
+                                    <!-- 1-30 days segment -->
+                                    <div class="progress-bar bg-info" role="progressbar"
+                                         t-att-style="'width: %s%%' % pct_b1"
+                                         t-att-title="'1-30 days: %s (%.1f%%)' % (doc.total_bucket_1, pct_b1)">
+                                        <t t-if="pct_b1 &gt; 5"><span t-esc="'%.1f%%' % pct_b1"/></t>
+                                    </div>
+                                    <!-- 31-60 days segment -->
+                                    <div class="progress-bar bg-primary" role="progressbar"
+                                         t-att-style="'width: %s%%' % pct_b2"
+                                         t-att-title="'31-60 days: %s (%.1f%%)' % (doc.total_bucket_2, pct_b2)">
+                                        <t t-if="pct_b2 &gt; 5"><span t-esc="'%.1f%%' % pct_b2"/></t>
+                                    </div>
+                                    <!-- 61-90 days segment -->
+                                    <div class="progress-bar bg-secondary" role="progressbar"
+                                         t-att-style="'width: %s%%' % pct_b3"
+                                         t-att-title="'61-90 days: %s (%.1f%%)' % (doc.total_bucket_3, pct_b3)">
+                                        <t t-if="pct_b3 &gt; 5"><span t-esc="'%.1f%%' % pct_b3"/></t>
+                                    </div>
+                                    <!-- 91-120 days segment -->
+                                    <div class="progress-bar bg-warning" role="progressbar"
+                                         t-att-style="'width: %s%%' % pct_b4"
+                                         t-att-title="'91-120 days: %s (%.1f%%)' % (doc.total_bucket_4, pct_b4)">
+                                        <t t-if="pct_b4 &gt; 5"><span t-esc="'%.1f%%' % pct_b4"/></t>
+                                    </div>
+                                    <!-- 120+ days segment -->
+                                    <div class="progress-bar bg-danger" role="progressbar"
+                                         t-att-style="'width: %s%%' % pct_b5"
+                                         t-att-title="'120+ days: %s (%.1f%%)' % (doc.total_bucket_5, pct_b5)">
+                                        <t t-if="pct_b5 &gt; 5"><span t-esc="'%.1f%%' % pct_b5"/></t>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- Collection Risk Summary & Partner Statistics -->
+                        <div class="row mt-4">
+                            <div class="col-6">
+                                <h5>Collection Risk Summary</h5>
+                                <table class="table table-sm table-bordered">
+                                    <tr>
+                                        <td>Current (Not Due + 1-30 days)</td>
+                                        <td class="text-end text-success">
+                                            <span t-esc="doc.total_not_due + doc.total_bucket_1"
+                                                  t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Aging (31-90 days)</td>
+                                        <td class="text-end text-warning">
+                                            <span t-esc="doc.total_bucket_2 + doc.total_bucket_3"
+                                                  t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>At Risk (91+ days)</td>
+                                        <td class="text-end text-danger">
+                                            <span t-esc="doc.total_bucket_4 + doc.total_bucket_5"
+                                                  t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-6">
+                                <h5>Partner Statistics</h5>
+                                <table class="table table-sm table-bordered">
+                                    <t t-set="unique_partners" t-value="len(doc.partner_line_ids)"/>
+                                    <tr>
+                                        <td>Total Partners</td>
+                                        <td class="text-end"><span t-esc="unique_partners"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Average Balance</td>
+                                        <td class="text-end">
+                                            <t t-if="unique_partners">
+                                                <span t-esc="doc.total_balance / unique_partners"
+                                                      t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Open Invoices</td>
+                                        <td class="text-end">
+                                            <t t-set="invoice_count" t-value="0"/>
+                                            <t t-foreach="doc.partner_line_ids" t-as="pstat">
+                                                <t t-set="invoice_count" t-value="invoice_count + len(pstat.line_ids)"/>
+                                            </t>
+                                            <span t-esc="invoice_count"/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Report Footer -->
+                        <div class="mt-4 text-muted small">
+                            <p>
+                                Generated on: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/>
+                                <br/>
+                                Report ID: <span t-field="doc.id"/>
+                            </p>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

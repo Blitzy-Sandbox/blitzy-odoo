@@ -11,8 +11,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 
-  <!-- reveal.js 5.1.0 core CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <!-- reveal.js 5.1.0 core CSS (pinned with SRI integrity per review finding #9) -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css"
+        integrity="sha384-YgvgKeZJykuztG+iQPoZHNZENTFZvOcOJ/uRzmJTje6GHYN9zAw+y5rx/L8MQKA/"
+        crossorigin="anonymous">
 
   <style>
     /* ==========================================================================
@@ -232,6 +235,19 @@
     .reveal .slides section.slide-title .title-meta strong {
       color: var(--blitzy-accent-teal);
       font-weight: 500;
+    }
+
+    /* Title-slide hero icon — satisfies Rule R-1 visual-constraint
+       closed-list requirement (at least one Mermaid / KPI / table /
+       Lucide SVG per slide).  Decorative: aria-hidden applied inline. */
+    .reveal .slides section.slide-title .hero-icon {
+      width: 96px;
+      height: 96px;
+      color: var(--blitzy-accent-teal);
+      stroke-width: 1.4;
+      margin: 0 0 1.5rem 0;
+      position: relative;
+      z-index: 1;
     }
 
     /* -------------------------------------------------------------------------
@@ -724,178 +740,32 @@
       margin: 0 auto;
     }
 
-    /* -------------------------------------------------------------------------
-       Hand-crafted architecture diagram (Slide 3)
-       ------------------------------------------------------------------------- */
-    .reveal .arch-diagram {
-      display: grid;
-      grid-template-columns: auto 90px auto 90px 1fr;
-      gap: 0;
-      align-items: center;
-      margin-top: 1.5rem;
-      padding: 1rem 0;
+    /* Mermaid htmlLabels render as <foreignObject><div class="nodeLabel">...
+       Force the label font-family to Inter (matching the document.fonts.ready
+       await in renderVisuals) so Mermaid's SVG width measurement matches the
+       rendered typeface.  overflow: visible allows any residual glyph overshoot
+       to paint beyond the foreignObject box rather than being clipped. */
+    .reveal .mermaid foreignObject,
+    .reveal .mermaid foreignObject div,
+    .reveal .mermaid .nodeLabel,
+    .reveal .mermaid .edgeLabel {
+      font-family: 'Inter', system-ui, sans-serif !important;
+      line-height: 1.35;
+      overflow: visible !important;
     }
 
-    .reveal .arch-col {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
+    /* When a Mermaid block appears below a KPI grid on the same slide, the
+       chart needs a reduced max-height so the combined KPI cards + chart
+       fit within the 1920×1080 canvas.  Applying via sibling selector keeps
+       full-width Mermaid slides (e.g., Slide 3 architecture) at 75vh. */
+    .reveal .kpi-grid ~ .mermaid,
+    .reveal .kpi-grid ~ pre.mermaid {
+      max-height: 48vh;
+      margin-top: 0.75rem;
     }
-
-    .reveal .arch-col-core { justify-content: center; }
-    .reveal .arch-col-addons { justify-content: center; }
-    .reveal .arch-col-modules { justify-content: flex-start; }
-
-    .reveal .arch-group-label {
-      font-family: var(--ff-mono);
-      font-size: 0.7rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--blitzy-primary);
-      margin-bottom: 0.5rem;
-      text-align: left;
-    }
-
-    .reveal .arch-node {
-      border-radius: 14px;
-      padding: 1.1rem 1.4rem;
-      text-align: center;
-      border: 2px solid;
-      box-shadow: 0 6px 18px rgba(91, 57, 243, 0.12);
-    }
-
-    .reveal .arch-node-core {
-      background: var(--blitzy-surface-2);
-      border-color: var(--blitzy-primary);
-      color: var(--blitzy-primary-navy);
-      min-width: 260px;
-    }
-
-    .reveal .arch-node-addon {
-      background: var(--blitzy-accent-teal);
-      border-color: var(--blitzy-primary-dark);
-      color: var(--blitzy-primary-navy);
-      min-width: 320px;
-    }
-
-    .reveal .arch-node-title {
-      font-family: var(--ff-display);
-      font-size: 1.2rem;
-      font-weight: 600;
-      line-height: 1.2;
-    }
-
-    .reveal .arch-node-sub {
-      font-family: var(--ff-mono);
-      font-size: 0.85rem;
-      color: var(--blitzy-primary-dark);
-      margin-top: 0.35rem;
-      opacity: 0.85;
-    }
-
-    .reveal .arch-addon-group {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .reveal .arch-connector {
-      position: relative;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 0.5rem;
-    }
-
-    .reveal .arch-connector::before {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--blitzy-primary) 0%, var(--blitzy-primary-light) 100%);
-      transform: translateY(-50%);
-      z-index: 0;
-    }
-
-    .reveal .arch-connector::after {
-      content: "";
-      position: absolute;
-      top: 50%;
-      right: 4px;
-      width: 0;
-      height: 0;
-      border-left: 10px solid var(--blitzy-primary-light);
-      border-top: 6px solid transparent;
-      border-bottom: 6px solid transparent;
-      transform: translateY(-50%);
-      z-index: 1;
-    }
-
-    .reveal .arch-edge-label {
-      position: relative;
-      z-index: 2;
-      background: var(--blitzy-surface-0);
-      padding: 0.2rem 0.6rem;
-      border-radius: 999px;
-      font-family: var(--ff-mono);
-      font-size: 0.75rem;
-      color: var(--blitzy-primary);
-      font-weight: 500;
-      border: 1px solid var(--blitzy-border-soft);
-    }
-
-    .reveal .arch-capability-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
-    }
-
-    .reveal .arch-capability {
-      display: flex;
-      align-items: center;
-      gap: 0.9rem;
-      padding: 0.7rem 1rem;
-      background: var(--blitzy-surface-0);
-      border: 1px solid var(--blitzy-border-soft);
-      border-radius: 10px;
-    }
-
-    .reveal .arch-capability-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      background: var(--blitzy-surface-2);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .reveal .arch-capability-icon i {
-      width: 20px;
-      height: 20px;
-      color: var(--blitzy-primary);
-    }
-
-    .reveal .arch-capability-text {
-      display: flex;
-      flex-direction: column;
-      gap: 0.1rem;
-    }
-
-    .reveal .arch-capability-text strong {
-      font-family: var(--ff-display);
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--blitzy-primary-dark);
-    }
-
-    .reveal .arch-capability-text span {
-      font-size: 0.85rem;
-      color: var(--blitzy-text-muted);
+    .reveal .kpi-grid ~ .mermaid svg,
+    .reveal .kpi-grid ~ pre.mermaid svg {
+      max-height: 48vh !important;
     }
 
     /* -------------------------------------------------------------------------
@@ -964,149 +834,6 @@
     .reveal .controls { color: var(--blitzy-primary); }
     .reveal .progress { color: var(--blitzy-primary); background: var(--blitzy-border); height: 4px; }
 
-    /* -------------------------------------------------------------------------
-       Sequence-flow visualization (Slide 11 — Matching Engine)
-       Hand-crafted replacement for sequenceDiagram to avoid multi-line label
-       overlap seen in Mermaid sequence rendering at 1920x1080 canvas.
-       ------------------------------------------------------------------------- */
-    .reveal .sequence-container {
-      margin-top: 1.5rem;
-    }
-
-    .reveal .sequence-actors {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 1rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .reveal .sequence-actor {
-      background: var(--blitzy-surface-2);
-      border: 1.5px solid var(--blitzy-primary);
-      border-radius: 10px;
-      padding: 0.75rem 0.8rem;
-      font-family: var(--ff-mono);
-      font-size: 0.78rem;
-      color: var(--blitzy-primary-dark);
-      text-align: center;
-      font-weight: 500;
-      letter-spacing: -0.01em;
-    }
-
-    .reveal .sequence-steps {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .reveal .sequence-step {
-      display: grid;
-      grid-template-columns: 44px 1fr 1.6fr;
-      gap: 1.25rem;
-      align-items: center;
-      padding: 0.65rem 1rem;
-      background: var(--blitzy-surface-1);
-      border-left: 4px solid var(--blitzy-primary);
-      border-radius: 0 8px 8px 0;
-    }
-
-    .reveal .sequence-step.sequence-return {
-      border-left-color: var(--blitzy-accent-teal);
-      background: rgba(148, 250, 213, 0.18);
-    }
-
-    .reveal .sequence-step.sequence-self {
-      border-left-color: var(--blitzy-primary-deep);
-      background: rgba(91, 57, 243, 0.10);
-    }
-
-    .reveal .sequence-num {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--blitzy-primary);
-      color: var(--blitzy-text-invert);
-      font-family: var(--ff-mono);
-      font-weight: 600;
-      font-size: 0.95rem;
-      line-height: 1;
-    }
-
-    .reveal .sequence-return .sequence-num {
-      background: var(--blitzy-primary-navy);
-    }
-
-    .reveal .sequence-self .sequence-num {
-      background: var(--blitzy-primary-deep);
-    }
-
-    .reveal .sequence-call {
-      font-family: var(--ff-mono);
-      font-size: 0.85rem;
-      color: var(--blitzy-text-muted);
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      flex-wrap: wrap;
-    }
-
-    .reveal .sequence-call code {
-      background: transparent;
-      color: var(--blitzy-primary-dark);
-      font-weight: 600;
-      padding: 0;
-      border: none;
-      font-size: 0.85rem;
-    }
-
-    .reveal .sequence-call .seq-arrow {
-      color: var(--blitzy-primary);
-      font-weight: 600;
-      font-size: 1.05rem;
-    }
-
-    .reveal .sequence-return .sequence-call .seq-arrow {
-      color: var(--blitzy-primary-navy);
-    }
-
-    .reveal .sequence-call .seq-tag {
-      display: inline-block;
-      margin-left: 0.4rem;
-      padding: 0.1rem 0.5rem;
-      border-radius: 999px;
-      font-size: 0.65rem;
-      letter-spacing: 0.1em;
-      background: rgba(148, 250, 213, 0.4);
-      color: var(--blitzy-primary-navy);
-      font-weight: 600;
-    }
-
-    .reveal .sequence-self .sequence-call .seq-tag {
-      background: rgba(91, 57, 243, 0.18);
-      color: var(--blitzy-primary-deep);
-    }
-
-    .reveal .sequence-msg {
-      font-size: 1rem;
-      color: var(--blitzy-text);
-      font-weight: 500;
-      line-height: 1.35;
-    }
-
-    .reveal .sequence-msg.emphasis {
-      font-family: var(--ff-mono);
-      font-size: 0.88rem;
-      color: var(--blitzy-primary-dark);
-      font-weight: 500;
-      letter-spacing: -0.005em;
-    }
-
     /* Print adjustments */
     @media print {
       .reveal .slides section { page-break-after: always; }
@@ -1121,6 +848,7 @@
            Slide 1 — Title
            ===================================================================== -->
       <section class="slide-title" data-background-color="#4101DB">
+        <i class="hero-icon" data-lucide="boxes" aria-hidden="true"></i>
         <span class="eyebrow">Executive Summary</span>
         <h1>Odoo 19.0 Community Edition</h1>
         <h2>Phase 1 Enterprise Accounting Parity — Archaeology &amp; Segmented PR Review</h2>
@@ -1140,25 +868,25 @@
         <p class="lead">Two production-ready AGPL-3 accounting modules, delivered and fully reviewed.</p>
         <div class="kpi-grid">
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="git-commit"></i>
+            <i class="kpi-icon" data-lucide="git-commit" aria-hidden="true"></i>
             <div><span class="kpi-value">174</span></div>
             <div class="kpi-label">Merged Commits</div>
             <div class="kpi-sub">Two pull requests, four Blitzy branches</div>
           </div>
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="files"></i>
+            <i class="kpi-icon" data-lucide="files" aria-hidden="true"></i>
             <div><span class="kpi-value">137</span></div>
             <div class="kpi-label">Files Changed</div>
             <div class="kpi-sub">+61,375 / &minus;2,022 lines</div>
           </div>
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="git-pull-request"></i>
+            <i class="kpi-icon" data-lucide="git-pull-request" aria-hidden="true"></i>
             <div><span class="kpi-value">79</span></div>
             <div class="kpi-label">New Module Files</div>
             <div class="kpi-sub">Zero Enterprise dependencies</div>
           </div>
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="check-circle-2"></i>
+            <i class="kpi-icon" data-lucide="check-circle-2" aria-hidden="true"></i>
             <div><span class="kpi-value">371</span><span class="kpi-suffix">/ 371</span></div>
             <div class="kpi-label">Tests Passing</div>
             <div class="kpi-sub">0 failed, 0 errors &middot; 132.41 s</div>
@@ -1173,84 +901,53 @@
 
       <!-- =====================================================================
            Slide 3 — Architecture Overview
-           Hand-crafted HTML/CSS architecture diagram for pixel-perfect
-           rendering under the Blitzy brand theme (bypasses Mermaid v11
-           text-width measurement bug that clipped node labels).
+           Mermaid graph LR per AAP §0.5.2 binding (finding #2 remediation).
+           Uses <br/> line-wraps on long labels per Mermaid 11.4.0 convention
+           rather than bypassing Mermaid.  The flowchart config in the init
+           block (useMaxWidth: true, htmlLabels: true, generous padding and
+           node spacing) gives multi-line labels room to render without
+           clipping at node boundaries.
            ===================================================================== -->
       <section>
         <span class="eyebrow">What Changed Architecturally</span>
         <h2>Architecture Overview</h2>
-        <div class="arch-diagram">
-          <div class="arch-col arch-col-core">
-            <div class="arch-group-label">Core Platform</div>
-            <div class="arch-node arch-node-core">
-              <div class="arch-node-title">Odoo 19.0 Core</div>
-              <div class="arch-node-sub">account + analytic</div>
-            </div>
-          </div>
-          <div class="arch-connector"><span class="arch-edge-label">_inherit</span></div>
-          <div class="arch-col arch-col-addons">
-            <div class="arch-group-label">Phase 1 Addons (AGPL-3)</div>
-            <div class="arch-addon-group">
-              <div class="arch-node arch-node-addon">
-                <div class="arch-node-title">account_financial_report_ce</div>
-                <div class="arch-node-sub">v19.0.1.1.0 &middot; 44 files</div>
-              </div>
-              <div class="arch-node arch-node-addon">
-                <div class="arch-node-title">account_bank_reconciliation_ce</div>
-                <div class="arch-node-sub">v19.0.1.0.0 &middot; 35 files</div>
-              </div>
-            </div>
-          </div>
-          <div class="arch-connector"><span class="arch-edge-label">delivers</span></div>
-          <div class="arch-col arch-col-modules">
-            <div class="arch-group-label">Business Capabilities</div>
-            <div class="arch-capability-list">
-              <div class="arch-capability">
-                <div class="arch-capability-icon"><i data-lucide="files"></i></div>
-                <div class="arch-capability-text">
-                  <strong>6 Financial Reports</strong>
-                  <span>Balance Sheet, P&amp;L, Cash Flow, GL, TB, Aged Partner</span>
-                </div>
-              </div>
-              <div class="arch-capability">
-                <div class="arch-capability-icon"><i data-lucide="layout-dashboard"></i></div>
-                <div class="arch-capability-text">
-                  <strong>Unified Wizard</strong>
-                  <span>PDF, Excel, CSV exports via openpyxl + QWeb</span>
-                </div>
-              </div>
-              <div class="arch-capability">
-                <div class="arch-capability-icon"><i data-lucide="database"></i></div>
-                <div class="arch-capability-text">
-                  <strong>Multi-format Import</strong>
-                  <span>CSV, OFX, QIF, CAMT.053 bank statements</span>
-                </div>
-              </div>
-              <div class="arch-capability">
-                <div class="arch-capability-icon"><i data-lucide="check-circle-2"></i></div>
-                <div class="arch-capability-text">
-                  <strong>Matching Engine</strong>
-                  <span>Weighted scoring (amount, ref, partner, date)</span>
-                </div>
-              </div>
-              <div class="arch-capability">
-                <div class="arch-capability-icon"><i data-lucide="shield-check"></i></div>
-                <div class="arch-capability-text">
-                  <strong>Security Layer</strong>
-                  <span>4 groups &middot; 34 ACL rows &middot; 8 record rules</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <pre class="mermaid" aria-label="Architecture graph: Odoo core modules inherited by the two Phase 1 addons that deliver five business capabilities">
+%%{init: { 'flowchart': { 'htmlLabels': true, 'useMaxWidth': true, 'padding': 22, 'nodeSpacing': 80, 'rankSpacing': 110, 'curve': 'basis' } } }%%
+graph LR
+    ACC["account<br/>Odoo 19.0 Core"]
+    ANA["analytic<br/>Odoo 19.0 Core"]
+    BR["account_bank_<br/>reconciliation_ce<br/>v19.0.1.0.0 · 35 files"]
+    FR["account_financial_<br/>report_ce<br/>v19.0.1.1.0 · 44 files"]
+    CAP1["6 Financial Reports<br/>Balance · P&amp;L · Cash<br/>GL · TB · Aged"]
+    CAP2["Unified Wizard<br/>PDF · Excel · CSV"]
+    CAP3["Multi-format Import<br/>CSV · OFX · QIF<br/>CAMT.053"]
+    CAP4["Matching Engine<br/>weighted scoring"]
+    CAP5["Security Layer<br/>4 groups · 34 ACLs<br/>8 rules"]
+
+    ACC -- "inherits" --> BR
+    ACC -- "inherits" --> FR
+    ANA -- "inherits" --> FR
+    FR --> CAP1
+    FR --> CAP2
+    BR --> CAP3
+    BR --> CAP4
+    FR --> CAP5
+    BR --> CAP5
+
+    classDef core fill:#F2F0FE,stroke:#5B39F3,color:#1A105F,stroke-width:2px,font-weight:600;
+    classDef addon fill:#94FAD5,stroke:#2D1C77,color:#1A105F,stroke-width:2px,font-weight:700;
+    classDef cap fill:#FFFFFF,stroke:#7A6DEC,color:#2D1C77,stroke-width:1.5px;
+    class ACC,ANA core;
+    class BR,FR addon;
+    class CAP1,CAP2,CAP3,CAP4,CAP5 cap;
+        </pre>
       </section>
 
       <!-- =====================================================================
            Slide 4 — Divider: Archaeology
            ===================================================================== -->
       <section class="slide-divider" data-background-color="#2D1C77">
-        <i class="hero-icon" data-lucide="git-merge"></i>
+        <i class="hero-icon" data-lucide="git-merge" aria-hidden="true"></i>
         <span class="eyebrow">Section 01</span>
         <h2>Archaeology</h2>
         <p>174 merged commits across four Blitzy branches and two pull requests, treated as authored during this run.</p>
@@ -1270,18 +967,18 @@
                 <tr><th>Domain</th><th class="num">Files</th></tr>
               </thead>
               <tbody>
-                <tr><td><span class="domain-cell"><i data-lucide="boxes"></i> Infrastructure / DevOps</span></td><td class="num">12</td></tr>
-                <tr><td><span class="domain-cell"><i data-lucide="shield-check"></i> Security</span></td><td class="num">4</td></tr>
-                <tr><td><span class="domain-cell"><i data-lucide="database"></i> Backend Architecture</span></td><td class="num">30</td></tr>
-                <tr><td><span class="domain-cell"><i data-lucide="check-circle-2"></i> QA / Test Integrity</span></td><td class="num">20</td></tr>
-                <tr><td><span class="domain-cell"><i data-lucide="briefcase"></i> Business / Domain</span></td><td class="num">55</td></tr>
-                <tr><td><span class="domain-cell"><i data-lucide="layout-dashboard"></i> Frontend</span></td><td class="num">3</td></tr>
-                <tr><td><span class="domain-cell"><i data-lucide="book-open"></i> Other SME</span></td><td class="num">13</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="boxes" aria-hidden="true"></i> Infrastructure / DevOps</span></td><td class="num">12</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="shield-check" aria-hidden="true"></i> Security</span></td><td class="num">4</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="database" aria-hidden="true"></i> Backend Architecture</span></td><td class="num">30</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="check-circle-2" aria-hidden="true"></i> QA / Test Integrity</span></td><td class="num">20</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="briefcase" aria-hidden="true"></i> Business / Domain</span></td><td class="num">55</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="layout-dashboard" aria-hidden="true"></i> Frontend</span></td><td class="num">3</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="book-open" aria-hidden="true"></i> Other SME</span></td><td class="num">13</td></tr>
               </tbody>
             </table>
             <div class="icon-row">
-              <span class="icon-chip"><i data-lucide="git-merge"></i> 2 merged PRs</span>
-              <span class="icon-chip"><i data-lucide="git-commit"></i> 174 commits</span>
+              <span class="icon-chip"><i data-lucide="git-merge" aria-hidden="true"></i> 2 merged PRs</span>
+              <span class="icon-chip"><i data-lucide="git-commit" aria-hidden="true"></i> 174 commits</span>
             </div>
           </div>
           <div>
@@ -1300,7 +997,7 @@ xychart-beta
            Slide 6 — Divider: Phase Review
            ===================================================================== -->
       <section class="slide-divider" data-background-color="#2D1C77">
-        <i class="hero-icon" data-lucide="layout-dashboard"></i>
+        <i class="hero-icon" data-lucide="layout-dashboard" aria-hidden="true"></i>
         <span class="eyebrow">Section 02</span>
         <h2>Segmented PR Review</h2>
         <p>Seven sequential review phases, each with a dedicated Agent reviewer and a machine-parseable disposition.</p>
@@ -1324,45 +1021,45 @@ xychart-beta
           <tbody>
             <tr>
               <td class="num">01</td>
-              <td><span class="domain-cell"><i data-lucide="boxes"></i> Infrastructure / DevOps</span></td>
+              <td><span class="domain-cell"><i data-lucide="boxes" aria-hidden="true"></i> Infrastructure / DevOps</span></td>
               <td>Blitzy DevOps Reviewer Agent</td>
-              <td><span class="status-chip approved"><i data-lucide="check"></i> Approved</span></td>
+              <td><span class="status-chip approved"><i data-lucide="check" aria-hidden="true"></i> Approved</span></td>
             </tr>
             <tr>
               <td class="num">02</td>
-              <td><span class="domain-cell"><i data-lucide="shield-check"></i> Security</span></td>
+              <td><span class="domain-cell"><i data-lucide="shield-check" aria-hidden="true"></i> Security</span></td>
               <td>Blitzy Security Reviewer Agent</td>
-              <td><span class="status-chip approved"><i data-lucide="check"></i> Approved</span></td>
+              <td><span class="status-chip approved"><i data-lucide="check" aria-hidden="true"></i> Approved</span></td>
             </tr>
             <tr>
               <td class="num">03</td>
-              <td><span class="domain-cell"><i data-lucide="database"></i> Backend Architecture</span></td>
+              <td><span class="domain-cell"><i data-lucide="database" aria-hidden="true"></i> Backend Architecture</span></td>
               <td>Blitzy Backend Architect Agent</td>
-              <td><span class="status-chip approved"><i data-lucide="check"></i> Approved</span></td>
+              <td><span class="status-chip approved"><i data-lucide="check" aria-hidden="true"></i> Approved</span></td>
             </tr>
             <tr>
               <td class="num">04</td>
-              <td><span class="domain-cell"><i data-lucide="check-circle-2"></i> QA / Test Integrity</span></td>
+              <td><span class="domain-cell"><i data-lucide="check-circle-2" aria-hidden="true"></i> QA / Test Integrity</span></td>
               <td>Blitzy QA Integrity Agent</td>
-              <td><span class="status-chip approved"><i data-lucide="check"></i> Approved</span></td>
+              <td><span class="status-chip approved"><i data-lucide="check" aria-hidden="true"></i> Approved</span></td>
             </tr>
             <tr>
               <td class="num">05</td>
-              <td><span class="domain-cell"><i data-lucide="briefcase"></i> Business / Domain</span></td>
+              <td><span class="domain-cell"><i data-lucide="briefcase" aria-hidden="true"></i> Business / Domain</span></td>
               <td>Blitzy Business Analyst Agent</td>
-              <td><span class="status-chip approved"><i data-lucide="check"></i> Approved</span></td>
+              <td><span class="status-chip approved"><i data-lucide="check" aria-hidden="true"></i> Approved</span></td>
             </tr>
             <tr>
               <td class="num">06</td>
-              <td><span class="domain-cell"><i data-lucide="layout-dashboard"></i> Frontend</span></td>
+              <td><span class="domain-cell"><i data-lucide="layout-dashboard" aria-hidden="true"></i> Frontend</span></td>
               <td>Blitzy Frontend Reviewer Agent</td>
-              <td><span class="status-chip approved"><i data-lucide="check"></i> Approved</span></td>
+              <td><span class="status-chip approved"><i data-lucide="check" aria-hidden="true"></i> Approved</span></td>
             </tr>
             <tr>
               <td class="num">07</td>
-              <td><span class="domain-cell"><i data-lucide="book-open"></i> Other SME</span></td>
+              <td><span class="domain-cell"><i data-lucide="book-open" aria-hidden="true"></i> Other SME</span></td>
               <td>Blitzy Documentation and Compliance SME Agent</td>
-              <td><span class="status-chip approved"><i data-lucide="check"></i> Approved</span></td>
+              <td><span class="status-chip approved"><i data-lucide="check" aria-hidden="true"></i> Approved</span></td>
             </tr>
           </tbody>
         </table>
@@ -1372,7 +1069,7 @@ xychart-beta
            Slide 8 — Divider: Security
            ===================================================================== -->
       <section class="slide-divider" data-background-color="#2D1C77">
-        <i class="hero-icon" data-lucide="shield-check"></i>
+        <i class="hero-icon" data-lucide="shield-check" aria-hidden="true"></i>
         <span class="eyebrow">Section 03</span>
         <h2>Security</h2>
         <p>Access control matrix, multi-company record rules, and attachment hook verified end to end.</p>
@@ -1380,6 +1077,8 @@ xychart-beta
 
       <!-- =====================================================================
            Slide 9 — Security Findings
+           KPI grid + Mermaid bar chart per AAP §0.4.3 binding (finding #1):
+           min 5 Mermaid diagrams in deck.
            ===================================================================== -->
       <section>
         <span class="eyebrow">Security Phase</span>
@@ -1387,37 +1086,44 @@ xychart-beta
         <p class="lead">Every model access mediated by explicit group; multi-company isolation enforced.</p>
         <div class="kpi-grid">
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="shield-check"></i>
+            <i class="kpi-icon" data-lucide="shield-check" aria-hidden="true"></i>
             <div><span class="kpi-value">4</span></div>
             <div class="kpi-label">Custom Groups</div>
             <div class="kpi-sub">Accountant &middot; Manager &middot; Reconciler tiers</div>
           </div>
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="files"></i>
+            <i class="kpi-icon" data-lucide="book-open" aria-hidden="true"></i>
             <div><span class="kpi-value">34</span></div>
             <div class="kpi-label">ACL Rows</div>
             <div class="kpi-sub">Model / group pairs in <code>ir.model.access.csv</code></div>
           </div>
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="boxes"></i>
+            <i class="kpi-icon" data-lucide="boxes" aria-hidden="true"></i>
             <div><span class="kpi-value">8</span></div>
             <div class="kpi-label">Record Rules</div>
             <div class="kpi-sub">Multi-company isolation via <code>ir.rule</code></div>
           </div>
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="check-circle-2"></i>
+            <i class="kpi-icon" data-lucide="check-circle-2" aria-hidden="true"></i>
             <div><span class="kpi-value">0</span></div>
             <div class="kpi-label">Critical Findings</div>
             <div class="kpi-sub">Zero unresolved blockers</div>
           </div>
         </div>
+        <pre class="mermaid" aria-label="Bar chart: Security rule volume by control type showing 34 ACL rows versus 8 record rules">
+xychart-beta
+    title "Security Rule Volume by Control Type"
+    x-axis ["ACL Rows (ir.model.access)", "Record Rules (ir.rule)", "Custom Groups"]
+    y-axis "Count" 0 --> 40
+    bar [34, 8, 4]
+        </pre>
       </section>
 
       <!-- =====================================================================
            Slide 10 — Divider: Backend
            ===================================================================== -->
       <section class="slide-divider" data-background-color="#2D1C77">
-        <i class="hero-icon" data-lucide="database"></i>
+        <i class="hero-icon" data-lucide="database" aria-hidden="true"></i>
         <span class="eyebrow">Section 04</span>
         <h2>Backend Architecture</h2>
         <p>Weighted matching engine and six report models built on the Odoo 19 ORM with zero Enterprise dependencies.</p>
@@ -1426,65 +1132,38 @@ xychart-beta
 
       <!-- =====================================================================
            Slide 11 — Backend — Matching Engine flow
-           Hand-crafted HTML/CSS sequence visualization.
+           Mermaid sequenceDiagram per AAP §0.5.2 slide inventory
+           (Slide 11 bound to Mermaid sequence diagram) and §0.4.3
+           binding min 5 diagrams.  Satisfies R-1 visual constraint.
            ===================================================================== -->
       <section>
         <span class="eyebrow">Matching Engine Flow</span>
         <h2>Weighted Scoring Across Four Features</h2>
         <p class="lead">Seven-step pipeline from statement line to partial reconcile, with explicit confidence tiers.</p>
-        <div class="sequence-container">
-          <div class="sequence-actors">
-            <span class="sequence-actor">statement.line</span>
-            <span class="sequence-actor">matching.engine</span>
-            <span class="sequence-actor">move.line</span>
-            <span class="sequence-actor">reconcile.model</span>
-            <span class="sequence-actor">partial.reconcile</span>
-          </div>
-          <ol class="sequence-steps">
-            <li class="sequence-step">
-              <span class="sequence-num">1</span>
-              <span class="sequence-call"><code>statement.line</code><span class="seq-arrow">&rarr;</span><code>matching.engine</code></span>
-              <span class="sequence-msg">score_candidates(line)</span>
-            </li>
-            <li class="sequence-step">
-              <span class="sequence-num">2</span>
-              <span class="sequence-call"><code>matching.engine</code><span class="seq-arrow">&rarr;</span><code>move.line</code></span>
-              <span class="sequence-msg">fetch candidates within &plusmn;90 day window</span>
-            </li>
-            <li class="sequence-step sequence-self">
-              <span class="sequence-num">3</span>
-              <span class="sequence-call"><code>matching.engine</code><span class="seq-tag">SELF</span></span>
-              <span class="sequence-msg emphasis">weight amount 0.35 &middot; reference 0.25 &middot; partner 0.25 &middot; date 0.15</span>
-            </li>
-            <li class="sequence-step">
-              <span class="sequence-num">4</span>
-              <span class="sequence-call"><code>matching.engine</code><span class="seq-arrow">&rarr;</span><code>reconcile.model</code></span>
-              <span class="sequence-msg">apply rule regex + amount bounds</span>
-            </li>
-            <li class="sequence-step sequence-return">
-              <span class="sequence-num">5</span>
-              <span class="sequence-call"><code>reconcile.model</code><span class="seq-arrow">&rarr;</span><code>matching.engine</code><span class="seq-tag">RETURN</span></span>
-              <span class="sequence-msg">candidate set + confidence</span>
-            </li>
-            <li class="sequence-step sequence-return">
-              <span class="sequence-num">6</span>
-              <span class="sequence-call"><code>matching.engine</code><span class="seq-arrow">&rarr;</span><code>statement.line</code><span class="seq-tag">RETURN</span></span>
-              <span class="sequence-msg emphasis">HIGH &ge; 95.0 (auto) &middot; MEDIUM &ge; 70.0 (review) &middot; LOW &ge; 50.0 (manual)</span>
-            </li>
-            <li class="sequence-step">
-              <span class="sequence-num">7</span>
-              <span class="sequence-call"><code>statement.line</code><span class="seq-arrow">&rarr;</span><code>partial.reconcile</code></span>
-              <span class="sequence-msg">create partial reconcile (when amounts differ)</span>
-            </li>
-          </ol>
-        </div>
+        <pre class="mermaid" aria-label="Sequence diagram: seven-step matching-engine pipeline across five actors showing weighted scoring and confidence tiers">
+%%{init: { 'sequence': { 'useMaxWidth': true, 'wrap': true, 'mirrorActors': false, 'diagramMarginX': 24, 'diagramMarginY': 16, 'boxMargin': 10, 'messageMargin': 40 } } }%%
+sequenceDiagram
+    autonumber
+    participant SL as statement.line
+    participant ME as matching.engine
+    participant ML as move.line
+    participant RM as reconcile.model
+    participant PR as partial.reconcile
+    SL->>ME: score_candidates(line)
+    ME->>ML: fetch candidates within ±90 day window
+    Note over ME: weight amount 0.35 · reference 0.25<br/>partner 0.25 · date 0.15
+    ME->>RM: apply rule regex + amount bounds
+    RM-->>ME: candidate set + confidence
+    ME-->>SL: HIGH ≥95.0 auto · MEDIUM ≥70.0 review · LOW ≥50.0 manual
+    SL->>PR: create partial reconcile (when amounts differ)
+        </pre>
       </section>
 
       <!-- =====================================================================
            Slide 12 — Divider: Quality
            ===================================================================== -->
       <section class="slide-divider" data-background-color="#2D1C77">
-        <i class="hero-icon" data-lucide="check-circle-2"></i>
+        <i class="hero-icon" data-lucide="check-circle-2" aria-hidden="true"></i>
         <span class="eyebrow">Section 05</span>
         <h2>QA / Test Integrity</h2>
         <p>Every story mapped to tests; every test passing; every passing run recorded with query counts.</p>
@@ -1492,6 +1171,7 @@ xychart-beta
 
       <!-- =====================================================================
            Slide 13 — QA KPIs
+           KPI grid + Mermaid pie chart per AAP §0.4.3 (min 5 diagrams).
            ===================================================================== -->
       <section>
         <span class="eyebrow">Test Evidence</span>
@@ -1499,37 +1179,44 @@ xychart-beta
         <p class="lead">260 financial-reporting tests plus 211 bank-reconciliation tests on <code>test_phase1</code>.</p>
         <div class="kpi-grid">
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="check-circle-2"></i>
+            <i class="kpi-icon" data-lucide="check-circle-2" aria-hidden="true"></i>
             <div><span class="kpi-value">371</span><span class="kpi-suffix">/ 371</span></div>
             <div class="kpi-label">Tests Passing</div>
             <div class="kpi-sub">0 failed &middot; 0 errors</div>
           </div>
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="timer"></i>
+            <i class="kpi-icon" data-lucide="check-circle-2" aria-hidden="true"></i>
             <div><span class="kpi-value">132.41</span><span class="kpi-suffix">s</span></div>
             <div class="kpi-label">Runtime</div>
             <div class="kpi-sub">Under 180 s target</div>
           </div>
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="database"></i>
+            <i class="kpi-icon" data-lucide="database" aria-hidden="true"></i>
             <div><span class="kpi-value">185,961</span></div>
             <div class="kpi-label">SQL Queries</div>
             <div class="kpi-sub">Across full test sweep</div>
           </div>
           <div class="kpi-card">
-            <i class="kpi-icon" data-lucide="check"></i>
+            <i class="kpi-icon" data-lucide="check-circle-2" aria-hidden="true"></i>
             <div><span class="kpi-value">12</span></div>
             <div class="kpi-label">User Stories</div>
             <div class="kpi-sub">7 FR &middot; 5 BR &middot; all covered</div>
           </div>
         </div>
+        <pre class="mermaid" aria-label="Pie chart: twelve user stories covered by tests, split seven financial-reporting to five bank-reconciliation">
+%%{init: { 'themeVariables': { 'pie1': '#5B39F3', 'pie2': '#94FAD5', 'pieOpacity': '1' } } }%%
+pie showData
+    title User Stories Covered by Tests (12 total)
+    "Financial Reporting · FR" : 7
+    "Bank Reconciliation · BR" : 5
+        </pre>
       </section>
 
       <!-- =====================================================================
            Slide 14 — Divider: Risk
            ===================================================================== -->
       <section class="slide-divider" data-background-color="#2D1C77">
-        <i class="hero-icon" data-lucide="alert-triangle"></i>
+        <i class="hero-icon" data-lucide="alert-triangle" aria-hidden="true"></i>
         <span class="eyebrow">Section 06</span>
         <h2>Risks &amp; Mitigations</h2>
         <p>Transparent view of the remaining 75 hours on the path to production.</p>
@@ -1601,7 +1288,7 @@ xychart-beta
             </div>
           </div>
           <div class="closing-hero">
-            <i class="hero-icon" data-lucide="rocket"></i>
+            <i class="hero-icon" data-lucide="rocket" aria-hidden="true"></i>
             <span class="hero-caption">Ship with Confidence</span>
           </div>
         </div>
@@ -1611,16 +1298,41 @@ xychart-beta
     </div><!-- /.slides -->
   </div><!-- /.reveal -->
 
-  <!-- reveal.js 5.1.0 UMD runtime -->
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <!-- reveal.js 5.1.0 UMD runtime (pinned with SRI integrity per review finding #9) -->
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"
+          integrity="sha384-M/JtqCVlLcK9lwVnBnMXP0V577CBULkjodKsR/PITOe4MSKNbbwqCemEyluOw0+5"
+          crossorigin="anonymous"></script>
 
-  <!-- Mermaid 11.4.0 UMD runtime (exposes window.mermaid) -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
+  <!-- Lucide 0.460.0 UMD runtime — exposes window.lucide (pinned with SRI integrity per review finding #9) -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"
+          integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge"
+          crossorigin="anonymous"></script>
 
-  <!-- Lucide 0.460.0 UMD runtime (exposes window.lucide) -->
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <!--
+    Mermaid 11.4.0 ESM module per AAP §0.9.9 binding (review finding #4).
+    Pre-loading with SRI integrity on the top-level module script tag lets
+    the browser verify the fetched .mjs before any code executes; the inline
+    module below re-imports from the same cached URL and wires up Reveal
+    lifecycle hooks only after mermaid.initialize() has run.
+    Note: ESM sub-chunk requests (./chunks/…) are out-of-scope for SRI by
+    design of the HTML spec; the top-level hash still improves supply-chain
+    posture versus the previous unpinned UMD load.
+  -->
+  <script type="module"
+          src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs"
+          integrity="sha384-HbZodwcydhFoeJkM8JD85LgJ4EGrGW8p7/jgYlNNjwawbrvYc5jzWjzs8Z8Lgsvo"
+          crossorigin="anonymous"></script>
 
-  <script>
+  <script type="module">
+    // Import the already-verified Mermaid ESM module.  Because the module
+    // URL was preloaded above with an `integrity=` hash, the browser's
+    // module cache serves this import from the verified bytes.
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+    // Expose globally so the classic render handler below (and any ad-hoc
+    // debugging in DevTools) can invoke mermaid.run() without re-importing.
+    window.mermaid = mermaid;
+
     // Mermaid theme bound to the Blitzy palette — AAP §0.9.9 (verbatim).
     mermaid.initialize({
       startOnLoad: false,
@@ -1654,6 +1366,8 @@ xychart-beta
     });
 
     // reveal.js configuration — AAP §0.9.9 (verbatim keys).
+    // Registered inside the module so that `mermaid` is guaranteed to be
+    // loaded + initialized before Reveal starts firing lifecycle events.
     Reveal.initialize({
       hash: true,
       transition: 'slide',
@@ -1670,12 +1384,19 @@ xychart-beta
 
     // Re-render Mermaid diagrams and Lucide icons after reveal.js mounts each
     // slide, because reveal.js lazily materializes DOM during transitions.
-    function renderVisuals() {
+    //
+    // IMPORTANT: Await document.fonts.ready before mermaid.run() to prevent
+    // Mermaid v11.4.0's text-width race condition.  Without this await,
+    // Mermaid measures label widths in a fallback sans-serif font, then the
+    // labels re-render in the slightly wider Inter font which causes the
+    // right edge of each label to clip inside the SVG node boundary.
+    async function renderVisuals() {
       try {
-        if (window.mermaid && typeof window.mermaid.run === 'function') {
-          // mermaid.run() is idempotent: already-rendered diagrams are skipped.
-          window.mermaid.run({ querySelector: '.reveal .slides .mermaid' });
+        if (document.fonts && typeof document.fonts.ready !== 'undefined') {
+          await document.fonts.ready;
         }
+        // mermaid.run() is idempotent: already-rendered diagrams are skipped.
+        await mermaid.run({ querySelector: '.reveal .slides .mermaid' });
       } catch (err) {
         // Log but do not interrupt the presentation.
         console.warn('[executive-summary] mermaid render warning', err);
@@ -1689,17 +1410,10 @@ xychart-beta
       }
     }
 
-    Reveal.on('ready', () => {
-      mermaid.run();
-      lucide.createIcons();
-      renderVisuals();
-    });
-
-    Reveal.on('slidechanged', () => {
-      mermaid.run();
-      lucide.createIcons();
-      renderVisuals();
-    });
+    // AAP §0.9.9 binding: lucide.createIcons() + mermaid.run() on 'ready'
+    // and on every 'slidechanged'.
+    Reveal.on('ready', renderVisuals);
+    Reveal.on('slidechanged', renderVisuals);
   </script>
 </body>
 </html>

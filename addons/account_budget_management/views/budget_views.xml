@@ -1,0 +1,821 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 OCA, Blitzy
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <!--
+        ================================================================
+        BM-001 - Budget Definition Views
+        ================================================================
+
+        This file defines the foundational BM-001 views for the
+        account_budget_management addon:
+
+        * budget.budget header views      (form, list, kanban, search, action)
+        * budget.budget.line line views   (list, form, search, action)
+        * account.analytic.account form   (inherited — surfaces the budget
+                                          smart button and summary fields)
+
+        Conventions (Odoo 19 Community):
+        * Uses modern modifier syntax: invisible="..." / readonly="..."
+        * Uses <list> (canonical Odoo 19 tag) rather than <tree>
+        * Uses <chatter/> shorthand (Odoo 17+) for the chatter widget
+        * Every Many2one on non-editable fields uses {'no_create': True}
+        * All referenced fields exist on the source models exactly
+        * All referenced button/method names exist on the source models
+        * No Enterprise references, no sibling-module cross-imports (R-01/R-02)
+    -->
+
+    <!-- ================================================================ -->
+    <!-- BM-001 - budget.budget Header Views                                -->
+    <!-- ================================================================ -->
+
+    <!--
+        Form view for budget.budget (BM-001 Scenarios 1-6).
+
+        Shows:
+        * Header state-machine buttons (Confirm / Close / Cancel / Reset)
+        * Smart buttons (lines and alerts)
+        * Archived / Cancelled ribbons
+        * Title block (name + auto-generated reference)
+        * Main group (owner, dates, period_type, totals)
+        * Notebook with Budget Lines and Description tabs
+        * Chatter for mail.thread tracking
+    -->
+    <record id="view_budget_budget_form" model="ir.ui.view">
+        <field name="name">budget.budget.form</field>
+        <field name="model">budget.budget</field>
+        <field name="arch" type="xml">
+            <form string="Budget">
+                <header>
+                    <!-- Draft → Confirmed (BM-001 Scenario 6) -->
+                    <button name="action_confirm"
+                            type="object"
+                            string="Confirm"
+                            class="oe_highlight"
+                            invisible="state != 'draft'"
+                            groups="account.group_account_user"/>
+                    <!-- Confirmed → Closed (manager-level action) -->
+                    <button name="action_close"
+                            type="object"
+                            string="Close"
+                            invisible="state != 'confirmed'"
+                            groups="account.group_account_manager"/>
+                    <!-- Any non-cancelled and non-closed state → Cancelled -->
+                    <button name="action_cancel"
+                            type="object"
+                            string="Cancel"
+                            invisible="state in ('cancelled', 'closed')"
+                            groups="account.group_account_manager"/>
+                    <!-- Closed / Cancelled → Draft (manager-level reset) -->
+                    <button name="action_reset_draft"
+                            type="object"
+                            string="Reset to Draft"
+                            invisible="state not in ('closed', 'cancelled')"
+                            groups="account.group_account_manager"/>
+                    <!-- State bar (happy path visible; cancelled shown only when active) -->
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,confirmed,closed"/>
+                </header>
+
+                <sheet>
+                    <!-- Smart buttons (statinfo pattern, Odoo 19 standard) -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_lines"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-list-alt">
+                            <field name="line_count"
+                                   widget="statinfo"
+                                   string="Lines"/>
+                        </button>
+                        <button name="action_open_alerts"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-exclamation-triangle"
+                                invisible="alert_count == 0">
+                            <field name="alert_count"
+                                   widget="statinfo"
+                                   string="Alerts"/>
+                        </button>
+                    </div>
+
+                    <!-- Archived / Cancelled ribbons (mutually exclusive with state visibility) -->
+                    <widget name="web_ribbon"
+                            title="Archived"
+                            bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <widget name="web_ribbon"
+                            title="Cancelled"
+                            bg_color="text-bg-secondary"
+                            invisible="state != 'cancelled'"/>
+
+                    <!-- Title: user-facing name + auto-generated reference -->
+                    <div class="oe_title">
+                        <label for="name" string="Budget Name"/>
+                        <h1>
+                            <field name="name"
+                                   placeholder="e.g. FY2024 Operating Budget"/>
+                        </h1>
+                        <div class="o_row">
+                            <span class="o_form_label">Reference:&#160;</span>
+                            <field name="reference"
+                                   readonly="1"
+                                   class="oe_inline"/>
+                        </div>
+                    </div>
+
+                    <!-- Main field group -->
+                    <group>
+                        <group name="group_left" string="Ownership &amp; Period">
+                            <field name="user_id"
+                                   widget="many2one_avatar_user"
+                                   options="{'no_create': True}"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="period_type" widget="radio"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group name="group_right" string="Totals &amp; Company">
+                            <field name="company_id"
+                                   options="{'no_create': True}"
+                                   groups="base.group_multi_company"/>
+                            <field name="currency_id"
+                                   options="{'no_create': True}"
+                                   groups="base.group_multi_currency"/>
+                            <field name="copied_from_id"
+                                   options="{'no_create': True}"
+                                   readonly="state != 'draft'"
+                                   invisible="not copied_from_id"/>
+                            <field name="total_planned" widget="monetary"/>
+                            <field name="total_actual" widget="monetary"/>
+                            <field name="total_variance" widget="monetary"/>
+                            <field name="consumption_percent"
+                                   widget="percentage"/>
+                            <field name="alert_active" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <!-- Notebook: Lines + Description -->
+                    <notebook>
+                        <page string="Budget Lines" name="lines">
+                            <field name="line_ids"
+                                   readonly="state in ('closed', 'cancelled')"
+                                   context="{'default_budget_id': id, 'default_company_id': company_id}">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="account_id"
+                                           options="{'no_create': True}"/>
+                                    <field name="account_type" optional="show"/>
+                                    <field name="description"/>
+                                    <field name="analytic_distribution"
+                                           widget="analytic_distribution"
+                                           groups="analytic.group_analytic_accounting"
+                                           optional="show"/>
+                                    <field name="planned_amount"
+                                           sum="Total Planned"/>
+                                    <field name="variance_actual"
+                                           sum="Total Actual"
+                                           optional="show"/>
+                                    <field name="variance_absolute"
+                                           sum="Total Variance"
+                                           optional="show"/>
+                                    <field name="variance_percent"
+                                           widget="percentage"
+                                           optional="hide"/>
+                                    <field name="variance_classification"
+                                           optional="hide"/>
+                                    <field name="variance_threshold_status"
+                                           widget="badge"
+                                           decoration-success="variance_threshold_status == 'normal'"
+                                           decoration-warning="variance_threshold_status == 'warning'"
+                                           decoration-info="variance_threshold_status == 'alert'"
+                                           decoration-danger="variance_threshold_status == 'over_budget'"
+                                           optional="show"/>
+                                    <field name="period_count"
+                                           optional="hide"/>
+                                    <field name="currency_id"
+                                           column_invisible="True"/>
+                                    <field name="company_id"
+                                           column_invisible="True"/>
+                                    <field name="state"
+                                           column_invisible="True"/>
+                                    <button name="action_drill_down_actuals"
+                                            type="object"
+                                            icon="fa-search-plus"
+                                            title="Drill Down to Actuals"
+                                            invisible="variance_actual == 0"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Description" name="description">
+                            <field name="description"
+                                   placeholder="Budget notes, assumptions, scope..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+
+                <!-- Chatter (Odoo 19 shorthand for message_ids + activity_ids + followers) -->
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!--
+        List (tree) view for budget.budget.
+
+        Shows the key budgeting fields at a glance with row-level decorations:
+        * Draft budgets: info color
+        * Confirmed budgets: success color
+        * Cancelled budgets: muted (grey)
+        * Any budget with active alerts: warning color
+
+        Default ordering by newest start date then reference, matching a
+        typical month/year based review flow (BM-001 Scenario 1).
+    -->
+    <record id="view_budget_budget_tree" model="ir.ui.view">
+        <field name="name">budget.budget.list</field>
+        <field name="model">budget.budget</field>
+        <field name="arch" type="xml">
+            <list string="Budgets"
+                  sample="1"
+                  decoration-muted="state == 'cancelled'"
+                  decoration-info="state == 'draft'"
+                  decoration-success="state == 'confirmed'"
+                  decoration-warning="alert_active == True"
+                  default_order="date_from desc, reference">
+                <field name="reference"/>
+                <field name="name"/>
+                <field name="user_id"
+                       widget="many2one_avatar_user"
+                       optional="show"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="period_type" optional="hide"/>
+                <field name="total_planned"
+                       widget="monetary"
+                       sum="Total Planned"/>
+                <field name="total_actual"
+                       widget="monetary"
+                       sum="Total Actual"
+                       optional="show"/>
+                <field name="consumption_percent"
+                       widget="percentage"
+                       optional="show"/>
+                <field name="line_count" optional="hide"/>
+                <field name="alert_count" optional="show"/>
+                <field name="alert_active" column_invisible="True"/>
+                <field name="company_id"
+                       optional="hide"
+                       groups="base.group_multi_company"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="state"
+                       widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'confirmed'"
+                       decoration-muted="state in ('closed', 'cancelled')"/>
+            </list>
+        </field>
+    </record>
+
+    <!--
+        Kanban view for budget.budget.
+
+        Default grouped by state to provide a lifecycle board (Draft →
+        Confirmed → Closed → Cancelled). Each card surfaces planned /
+        actual totals with a consumption progress bar and an alert badge
+        when alerts are active.
+    -->
+    <record id="view_budget_budget_kanban" model="ir.ui.view">
+        <field name="name">budget.budget.kanban</field>
+        <field name="model">budget.budget</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state"
+                    class="o_kanban_small_column"
+                    sample="1">
+                <field name="state"/>
+                <field name="currency_id"/>
+                <field name="alert_active"/>
+                <field name="alert_count"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <div class="row">
+                                <div class="col-8">
+                                    <strong><field name="reference"/></strong>
+                                    <div><field name="name"/></div>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <field name="user_id"
+                                           widget="many2one_avatar_user"/>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-6">
+                                    <span>From:&#160;<field name="date_from"/></span>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <span>To:&#160;<field name="date_to"/></span>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-6">
+                                    <strong>Planned:&#160;</strong>
+                                    <field name="total_planned"
+                                           widget="monetary"/>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <strong>Actual:&#160;</strong>
+                                    <field name="total_actual"
+                                           widget="monetary"/>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <field name="consumption_percent"
+                                           widget="progressbar"/>
+                                </div>
+                            </div>
+                            <div t-if="record.alert_active.raw_value"
+                                 class="mt-2">
+                                <span class="badge text-bg-warning">
+                                    <!--
+                                        Decorative Font-Awesome warning icon
+                                        accompanying the alert count. Supplies
+                                        a ``title`` attribute so that Odoo's
+                                        ir.ui.view accessibility linter is
+                                        satisfied (a <i> with an ``fa`` class
+                                        must have a title, text, or accessible
+                                        label per WCAG AA).
+                                    -->
+                                    <i class="fa fa-exclamation-triangle"
+                                       title="Budget has active threshold alerts"
+                                       role="img"
+                                       aria-label="Alert"/>
+                                    &#160;<field name="alert_count"/>&#160;Alerts
+                                </span>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!--
+        Search view for budget.budget.
+
+        Provides:
+        * Full-text search over reference, name, owner, dates
+        * Quick filters: My Budgets, Active, Archived, each state, Has Alerts
+        * Period filters: Current, Future, Past
+        * Group-by options: Responsible, State, Period Type, Company, Start Date
+    -->
+    <record id="view_budget_budget_search" model="ir.ui.view">
+        <field name="name">budget.budget.search</field>
+        <field name="model">budget.budget</field>
+        <field name="arch" type="xml">
+            <search string="Search Budgets">
+                <field name="reference"/>
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <separator/>
+                <filter string="My Budgets"
+                        name="my_budgets"
+                        domain="[('user_id', '=', uid)]"/>
+                <filter string="Active"
+                        name="active_only"
+                        domain="[('active', '=', True)]"/>
+                <filter string="Archived"
+                        name="archived_only"
+                        domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="Draft"
+                        name="filter_draft"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter string="Confirmed"
+                        name="filter_confirmed"
+                        domain="[('state', '=', 'confirmed')]"/>
+                <filter string="Closed"
+                        name="filter_closed"
+                        domain="[('state', '=', 'closed')]"/>
+                <filter string="Cancelled"
+                        name="filter_cancelled"
+                        domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <!--
+                    Filter on the stored One2many ``alert_ids`` rather than the
+                    non-stored computed ``alert_active`` Boolean. The computed
+                    ``alert_active`` field is derived from ``alert_ids`` by
+                    ``_compute_alert_count`` (see models/budget_budget.py) and
+                    is intentionally not stored. Search domains require
+                    searchable (stored) fields — we therefore query the
+                    underlying relation directly, which yields identical
+                    results ("at least one alert exists for this budget").
+                -->
+                <filter string="Has Active Alerts"
+                        name="filter_has_alerts"
+                        domain="[('alert_ids', '!=', False)]"/>
+                <separator/>
+                <filter string="Current Period"
+                        name="filter_current"
+                        domain="[('date_from', '&lt;=', context_today()), ('date_to', '&gt;=', context_today())]"/>
+                <filter string="Future"
+                        name="filter_future"
+                        domain="[('date_from', '&gt;', context_today())]"/>
+                <filter string="Past"
+                        name="filter_past"
+                        domain="[('date_to', '&lt;', context_today())]"/>
+                <!--
+                    Group By section. In Odoo 19, the ``<group>`` element in a
+                    search view does NOT accept ``expand`` or ``string``
+                    attributes (enforced by ``odoo/addons/base/rng/common.rng``
+                    — only ``name`` / ``colspan`` / ``rowspan`` / ``fill`` /
+                    ``height`` / ``width`` / ``color`` / ``invisible`` +
+                    overload ``position`` + ``groups`` are permitted). The web
+                    client automatically renders this block under a "Group By"
+                    label derived from the surrounding search semantics, so no
+                    explicit string is needed.
+                -->
+                <group name="group_by">
+                    <filter string="Responsible"
+                            name="group_user"
+                            context="{'group_by': 'user_id'}"/>
+                    <filter string="State"
+                            name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Period Type"
+                            name="group_period_type"
+                            context="{'group_by': 'period_type'}"/>
+                    <filter string="Company"
+                            name="group_company"
+                            context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                    <filter string="Start Date"
+                            name="group_date_from"
+                            context="{'group_by': 'date_from'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!--
+        Window action for budget.budget.
+
+        This is the primary entry point from the menuitem (Accounting →
+        Budgets). Default mode is list; user can switch to kanban or open
+        individual records in form view.
+
+        The default "Active" search filter is pre-applied via context so
+        archived budgets are hidden until the user toggles the Archived
+        filter.
+    -->
+    <record id="action_budget_budget" model="ir.actions.act_window">
+        <field name="name">Budgets</field>
+        <field name="res_model">budget.budget</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="view_budget_budget_search"/>
+        <field name="context">{'search_default_active_only': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new budget
+            </p>
+            <p>
+                Define your financial budget for a fiscal period. Add budget
+                lines mapped to GL accounts and analytic dimensions, then
+                confirm the budget to start tracking consumption and
+                variance.
+            </p>
+        </field>
+    </record>
+
+    <!-- ================================================================ -->
+    <!-- BM-001 - budget.budget.line Line Views                             -->
+    <!-- ================================================================ -->
+
+    <!--
+        Standalone list view for budget.budget.line.
+
+        This view backs the "Budget Lines" window action and is distinct
+        from the embedded list inside the budget form. Row decorations
+        reflect the line-level threshold status so a reviewer can scan
+        many lines across many budgets at once.
+    -->
+    <record id="view_budget_budget_line_tree" model="ir.ui.view">
+        <field name="name">budget.budget.line.list</field>
+        <field name="model">budget.budget.line</field>
+        <field name="arch" type="xml">
+            <list string="Budget Lines"
+                  sample="1"
+                  default_order="budget_id, sequence, account_id"
+                  decoration-success="variance_threshold_status == 'normal'"
+                  decoration-warning="variance_threshold_status == 'warning'"
+                  decoration-info="variance_threshold_status == 'alert'"
+                  decoration-danger="variance_threshold_status == 'over_budget'">
+                <field name="budget_id"
+                       options="{'no_create': True}"/>
+                <field name="sequence" optional="hide"/>
+                <field name="account_id"
+                       options="{'no_create': True}"/>
+                <field name="account_type" optional="show"/>
+                <field name="description" optional="hide"/>
+                <field name="analytic_distribution"
+                       widget="analytic_distribution"
+                       groups="analytic.group_analytic_accounting"
+                       optional="show"/>
+                <field name="planned_amount"
+                       widget="monetary"
+                       sum="Total Planned"/>
+                <field name="variance_actual"
+                       widget="monetary"
+                       sum="Total Actual"/>
+                <field name="variance_absolute"
+                       widget="monetary"
+                       sum="Total Variance"
+                       optional="show"/>
+                <field name="variance_percent"
+                       widget="percentage"
+                       optional="hide"/>
+                <field name="variance_consumption_percent"
+                       widget="percentage"
+                       optional="show"/>
+                <field name="variance_classification" optional="hide"/>
+                <field name="variance_threshold_status"
+                       widget="badge"
+                       decoration-success="variance_threshold_status == 'normal'"
+                       decoration-warning="variance_threshold_status == 'warning'"
+                       decoration-info="variance_threshold_status == 'alert'"
+                       decoration-danger="variance_threshold_status == 'over_budget'"
+                       optional="show"/>
+                <field name="period_count" optional="hide"/>
+                <field name="date_from" optional="hide"/>
+                <field name="date_to" optional="hide"/>
+                <field name="state" optional="hide"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="company_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <!--
+        Form view for budget.budget.line.
+
+        Used for standalone inspection of a single line, including
+        drill-down to period allocations (BM-002) and variance detail
+        (BM-004 Scenario 6). The Periods notebook tab embeds the
+        per-line budget.budget.period records inline.
+    -->
+    <record id="view_budget_budget_line_form" model="ir.ui.view">
+        <field name="name">budget.budget.line.form</field>
+        <field name="model">budget.budget.line</field>
+        <field name="arch" type="xml">
+            <form string="Budget Line">
+                <header>
+                    <button name="action_drill_down_actuals"
+                            type="object"
+                            string="Drill Down to Actuals"
+                            class="btn-secondary"
+                            invisible="variance_actual == 0"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group name="line_left" string="Line Definition">
+                            <field name="budget_id"
+                                   options="{'no_create': True}"/>
+                            <field name="sequence"/>
+                            <field name="account_id"
+                                   options="{'no_create': True}"/>
+                            <field name="account_type" readonly="1"/>
+                            <field name="description"/>
+                            <field name="analytic_distribution"
+                                   widget="analytic_distribution"
+                                   groups="analytic.group_analytic_accounting"/>
+                        </group>
+                        <group name="line_right" string="Amounts &amp; Variance">
+                            <field name="planned_amount"
+                                   widget="monetary"/>
+                            <field name="variance_actual"
+                                   widget="monetary"
+                                   readonly="1"/>
+                            <field name="variance_absolute"
+                                   widget="monetary"
+                                   readonly="1"/>
+                            <field name="variance_percent"
+                                   widget="percentage"
+                                   readonly="1"/>
+                            <field name="variance_consumption_percent"
+                                   widget="percentage"
+                                   readonly="1"/>
+                            <field name="variance_classification"
+                                   readonly="1"/>
+                            <field name="variance_threshold_status"
+                                   widget="badge"
+                                   decoration-success="variance_threshold_status == 'normal'"
+                                   decoration-warning="variance_threshold_status == 'warning'"
+                                   decoration-info="variance_threshold_status == 'alert'"
+                                   decoration-danger="variance_threshold_status == 'over_budget'"
+                                   readonly="1"/>
+                            <field name="date_from" readonly="1"/>
+                            <field name="date_to" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="state" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Period Allocation" name="periods">
+                            <field name="period_ids"
+                                   context="{'default_budget_line_id': id, 'default_company_id': company_id}">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name" readonly="1"/>
+                                    <field name="period_type"/>
+                                    <field name="date_from"/>
+                                    <field name="date_to"/>
+                                    <field name="planned_amount"
+                                           widget="monetary"
+                                           sum="Total Allocated"/>
+                                    <field name="allocation_percentage"
+                                           widget="percentage"
+                                           optional="show"/>
+                                    <field name="audit_note" optional="hide"/>
+                                    <field name="currency_id"
+                                           column_invisible="True"/>
+                                    <field name="company_id"
+                                           column_invisible="True"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Variance Notes" name="variance_notes">
+                            <field name="variance_explanation_note"
+                                   placeholder="Explain material variances for audit trail..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!--
+        Search view for budget.budget.line.
+
+        Filters here restrict themselves to STORED fields on budget.budget.line
+        (``budget_id``, ``account_id``, ``account_type``, ``description``,
+        ``state``, ``company_id``). The variance fields — ``variance_actual``,
+        ``variance_absolute``, ``variance_percent``, ``variance_consumption_
+        percent``, ``variance_classification``, ``variance_threshold_status``
+        — are intentionally computed with ``store=False`` in
+        ``models/budget_budget_line.py`` (they are recomputed via the batched
+        ``_read_group`` aggregation inside ``_compute_variance`` each time the
+        view is rendered, which is the performance contract that keeps BM-004
+        variance reporting under the 3s SLA for ≤1,000 lines). Because
+        ``store=False`` fields are not indexed in PostgreSQL, Odoo disallows
+        them in search domains and group-by keys — attempting to do so raises
+        "Unsearchable field" at view validation. BM-004 and BM-005 will add
+        dedicated variance/alert views (``budget_variance_views.xml``,
+        ``budget_alert_views.xml``) backed by their own stored models where
+        such filters are meaningful.
+    -->
+    <record id="view_budget_budget_line_search" model="ir.ui.view">
+        <field name="name">budget.budget.line.search</field>
+        <field name="model">budget.budget.line</field>
+        <field name="arch" type="xml">
+            <search string="Search Budget Lines">
+                <field name="budget_id"/>
+                <field name="account_id"/>
+                <field name="account_type"/>
+                <field name="description"/>
+                <separator/>
+                <filter string="Draft Budget"
+                        name="state_draft"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter string="Confirmed Budget"
+                        name="state_confirmed"
+                        domain="[('state', '=', 'confirmed')]"/>
+                <filter string="Closed Budget"
+                        name="state_closed"
+                        domain="[('state', '=', 'closed')]"/>
+                <!--
+                    Group By block — plain ``<group>`` per Odoo 19 RNG schema
+                    (see comment on the equivalent block in
+                    ``view_budget_budget_search`` above).
+                -->
+                <group name="group_by">
+                    <filter string="Budget"
+                            name="group_budget"
+                            context="{'group_by': 'budget_id'}"/>
+                    <filter string="GL Account"
+                            name="group_account"
+                            context="{'group_by': 'account_id'}"/>
+                    <filter string="Account Type"
+                            name="group_account_type"
+                            context="{'group_by': 'account_type'}"/>
+                    <filter string="State"
+                            name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Company"
+                            name="group_company"
+                            context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!--
+        Window action for budget.budget.line.
+
+        Exposes budget lines as a first-class object so users can search
+        across all budgets by account, variance classification, or
+        threshold status.
+    -->
+    <record id="action_budget_budget_line" model="ir.actions.act_window">
+        <field name="name">Budget Lines</field>
+        <field name="res_model">budget.budget.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_budget_budget_line_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No budget lines defined yet
+            </p>
+            <p>
+                Budget lines are created inside a Budget record. Each line
+                maps a GL account and (optionally) an analytic distribution
+                to a planned amount.
+            </p>
+        </field>
+    </record>
+
+    <!-- ================================================================ -->
+    <!-- account.analytic.account Form Extension (BM-001 Scenario 3)         -->
+    <!-- ================================================================ -->
+
+    <!--
+        Inherited form view for account.analytic.account.
+
+        Surfaces, on every analytic account form, the budget-aware fields
+        defined in models/account_analytic_account.py:
+
+        * Smart button: opens the set of budget lines that reference this
+          analytic account (via action_view_budget_lines — note the "view"
+          prefix, matching the method name on the model).
+        * Summary group: planned amount, actual amount, consumption % —
+          all computed, all read-only.
+
+        XPath anchors (verified against analytic.view_account_analytic_account_form
+        in addons/analytic/views/analytic_account_views.xml):
+
+        * <div name="button_box"> — target for smart buttons. This anchor
+          uses the `name` attribute rather than `hasclass(...)` to match
+          the precedent established by
+          addons/account/views/account_analytic_account_views.xml.
+        * <group name="main"> — anchor for the summary group (placed
+          directly below the main field group so it is above the fold
+          without requiring a notebook tab click).
+    -->
+    <record id="view_account_analytic_account_form_budget_inherit"
+            model="ir.ui.view">
+        <field name="name">account.analytic.account.form.budget.inherit</field>
+        <field name="model">account.analytic.account</field>
+        <field name="inherit_id"
+               ref="analytic.view_account_analytic_account_form"/>
+        <field name="arch" type="xml">
+            <!-- Smart button inside the existing oe_button_box -->
+            <div name="button_box" position="inside">
+                <button name="action_view_budget_lines"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-money"
+                        invisible="budget_line_count == 0">
+                    <field name="budget_line_count"
+                           widget="statinfo"
+                           string="Budget Lines"/>
+                </button>
+            </div>
+            <!-- Budget summary group placed after the main group -->
+            <xpath expr="//group[@name='main']" position="after">
+                <group string="Budget Summary"
+                       name="budget_summary"
+                       invisible="budget_line_count == 0">
+                    <field name="budget_amount_planned"
+                           widget="monetary"
+                           readonly="1"/>
+                    <field name="budget_amount_actual"
+                           widget="monetary"
+                           readonly="1"/>
+                    <field name="budget_consumption_percent"
+                           widget="percentage"
+                           readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

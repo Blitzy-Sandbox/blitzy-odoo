@@ -103,7 +103,7 @@
             <field name="date_to" eval="time.strftime('%Y-12-31')"/>
             <field name="target_move">posted</field>
             <field name="enable_comparison" eval="True"/>
-            <field name="comparison_date_to" eval="(datetime.now() - relativedelta(years=1)).strftime('%Y-12-31')"/>
+            <field name="comparison_date_to" eval="(datetime.datetime.now() - relativedelta(years=1)).strftime('%Y-12-31')"/>
             <field name="hide_zero_balance" eval="False"/>
         </record>
 

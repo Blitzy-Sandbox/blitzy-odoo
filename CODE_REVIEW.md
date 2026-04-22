@@ -626,9 +626,9 @@ pie showData title Finding Disposition Across 7 Phases
 
 | ID | Severity | Title | Citation | Reproduction | Remediation | Verification |
 |----|---------|-------|----------|--------------|-------------|--------------|
-| P1-F1 | INFO | Both modules declare AGPL-3 with consistent metadata shape | `addons/account_financial_report_ce/__manifest__.py` (license field), `addons/account_bank_reconciliation_ce/__manifest__.py` (license field) | Inspect both `__manifest__.py` files | No change required — observation only | `grep -E "'license':\s*'AGPL-3'" addons/*/__manifest__.py` returns both manifests |
-| P1-F2 | INFO | `post_init_hook` declared on BR module only, ensuring accounting users retain `base.group_user` after module install | `addons/account_bank_reconciliation_ce/__manifest__.py` (post_init_hook declaration), `addons/account_bank_reconciliation_ce/hooks.py` | Install BR module on a fresh database and verify accounting group members inherit `base.group_user` | No change required — documented as an install-time safety net | Hook implementation reviewed; logic grants implied_ids `Command.link(env.ref('base.group_user').id)` |
-| P1-F3 | INFO | Paper format registration loads *before* report action definitions in FR manifest data-list ordering | `addons/account_financial_report_ce/__manifest__.py` (data list) | Inspect data-list order | No change required — correct ordering already in place (data precedes reports precedes wizards precedes views) | Install performs without Odoo raising `ValueError: External ID not found` for paperformat references |
+| P1-F1 | INFO | Both modules declare AGPL-3 with consistent metadata shape | `addons/account_financial_report_ce/__manifest__.py:15` (license field), `addons/account_bank_reconciliation_ce/__manifest__.py:18` (license field) | Inspect both `__manifest__.py` files | No change required — observation only | `grep -E "'license':\s*'AGPL-3'" addons/*/__manifest__.py` returns both manifests |
+| P1-F2 | INFO | `post_init_hook` declared on BR module only, ensuring accounting users retain `base.group_user` after module install | `addons/account_bank_reconciliation_ce/__manifest__.py:26` (post_init_hook declaration), `addons/account_bank_reconciliation_ce/hooks.py:17` (post_init_hook function) | Install BR module on a fresh database and verify accounting group members inherit `base.group_user` | No change required — documented as an install-time safety net | Hook implementation reviewed; logic grants implied_ids `Command.link(env.ref('base.group_user').id)` |
+| P1-F3 | INFO | Paper format registration loads *before* report action definitions in FR manifest data-list ordering | `addons/account_financial_report_ce/__manifest__.py:25` (data list) | Inspect data-list order | No change required — correct ordering already in place (data precedes reports precedes wizards precedes views) | Install performs without Odoo raising `ValueError: External ID not found` for paperformat references |
 
 ### 3.3 Remediation Log
 
@@ -693,8 +693,8 @@ report actions. No code-level defects identified. No blockers.
 
 | ID | Severity | Title | Citation | Reproduction | Remediation | Verification |
 |----|---------|-------|----------|--------------|-------------|--------------|
-| P2-F1 | INFO | All custom security groups use the Odoo 19.0 `Command.link(...)` API (not legacy `[(4, id)]` tuples) when populating `implied_ids` to `account.group_account_user/manager` | `addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml`, `addons/account_financial_report_ce/security/account_financial_report_security.xml` | `grep -n "Command.link" addons/*/security/*.xml` | No change required — correct idiomatic Odoo 19.0 usage | `grep -c "(4,\s*ref(" addons/*/security/*.xml` returns 0 (no legacy tuples) |
-| P2-F2 | INFO | ACL-matrix completion for BR extends beyond the module's own models to the core `account.bank.statement`, `account.bank.statement.line`, `account.move.line`, `account.partial.reconcile`, and `account.full.reconcile` tables — required for manual-reconcile UX | `addons/account_bank_reconciliation_ce/security/ir.model.access.csv` | Inspect ACL CSV — 11 rows including 5 rows for core Odoo models | No change required — necessary for BR-003 manual reconciliation to succeed without `AccessError` | 211 BR tests pass including `test_manual_reconciliation.py` which exercises these core-table CRUD paths |
+| P2-F1 | INFO | All custom security groups use the Odoo 19.0 `Command.link(...)` API (not legacy `[(4, id)]` tuples) when populating `implied_ids` to `account.group_account_user/manager` | `addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml:49`, `addons/account_financial_report_ce/security/account_financial_report_security.xml:50` | `grep -n "Command.link" addons/*/security/*.xml` | No change required — correct idiomatic Odoo 19.0 usage | `grep -c "(4,\s*ref(" addons/*/security/*.xml` returns 0 (no legacy tuples) |
+| P2-F2 | INFO | ACL-matrix completion for BR extends beyond the module's own models to the core `account.bank.statement`, `account.bank.statement.line`, `account.move.line`, `account.partial.reconcile`, and `account.full.reconcile` tables — required for manual-reconcile UX | `addons/account_bank_reconciliation_ce/security/ir.model.access.csv:7` (first core-table ACL row — `account.bank.statement`) | Inspect ACL CSV — 11 rows including 5 rows for core Odoo models | No change required — necessary for BR-003 manual reconciliation to succeed without `AccessError` | 211 BR tests pass including `test_manual_reconciliation.py` which exercises these core-table CRUD paths |
 
 ### 4.3 Remediation Log
 
@@ -852,8 +852,8 @@ sequenceDiagram
 
 | ID | Severity | Title | Citation | Reproduction | Remediation | Verification |
 |----|---------|-------|----------|--------------|-------------|--------------|
-| P3-F1 | INFO | All 5 core `account.*` extensions use `_inherit` (class inheritance) rather than delegation-style `_inherits` — correct for adding methods/fields without creating new DB tables | `addons/account_bank_reconciliation_ce/models/bank_statement.py`, `bank_statement_line.py`, `partial_reconcile_ext.py`, `reconciliation_rule.py`; FR abstract base | Inspect all models | No change required | `grep -c "_inherit\s*=\s*'account\." addons/account_bank_reconciliation_ce/models/*.py` ≥ 5 |
-| P3-F2 | INFO | All wizards subclass `models.TransientModel`, ensuring no long-lived state pollutes the DB after user closes the wizard dialog | `addons/account_financial_report_ce/wizard/financial_report_wizard.py`, `addons/account_bank_reconciliation_ce/wizard/reconciliation_wizard.py`, `addons/account_bank_reconciliation_ce/wizard/bank_statement_import_wizard.py` | `grep -n "TransientModel" addons/*/wizard/*.py` | No change required | All 3 wizards use `_inherit = ['...']` or `_name = '...'; _description = '...'` on a `TransientModel` subclass |
+| P3-F1 | INFO | Core `account.*` extensions use `_inherit` (class inheritance) rather than delegation-style `_inherits` — correct for adding methods/fields without creating new DB tables | `addons/account_bank_reconciliation_ce/models/partial_reconcile_ext.py:53` (`_inherit = 'account.bank.statement.line'`), `addons/account_bank_reconciliation_ce/models/reconciliation_rule.py:68` (`_inherit = 'account.reconcile.model'`); FR abstract base at `addons/account_financial_report_ce/models/financial_report.py:53` | Inspect all models | No change required | `grep -c "_inherit\s*=\s*'account\." addons/account_bank_reconciliation_ce/models/*.py addons/account_financial_report_ce/models/*.py` ≥ 5 |
+| P3-F2 | INFO | All wizards subclass `models.TransientModel`, ensuring no long-lived state pollutes the DB after user closes the wizard dialog | `addons/account_financial_report_ce/wizard/financial_report_wizard.py:23`, `addons/account_bank_reconciliation_ce/wizard/reconciliation_wizard.py:28`, `addons/account_bank_reconciliation_ce/wizard/bank_statement_import_wizard.py:32` | `grep -n "TransientModel" addons/*/wizard/*.py` | No change required | All 3 wizards use `_inherit = ['...']` or `_name = '...'; _description = '...'` on a `TransientModel` subclass |
 
 ### 5.5 Remediation Log
 
@@ -994,8 +994,8 @@ Backend architecture is production-grade:
 
 | ID | Severity | Title | Citation | Reproduction | Remediation | Verification |
 |----|---------|-------|----------|--------------|-------------|--------------|
-| P4-F1 | INFO | All test modules use `@tagged('post_install', '-at_install')` — correct idiomatic Odoo practice ensuring tests run after all modules are installed, not during base bootstrap | `addons/account_financial_report_ce/tests/test_*.py`, `addons/account_bank_reconciliation_ce/tests/test_*.py` | `grep -l "@tagged.*post_install.*-at_install" addons/*/tests/*.py` | No change required | 8+9=17 test modules all carry the correct tag set |
-| P4-F2 | INFO | Test coverage percentage is not measured by `pytest-odoo --cov` or `coverage.py` in the current CI — this is flagged in `blitzy/documentation/Project Guide.md` §2.2 *"Pending Items (75h remaining)"* as *"Coverage report generation (4h)"* — a path-to-production activity rather than a code defect | `blitzy/documentation/Project Guide.md` §2.2 | Attempt to locate a `.coveragerc` or pytest `--cov` config | Out-of-scope per AAP §0.8.2 — path-to-production backlog item, not a merged-code defect | Documented here as INFO; remains on the 75h human-owned backlog |
+| P4-F1 | INFO | All test modules use `@tagged('post_install', '-at_install')` — correct idiomatic Odoo practice ensuring tests run after all modules are installed, not during base bootstrap | `addons/account_financial_report_ce/tests/test_balance_sheet.py:33`, `addons/account_bank_reconciliation_ce/tests/test_matching_engine.py:34` (representative `@tagged('post_install', '-at_install')` declarations; same pattern across all `tests/test_*.py` in both modules) | `grep -l "@tagged.*post_install.*-at_install" addons/*/tests/*.py` | No change required | 8+9=17 test modules all carry the correct tag set |
+| P4-F2 | INFO | Test coverage percentage is not measured by `pytest-odoo --cov` or `coverage.py` in the current CI — this is flagged in `blitzy/documentation/Project Guide.md` §2.2 *"Pending Items (75h remaining)"* as *"Coverage report generation (4h)"* — a path-to-production activity rather than a code defect | `blitzy/documentation/Project Guide.md:126` (§2.2 "Generate `pytest-odoo` coverage report (`--cov`)" row) | Attempt to locate a `.coveragerc` or pytest `--cov` config | Out-of-scope per AAP §0.8.2 — path-to-production backlog item, not a merged-code defect | Documented here as INFO; remains on the 75h human-owned backlog |
 
 ### 6.4 Remediation Log
 
@@ -1083,18 +1083,18 @@ No blockers.
 
 | Story ID | Implementing Models | Primary Test Module | Acceptance Status |
 |----------|---------------------|---------------------|:-----------------:|
-| **FR-001** Balance Sheet | `balance_sheet.py` | `test_balance_sheet.py` | ✅ Implemented |
-| **FR-002** Profit & Loss | `profit_loss.py` | `test_profit_loss.py` | ✅ Implemented |
-| **FR-003** Cash Flow Statement | `cash_flow.py` | `test_cash_flow.py` | ✅ Implemented |
-| **FR-004** General Ledger | `general_ledger.py` | `test_general_ledger.py` | ✅ Implemented |
-| **FR-005** Trial Balance | `trial_balance.py` | `test_trial_balance.py` | ✅ Implemented |
-| **FR-006** Aged Partner Balance | `aged_partner_balance.py` | `test_aged_partner.py` | ✅ Implemented |
-| **FR-007** Export & Drill-down | `financial_report_wizard.py` (unified wizard) | `test_export.py` | ✅ Implemented |
-| **BR-001** Statement Import | `bank_statement_import.py`, `bank_statement_import_wizard.py` | `test_statement_import.py` | ✅ Implemented |
-| **BR-002** Algorithmic Matching | `reconciliation_matching_engine.py` | `test_matching_engine.py`, `test_candidate_date_window.py` | ✅ Implemented |
-| **BR-003** Manual Reconciliation | `reconciliation_wizard.py` | `test_manual_reconciliation.py` | ✅ Implemented |
-| **BR-004** Reconciliation Rules | `reconciliation_rule.py` | `test_reconciliation_rules.py` | ✅ Implemented |
-| **BR-005** Partial Reconciliation | `partial_reconcile_ext.py` | `test_partial_reconciliation.py` | ✅ Implemented |
+| **FR-001** Balance Sheet | `balance_sheet.py` | `test_balance_sheet.py` | **Implemented** |
+| **FR-002** Profit & Loss | `profit_loss.py` | `test_profit_loss.py` | **Implemented** |
+| **FR-003** Cash Flow Statement | `cash_flow.py` | `test_cash_flow.py` | **Implemented** |
+| **FR-004** General Ledger | `general_ledger.py` | `test_general_ledger.py` | **Implemented** |
+| **FR-005** Trial Balance | `trial_balance.py` | `test_trial_balance.py` | **Implemented** |
+| **FR-006** Aged Partner Balance | `aged_partner_balance.py` | `test_aged_partner.py` | **Implemented** |
+| **FR-007** Export & Drill-down | `financial_report_wizard.py` (unified wizard) | `test_export.py` | **Implemented** |
+| **BR-001** Statement Import | `bank_statement_import.py`, `bank_statement_import_wizard.py` | `test_statement_import.py` | **Implemented** |
+| **BR-002** Algorithmic Matching | `reconciliation_matching_engine.py` | `test_matching_engine.py`, `test_candidate_date_window.py` | **Implemented** |
+| **BR-003** Manual Reconciliation | `reconciliation_wizard.py` | `test_manual_reconciliation.py` | **Implemented** |
+| **BR-004** Reconciliation Rules | `reconciliation_rule.py` | `test_reconciliation_rules.py` | **Implemented** |
+| **BR-005** Partial Reconciliation | `partial_reconcile_ext.py` | `test_partial_reconciliation.py` | **Implemented** |
 
 ### 7.3 Out-of-Scope User Stories (Deferred Features)
 
@@ -1129,7 +1129,7 @@ that is resolved on `origin/pdlc`.
 
 | ID | Severity | Title | Citation | Reproduction | Remediation | Verification |
 |----|---------|-------|----------|--------------|-------------|--------------|
-| P5-F1 | INFO | Deferred feature stories (BM/AM/DR/PF — 20 files) are shipped as specification-only documentation; no implementation code is introduced for FEATURE-003/004/005/006. This is correct per EPIC-001 Phase 1 scope, which targets only FEATURE-001 + FEATURE-002 for the initial release | `tickets/EPIC-001-enterprise-accounting.md` (Phase 1 scope definition); `tickets/features/FEATURE-003-budget-management.md`, `FEATURE-004-asset-management.md`, `FEATURE-005-deferred-revenue.md`, `FEATURE-006-payment-followups.md` | Inspect EPIC-001 phase boundaries | No change required — ticket documentation correctly enumerates future scope without introducing unfinished code | `ls addons/account_budget_ce* addons/account_asset_ce* addons/account_deferred_ce* addons/account_followup_ce* 2>/dev/null` returns empty (no half-built modules) |
+| P5-F1 | INFO | Deferred feature stories (BM/AM/DR/PF — 20 files) are shipped as specification-only documentation; no implementation code is introduced for FEATURE-003/004/005/006. This is correct per EPIC-001 Phase 1 scope, which targets only FEATURE-001 + FEATURE-002 for the initial release | `tickets/EPIC-001-enterprise-accounting.md:252` (Phase 1 scope definition row); `tickets/features/FEATURE-003-budget-management.md:1`, `tickets/features/FEATURE-004-asset-management.md:1`, `tickets/features/FEATURE-005-deferred-revenue.md:1`, `tickets/features/FEATURE-006-payment-followups.md:1` | Inspect EPIC-001 phase boundaries | No change required — ticket documentation correctly enumerates future scope without introducing unfinished code | `ls addons/account_budget_ce* addons/account_asset_ce* addons/account_deferred_ce* addons/account_followup_ce* 2>/dev/null` returns empty (no half-built modules) |
 
 ### 7.6 Remediation Log
 
@@ -1202,7 +1202,7 @@ minimize risk and reduce the CE/Enterprise delta surface area.
 
 | ID | Severity | Title | Citation | Reproduction | Remediation | Verification |
 |----|---------|-------|----------|--------------|-------------|--------------|
-| P6-F1 | INFO | SCSS is the sole frontend artifact; no `.js`, `.xml` OWL templates, or `.html` assets are introduced. This limits risk and ensures the modules remain pure backend extensions with styling overrides only | `addons/*/static/src/` directory listings | `find addons/*_ce/static -type f` | No change required — deliberate design decision | `find addons/*_ce/static/src -type f | awk -F'.' '{print $NF}' | sort -u` returns only `scss` |
+| P6-F1 | INFO | SCSS is the sole frontend artifact; no `.js`, `.xml` OWL templates, or `.html` assets are introduced. This limits risk and ensures the modules remain pure backend extensions with styling overrides only | `addons/account_bank_reconciliation_ce/static/src/scss/reconciliation.scss:1`, `addons/account_financial_report_ce/static/src/scss/report.scss:1`, `addons/account_financial_report_ce/static/src/scss/report_print.scss:1` (the 3 SCSS files under `addons/*/static/src/` directory listings) | `find addons/*_ce/static -type f` | No change required — deliberate design decision | `find addons/*_ce/static/src -type f | awk -F'.' '{print $NF}' | sort -u` returns only `scss` |
 
 ### 8.4 Remediation Log
 
@@ -1297,8 +1297,8 @@ Net effect on the repository:
 
 | ID | Severity | Title | Citation | Reproduction | Remediation | Verification |
 |----|---------|-------|----------|--------------|-------------|--------------|
-| P7-F1 | INFO | MkDocs + Backstage TechDocs scaffolding removal is a deliberate rationalization to a single documentation hierarchy | Delete list in §9.1 above; `blitzy/documentation/` tree on `origin/pdlc` | Inspect the 6 deleted paths | No change required — rationalized hierarchy | `git diff --diff-filter=D origin/19.0..origin/pdlc --name-only` returns the expected 6 paths |
-| P7-F2 | INFO | All 7 Blitzy-authored Markdown files under `docs/`, `blitzy/`, and `tickets/templates/` have balanced triple-backtick fences (no dangling code blocks) | All 7 `.md` paths listed above | `python -c "import re,pathlib; [print(p, len(re.findall(r'^\`\`\`',p.read_text(),re.M))) for p in pathlib.Path('.').rglob('*.md')]"` filtered to in-scope files | No change required | Every in-scope `.md` file has an even count of triple-backticks |
+| P7-F1 | INFO | MkDocs + Backstage TechDocs scaffolding removal is a deliberate rationalization to a single documentation hierarchy | `blitzy/documentation/Project Guide.md:1`, `blitzy/documentation/Technical Specifications.md:1` (the replacement `blitzy/documentation/` tree on `origin/pdlc`); delete list in §9.1 above enumerates the 6 removed paths (`catalog-info.yaml`, `mkdocs.yml`, `doc/index.md`, `doc/project-guide.md`, `doc/technical-specifications.md`, `docs/index.md`) | Inspect the 6 deleted paths | No change required — rationalized hierarchy | `git diff --diff-filter=D origin/19.0..origin/pdlc --name-only` returns the expected 6 paths |
+| P7-F2 | INFO | All 7 Blitzy-authored Markdown files under `docs/`, `blitzy/`, and `tickets/templates/` have balanced triple-backtick fences (no dangling code blocks) | `blitzy/documentation/Project Guide.md:1`, `blitzy/documentation/Technical Specifications.md:1`, `docs/SETUP.md:1`, `docs/USER_GUIDE.md:1`, `tickets/templates/epic-template.md:1`, `tickets/templates/feature-template.md:1`, `tickets/templates/story-template.md:1` (the 7 in-scope `.md` paths listed in §9.1) | `python -c "import re,pathlib; [print(p, len(re.findall(r'^\`\`\`',p.read_text(),re.M))) for p in pathlib.Path('.').rglob('*.md')]"` filtered to in-scope files | No change required | Every in-scope `.md` file has an even count of triple-backticks |
 
 ### 9.4 Remediation Log
 

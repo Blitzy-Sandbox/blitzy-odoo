@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 OCA, Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Follow-up History Views — account_payment_followup Module (PF-004)
+    ===================================================================
+
+    List, form (read-only), search, kanban and window action
+    definitions for ``account.followup.history`` — the immutable audit
+    trail of follow-up actions taken against overdue customers.
+
+    Implements:
+      - PF-004: Action history tracking with full audit trail,
+                promise tracking, mail.thread chatter integration.
+
+    Immutability (BR-003): Views are read-only by design —
+    ``create="false"``, ``edit="false"``, ``delete="false"`` at the
+    root of list and form views, plus ``records_draggable="false"``
+    and ``create="false" delete="false"`` on the kanban view.
+    Creation is handled exclusively by backend code (the PF-002
+    cron, manual wizard actions, and the history-log API exposed
+    by the model). The ACL in ``security/ir.model.access.csv``
+    sets ``perm_unlink=0`` for both user and manager groups; these
+    UI flags are defense-in-depth to prevent any client-side
+    attempt from rendering delete/edit controls that would be
+    rejected server-side anyway.
+
+    External IDs created:
+      - view_account_followup_history_list
+      - view_account_followup_history_form
+      - view_account_followup_history_search
+      - view_account_followup_history_kanban
+      - action_account_followup_history  (referenced by menuitem.xml
+        and by partner smart buttons in res_partner_views.xml)
+-->
+<odoo>
+    <data>
+
+        <!-- =================================================================
+             LIST (TREE) VIEW
+             =================================================================
+             Read-only chronological list of follow-up actions. Default
+             order shows most-recent actions first so accountants land on
+             fresh activity when opening the history menu. Each row is
+             color-coded by action type through a ``widget="badge"`` with
+             decoration attributes mapped to the eight supported action
+             types (email/phone/letter/meeting/promise/status/note/sms).
+             ================================================================= -->
+        <record id="view_account_followup_history_list" model="ir.ui.view">
+            <field name="name">account.followup.history.list</field>
+            <field name="model">account.followup.history</field>
+            <field name="arch" type="xml">
+                <list string="Follow-up History"
+                      default_order="action_date desc, id desc"
+                      create="false"
+                      edit="false"
+                      delete="false">
+                    <field name="action_date"/>
+                    <field name="partner_id"/>
+                    <field name="action_type"
+                           widget="badge"
+                           decoration-info="action_type in ('email', 'sms')"
+                           decoration-primary="action_type in ('phone', 'meeting')"
+                           decoration-warning="action_type == 'promise'"
+                           decoration-danger="action_type == 'letter'"/>
+                    <field name="followup_level_id" optional="show"/>
+                    <field name="user_id" optional="show" widget="many2one_avatar_user"/>
+                    <field name="summary"/>
+                    <field name="outcome" optional="hide"/>
+                    <field name="promised_date" optional="hide"/>
+                    <field name="promised_amount"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           optional="hide"/>
+                    <field name="total_amount_communicated"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           optional="hide"/>
+                    <field name="company_id"
+                           groups="base.group_multi_company"
+                           optional="hide"/>
+                    <field name="currency_id" column_invisible="True"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- =================================================================
+             FORM VIEW (READ-ONLY WITH CHATTER)
+             =================================================================
+             Detail page for a single follow-up action. The form is
+             ``create="false" edit="false" delete="false"`` at the root
+             so the Odoo client renders no inline edit controls: once a
+             record is saved it is an immutable historical fact.
+             (The model's Python ``write()`` whitelist still allows
+             accountants to amend specific fields — notes, outcome,
+             attachments, promised_date, promised_amount — through the
+             Python API or dedicated wizard actions; those updates are
+             purposely not exposed through this form so the chatter
+             stays the canonical audit trail for UI interactions.)
+
+             Smart buttons give one-click navigation to the partner
+             record and the set of related invoices. ``<chatter/>`` is
+             the Odoo 19 shortcut element and is REQUIRED here because
+             the model inherits ``mail.thread`` + ``mail.activity.mixin``.
+             ================================================================= -->
+        <record id="view_account_followup_history_form" model="ir.ui.view">
+            <field name="name">account.followup.history.form</field>
+            <field name="model">account.followup.history</field>
+            <field name="arch" type="xml">
+                <form string="Follow-up Action"
+                      create="false"
+                      edit="false"
+                      delete="false">
+                    <sheet>
+                        <!-- Smart button bar -->
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_partner"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-user">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">View</span>
+                                    <span class="o_stat_text">Partner</span>
+                                </div>
+                            </button>
+                            <button name="action_view_invoices"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-file-text-o"
+                                    invisible="not invoice_ids">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">Related</span>
+                                    <span class="o_stat_text">Invoices</span>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Title section -->
+                        <div class="oe_title">
+                            <label for="summary" string="Summary"/>
+                            <h1>
+                                <field name="summary" readonly="1"/>
+                            </h1>
+                        </div>
+
+                        <!-- Two-column detail group -->
+                        <group>
+                            <group string="Action Details" name="action_details">
+                                <field name="action_type"/>
+                                <field name="action_date"/>
+                                <field name="partner_id"/>
+                                <field name="user_id" widget="many2one_avatar_user"/>
+                                <field name="followup_level_id"/>
+                                <field name="outcome"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                            <group string="Promise Tracking" name="promise_tracking">
+                                <field name="promised_date"/>
+                                <field name="promised_amount"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"/>
+                                <field name="total_amount_communicated"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="mail_message_id"
+                                       invisible="not mail_message_id"/>
+                            </group>
+                        </group>
+
+                        <!-- Notebook pages -->
+                        <notebook>
+                            <page name="invoices" string="Related Invoices">
+                                <field name="invoice_ids" nolabel="1" readonly="1">
+                                    <list create="false" delete="false" edit="false">
+                                        <field name="name"/>
+                                        <field name="invoice_date"/>
+                                        <field name="invoice_date_due"/>
+                                        <field name="amount_total"
+                                               widget="monetary"
+                                               options="{'currency_field': 'currency_id'}"/>
+                                        <field name="amount_residual"
+                                               widget="monetary"
+                                               options="{'currency_field': 'currency_id'}"/>
+                                        <field name="state"/>
+                                        <field name="payment_state"/>
+                                        <field name="currency_id" column_invisible="True"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page name="notes" string="Notes">
+                                <field name="notes" widget="html" nolabel="1"/>
+                            </page>
+                            <page name="attachments"
+                                  string="Attachments"
+                                  invisible="not attachment_ids">
+                                <field name="attachment_ids"
+                                       nolabel="1"
+                                       widget="many2many_binary"
+                                       readonly="1"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+
+                    <!-- Chatter — Odoo 19.0 shortcut element (required
+                         because the model inherits mail.thread +
+                         mail.activity.mixin). -->
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- =================================================================
+             SEARCH VIEW
+             =================================================================
+             Filters mirror the eight action types with matching "name"
+             attributes so downstream actions and menus can pre-activate
+             them via ``search_default_<name>`` context keys. Date-range
+             filters use ``context_today()`` with ``relativedelta`` — a
+             pattern validated by other Odoo 19 core addons (hr_skills,
+             hr_version, hr_recruitment_skills).
+             ================================================================= -->
+        <record id="view_account_followup_history_search" model="ir.ui.view">
+            <field name="name">account.followup.history.search</field>
+            <field name="model">account.followup.history</field>
+            <field name="arch" type="xml">
+                <search string="Follow-up History">
+                    <!-- Free-text and relation search fields -->
+                    <field name="partner_id"/>
+                    <field name="user_id"/>
+                    <field name="followup_level_id"/>
+                    <field name="summary"
+                           filter_domain="['|', ('summary', 'ilike', self), ('notes', 'ilike', self)]"/>
+                    <field name="invoice_ids" string="Invoice"/>
+
+                    <separator/>
+
+                    <!-- Action type filters (8 types) -->
+                    <filter name="filter_email"
+                            string="Email"
+                            domain="[('action_type', '=', 'email')]"/>
+                    <filter name="filter_phone"
+                            string="Phone"
+                            domain="[('action_type', '=', 'phone')]"/>
+                    <filter name="filter_letter"
+                            string="Letter"
+                            domain="[('action_type', '=', 'letter')]"/>
+                    <filter name="filter_meeting"
+                            string="Meeting"
+                            domain="[('action_type', '=', 'meeting')]"/>
+                    <filter name="filter_promise"
+                            string="Promise"
+                            domain="[('action_type', '=', 'promise')]"/>
+                    <filter name="filter_status"
+                            string="Status"
+                            domain="[('action_type', '=', 'status')]"/>
+                    <filter name="filter_note"
+                            string="Note"
+                            domain="[('action_type', '=', 'note')]"/>
+                    <filter name="filter_sms"
+                            string="SMS"
+                            domain="[('action_type', '=', 'sms')]"/>
+
+                    <separator/>
+
+                    <!-- Outcome filters -->
+                    <filter name="filter_pending"
+                            string="Pending"
+                            domain="[('outcome', '=', 'pending')]"/>
+                    <filter name="filter_payment_promised"
+                            string="Payment Promised"
+                            domain="[('outcome', '=', 'payment_promised')]"/>
+                    <filter name="filter_payment_received"
+                            string="Payment Received"
+                            domain="[('outcome', '=', 'payment_received')]"/>
+                    <filter name="filter_escalated"
+                            string="Escalated"
+                            domain="[('outcome', '=', 'escalated')]"/>
+
+                    <separator/>
+
+                    <!-- Date-range filters -->
+                    <filter name="this_week"
+                            string="This Week"
+                            domain="[('action_date', '&gt;=', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="this_month"
+                            string="This Month"
+                            domain="[('action_date', '&gt;=', (context_today() + relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="last_30_days"
+                            string="Last 30 Days"
+                            domain="[('action_date', '&gt;=', (context_today() - relativedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+
+                    <separator/>
+
+                    <!-- Personal / attribute filters -->
+                    <filter name="my_actions"
+                            string="My Actions"
+                            domain="[('user_id', '=', uid)]"/>
+                    <filter name="has_promise"
+                            string="Promise Recorded"
+                            domain="[('promised_date', '!=', False)]"/>
+                    <filter name="has_mail_message"
+                            string="Has Email Message"
+                            domain="[('mail_message_id', '!=', False)]"/>
+
+                    <!-- Group-by options -->
+                    <group>
+                        <filter name="group_partner"
+                                string="Partner"
+                                context="{'group_by': 'partner_id'}"/>
+                        <filter name="group_action_type"
+                                string="Action Type"
+                                context="{'group_by': 'action_type'}"/>
+                        <filter name="group_level"
+                                string="Follow-up Level"
+                                context="{'group_by': 'followup_level_id'}"/>
+                        <filter name="group_outcome"
+                                string="Outcome"
+                                context="{'group_by': 'outcome'}"/>
+                        <filter name="group_user"
+                                string="User"
+                                context="{'group_by': 'user_id'}"/>
+                        <filter name="group_day"
+                                string="Day"
+                                context="{'group_by': 'action_date:day'}"/>
+                        <filter name="group_month"
+                                string="Month"
+                                context="{'group_by': 'action_date:month'}"/>
+                        <filter name="group_company"
+                                string="Company"
+                                context="{'group_by': 'company_id'}"
+                                groups="base.group_multi_company"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- =================================================================
+             KANBAN VIEW (TIMELINE-STYLE)
+             =================================================================
+             Compact card layout grouped by action type. Cards are NOT
+             draggable (``records_draggable="false"``) and groups cannot
+             be created/edited/deleted — consistent with the immutability
+             contract. ``create="false" delete="false"`` at the root
+             prevents inline record creation.
+             ================================================================= -->
+        <record id="view_account_followup_history_kanban" model="ir.ui.view">
+            <field name="name">account.followup.history.kanban</field>
+            <field name="model">account.followup.history</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="action_type"
+                        class="o_kanban_small_column"
+                        records_draggable="false"
+                        group_create="false"
+                        group_edit="false"
+                        group_delete="false"
+                        create="false"
+                        delete="false">
+                    <field name="action_date"/>
+                    <field name="partner_id"/>
+                    <field name="followup_level_id"/>
+                    <field name="user_id"/>
+                    <field name="summary"/>
+                    <field name="action_type"/>
+                    <field name="outcome"/>
+                    <field name="promised_date"/>
+                    <field name="promised_amount"/>
+                    <field name="currency_id"/>
+                    <templates>
+                        <t t-name="card">
+                            <div class="oe_kanban_card">
+                                <div class="o_kanban_record_top">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <field name="partner_id"/>
+                                        </strong>
+                                    </div>
+                                    <field name="action_date" widget="date"/>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <field name="summary"/>
+                                </div>
+                                <div class="o_kanban_record_bottom">
+                                    <div class="oe_kanban_bottom_left">
+                                        <field name="followup_level_id"/>
+                                    </div>
+                                    <div class="oe_kanban_bottom_right">
+                                        <field name="user_id" widget="many2one_avatar_user"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- =================================================================
+             WINDOW ACTION
+             =================================================================
+             Primary entry point for the history menu. The
+             ``search_default_this_month`` context key pre-activates the
+             "This Month" filter so users land on recent activity and
+             the full historical table is not loaded on open. Referenced
+             by:
+               - views/menuitem.xml (Follow-up History menu item)
+               - views/res_partner_views.xml (partner "Follow-up History"
+                 smart button)
+             ================================================================= -->
+        <record id="action_account_followup_history" model="ir.actions.act_window">
+            <field name="name">Follow-up History</field>
+            <field name="res_model">account.followup.history</field>
+            <field name="view_mode">list,kanban,form</field>
+            <field name="search_view_id" ref="view_account_followup_history_search"/>
+            <field name="context">{'search_default_this_month': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No follow-up actions have been recorded yet.
+                </p>
+                <p>
+                    Follow-up history captures every action taken on
+                    overdue invoices — automated emails, phone calls,
+                    promises, status updates, and manual notes.
+                </p>
+                <p>
+                    Records are immutable by design to preserve an
+                    auditable trail. New entries are added automatically
+                    by the follow-up cron and manually through the
+                    partner &quot;Log Follow-up Activity&quot; action.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

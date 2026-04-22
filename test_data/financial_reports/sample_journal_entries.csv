@@ -1,0 +1,25 @@
+Date,Journal,Reference,Account Code,Account Name,Partner,Label,Debit,Credit
+2024-01-15,Sales,INV/2024/0115,400000,Product Sales Revenue,Acme Corp,January product sale,0.00,1250.00
+2024-01-15,Sales,INV/2024/0115,110000,Accounts Receivable,Acme Corp,January product sale,1250.00,0.00
+2024-01-20,Purchases,BILL/2024/0120,600000,Cost of Goods Sold,Office Depot LLC,Office supplies COGS,180.50,0.00
+2024-01-20,Purchases,BILL/2024/0120,200000,Accounts Payable,Office Depot LLC,Office supplies purchase,0.00,180.50
+2024-01-25,Bank,BANK/2024/0125,110100,Cash at Bank,Acme Corp,Customer payment received,1250.00,0.00
+2024-01-25,Bank,BANK/2024/0125,110000,Accounts Receivable,Acme Corp,Customer payment received,0.00,1250.00
+2024-02-05,Sales,INV/2024/0205,400000,Product Sales Revenue,Global Consulting Inc,Consulting services,0.00,3500.00
+2024-02-05,Sales,INV/2024/0205,110000,Accounts Receivable,Global Consulting Inc,Consulting services,3500.00,0.00
+2024-02-08,Bank,BANK/2024/0208,630000,Bank Service Charges,First National Bank,Monthly service fee,35.00,0.00
+2024-02-08,Bank,BANK/2024/0208,110100,Cash at Bank,First National Bank,Monthly service fee,0.00,35.00
+2024-02-15,Sales,INV/2024/0215,400000,Product Sales Revenue,Beta Industries Ltd,Product sale and delivery,0.00,2100.00
+2024-02-15,Sales,INV/2024/0215,110000,Accounts Receivable,Beta Industries Ltd,Product sale and delivery,2100.00,0.00
+2024-02-20,Purchases,BILL/2024/0220,600000,Cost of Goods Sold,Hardware Supplies Co,Hardware inventory COGS,890.25,0.00
+2024-02-20,Purchases,BILL/2024/0220,200000,Accounts Payable,Hardware Supplies Co,Hardware inventory purchase,0.00,890.25
+2024-02-28,Bank,BANK/2024/0228,110100,Cash at Bank,First National Bank,Interest earned in February,12.50,0.00
+2024-02-28,Bank,BANK/2024/0228,700000,Interest Income,First National Bank,Interest earned in February,0.00,12.50
+2024-03-10,Sales,INV/2024/0310,400000,Product Sales Revenue,Gamma LLC,Q1 contract deliverable,0.00,4750.00
+2024-03-10,Sales,INV/2024/0310,110000,Accounts Receivable,Gamma LLC,Q1 contract deliverable,4750.00,0.00
+2024-03-15,Payroll,PAY/2024/0315,620000,Salary Expense,,March payroll,12500.00,0.00
+2024-03-15,Payroll,PAY/2024/0315,110100,Cash at Bank,,March payroll disbursement,0.00,12500.00
+2024-03-20,Bank,BANK/2024/0320,110100,Cash at Bank,Beta Industries Ltd,February invoice settlement,2100.00,0.00
+2024-03-20,Bank,BANK/2024/0320,110000,Accounts Receivable,Beta Industries Ltd,February invoice settlement,0.00,2100.00
+2024-03-25,Purchases,BILL/2024/0325,610000,Rent Expense,Office Landlord Inc,Q1 office rent,6000.00,0.00
+2024-03-25,Purchases,BILL/2024/0325,200000,Accounts Payable,Office Landlord Inc,Q1 office rent invoice,0.00,6000.00

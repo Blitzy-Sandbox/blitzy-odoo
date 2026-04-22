@@ -12,10 +12,10 @@ phases:
   - id: 1
     domain: "Infrastructure/DevOps"
     reviewer: "Blitzy DevOps Reviewer Agent"
-    status: "IN_REVIEW"
-    files_in_scope: 1
-    findings_total: 1
-    findings_addressed: 1
+    status: "APPROVED"
+    files_in_scope: 6
+    findings_total: 3
+    findings_addressed: 3
     blockers: []
   - id: 2
     domain: "Security"
@@ -29,9 +29,9 @@ phases:
     domain: "Backend Architecture"
     reviewer: "Blitzy Backend Architect Agent"
     status: "IN_REVIEW"
-    files_in_scope: 3
-    findings_total: 4
-    findings_addressed: 4
+    files_in_scope: 4
+    findings_total: 5
+    findings_addressed: 5
     blockers: []
   - id: 4
     domain: "QA/Test Integrity"
@@ -104,9 +104,9 @@ phases:
 | **Merge commits** | `2c52c6b3aaf` (PR #2, 2026-02-02), `5a7e83629bc` (PR #3, 2026-04-17) |
 | **Contributing branches** | `blitzy-4490115e-...` (scaffold + tickets via PR #2), `blitzy-ebbf6c96-...` (production impl via PR #3) |
 | **Total change volume** | **137 files**, **+61,375 insertions**, **−2,022 deletions**, **+59,353 net LOC** |
-| **Review Timeline** | Archaeology scaffold generated on 2026-04-21; Checkpoint 3 (FEATURE-001 Financial Reporting Engine) review and remediation completed; Checkpoints 4–5 (FEATURE-002 Bank Reconciliation) remain |
+| **Review Timeline** | Archaeology scaffold generated on 2026-04-21; Checkpoint 3 (FEATURE-001 Financial Reporting Engine) review and remediation completed; Checkpoint 5 (FEATURE-002 Bank Reconciliation Infrastructure/DevOps + C-16 LATENT DEFECT documentation) completed; Checkpoint 6 (FEATURE-002 Security + Backend + QA slice) remains |
 | **Review depth** | 7 sequential phases covering 7 engineering domains |
-| **Verdict** | **IN_REVIEW** — 4 of 7 phases have recorded remediations for the FEATURE-001 Financial Reporting Engine scope (Checkpoint 3); Phases 5–7 remain OPEN pending Checkpoint 4–5 completion. Full APPROVED disposition deferred to CP5 per the combined FEATURE-001 + FEATURE-002 scope gate. All 6 addressable findings from the CP3 review have been remediated per AAP §0.10.6–0.10.7 ("treat merged changes as actively made during this run"); no BLOCKERs remain outstanding at this checkpoint. |
+| **Verdict** | **IN_REVIEW** — Phase 1 (Infrastructure/DevOps) transitioned to **APPROVED** at CP5 following the FEATURE-002 Bank Reconciliation content import + runtime install verification. Phases 2–4 remain IN_REVIEW for the FEATURE-002 slice; Phases 5–7 remain OPEN pending CP6+. All 7 CP3 + 2 CP5 addressable findings have been remediated per AAP §0.10.6–0.10.7; 1 CP5 LATENT defect (P3-F10, C-16 XML-vs-Python scoring constant drift) is DOCUMENTED with deferred remediation per D-2 byte-identity constraint. No BLOCKERs remain outstanding at this checkpoint. |
 
 ### 1.1 Headline Findings
 
@@ -144,9 +144,37 @@ remediations are recorded below:
     dividends heuristic edge cases (Finding #8); remediated with an
     inline `KNOWN LIMITATION` docstring block documenting three failure
     modes and the deliberate false-negative preference.
+- **Checkpoint 5 Review Outcomes (FEATURE-002 Infrastructure + C-16)**:
+  3 new findings identified in Phase 1 (Infrastructure/DevOps) and
+  Phase 3 (Backend Architecture); all 3 addressed.
+  - **P1-F2 (compound CRITICAL → RESOLVED)** — Bank Reconciliation
+    working-tree archaeology completeness gap: 18 files missing from
+    `origin/pdlc` merged tip including the entire `report/`, `demo/`,
+    `static/`, and `tests/` subtrees plus the
+    `wizard/bank_statement_import_wizard_views.xml`. Root cause surfaced
+    as an `ImportError: cannot import name 'report'` on install. Remediated
+    by 5 archaeology commits importing all 18 files from `origin/pdlc` via
+    `git checkout origin/pdlc -- <path>` per AAP §0.9.3; byte-identity
+    preserved per D-2 (all 8 SHA256 target files match).
+  - **P1-F3 (INFO → DOCUMENTED)** — Demo data `datetime.date.today()`
+    safe_eval incompatibility at `demo/demo_data.xml:81` (Odoo 19
+    `safe_eval` namespace treats `datetime.date` as a method descriptor).
+    Upstream defect preserved per D-2; install succeeds "without demo
+    data" per Odoo's fault-tolerant demo loader.
+  - **P3-F10 (LOW LATENT → DOCUMENTED)** — C-16 LATENT DEFECT:
+    XML-seeded `ir.config_parameter` values in
+    `data/reconciliation_data.xml` diverge from the authoritative Python
+    class constants in `models/reconciliation_matching_engine.py` for
+    3 of 7 scoring parameters (`weight_amount`: XML 0.40 vs Python 0.35;
+    `weight_partner`: XML 0.20 vs Python 0.25; `confidence_high`: XML 90.0
+    vs Python 95.0). Runtime impact is LATENT because the module code
+    contains **zero** `get_param` calls — the ICP rows are orphaned.
+    Documented with full divergence table in §5.2; remediation deferred
+    per D-2 constraint.
 - Per-phase findings, remediation logs, verification evidence, and
-  dispositions for Phases 1–4 are populated in §3–§6 below. Phases 5–7
-  remain OPEN pending Checkpoint 4–5 (FEATURE-002 Bank Reconciliation).
+  dispositions for Phases 1–4 are populated in §3–§6 below. Phase 1
+  transitions to APPROVED at CP5; Phases 2–4 remain IN_REVIEW pending
+  CP6. Phases 5–7 remain OPEN pending CP6+.
 
 ### 1.2 Review Pipeline
 
@@ -170,23 +198,30 @@ flowchart LR
 
 | Phase | Domain | Reviewer Agent | Files | Findings | Addressed | Status |
 |------:|--------|----------------|------:|---------:|----------:|:------:|
-| 1 | Infrastructure / DevOps | Blitzy DevOps Reviewer Agent | 1 | 1 | 1 | **IN_REVIEW** |
+| 1 | Infrastructure / DevOps | Blitzy DevOps Reviewer Agent | 6 | 3 | 3 | **APPROVED** |
 | 2 | Security | Blitzy Security Reviewer Agent | 1 | 1 | 1 | **IN_REVIEW** |
-| 3 | Backend Architecture | Blitzy Backend Architect Agent | 3 | 4 | 4 | **IN_REVIEW** |
+| 3 | Backend Architecture | Blitzy Backend Architect Agent | 4 | 5 | 5 | **IN_REVIEW** |
 | 4 | QA / Test Integrity | Blitzy QA Integrity Agent | 1 | 1 | 1 | **IN_REVIEW** |
 | 5 | Business / Domain | Blitzy Business Analyst Agent | 0 | 0 | 0 | **OPEN** |
 | 6 | Frontend | Blitzy Frontend Reviewer Agent | 0 | 0 | 0 | **OPEN** |
 | 7 | Other SME (Documentation & Compliance) | Blitzy Documentation and Compliance SME Agent | 0 | 0 | 0 | **OPEN** |
-| **Total** | — | — | **6** | **7** | **7** | **IN_REVIEW** |
+| **Total** | — | — | **12** | **10** | **10** | **IN_REVIEW** |
 
-*At the Checkpoint 3 milestone, Phases 1–4 are IN_REVIEW — every
-addressable CP3 finding has been fixed and verified on the active branch
-per AAP §0.10.6–0.10.7. Phases 5–7 remain OPEN pending Checkpoints 4–5
-(FEATURE-002 Bank Reconciliation). No phase may transition to `APPROVED`
-until every addressable finding is fixed and verified per AAP §0.10.3,
-and no phase may transition to `BLOCKED` without an explicit rationale
-plus remediation steps. The CP3 remediations are recorded in detail in
-§3–§6 and consolidated in §10.*
+*At the Checkpoint 5 milestone, **Phase 1 Infrastructure/DevOps transitions
+to APPROVED** — the CP3 FEATURE-001 slice (1 finding) plus the CP5
+FEATURE-002 Bank Reconciliation Infrastructure slice (2 findings — the
+compound archaeology-completeness gap P1-F2 plus the LATENT demo-data
+`datetime.date.today()` safe_eval incompatibility P1-F3) have all been
+addressed per AAP §0.10.6–0.10.7. Phases 2–4 remain IN_REVIEW pending
+CP6 (FEATURE-002 Bank Reconciliation Security + Backend + QA slice
+review). Phase 3 Backend Architecture has a new CP5 finding P3-F10
+(C-16 LATENT DEFECT — XML-seeded `ir.config_parameter` drift vs Python
+class constants in the reconciliation matching engine) recorded for
+deferred remediation. Phases 5–7 remain OPEN pending CP6+. No phase may
+transition to `APPROVED` until every addressable finding is fixed and
+verified per AAP §0.10.3, and no phase may transition to `BLOCKED`
+without an explicit rationale plus remediation steps. The CP3 and CP5
+remediations are recorded in detail in §3–§6 and consolidated in §10.*
 
 ---
 
@@ -644,64 +679,106 @@ remain OPEN pending Checkpoints 4–5 (FEATURE-002 Bank Reconciliation).*
 
 - **Reviewer**: Blitzy DevOps Reviewer Agent
 - **Domain scope**: Reviews `__manifest__.py`, `__init__.py`, `hooks.py`, `data/*.xml`, and `demo/*.xml` files for module composition, install-time hooks, demo-data shape, and paper-format registration across both new accounting modules.
-- **Status**: `IN_REVIEW` (CP3 FEATURE-001 slice complete; CP4 FEATURE-002 slice pending)
-- **Files in scope at CP3**: 1 (`addons/account_financial_report_ce/data/report_paperformat.xml`)
+- **Status**: `APPROVED` (CP3 FEATURE-001 slice + CP5 FEATURE-002 Bank Reconciliation Infrastructure slice complete; all addressable findings fixed and verified at runtime)
+- **Files in scope**: 6 (1 FR paperformat reviewed at CP3 + 5 BR Infrastructure files reviewed at CP5)
 
 ### 3.1 Files in Scope
 
-At the Checkpoint 3 milestone, the following Infrastructure/DevOps file
-has been reviewed as part of the FEATURE-001 Financial Reporting Engine
-slice:
+**CP3 (FEATURE-001 Financial Reporting Engine slice):**
 
 | # | Path | CP | Review Status |
 |---|------|:--:|:-------------:|
 | 1 | `addons/account_financial_report_ce/data/report_paperformat.xml` | CP3 | REVIEWED |
 
-*Additional files in this domain (the CP4 FEATURE-002 Bank Reconciliation
-slice — `addons/account_bank_reconciliation_ce/__manifest__.py`,
-`__init__.py`, `hooks.py`, `data/*.xml`, `demo/*.xml`) remain pending.
-Existing CP3-adjacent files such as `__manifest__.py`, `__init__.py`,
-and `demo/demo_data.xml` for the FEATURE-001 module passed review
-without findings and are documented in the CP3 review report.*
+**CP5 (FEATURE-002 Bank Reconciliation slice):**
+
+| # | Path | CP | Review Status |
+|---|------|:--:|:-------------:|
+| 2 | `addons/account_bank_reconciliation_ce/__manifest__.py` | CP5 | REVIEWED |
+| 3 | `addons/account_bank_reconciliation_ce/__init__.py` | CP5 | REVIEWED |
+| 4 | `addons/account_bank_reconciliation_ce/hooks.py` | CP5 | REVIEWED |
+| 5 | `addons/account_bank_reconciliation_ce/data/reconciliation_data.xml` | CP5 | REVIEWED |
+| 6 | `addons/account_bank_reconciliation_ce/demo/demo_data.xml` | CP5 | REVIEWED |
+
+*Additional CP5-adjacent files that passed review without findings in
+this domain: `addons/account_financial_report_ce/__manifest__.py`,
+`__init__.py`, and `demo/demo_data.xml` (CP3). The CP5 Bank Reconciliation
+Infrastructure review confirmed the module's manifest metadata
+(`version='19.0.1.0.0'`, `license='AGPL-3'`, `depends=['account']`,
+`external_dependencies['python'] = ['ofxparse']`,
+`post_init_hook='post_init_hook'`), the 8-entry data load ordering
+(security → data → report → wizard → views), the 1-entry demo list,
+and the 1-entry `assets.web.assets_backend` SCSS asset registration all
+pass static validation. Python `py_compile` passes on all 11 BR `.py`
+files; `lxml.etree.parse` passes on all 9 BR `.xml` files; SHA256
+byte-identity passes on all 8 D-2 target files (including
+`tests/common.py: 2b5455616e3bcb3101682585933632ed37efe41654d93130f353ae7aab354fc7`).*
 
 ### 3.2 Findings
 
-One MINOR finding was identified during the Checkpoint 3 review of the
-FEATURE-001 Infrastructure/DevOps slice:
+Three findings were identified across the CP3 and CP5 Infrastructure/DevOps
+reviews:
 
 | # | Severity | File | Line | Category | Finding |
 |---|:--------:|------|-----:|----------|---------|
 | P1-F1 | MINOR | `addons/account_financial_report_ce/data/report_paperformat.xml` | 10 | Configuration | The `report.paperformat` record was not wrapped in `<data noupdate="1">`. If an administrator customizes paperformat attributes (margins, orientation, header/footer spacing) to match local stationery, an Odoo module upgrade will revert those customizations because the record is re-written on every module update. This is inconsistent with the Odoo convention for admin-editable default data. |
+| P1-F2 | **CRITICAL** (compound) | `addons/account_bank_reconciliation_ce/**/*` | — | Archaeology Completeness / Install Blocker | **Pre-remediation state**: the CP5 working tree contained only 17 of 35 BR module files merged into `origin/pdlc`; 18 files were missing including the entire `report/`, `demo/`, `static/`, and `tests/` subtrees plus `wizard/bank_statement_import_wizard_views.xml`. The first observable runtime symptom was an `ImportError: cannot import name 'report' from partially initialized module 'odoo.addons.account_bank_reconciliation_ce'` raised at `__init__.py:4` (`from . import models, report, wizard`), blocking module installation entirely. The secondary symptom was that 4 manifest-referenced paths (`report/reconciliation_report.xml`, `wizard/bank_statement_import_wizard_views.xml`, `demo/demo_data.xml`, `static/src/scss/reconciliation.scss`) did not resolve on disk. Root cause was an incomplete archaeology content-import sequence on this branch that stopped before the final import commits for the 4 subdirectories. This is not a D-2 byte-identity violation (the 17 files that were present matched `origin/pdlc` byte-hash exactly) — it is a D-1 archaeology completeness gap. |
+| P1-F3 | INFO | `addons/account_bank_reconciliation_ce/demo/demo_data.xml` | 81, 92, 111, 150, 172, 193, 212, 230, 255, 280 | Demo Data / safe_eval | The demo bank-statement-line records use `<field name="date" eval="(datetime.date.today() - datetime.timedelta(days=N)).strftime('%Y-%m-%d')"/>`. Odoo 19's `safe_eval` namespace for XML `eval=` attributes exposes `datetime` as the module but `datetime.date` is resolved as a `method_descriptor` object rather than the `date` class, so `datetime.date.today()` raises `AttributeError: 'method_descriptor' object has no attribute 'today'` at module-install demo-load time. Odoo's fault-tolerant demo loader catches the `ParseError` and logs *"Module account_bank_reconciliation_ce demo data failed to install, installed without demo data"* at WARNING level — the module still installs cleanly. This is a **latent upstream defect in `origin/pdlc`** (present in the byte-identical import); it does not block module functionality in production because production databases set `--without-demo=True`. |
 
 ### 3.3 Remediation Log
 
 | # | Finding | Remediation Applied | Commit |
 |---|---------|---------------------|--------|
 | P1-F1 | MINOR — Paperformat not noupdate-wrapped | Wrapped all 4 `report.paperformat` records (A4 portrait/landscape, Letter portrait/landscape) and all 6 `ir.actions.report` paperformat overrides (balance_sheet, profit_loss, cash_flow portrait; general_ledger, trial_balance, aged_partner_balance landscape) inside `<data noupdate="1">…</data>`. Added a 13-line explanatory header comment citing CP3 Finding #1 and the Odoo admin-customization preservation convention. | `98d327e1a22` |
+| P1-F2 | CRITICAL — BR archaeology completeness gap (18 files missing; ImportError; manifest unresolved paths) | Imported all 18 missing files from `origin/pdlc` in 5 archaeology commits per AAP §0.9.3 using `git checkout origin/pdlc -- <path>` and the `Blitzy Agent <agent@blitzy.com>` authorship convention per AAP §0.9.12. No file content edited — D-2 byte-identity preserved for every imported artifact. The commits were: `ab5f35e3057` (`report/` subtree, 3 files, 1,246 insertions), `a827a50d86d` (`demo/demo_data.xml`, 417 insertions), `bd12ae5d0a8` (`static/src/scss/reconciliation.scss`, 748 insertions), `0a98f0e6d57` (`wizard/bank_statement_import_wizard_views.xml`, 242 insertions), `5936c1f8986` (`tests/` subtree, 12 files, 7,013 insertions — including `tests/common.py` and the 4 `tests/test_files/` fixtures). Post-remediation file count: 35 of 35 (100% coverage against `origin/pdlc` merged tip). | `ab5f35e3057`, `a827a50d86d`, `bd12ae5d0a8`, `0a98f0e6d57`, `5936c1f8986` |
+| P1-F3 | INFO — demo_data `datetime.date.today()` safe_eval incompatibility | **DOCUMENTED, remediation deferred.** D-2 byte-identity precludes editing `demo/demo_data.xml` during the archaeology run (SHA256 of the imported file matches `origin/pdlc` exactly). Runtime impact is confined to demo-data loading only; production databases (`--without-demo=True`) are unaffected. Install succeeds "without demo data" per Odoo's fault-tolerant demo loader. **Future remediation path (queued for a post-archaeology PR)**: replace all 10 `datetime.date.today()` call sites with the idiomatic Odoo 19 safe-eval pattern `fields.Date.today()` or `context_today` — both are already exposed in the `safe_eval` namespace and correctly evaluate in the XML `eval=` context. | *No commit — DOCUMENTED only* |
 
-**Ripple effects**: None. The change is XML-tag-level and does not alter
-the paperformat attribute values, record `id`s, or the bound
-`ir.actions.report` paperformat reference semantics. Existing XML-IDs
-remain resolvable by every downstream `ir.actions.report` record in
-`report/*_report.xml`.
+**Ripple effects**: The P1-F2 remediation is content-import only — every
+imported file matches `origin/pdlc` byte-identically (SHA256 verified
+for 8 of 8 CP5 target files including the specifically-identified
+`tests/common.py`). Post-remediation, the 4 previously-unresolved
+manifest-referenced paths now resolve (`report/reconciliation_report.xml`,
+`wizard/bank_statement_import_wizard_views.xml`, `demo/demo_data.xml`,
+`static/src/scss/reconciliation.scss`), and `from . import models,
+report, wizard` in `__init__.py:4` succeeds. The P1-F3 finding has no
+ripple effects — it is documentation-only with no code or data change.
 
 ### 3.4 Verification Evidence
 
-- **AAP §0.9.5 verification command (Python manifest-parse check)**: re-executed after remediation; no new parse errors introduced to the module's `__manifest__.py`.
-- **XML well-formedness**: verified via `python -c "import xml.etree.ElementTree as ET; ET.parse('addons/account_financial_report_ce/data/report_paperformat.xml')"` — passes.
-- **Post-remediation file length**: 114 lines (was 106, +8 for `<data noupdate="1">` wrapper + explanatory comment).
-- **`noupdate="1"` wrapper presence**: confirmed by `grep -n 'noupdate="1"' addons/account_financial_report_ce/data/report_paperformat.xml` returning line 14.
-- **Paperformat record count preserved**: 4 `<record model="report.paperformat">` + 6 `<record id="..." model="ir.actions.report">` — matches pre-remediation inventory.
+- **AAP §0.9.5 verification command (Python manifest-parse check)**: re-executed after CP3 + CP5 remediations; no new parse errors introduced. The BR manifest asserts for `version=='19.0.1.0.0'`, `license=='AGPL-3'`, `depends==['account']`, `'ofxparse' in external_dependencies['python']`, `post_init_hook=='post_init_hook'`, 8-entry data list in correct load order, 1-entry demo list, 1-entry asset list — all 7 assertions pass.
+- **XML well-formedness**: verified via `lxml.etree.parse()` on all 9 BR XML files (2 security + 2 view + 1 data + 1 demo + 2 wizard + 1 report) and all 2 FR XML files in scope — passes.
+- **Python syntax correctness**: `python3 -m py_compile` passes on all 11 BR Python files (`__init__.py`, `__manifest__.py`, `hooks.py`, 4 models, 3 wizards, 1 report subpackage init).
+- **SHA256 byte-identity (D-2)**: confirmed for all 8 CP5 target files — `__manifest__.py: 9ed3e1a0e126fd84b9c1c9a299bc7b23136b088dbea18ef9c8320ec6933e6614`; `hooks.py: e655f6ba79e974dca1560a9c7dca06a51d009a7b213268d77f720f9992395da2`; `models/reconciliation_matching_engine.py: 43facc31f574a0a5c8d125ca1c8fd78a3634d9d79c5a124762a5094022b987ab`; `models/bank_statement_import.py: 9738c6990cda1d026402b12fefc41c1bd641fe017a9e12890f128b638767851b`; `models/reconciliation_rule.py: b4c94acc379e1af44a07d361c85f466e76e95c796266ae83e0fb6b47910bba30`; `models/partial_reconcile_ext.py: 735efd04bd9177bfa5f57ade1e9e81db4dfde0f59d0d7792754ff217a5a939f8`; `data/reconciliation_data.xml: 4b7830d4a67ec67d7621d9bf649f561f72289ec1dc5e7aaf3dac51c3774aeac8`; `tests/common.py: 2b5455616e3bcb3101682585933632ed37efe41654d93130f353ae7aab354fc7`.
+- **Manifest-referenced path existence**: all 10 paths (8 data + 1 demo + 1 asset) resolve on disk post-remediation — verified via `[os.path.exists(...) for p in manifest['data']+manifest['demo']+asset_paths]`.
+- **Runtime install verification (AAP §0.9.5 Phase 4 Odoo install)**: `./odoo-bin --stop-after-init -d cp5_br_fresh -i account_bank_reconciliation_ce --without-demo=False --log-level=warn --addons-path=addons --db_host=/var/run/postgresql --db_user=root` — **INSTALL SUCCEEDED**. Post-install DB query confirmed `ir_module_module.state = 'installed'`, `latest_version = '19.0.1.0.0'`. Five new tables created (`account_bank_statement_import`, `account_bank_statement_import_wizard`, `account_reconciliation_matching`, `account_reconciliation_partial_helper`, `account_reconciliation_wizard`). Five extension fields added on `account.bank.statement.line` (`matching_confidence`, `reconciliation_status`, `import_hash`, `import_source`, `import_format`). Twelve extension fields added on `account.reconcile.model` (`priority`, `confidence_threshold`, `auto_reconcile_threshold`, `match_amount_tolerance`, `match_count`, `match_date_range`, `match_partner_name`, `match_partner_name_param`, `match_reference_param`, `evaluation_count`, `is_ce_rule`, `last_evaluation_date`). Four CE seed reconciliation rules loaded with correct priorities and confidence thresholds (Exact=10/90, Regex=20/70, Tolerance=30/50, Partner=40/60). Fourteen `ir.config_parameter` rows seeded. Per P1-F3, demo data failed to load with `AttributeError: 'method_descriptor' object has no attribute 'today'` at `demo_data.xml:81`; Odoo's fault-tolerant demo loader logged the warning and the module installed successfully "without demo data" — confirming install robustness.
+- **`post_init_hook` runtime verification**: `env.ref('account.group_account_manager').user_ids & env.ref('base.group_user').user_ids` — 1 of 1 managers propagated to `base.group_user` (100% propagation rate). Confirms the hook body in `hooks.py:17` correctly iterates `filtered(lambda u: internal_group not in u.group_ids)` and applies the `(4, internal_group.id, False)` ORM Command.
+- **Idempotency verification**: re-ran `./odoo-bin --stop-after-init -d cp5_br_fresh -u account_bank_reconciliation_ce --without-demo=False`; post-upgrade group counts identical to post-install (2/1/0); no duplicates, no membership drift, no errors in the log. Confirms AAP §0.7.1 idempotency requirement.
+- **CP3 FR paperformat evidence** (unchanged from CP3 report): file length 114 lines post-remediation (was 106, +8 for `<data noupdate="1">` wrapper + explanatory comment); `grep -n 'noupdate="1"'` returns line 14; 4 `report.paperformat` + 6 `ir.actions.report` records preserved.
 
-### 3.5 Disposition — `IN_REVIEW`
+### 3.5 Disposition — `APPROVED`
 
-Phase 1 Infrastructure / DevOps review is IN_REVIEW at the CP3
-milestone. The single addressable finding from the FEATURE-001 slice
-(P1-F1 Paperformat noupdate wrapper) has been remediated and verified.
-Full APPROVED disposition is deferred to Checkpoint 5 per the combined
-FEATURE-001 + FEATURE-002 scope gate, when the CP4 Bank Reconciliation
-Infrastructure/DevOps slice has also been reviewed and any findings
-remediated. No BLOCKERs are currently outstanding for this phase.
+**Phase 1 Infrastructure/DevOps review is APPROVED at the CP5
+milestone.** All 3 addressable findings from the CP3 FEATURE-001 slice
+(P1-F1) and the CP5 FEATURE-002 Bank Reconciliation Infrastructure
+slice (P1-F2, P1-F3) have been addressed:
+
+- **P1-F1 (MINOR)** — REMEDIATED in commit `98d327e1a22`.
+- **P1-F2 (CRITICAL compound)** — RESOLVED via 5 archaeology commits
+  (`ab5f35e3057`, `a827a50d86d`, `bd12ae5d0a8`, `0a98f0e6d57`,
+  `5936c1f8986`) restoring 18 files from `origin/pdlc`; runtime install
+  on a fresh database verified SUCCESS.
+- **P1-F3 (INFO)** — DOCUMENTED; remediation deferred per D-2
+  byte-identity constraint. Install succeeds "without demo data"; no
+  runtime impact on production deployments.
+
+No BLOCKERs are outstanding for this phase. Per AAP §0.10.3 / Rule R-2
+*"A phase may only be marked `APPROVED` when all addressable issues have
+been fixed and verified"*, all addressable findings are fixed + verified
+at runtime (install success + schema creation + seed data + hook
+propagation + idempotency), and the one non-addressable finding (P1-F3,
+upstream `safe_eval` defect locked by D-2) is DOCUMENTED with explicit
+rationale and a future remediation path. The phase transitions to
+`APPROVED` at CP5.
 
 ---
 
@@ -775,13 +852,12 @@ No BLOCKERs are currently outstanding for this phase.
 
 - **Reviewer**: Blitzy Backend Architect Agent
 - **Domain scope**: Reviews `models/**/*.py`, `report/*.py`, and `wizard/*.py` files for ORM model design, inheritance correctness, report parsers, transient wizard state, and algorithmic domain logic.
-- **Status**: `IN_REVIEW` (CP3 FEATURE-001 slice complete; CP4 FEATURE-002 slice pending)
-- **Files in scope at CP3**: 3 (2 models + 1 wizard; 4 findings remediated)
+- **Status**: `IN_REVIEW` (CP3 FEATURE-001 slice complete; CP5 FEATURE-002 Bank Reconciliation slice: C-16 LATENT DEFECT documented; full FEATURE-002 backend review deferred to CP6)
+- **Files in scope**: 4 (3 CP3 FEATURE-001 files + 1 CP5 FEATURE-002 file for the C-16 LATENT DEFECT documentation; 5 findings total)
 
 ### 5.1 Files in Scope
 
-At the Checkpoint 3 milestone, the following Backend Architecture files
-have been reviewed and remediated:
+**CP3 (FEATURE-001 Financial Reporting Engine slice):**
 
 | # | Path | CP | Review Status |
 |---|------|:--:|:-------------:|
@@ -789,17 +865,32 @@ have been reviewed and remediated:
 | 2 | `addons/account_financial_report_ce/models/cash_flow.py` | CP3 | REVIEWED |
 | 3 | `addons/account_financial_report_ce/wizard/financial_report_wizard.py` | CP3 | REVIEWED |
 
+**CP5 (FEATURE-002 Bank Reconciliation — C-16 LATENT DEFECT only):**
+
+| # | Path | CP | Review Status |
+|---|------|:--:|:-------------:|
+| 4 | `addons/account_bank_reconciliation_ce/models/reconciliation_matching_engine.py` | CP5 | REVIEWED (C-16 LATENT) |
+
 *Additional Backend Architecture files reviewed as PASS at CP3 without
 findings: `models/financial_report.py` (the 891-line foundational
 abstract base), `models/balance_sheet.py`, `models/general_ledger.py`,
 `models/trial_balance.py`, `models/aged_partner_balance.py`, and all 6
-report parsers under `report/report_*.py`. The FEATURE-002 Bank
-Reconciliation backend slice remains pending for Checkpoint 4.*
+report parsers under `report/report_*.py`. The remainder of the
+FEATURE-002 Bank Reconciliation backend slice (`models/bank_statement_import.py`,
+`models/reconciliation_rule.py`, `models/partial_reconcile_ext.py`, and
+the 2 wizard files) passes static analysis (py_compile + grep for
+`_name`, `_inherit`, field declarations) at CP5 and is deferred to CP6
+for in-depth review per the combined FEATURE-002 Security + Backend
++ QA slice gate. The CP5 entry in this table documents only the
+C-16 LATENT DEFECT that cross-cuts `models/reconciliation_matching_engine.py`
+and `data/reconciliation_data.xml` — see §5.2 P3-F10.*
 
 ### 5.2 Findings
 
-Four findings (3 MAJOR + 1 MINOR documentation) were identified during
-the Checkpoint 3 review of the FEATURE-001 Backend Architecture slice:
+Five findings (3 MAJOR + 1 MINOR documentation from CP3 FEATURE-001;
+1 LOW LATENT from CP5 FEATURE-002) were identified during the
+Checkpoint 3 and Checkpoint 5 reviews of the Backend Architecture
+domain:
 
 | # | Severity | File | Line | Category | Finding |
 |---|:--------:|------|-----:|----------|---------|
@@ -807,6 +898,29 @@ the Checkpoint 3 review of the FEATURE-001 Backend Architecture slice:
 | P3-F7 | **MAJOR** | `addons/account_financial_report_ce/models/cash_flow.py` | 1062 | API Contract | Same root cause as P3-F6. `action_export_xlsx` returned `act_url` to `/financial_reports/cash_flow/xlsx/{id}`; the route was not implemented so Excel export from the Cash Flow report failed at runtime. |
 | P3-F4 | **MAJOR** | `addons/account_financial_report_ce/wizard/financial_report_wizard.py` | 415–418 | Defensive Design | The trial_balance branch of the unified wizard passed `vals['account_ids']` unconditionally, but `account.trial.balance.report` does **not** declare an `account_ids` field (only `account_type_ids`). Calling `env[target_model].create(vals)` would raise a ValueError at runtime. Inconsistent with the wizard's otherwise-excellent introspection-based field passthrough pattern (e.g., the aged_partner branch at L389-395 correctly uses `if 'partner_type' in target_model._fields`). |
 | P3-F8 | MINOR | `addons/account_financial_report_ce/models/cash_flow.py` | 523–537 | Business Logic / Documentation | `_classify_financing_activity` uses a `b.get('debit', 0.0)` heuristic on distribution account types to classify dividend payments. The heuristic is semantically conservative (prefers false-negatives over false-positives) but is fragile in three edge cases: reversal entries, account-type re-classifications mid-period, and stock option exercises affecting equity accounts. The behavior was previously undocumented. |
+| P3-F10 | **LOW (LATENT)** | `addons/account_bank_reconciliation_ce/models/reconciliation_matching_engine.py` + `addons/account_bank_reconciliation_ce/data/reconciliation_data.xml` | 58–72 (Python) / 38–82 (XML) | Data Integrity / Configuration Drift (C-16 LATENT DEFECT) | **The XML-seeded `ir.config_parameter` values in `data/reconciliation_data.xml` diverge from the authoritative Python class constants in `models/reconciliation_matching_engine.py` for 3 of 7 scoring parameters.** See divergence table below. Because the module code contains **zero** `get_param` / `ir.config_parameter` lookups (grep-verified across `models/`, `wizard/`, and `hooks.py`), the XML rows are **orphaned** — they are seeded into the database but never read. At runtime, the Python class constants win every decision; the 4 CE seed rules (`reconcile_rule_exact_match`, `reconcile_rule_regex_label`, `reconcile_rule_amount_tolerance`, `reconcile_rule_partner_match`) carry their own `confidence_threshold` / `auto_reconcile_threshold` field values (90/80/70/60/50), and the matching engine's global thresholds come from the class-level constants `CONFIDENCE_HIGH=95.0`, `CONFIDENCE_MEDIUM=70.0`, `CONFIDENCE_LOW=50.0` (reconciliation_matching_engine.py:58–60) and the scoring weights from `DEFAULT_WEIGHTS = {'amount': 0.35, 'reference': 0.25, 'partner': 0.25, 'date': 0.15}` (reconciliation_matching_engine.py:67–72). **This is a latent defect, not a runtime bug**: the defect would activate only if a future patch introduces `ICP.get_param('reconciliation_matching_engine.weight_amount', ...)` calls to read the XML-seeded values, in which case the engine would silently run with miscalibrated weights biased toward amount (0.40 vs 0.35) and away from partner (0.20 vs 0.25), and the HIGH-confidence threshold would trigger at 90.0 instead of 95.0 — both changes documented in the Python-file inline comments at L55–57 as deliberate calibration adjustments ("the previous value (90) produced false positives in the partner-name edge cases"). The inline Python comments are smoking-gun evidence that the Python constants were intentionally updated while the XML seed was left stale. |
+
+**C-16 Divergence Table (P3-F10 detail)**:
+
+| Parameter | XML Value (`data/reconciliation_data.xml`) | Python Value (`models/reconciliation_matching_engine.py`) | Status | Divergence |
+|-----------|-------------------------------------------:|----------------------------------------------------------:|:------:|-----------:|
+| `matching_engine.confidence_high` | 90.0 (line 40) | `CONFIDENCE_HIGH = 95.0` (line 58) | ⚠ DIVERGENT | +5.0 (Python stricter) |
+| `matching_engine.confidence_medium` | 70.0 (line 45) | `CONFIDENCE_MEDIUM = 70.0` (line 59) | ✓ match | 0.00 |
+| `matching_engine.confidence_low` | 50.0 (line 50) | `CONFIDENCE_LOW = 50.0` (line 60) | ✓ match | 0.00 |
+| `matching_engine.weight_amount` | 0.40 (line 67) | `DEFAULT_WEIGHTS['amount'] = 0.35` (line 69) | ⚠ DIVERGENT | −0.05 (Python lower) |
+| `matching_engine.weight_reference` | 0.25 (line 72) | `DEFAULT_WEIGHTS['reference'] = 0.25` (line 70) | ✓ match | 0.00 |
+| `matching_engine.weight_partner` | 0.20 (line 77) | `DEFAULT_WEIGHTS['partner'] = 0.25` (line 71) | ⚠ DIVERGENT | +0.05 (Python higher) |
+| `matching_engine.weight_date` | 0.15 (line 82) | `DEFAULT_WEIGHTS['date'] = 0.15` (line 72) | ✓ match | 0.00 |
+
+*Both weight vectors sum to 1.0 (0.40+0.25+0.20+0.15 = 1.0; 0.35+0.25+0.25+0.15 = 1.0), so either vector is self-consistent — the divergence is semantic, not structural.*
+
+**Runtime evidence for P3-F10 LATENT classification** (gathered during
+CP5 runtime verification on DB `cp5_br_fresh` via `odoo-bin shell`):
+
+- `grep -rn "get_param\|ir_config_parameter\|ir\.config_parameter" addons/account_bank_reconciliation_ce/models/ addons/account_bank_reconciliation_ce/wizard/ addons/account_bank_reconciliation_ce/hooks.py` returns **zero matches** — the XML-seeded rows are never read from the Python layer.
+- `env['account.reconciliation.matching'].__class__.CONFIDENCE_HIGH` returns `95.0`, `DEFAULT_WEIGHTS` returns `{'amount': 0.35, 'reference': 0.25, 'partner': 0.25, 'date': 0.15}` — Python class constants are the effective runtime values.
+- `env['ir.config_parameter'].sudo().get_param('matching_engine.confidence_high')` returns `'90.0'` (the stale XML value), `env['ir.config_parameter'].sudo().get_param('matching_engine.weight_amount')` returns `'0.40'`, `env['ir.config_parameter'].sudo().get_param('matching_engine.weight_partner')` returns `'0.20'` — confirming the XML rows are present in the database but not consumed anywhere.
+- The 4 CE seed `account.reconcile.model` rules are unaffected by C-16 because their confidence thresholds are stored on the `account.reconcile.model` record (`confidence_threshold`, `auto_reconcile_threshold`) rather than via `ir.config_parameter`.
 
 ### 5.3 Remediation Log
 
@@ -816,13 +930,17 @@ the Checkpoint 3 review of the FEATURE-001 Backend Architecture slice:
 | P3-F7 | MAJOR — `cash_flow.action_export_xlsx` broken act_url | Same fix pattern as P3-F6: replaced the override with `return super().action_export_xlsx()`. Updated docstring to reference the supplementary "Report Parameters" sheet used for audit/traceability, the `_get_xlsx_columns`/`_get_xlsx_data` hooks, and FR-003 acceptance criteria (direct + indirect methods, opening-cash reconciliation). | `98d327e1a22` |
 | P3-F4 | MAJOR — Wizard trial_balance branch missing `account_ids` introspection guard | Wrapped the `vals['account_ids'] = [(6, 0, self.account_ids.ids)]` assignment with the defensive introspection guard `if (self.account_ids and 'account_ids' in target_model._fields):` — matching the established wizard pattern (e.g., aged_partner branch at L389-395). Added an explanatory comment citing the Odoo 19.0 ORM `ValueError` raised by `create()` on unknown fields. | `98d327e1a22` |
 | P3-F8 | MINOR — Dividends heuristic edge cases undocumented | Added an inline `KNOWN LIMITATION` docstring block (15 lines) to `_classify_financing_activity` at L521-537 citing CP3 Finding #8 with all three documented failure modes (reversal entries, mid-period account-type re-classification, stock option exercises affecting equity accounts) and the FALSE-NEGATIVE preference rationale. Also records that a refined heuristic using journal entry tags is a CP5-deferred enhancement. | `98d327e1a22` |
+| P3-F10 | LOW (LATENT) — C-16 XML-vs-Python scoring constant drift | **DOCUMENTED, remediation deferred.** D-2 byte-identity constraint prohibits editing `data/reconciliation_data.xml` (SHA256 `4b7830d4a67ec67d7621d9bf649f561f72289ec1dc5e7aaf3dac51c3774aeac8` must match `origin/pdlc` exactly) and equally prohibits editing `models/reconciliation_matching_engine.py` (SHA256 `43facc31f574a0a5c8d125ca1c8fd78a3634d9d79c5a124762a5094022b987ab` must match). The defect is LATENT (runtime-inert) because the module contains zero `ICP.get_param(...)` calls against the divergent keys, so the Python class constants are the authoritative runtime values. **Future remediation path (queued for a post-archaeology PR)**: converge the two sources of truth by either (a) removing the 7 orphaned `ir.config_parameter` records from `data/reconciliation_data.xml` and adding a `<data noupdate="1">` wrapper to preserve admin customizations if ICP-driven configuration is re-introduced, or (b) refactoring the matching engine to read `ICP.get_param('matching_engine.confidence_high', default=self.CONFIDENCE_HIGH)` at the top of each scoring method and updating the XML to the current authoritative values (90.0 → 95.0, 0.40 → 0.35, 0.20 → 0.25). Option (a) is the lower-risk path (class constants remain authoritative); option (b) requires a full regression of the 371-test suite (CP7 gate). | *No commit — DOCUMENTED only* |
 
 **Ripple effects**: The XLSX delegations in P3-F6/P3-F7 are behavioral —
 end-users who click "Export to Excel" from Profit & Loss or Cash Flow
 will now successfully receive an `.xlsx` download instead of a 404.
 The wizard guard in P3-F4 is defensive — if `account.trial.balance.report`
 ever adds an `account_ids` field in the future, the guard will allow
-it to pass through automatically without code change.
+it to pass through automatically without code change. The P3-F10
+finding has no ripple effects — it is documentation-only with no code
+or data change; the runtime is unaffected because the divergent XML
+values are never read.
 
 ### 5.4 Verification Evidence
 
@@ -830,24 +948,36 @@ it to pass through automatically without code change.
   - `python -m py_compile addons/account_financial_report_ce/models/profit_loss.py` → passes
   - `python -m py_compile addons/account_financial_report_ce/models/cash_flow.py` → passes
   - `python -m py_compile addons/account_financial_report_ce/wizard/financial_report_wizard.py` → passes
+  - `python -m py_compile addons/account_bank_reconciliation_ce/models/reconciliation_matching_engine.py` → passes (unchanged file; CP5 re-verification only)
 - **Base-class delegation invariant**: confirmed via `grep -n 'return super().action_export_xlsx()' addons/account_financial_report_ce/models/profit_loss.py` returning exactly 1 match, and the same for `cash_flow.py`. The 4 other concrete reports that were already correctly delegating continue to do so — no regression.
 - **Introspection guard invariant**: confirmed via `grep -n "'account_ids' in target_model._fields" addons/account_financial_report_ce/wizard/financial_report_wizard.py` returning 1 match at the remediated site.
 - **Post-remediation file lengths**:
   - `models/profit_loss.py`: 1054 lines (was 1051, +3 for docstring revision)
   - `models/cash_flow.py`: 1218 lines (was 1185, +33 for KNOWN LIMITATION block + docstring)
   - `wizard/financial_report_wizard.py`: 604 lines (was 596, +8 for introspection guard + comment)
-- **`ruff check --no-fix`** on all 3 files: scheduled for Phase 3 Validation; no new lint violations expected from the additive doc-and-guard remediations.
+- **C-16 LATENT classification evidence (P3-F10)**:
+  - `grep -rn "get_param\|ir_config_parameter" addons/account_bank_reconciliation_ce/{models,wizard,hooks.py}` → 0 matches (LATENT confirmed).
+  - Runtime check via `odoo-bin shell -d cp5_br_fresh`: `env['account.reconciliation.matching'].__class__.CONFIDENCE_HIGH` → `95.0` (Python wins); `ICP.get_param('matching_engine.confidence_high')` → `'90.0'` (XML stale but unread).
+  - Python inline comments at `reconciliation_matching_engine.py:55-57` and `66-68` explicitly document the deliberate Python-side updates ("the previous value (90) produced false positives in the partner-name edge cases"; "Amount is the strongest signal (raised to 0.35); partner is elevated to High priority (0.25)").
+  - Post-install `ir.config_parameter` row count: 14 (7 scoring + 7 import-format defaults) — all 7 scoring rows present in the DB but not consumed by any Python code path.
+- **`ruff check --no-fix`** on all 3 CP3 modified files: scheduled for Phase 3 Validation; no new lint violations expected from the additive doc-and-guard remediations.
 - **Test coverage**: Finding P4-F9 (see §6.3) tightens the XLSX assertions in `tests/test_export.py` so the existing `test_profit_loss_xlsx_export` and `test_cash_flow_xlsx_export` methods now positively verify the base-class delegation — previously they would have passed even on the broken `act_url` routes.
 
 ### 5.5 Disposition — `IN_REVIEW`
 
-Phase 3 Backend Architecture review is IN_REVIEW at the CP3 milestone.
-All 4 addressable findings from the FEATURE-001 slice (P3-F4, P3-F6,
-P3-F7, P3-F8) have been remediated and verified. Full APPROVED
-disposition is deferred to Checkpoint 5 per the combined FEATURE-001 +
-FEATURE-002 scope gate, when the CP4 Bank Reconciliation backend slice
-has also been reviewed and any findings remediated. No BLOCKERs are
-currently outstanding for this phase.
+Phase 3 Backend Architecture review is IN_REVIEW at the CP5 milestone.
+All 4 addressable CP3 findings from the FEATURE-001 slice (P3-F4, P3-F6,
+P3-F7, P3-F8) have been remediated and verified. The new CP5 finding
+P3-F10 (C-16 LATENT DEFECT — XML-vs-Python scoring constant drift in the
+Bank Reconciliation matching engine) is **DOCUMENTED** with full
+divergence analysis, runtime-inert classification, and a deferred
+remediation path; it is not a BLOCKER because the Python class constants
+are authoritative at runtime and the XML values are never read. The
+full FEATURE-002 Backend Architecture slice (the remaining models and
+wizards beyond the matching engine) remains pending for Checkpoint 6.
+Phase 3 disposition transitions to `APPROVED` at Checkpoint 6 after the
+full FEATURE-002 backend review completes. No BLOCKERs are currently
+outstanding for this phase.
 
 ---
 
@@ -1056,40 +1186,61 @@ blockers remain after remediation is attempted.
 
 ## 10. Consolidated Remediation Ledger
 
-At the Checkpoint 3 milestone, seven remediations have been committed
-to the active branch in response to the FEATURE-001 Financial Reporting
-Engine review. The ledger below tracks, one row per remediation, every
-in-place change committed during the per-phase reviews (§§3–9) across
-the reviewed checkpoints. Each row references the originating finding
-ID (`Pn-Fm`), the remediation commit SHA authored by `Blitzy Agent
-<agent@blitzy.com>`, and a short description per AAP §0.9.4.
+At the Checkpoint 5 milestone, twelve remediation / disposition entries
+have been recorded on the active branch across the CP3 FEATURE-001
+Financial Reporting Engine review and the CP5 FEATURE-002 Bank
+Reconciliation Infrastructure + C-16 LATENT DEFECT review. The ledger
+below tracks, one row per finding, every in-place change committed
+during the per-phase reviews (§§3–9) across the reviewed checkpoints.
+Each row references the originating finding ID (`Pn-Fm`), the
+remediation commit SHA(s) authored by `Blitzy Agent <agent@blitzy.com>`,
+and a short description per AAP §0.9.4. Rows flagged DOCUMENTED
+correspond to LATENT findings whose remediation is deferred per the
+D-2 byte-identity constraint; those rows carry full rationale in the
+originating phase section.
 
 ### 10.1 Remediation Summary
 
-| ID | Phase | Severity | Finding | Resolving Commit | Final Status |
-|----|:-----:|:--------:|---------|------------------|:------------:|
+| ID | Phase | Severity | Finding | Resolving Commit(s) | Final Status |
+|----|:-----:|:--------:|---------|---------------------|:------------:|
 | P1-F1 | 1 | MINOR | `data/report_paperformat.xml` — paperformat records not wrapped in `<data noupdate="1">` (admin customizations overwritten on upgrade) | `98d327e1a22` | REMEDIATED |
+| P1-F2 | 1 | **CRITICAL** (compound) | `addons/account_bank_reconciliation_ce/**/*` — Bank Reconciliation archaeology completeness gap: 18 files missing from `origin/pdlc` merged tip including the entire `report/`, `demo/`, `static/`, and `tests/` subtrees plus `wizard/bank_statement_import_wizard_views.xml` (ImportError blocked install; 4 manifest paths unresolved) | `ab5f35e3057`, `a827a50d86d`, `bd12ae5d0a8`, `0a98f0e6d57`, `5936c1f8986` | REMEDIATED |
+| P1-F3 | 1 | INFO | `demo/demo_data.xml:81,92,111,150,172,193,212,230,255,280` — `datetime.date.today()` safe_eval incompatibility in Odoo 19 (upstream latent defect; module installs cleanly "without demo data") | *No commit — D-2 locked, future PR path documented* | DOCUMENTED |
 | P2-F2 | 2 | MINOR | `security/account_financial_report_security.xml` — multi-company `ir.rule` `domain_force` missing `+ [False]` for NULL `company_id` records (7 rules affected) | `98d327e1a22` | REMEDIATED |
 | P3-F4 | 3 | MAJOR | `wizard/financial_report_wizard.py:415-418` — trial_balance branch passed `account_ids` without `'account_ids' in target_model._fields` introspection guard (ValueError at runtime) | `98d327e1a22` | REMEDIATED |
 | P3-F6 | 3 | MAJOR | `models/profit_loss.py:905` — `action_export_xlsx` returned `act_url` to unimplemented `/financial_reports/profit_loss/xlsx/<id>` route (runtime 404) | `98d327e1a22` | REMEDIATED |
 | P3-F7 | 3 | MAJOR | `models/cash_flow.py:1062` — `action_export_xlsx` returned `act_url` to unimplemented `/financial_reports/cash_flow/xlsx/<id>` route (runtime 404) | `98d327e1a22` | REMEDIATED |
 | P3-F8 | 3 | MINOR | `models/cash_flow.py:523-537` — `_classify_financing_activity` dividends heuristic edge cases undocumented (reversal entries, re-classifications, stock option exercises) | `98d327e1a22` | REMEDIATED |
+| P3-F10 | 3 | LOW (LATENT) | `models/reconciliation_matching_engine.py:58-72` vs `data/reconciliation_data.xml:38-82` — C-16 LATENT DEFECT: XML-seeded `ir.config_parameter` values diverge from Python class constants for 3 of 7 scoring parameters (`weight_amount` 0.40 vs 0.35; `weight_partner` 0.20 vs 0.25; `confidence_high` 90.0 vs 95.0); ICP rows are orphaned (zero `get_param` calls in module) so Python constants win at runtime | *No commit — D-2 locked, future PR path documented* | DOCUMENTED |
 | P4-F9 | 4 | MAJOR | `tests/test_export.py:366-488` — permissive XLSX assertions (`assertIn` or-clause across `ir.actions.act_url` and `ir.actions.report`) masked broken routes from CI | `98d327e1a22` | REMEDIATED |
 
-**Summary by severity (CP3)**: 3 MAJOR (P3-F4, P3-F6, P3-F7) + 1 MAJOR
-test-suite weakness (P4-F9) + 3 MINOR (P1-F1, P2-F2, P3-F8) = **7
-findings, all REMEDIATED**.
+**Summary by severity (cumulative CP3 + CP5)**: 1 CRITICAL compound
+(P1-F2 — resolved via 5 archaeology commits) + 3 MAJOR FR remediations
+(P3-F4, P3-F6, P3-F7) + 1 MAJOR test-suite weakness (P4-F9) + 3 MINOR
+(P1-F1, P2-F2, P3-F8) + 1 LOW LATENT (P3-F10, DOCUMENTED) + 1 INFO
+(P1-F3, DOCUMENTED) = **10 findings total: 8 REMEDIATED, 2 DOCUMENTED
+with deferred remediation paths**.
 
-**Summary by phase (CP3)**: Phase 1 (1), Phase 2 (1), Phase 3 (4),
-Phase 4 (1), Phases 5–7 (0). All CP3 remediations are additive and
-preserve behavior for code paths that were already correct.
+**Summary by phase (cumulative CP3 + CP5)**: Phase 1 (3 findings:
+1 CP3 REMEDIATED + 1 CP5 CRITICAL compound REMEDIATED + 1 CP5 INFO
+DOCUMENTED), Phase 2 (1 CP3 REMEDIATED), Phase 3 (5 findings:
+4 CP3 REMEDIATED + 1 CP5 LATENT DOCUMENTED), Phase 4 (1 CP3
+REMEDIATED), Phases 5–7 (0). All CP3 remediations are additive and
+preserve behavior for code paths that were already correct. All CP5
+remediations are content-import only (byte-identical from `origin/pdlc`)
+or documentation-only (no source changes).
 
 **Forward-looking**: The 3 INFO observations from the CP3 review
 (group XML_ID naming deviation, `_onchange_report_type` defensive
 cleanup positive observation, `general_ledger.py` N+1 query pattern)
 are documented in their respective sections but require no remediation
-commit. Checkpoints 4–5 will extend this ledger with FEATURE-002
-Bank Reconciliation findings and remediations.
+commit. The 2 CP5 DOCUMENTED findings (P1-F3 demo_data `safe_eval` and
+P3-F10 C-16 LATENT) each carry a deferred remediation path recorded in
+their originating phase sections (§3.3, §5.3); those paths are queued
+for post-archaeology PRs outside the scope of this review run.
+Checkpoint 6 will extend this ledger with the remainder of the
+FEATURE-002 Bank Reconciliation Security + Backend + QA slice
+findings.
 
 ---
 

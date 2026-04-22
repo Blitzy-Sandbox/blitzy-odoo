@@ -30,7 +30,7 @@
 
 Phase 1 of the Enterprise Accounting Parity initiative delivers two production-ready Odoo 19.0 Community Edition accounting modules — `account_financial_report_ce` (Financial Reporting Engine, 7 user stories FR-001 through FR-007) and `account_bank_reconciliation_ce` (Bank Reconciliation System, 5 user stories BR-001 through BR-005). The modules target accounting professionals, controllers, and finance teams running AGPL-licensed Odoo Community (no Odoo Enterprise modules required). Business impact: the modules close the most critical Enterprise Edition gap in the Community distribution — GAAP/IFRS-compliant financial statements and algorithmic bank reconciliation with a ≥95% matching-accuracy target — at zero proprietary-license cost. Technical scope: approximately 39,000 lines of Python/XML/CSS across 79 module files, 371 automated tests on `AccountTestInvoicingCommon`, multi-company record rules, multi-currency handling, and PDF/Excel export.
 
-This root-level `PROJECT_GUIDE.md` is the authoritative project guide for the repository. It incorporates and extends the historical Phase 1 narrative from [./blitzy/documentation/Project Guide.md](./blitzy/documentation/Project Guide.md) and adds a prominent [Section 2: Code Review Status](#2-code-review-status) that cross-links to the [./CODE_REVIEW.md](./CODE_REVIEW.md) segmented review record, satisfying the Segmented PR Review rule's cross-link requirement.
+This root-level `PROJECT_GUIDE.md` is the authoritative project guide for the repository. It incorporates and extends the historical Phase 1 narrative from [./blitzy/documentation/Project Guide.md](./blitzy/documentation/Project%20Guide.md) and adds a prominent [Section 2: Code Review Status](#2-code-review-status) that cross-links to the [./CODE_REVIEW.md](./CODE_REVIEW.md) segmented review record, satisfying the Segmented PR Review rule's cross-link requirement.
 
 ### 1.2 Completion Status
 
@@ -70,7 +70,7 @@ Computation: **725 / 800 = 90.625% ≈ 90.6%** complete. All 725 completed hours
 - [x] **Developer and end-user documentation** — [./docs/SETUP.md](./docs/SETUP.md) (538 lines), [./docs/USER_GUIDE.md](./docs/USER_GUIDE.md) (489 lines with updated Reporting → Financial navigation paths)
 - [x] **Test fixtures in `test_data/`** — sample CSV/OFX/QIF/CAMT.053 bank statements + 24-row balanced journal (Dr = Cr = 34,568.25) shared across both test suites
 - [x] **Refine PR Directives 1–7 remediation applied** — security defects (menu gate + ACL rows), navigation mismatch, and code-quality issues resolved on top of the prior production-ready commit
-- [x] **Segmented PR Review completed** on 2026-04-21 — 7 phases (Infrastructure/DevOps, Security, Backend Architecture, QA/Test Integrity, Business/Domain, Frontend, Other SME), all **APPROVED** with 12 of 13 findings addressed in-pass; full record at [./CODE_REVIEW.md](./CODE_REVIEW.md)
+- [ ] **Segmented PR Review — 7 phase scaffolds established (all OPEN)** on 2026-04-21 — 7 phases (Infrastructure/DevOps, Security, Backend Architecture, QA/Test Integrity, Business/Domain, Frontend, Other SME); per-phase reviews scheduled across Checkpoints 2–5; scaffold record at [./CODE_REVIEW.md](./CODE_REVIEW.md)
 
 ### 1.4 Critical Unresolved Issues
 
@@ -85,13 +85,13 @@ Computation: **725 / 800 = 90.625% ≈ 90.6%** complete. All 725 completed hours
 
 ### 1.5 Segmented PR Review — Archaeology Context
 
-On 2026-04-21 a retrospective archaeology report + Segmented PR Review was conducted over the merged scope on `origin/pdlc` (174 commits, 137 files, +61,375 / −2,022 LOC) relative to `origin/19.0` (tip `b58d620c4fb`). The review treated every merged change as if authored during the current run, organized findings into seven sequential domain phases, and remediated every addressable defect before closing each phase. The complete record — including YAML frontmatter (machine-parseable phase status), the commit inventory, the file inventory, per-phase findings and verifications, and the consolidated remediation ledger — is in [./CODE_REVIEW.md](./CODE_REVIEW.md).
+On 2026-04-21 the archaeology inventory and Segmented PR Review **scaffold** were established over the merged scope on `origin/pdlc` (174 commits, 137 files, +61,375 / −2,022 LOC) relative to `origin/19.0` (tip `b58d620c4fb`) at Checkpoint 1 (Foundations). The scaffold treats every merged change as if authored during the current run and organizes the review into seven sequential domain phases; per-phase analysis, findings, remediation, and verification will be conducted incrementally across Checkpoints 2–5. The scaffold record — including YAML frontmatter (machine-parseable phase status, initial values `status: "OPEN"` and zero counters for all 7 phases), the commit inventory, the file inventory, and placeholder phase-section templates — is in [./CODE_REVIEW.md](./CODE_REVIEW.md).
 
 ---
 
 ## 2. Code Review Status
 
-The complete segmented pull-request review for the Phase 1 merged scope is documented in [CODE_REVIEW.md](./CODE_REVIEW.md). This review covers **174 merged commits** and **137 changed files** (**+61,375 insertions**, **−2,022 deletions**) from `origin/pdlc` relative to `origin/19.0`, organized into seven sequential review phases per the user's Segmented PR Review rule. The overall disposition is **APPROVED** — every phase transitioned to `APPROVED` after all addressable findings were remediated and verified.
+The segmented pull-request review scaffold for the Phase 1 merged scope is documented in [CODE_REVIEW.md](./CODE_REVIEW.md). The review covers **174 merged commits** and **137 changed files** (**+61,375 insertions**, **−2,022 deletions**) from `origin/pdlc` relative to `origin/19.0`, organized into seven sequential review phases per the user's Segmented PR Review rule. The segmented review is currently in **OPEN** state at this scaffold milestone (Checkpoint 1); per-phase review and remediation activity will occur in Checkpoints 2–5, and the overall disposition remains **OPEN** until all 7 phases reach `APPROVED` or `BLOCKED`.
 
 ### 2.1 Scope Statistics
 
@@ -105,22 +105,22 @@ The complete segmented pull-request review for the Phase 1 merged scope is docum
 | Contributing Blitzy branches | **2** merged (`blitzy-4490115e-...` via PR #2; `blitzy-ebbf6c96-...` via PR #3) |
 | Merge commits | **2** (`2c52c6b3aaf` PR #2, 2026-02-02; `5a7e83629bc` PR #3, 2026-04-17) |
 | Review phases | **7** |
-| Findings total / addressed | **13** total / **12** addressed (1 INFO-level observation explicitly out-of-scope per AAP §0.8.2) |
+| Findings total / addressed | **0** total / **0** addressed at scaffold milestone (per-phase review pending in Checkpoints 2–5) |
 
 ### 2.2 Phase Status Summary
 
-| Phase | Domain | Reviewer Agent | Status |
-|------:|--------|----------------|:------:|
-| 1 | Infrastructure / DevOps | Blitzy DevOps Reviewer Agent | **APPROVED** |
-| 2 | Security | Blitzy Security Reviewer Agent | **APPROVED** |
-| 3 | Backend Architecture | Blitzy Backend Architect Agent | **APPROVED** |
-| 4 | QA / Test Integrity | Blitzy QA Integrity Agent | **APPROVED** |
-| 5 | Business / Domain | Blitzy Business Analyst Agent | **APPROVED** |
-| 6 | Frontend | Blitzy Frontend Reviewer Agent | **APPROVED** |
-| 7 | Other SME (Documentation and Compliance) | Blitzy Documentation and Compliance SME Agent | **APPROVED** |
-| — | **Overall** | — | **APPROVED** |
+| Phase | Domain | Reviewer Agent | Findings / Addressed | Status |
+|------:|--------|----------------|---------------------:|:------:|
+| 1 | Infrastructure / DevOps | Blitzy DevOps Reviewer Agent | 0 / 0 | **OPEN** |
+| 2 | Security | Blitzy Security Reviewer Agent | 0 / 0 | **OPEN** |
+| 3 | Backend Architecture | Blitzy Backend Architect Agent | 0 / 0 | **OPEN** |
+| 4 | QA / Test Integrity | Blitzy QA Integrity Agent | 0 / 0 | **OPEN** |
+| 5 | Business / Domain | Blitzy Business Analyst Agent | 0 / 0 | **OPEN** |
+| 6 | Frontend | Blitzy Frontend Reviewer Agent | 0 / 0 | **OPEN** |
+| 7 | Other SME (Documentation and Compliance) | Blitzy Documentation and Compliance SME Agent | 0 / 0 | **OPEN** |
+| — | **Overall** | — | **0 / 0** | **OPEN** |
 
-See the complete findings, remediation log, verification evidence, and per-phase disposition in [./CODE_REVIEW.md](./CODE_REVIEW.md).
+All seven phase reviews are OPEN at this scaffold milestone (Checkpoint 1). Findings, remediation entries, verification evidence, and per-phase dispositions will be populated incrementally during Checkpoints 2–5. See the emerging record in [./CODE_REVIEW.md](./CODE_REVIEW.md).
 
 ### 2.3 Review Pipeline
 
@@ -153,6 +153,8 @@ flowchart LR
 
 ### 3.1 Completed Work Detail (725 hours)
 
+The table below enumerates the 725 hours of work completed during the prior Blitzy run(s) and captured as the merged state on `origin/pdlc` (head commit `5a7e83629bc`). The individual addon source files (under `addons/account_financial_report_ce/` and `addons/account_bank_reconciliation_ce/`) are not yet present in the Checkpoint 1 Foundations working tree; they will be imported from `origin/pdlc` at Checkpoint 3 (FR module) and Checkpoint 4 (BR module). LOC figures and test counts in the Description column are sourced from [`./blitzy/documentation/Project Guide.md`](./blitzy/documentation/Project%20Guide.md) — the authoritative historical artifact for this completion breakdown.
+
 | Component | Hours | Description |
 |---|---:|---|
 | **FR-001 Balance Sheet Report** | 40 | `balance_sheet.py` (1,286 LOC) — GAAP/IFRS section classification via `account.account.account_type`, `Assets = Liabilities + Equity` enforcement, comparative-period columns, report-line hierarchy; 19 tests in `test_balance_sheet.py` (1,204 LOC) |
@@ -164,7 +166,7 @@ flowchart LR
 | **FR-007 Report Export & Drill-down** | 40 | `ir.actions.report` bindings for all 6 reports, QWeb → PDF rendering, XLSX export via `openpyxl`, `ir.actions.act_window` drill-down from report line → source `account.move.line`; 26 tests in `test_export.py` (928 LOC) |
 | **FR Abstract Base + Unified Wizard + Integration** | 50 | `financial_report.py` (891 LOC) abstract base + `financial_report_wizard.py` (596 LOC) unified wizard + `financial_report_wizard_views.xml` (271 LOC); 72 integration tests in `test_financial_reports.py` (1,554 LOC) |
 | **FR QWeb Templates (6 reports)** | 35 | `balance_sheet_report.xml`, `profit_loss_report.xml`, `cash_flow_report.xml`, `general_ledger_report.xml`, `trial_balance_report.xml`, `aged_partner_balance_report.xml` + `report_templates.xml` bindings (approximately 1,770 LOC of XML) — section headers, indentation, comparison columns, equation-validation badges |
-| **FR Security/ACL/SCSS/Config** | 5 | `account_financial_report_security.xml` (groups + 7 `ir.rule`), `ir.model.access.csv` (34 rows incl. core-model reads), `report.scss` + `report_print.scss`, `report_paperformat.xml`, `menuitem.xml`, [./addons/account_financial_report_ce/__manifest__.py](./addons/account_financial_report_ce/__manifest__.py) v19.0.1.1.0 |
+| **FR Security/ACL/SCSS/Config** | 5 | `account_financial_report_security.xml` (groups + 7 `ir.rule`), `ir.model.access.csv` (34 rows incl. core-model reads), `report.scss` + `report_print.scss`, `report_paperformat.xml`, `menuitem.xml`, `addons/account_financial_report_ce/__manifest__.py` v19.0.1.1.0 |
 | **BR-001 Multi-format Statement Import** | 70 | `bank_statement_import.py` (1,379 LOC) — format auto-detection, CSV column mapping, OFX via `ofxparse`, QIF text-line parsing, CAMT.053 via `lxml.etree`, hash-based deduplication, `_inherit` fields on `account.bank.statement.line`; 26 tests in `test_statement_import.py` (1,191 LOC) |
 | **BR-002 Algorithmic Matching Engine** | 65 | `reconciliation_matching_engine.py` (949 LOC) — weighted scoring `amount=0.35, reference=0.25, partner=0.25, date=0.15`, `CONFIDENCE_HIGH=95.0` / `MEDIUM=70.0` / `LOW=50.0`, `_CANDIDATE_DATE_WINDOW=90` days, multi-match resolution, one-to-many and many-to-one matching; 36 tests in `test_matching_engine.py` (1,036 LOC) + 8 tests in `test_candidate_date_window.py` (300 LOC) |
 | **BR-003 Manual Reconciliation Workflow** | 50 | `reconciliation_wizard.py` (approximately 902 LOC) + views — match/unmatch/batch-confirm, split-panel UI with confidence badges, write-off dialog, audit trail via standard Odoo reconciliation records; 21 tests in `test_manual_reconciliation.py` (1,410 LOC) |
@@ -277,6 +279,8 @@ pie showData title Test Distribution (371 total, all passing)
 
 ## 5. Runtime Validation
 
+All runtime-validation evidence in the subsections below is **reported by the prior Blitzy run that produced refine-PR HEAD `8d128ff9d57`, not re-verified in this archaeology run** per AAP §0.7.2. The two addon module directories (`addons/account_financial_report_ce/`, `addons/account_bank_reconciliation_ce/`) are not yet present in the Checkpoint 1 Foundations working tree; module install, upgrade, ORM registration, security configuration, and UI parse verification will be re-executable from Checkpoint 3 (FR) and Checkpoint 4 (BR) onward, once those addon files are imported from `origin/pdlc`.
+
 ### 5.1 Install, Upgrade, ORM Registration
 
 - **Module Install** — Fresh install of both modules on `test_phase1` database completed successfully with zero errors. Core Odoo modules loaded as transitive dependencies (`account`, `analytic`, `base`, `base_import`).
@@ -339,48 +343,38 @@ pie showData title Test Distribution (371 total, all passing)
 
 | Benchmark | Target / Requirement | Status | Evidence |
 |---|---|---|---|
-| License — FR module | AGPL-3.0-or-later | Pass | `license = "AGPL-3"` in [`./addons/account_financial_report_ce/__manifest__.py`](./addons/account_financial_report_ce/__manifest__.py) |
-| License — BR module | AGPL-3.0-or-later | Pass | `license = "AGPL-3"` in [`./addons/account_bank_reconciliation_ce/__manifest__.py`](./addons/account_bank_reconciliation_ce/__manifest__.py) |
-| Zero Enterprise-module dependencies | No dependency on `account_reports`, `account_accountant`, or any other Enterprise-only addon | Pass | FR `depends = ["account", "analytic"]`; BR `depends = ["account"]`; both lists contain only Community addons |
-| Odoo version alignment | 19.0 | Pass | FR version `19.0.1.1.0`; BR version `19.0.1.0.0`; versions follow OCA pattern `<odoo>.<major>.<minor>.<patch>` |
+| License — FR module | AGPL-3.0-or-later | Pass (per historical artifact) | `license = "AGPL-3"` in `addons/account_financial_report_ce/__manifest__.py` as recorded in `blitzy/documentation/Project Guide.md` (addon file imports at CP3) |
+| License — BR module | AGPL-3.0-or-later | Pass (per historical artifact) | `license = "AGPL-3"` in `addons/account_bank_reconciliation_ce/__manifest__.py` as recorded in `blitzy/documentation/Project Guide.md` (addon file imports at CP4) |
+| Zero Enterprise-module dependencies | No dependency on `account_reports`, `account_accountant`, or any other Enterprise-only addon | Pass (per historical artifact) | FR `depends = ["account", "analytic"]`; BR `depends = ["account"]`; both lists contain only Community addons (addon files imported at CP3/CP4) |
+| Odoo version alignment | 19.0 | Pass (per historical artifact) | FR version `19.0.1.1.0`; BR version `19.0.1.0.0`; versions follow OCA pattern `<odoo>.<major>.<minor>.<patch>` (addon files imported at CP3/CP4) |
 | Python version target | 3.10–3.13 | Pass | `ruff.toml` targets `py310`; run-time tested on Python 3.12.3 |
-| Ruff lint — both modules | 0 violations | Pass | `ruff check --no-fix` reports `All checks passed!` on refine-PR HEAD `8d128ff9d57` |
-| OCA manifest metadata — FR | author, website, category, description, depends, data, demo, assets, external_dependencies, installable, application, license populated | Pass | All keys present in [`./addons/account_financial_report_ce/__manifest__.py`](./addons/account_financial_report_ce/__manifest__.py) |
-| OCA manifest metadata — BR | author, website, category, description, depends, data, demo, assets, external_dependencies, installable, application, post_init_hook, license populated | Pass | All keys present in [`./addons/account_bank_reconciliation_ce/__manifest__.py`](./addons/account_bank_reconciliation_ce/__manifest__.py) |
-| `ir.model.access.csv` — FR module | One row per `(model, group)` pairing covering FR-1 and FR-2 audiences | Pass | 10 rows in `security/ir.model.access.csv` |
-| `ir.model.access.csv` — BR module | One row per `(model, group)` pairing covering BR-1 and BR-2 audiences | Pass | 15+ rows in `security/ir.model.access.csv` |
-| `ir.rule` multi-company isolation | Record rules filter by `company_id` for all report models and reconciliation-matching records | Pass | 8 `<record model="ir.rule">` entries across both modules' `security/*.xml` |
-| `post_init_hook` correctness | BR module adds `base.group_user` into BR-user hierarchy to enable `ir.attachment` uploads | Pass | `hooks.py` `post_init_hook` wires `Command.link(base.group_user.id)` into BR-user `implied_ids` |
-| Static assets (SCSS) — FR | Registered via `assets` key to `web.assets_backend` and `web.assets_report` | Pass | `'web.assets_backend': [ 'account_financial_report_ce/static/src/scss/report.scss' ]` + report assets |
-| Static assets (SCSS) — BR | Registered via `assets` key to `web.assets_backend` | Pass | `'web.assets_backend': [ 'account_bank_reconciliation_ce/static/src/scss/reconciliation.scss' ]` |
-| QWeb report registration | Every PDF / XLSX action registered as `<record model="ir.actions.report">` | Pass | 7 report actions: 6 FR (balance_sheet, profit_loss, cash_flow, general_ledger, trial_balance, aged_partner_balance) + 1 BR (reconciliation_status) |
-| XML IDs stable | All records carry stable, noun-based XML IDs scoped to module | Pass | Pattern `<module>.<kind>_<subject>` consistently applied |
-| `noupdate="1"` on record rules | Applied so manual customizations survive `-u` upgrades | Pass | All `<data noupdate="1">` blocks surround `ir.rule` + menu-gate entries |
-| Translation infrastructure | i18n-ready (`_()` / `tools.translate._` used for user-facing strings) | Partial | `_()` wrapping in place; `.po` / `.pot` file extraction deferred to Weblate integration ([Section 7](#7-risk-assessment) R17) |
+| Ruff lint — both modules | 0 violations | Pass (per historical artifact) | `ruff check --no-fix` reports `All checks passed!` on refine-PR HEAD `8d128ff9d57` (addon files imported at CP3/CP4; re-verification scheduled for CP3/CP4) |
+| OCA manifest metadata — FR | author, website, category, description, depends, data, demo, assets, external_dependencies, installable, application, license populated | Pass (per historical artifact) | All keys present in `addons/account_financial_report_ce/__manifest__.py` as recorded in `blitzy/documentation/Project Guide.md` (addon file imports at CP3) |
+| OCA manifest metadata — BR | author, website, category, description, depends, data, demo, assets, external_dependencies, installable, application, post_init_hook, license populated | Pass (per historical artifact) | All keys present in `addons/account_bank_reconciliation_ce/__manifest__.py` as recorded in `blitzy/documentation/Project Guide.md` (addon file imports at CP4) |
+| `ir.model.access.csv` — FR module | One row per `(model, group)` pairing covering FR-1 and FR-2 audiences | Pass (per historical artifact) | 10 rows in `security/ir.model.access.csv` (addon files imported at CP3) |
+| `ir.model.access.csv` — BR module | One row per `(model, group)` pairing covering BR-1 and BR-2 audiences | Pass (per historical artifact) | 15+ rows in `security/ir.model.access.csv` (addon files imported at CP4) |
+| `ir.rule` multi-company isolation | Record rules filter by `company_id` for all report models and reconciliation-matching records | Pass (per historical artifact) | 8 `<record model="ir.rule">` entries across both modules' `security/*.xml` (addon files imported at CP3/CP4) |
+| `post_init_hook` correctness | BR module adds `base.group_user` into BR-user hierarchy to enable `ir.attachment` uploads | Pass (per historical artifact) | `hooks.py` `post_init_hook` wires `Command.link(base.group_user.id)` into BR-user `implied_ids` (addon files imported at CP4) |
+| Static assets (SCSS) — FR | Registered via `assets` key to `web.assets_backend` and `web.assets_report` | Pass (per historical artifact) | `'web.assets_backend': [ 'account_financial_report_ce/static/src/scss/report.scss' ]` + report assets (addon files imported at CP3) |
+| Static assets (SCSS) — BR | Registered via `assets` key to `web.assets_backend` | Pass (per historical artifact) | `'web.assets_backend': [ 'account_bank_reconciliation_ce/static/src/scss/reconciliation.scss' ]` (addon files imported at CP4) |
+| QWeb report registration | Every PDF / XLSX action registered as `<record model="ir.actions.report">` | Pass (per historical artifact) | 7 report actions: 6 FR (balance_sheet, profit_loss, cash_flow, general_ledger, trial_balance, aged_partner_balance) + 1 BR (reconciliation_status) (addon files imported at CP3/CP4) |
+| XML IDs stable | All records carry stable, noun-based XML IDs scoped to module | Pass (per historical artifact) | Pattern `<module>.<kind>_<subject>` consistently applied (addon files imported at CP3/CP4) |
+| `noupdate="1"` on record rules | Applied so manual customizations survive `-u` upgrades | Pass (per historical artifact) | All `<data noupdate="1">` blocks surround `ir.rule` + menu-gate entries (addon files imported at CP3/CP4) |
+| Translation infrastructure | i18n-ready (`_()` / `tools.translate._` used for user-facing strings) | Partial (per historical artifact) | `_()` wrapping in place; `.po` / `.pot` file extraction deferred to Weblate integration ([Section 7](#7-risk-assessment) R17) (addon files imported at CP3/CP4) |
 | Accessibility (WCAG 2.1 AA) | Inherited from Odoo 19 upstream; custom views respect accessibility attributes | Pass | Odoo 19 stack is WCAG 2.1 AA–aligned; custom views use native Odoo widgets without overriding accessibility attributes |
-| 371 / 371 tests pass | 0 failed, 0 errors | Pass | `132.41 s, 185,961 queries`, reference commit `8d128ff9d57` |
-| Coverage ≥80% per module | AAP §0.7 target | Partial | Empirically high (185,961 queries across 371 tests) but not formally measured — 4 h scheduled ([Section 3.2](#32-remaining-work-detail-75-hours)) |
+| 371 / 371 tests pass | 0 failed, 0 errors | Pass (per historical artifact) | `132.41 s, 185,961 queries`, reference commit `8d128ff9d57` (test suite imported at CP3/CP4; re-verification scheduled for CP5) |
+| Coverage ≥80% per module | AAP §0.7 target | Partial (per historical artifact) | Empirically high (185,961 queries across 371 tests) but not formally measured — 4 h scheduled ([Section 3.2](#32-remaining-work-detail-75-hours)) |
 | Performance SLAs (AAP §0.7.4) | FR <30 s / 100k lines; matching <5 s / 1 k lines; import <10 s / 500 lines; rule evaluation <1 s | Not executed | 16 h scheduled for benchmarking ([Section 3.2](#32-remaining-work-detail-75-hours)) |
 
 ### 6.2 Segmented PR Review Compliance
 
-The Segmented PR Review for the merged Phase 1 scope produced seven phase dispositions — **all APPROVED** — as recorded in [`./CODE_REVIEW.md`](./CODE_REVIEW.md). Compliance obligations derived from that review:
-
-- All menu gates now reference module-owned groups (Phase 2 finding F-SEC-1, addressed).
-- Write ACLs for `account.move`, `account.move.line`, `account.partial.reconcile`, `account.full.reconcile` are explicit on BR user/manager groups (Phase 2 finding F-SEC-2, addressed).
-- Read ACLs for `account.move`, `account.move.line`, `account.account`, `res.partner` are explicit on FR user group (Phase 2 finding F-SEC-2, addressed).
-- `DEFAULT_WEIGHTS` XML data record now matches the Python-level constant on `reconciliation_matching_engine.py` (Phase 3 finding F-BE-1, addressed).
-- `noqa: BLE001` suppressions audited and narrowed to justified cases (Phase 3 finding F-BE-2, addressed).
-- `docs/USER_GUIDE.md` navigation-path corrections landed (Phase 7 finding F-DOC-1, addressed).
-- Mechanical lint drift (`UP009`) removed on refine-PR HEAD `8d128ff9d57` (Phase 7 finding F-DOC-2, addressed).
-
-See [`./CODE_REVIEW.md`](./CODE_REVIEW.md) for the complete finding ledger, per-phase verification evidence, and one INFO-level out-of-scope item documented under Phase 4 (QA/Test Integrity).
+The Segmented PR Review for the merged Phase 1 scope is **in progress**: the scaffold with seven OPEN phase entries is established in [`./CODE_REVIEW.md`](./CODE_REVIEW.md), and the per-phase reviews (Phases 1–7) will be conducted across Checkpoints 2–5. At this Checkpoint 1 Foundations milestone, no phase findings have been identified and no per-phase compliance obligations have been derived. Once each reviewer Agent completes its domain analysis, remediation, and verification, the corresponding findings, remediation commits, and verification evidence will be populated in the respective phase sections of [`./CODE_REVIEW.md`](./CODE_REVIEW.md) and summarized here.
 
 ---
 
 ## 7. Risk Assessment
 
-This section preserves the 18 risks catalogued in the historical Phase 1 project-status narrative ([`./blitzy/documentation/Project Guide.md`](./blitzy/documentation/Project Guide.md)), updates their status in light of the current Segmented PR Review run, and augments them with 1 additional review-surfaced risk (R19). Severity bands: C = Critical, H = High, M = Medium, L = Low. Probability bands: VH = Very High, H = High, M = Medium, L = Low, VL = Very Low.
+This section preserves the 18 risks catalogued in the historical Phase 1 project-status narrative ([`./blitzy/documentation/Project Guide.md`](./blitzy/documentation/Project%20Guide.md)). At this Checkpoint 1 Foundations milestone, no additional review-surfaced risks have been identified; any risks discovered during per-phase reviews (Checkpoints 2–5) will be appended to this table as they are surfaced and verified. Severity bands: C = Critical, H = High, M = Medium, L = Low. Probability bands: VH = Very High, H = High, M = Medium, L = Low, VL = Very Low.
 
 | # | Risk | Category | Severity | Probability | Mitigation | Status |
 |---|---|---|:---:|:---:|---|---|
@@ -398,13 +392,12 @@ This section preserves the 18 risks catalogued in the historical Phase 1 project
 | R12 | Write ACLs missing for `account.move`, `.line`, `account.partial.reconcile`, `account.full.reconcile` — reconciliation operations would fail on commit | Security | C | L | Added explicit write ACLs; verified by BR-003 tests | Mitigated |
 | R13 | Read ACLs missing for `account.move`, `.line`, `account.account`, `res.partner` — FR users would not see data | Security | C | L | Added explicit read ACLs on FR user group; verified by FR-004 General Ledger tests | Mitigated |
 | R14 | `DEFAULT_WEIGHTS` XML data record could drift from Python constant | Data Consistency | M | L | Refine PR aligned XML and Python; `data/reconciliation_data.xml` now mirrors `amount:0.35, reference:0.25, partner:0.25, date:0.15` | Mitigated |
-| R15 | USER_GUIDE.md navigation path incorrect for Financial Reports menu | Documentation | L | L | Corrected on refine PR (Phase 7 finding F-DOC-1) | Mitigated |
+| R15 | USER_GUIDE.md navigation path incorrect for Financial Reports menu | Documentation | L | L | Corrected on refine PR HEAD `8d128ff9d57`; Phase 7 (Other SME) review will formally record this remediation during Checkpoint 5 | Mitigated |
 | R16 | `post_init_hook` failure would silently leave BR users without `ir.attachment` upload rights | Security | H | L | Defensive `try/except` in `hooks.py` with `_logger.exception`; install-time smoke-test validates group membership | Mitigated |
 | R17 | Translation infrastructure incomplete — customer deployments in non-English locales may regress | Localization | M | L | `_()` wrapping already applied; `.po` extraction scheduled (12 h, see also R7) | Mitigated (partial) |
 | R18 | Module dependency drift against upstream Odoo 19 `account` module | Maintainability | M | L | `_inherit` extensions minimal and guarded; 371/371 tests validate no conflicts on 19.0 HEAD | Mitigated |
-| R19 | **NEW — Segmented PR Review** (Phase 4 QA INFO finding): existing fixtures do not include a representative 100k-line `account.move.line` dataset for performance SLA validation | QA / Performance | M | L | Tracked alongside R1; 16 h benchmark task to synthesize fixture dataset; see [`./CODE_REVIEW.md`](./CODE_REVIEW.md) Phase 4 INFO item | Open |
 
-All Mitigated risks are remediated on refine-PR HEAD `8d128ff9d57` and have explicit test coverage; all Open risks are scoped within the 75 remaining hours ([Section 3.2](#32-remaining-work-detail-75-hours)). Refer to [`./CODE_REVIEW.md`](./CODE_REVIEW.md) for the per-finding remediation ledger.
+All Mitigated risks are remediated on refine-PR HEAD `8d128ff9d57` and have explicit test coverage; all Open risks are scoped within the 75 remaining hours ([Section 3.2](#32-remaining-work-detail-75-hours)). Refer to [`./CODE_REVIEW.md`](./CODE_REVIEW.md) for the segmented-review scaffold and (once populated by Checkpoints 2–5) the per-finding remediation ledger.
 
 ---
 
@@ -440,21 +433,19 @@ pie showData title Test Distribution (371 tests, all passing)
     "Bank Reconciliation (211)" : 211
 ```
 
-### 8.4 Segmented PR Review — Phase Disposition Breakdown
+### 8.4 Segmented PR Review — Phase Disposition Snapshot
 
-All seven phases of the Segmented PR Review for the merged Phase 1 scope reached `APPROVED` disposition. The chart below renders the phase-by-phase counts of addressable findings and whether they were resolved.
+At this Checkpoint 1 Foundations milestone, the seven Segmented PR Review phases are in **OPEN** scaffold state; no findings have been recorded and no phase has transitioned to `APPROVED` or `BLOCKED`. The pie chart below renders the current phase-disposition distribution and will be updated incrementally as Checkpoints 2–5 populate the per-phase reviews.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#F2F0FE','primaryTextColor':'#333333','primaryBorderColor':'#5B39F3','lineColor':'#999999','secondaryColor':'#F4EFF6','xyChart':{'backgroundColor':'#FFFFFF','titleColor':'#333333','xAxisLabelColor':'#333333','yAxisLabelColor':'#333333','plotColorPalette':'#5B39F3, #94FAD5'}}}%%
-xychart-beta
-    title "Findings by Phase (All 7 Phases APPROVED)"
-    x-axis ["Phase 1 Infra", "Phase 2 Sec", "Phase 3 Backend", "Phase 4 QA", "Phase 5 Biz", "Phase 6 FE", "Phase 7 Docs"]
-    y-axis "Findings" 0 --> 5
-    bar [3, 2, 2, 2, 1, 1, 2]
-    line [3, 2, 2, 1, 1, 1, 2]
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#F2F0FE','primaryTextColor':'#333333','primaryBorderColor':'#5B39F3','lineColor':'#999999','secondaryColor':'#F4EFF6','pie1':'#5B39F3','pie2':'#94FAD5','pie3':'#2D1C77','pieStrokeColor':'#5B39F3','pieOuterStrokeColor':'#5B39F3','pieTitleTextSize':'15px','pieSectionTextSize':'13px','pieLegendTextColor':'#333333'}}}%%
+pie showData title Phase Disposition at Checkpoint 1 (scaffold)
+    "OPEN (scaffold)" : 7
+    "APPROVED" : 0
+    "BLOCKED" : 0
 ```
 
-Legend: bar = `findings_total`, line = `findings_addressed`. The gap between the Phase 4 QA bar (2) and line (1) reflects the single INFO-level out-of-scope item recorded in [`./CODE_REVIEW.md`](./CODE_REVIEW.md) (tracked as R19 in [Section 7](#7-risk-assessment)).
+A findings-by-phase breakdown (total vs. addressed) will be added here once Checkpoints 2–5 populate the per-phase review sections of [`./CODE_REVIEW.md`](./CODE_REVIEW.md). The chart format will be selected at that time for maximum renderer compatibility across GitHub-flavored Markdown.
 
 ### 8.5 Remaining Hours by Category
 
@@ -491,13 +482,15 @@ flowchart LR
 
 ### 9.1 Achievements
 
+The achievements below describe the state of work merged to `origin/pdlc` (head commit `5a7e83629bc`) as reported by the prior Blitzy run and captured in [`./blitzy/documentation/Project Guide.md`](./blitzy/documentation/Project%20Guide.md). The corresponding addon source directories are not yet in the Checkpoint 1 Foundations working tree; they will be imported from `origin/pdlc` during Checkpoints 3 (FR) and 4 (BR), at which point these achievements become independently verifiable on the active branch.
+
 - **Feature completeness** — FEATURE-001 Financial Reporting Engine and FEATURE-002 Bank Reconciliation System both shipped with all user stories (FR-001 through FR-007, BR-001 through BR-005) implemented against production-quality Odoo 19 CE conventions.
 - **Test maturity** — 371 / 371 tests passing (260 FR + 211 BR), zero failures, zero errors, 132.41 s runtime, 185,961 SQL queries, producing strong empirical confidence in correctness.
 - **Clean lint** — `ruff check --no-fix` reports zero violations on both modules at refine-PR HEAD `8d128ff9d57`.
 - **Licensing and compliance** — AGPL-3.0 for both modules, zero Odoo Enterprise-module dependencies, OCA-style manifest conformance (see [Section 6.1](#61-compliance-and-quality-benchmarks)).
 - **Security hardening** — 4 module-owned security groups, 8 `ir.rule` entries for multi-company isolation, explicit CRUD ACLs for all core accounting models touched, `post_init_hook` to wire `base.group_user` into the BR-user hierarchy for `ir.attachment` upload compatibility.
 - **Documentation corpus** — 538-line [`./docs/SETUP.md`](./docs/SETUP.md), 489-line [`./docs/USER_GUIDE.md`](./docs/USER_GUIDE.md), 43 ticket artifacts under `./tickets/`, 730-line [`./blitzy/documentation/Project Guide.md`](./blitzy/documentation/Project%20Guide.md) and 769-line [`./blitzy/documentation/Technical Specifications.md`](./blitzy/documentation/Technical%20Specifications.md).
-- **Segmented PR Review** — All seven phases (Infrastructure/DevOps, Security, Backend Architecture, QA/Test Integrity, Business/Domain, Frontend, Other SME) reached `APPROVED` disposition on 2026-04-21. See [`./CODE_REVIEW.md`](./CODE_REVIEW.md).
+- **Segmented PR Review** — The scaffold for all seven phases (Infrastructure/DevOps, Security, Backend Architecture, QA/Test Integrity, Business/Domain, Frontend, Other SME) was established on 2026-04-21 at this Checkpoint 1 Foundations milestone. Per-phase dispositions will be recorded in Checkpoints 2–5 as each reviewer Agent completes its domain review. See [`./CODE_REVIEW.md`](./CODE_REVIEW.md).
 
 ### 9.2 Remaining Gaps
 
@@ -540,7 +533,7 @@ The remaining 17 hours (translations, per-module READMEs, `pre-commit` complianc
 | Matching engine performance (1 k candidates) | < 5 s | Not benchmarked | — | Open |
 | Statement import performance (500 lines) | < 10 s | Not benchmarked | — | Open |
 | Rule evaluation performance | < 1 s / rule | Not benchmarked | — | Open |
-| Segmented PR Review phases approved | 7 / 7 | 7 / 7 | 0 | Met |
+| Segmented PR Review phases approved | 7 / 7 | 0 / 7 (scaffold OPEN at CP1) | — | In Progress |
 | Licensing compliance | AGPL-3 + zero Enterprise deps | AGPL-3 + zero Enterprise deps | 0 | Met |
 
 ### 9.5 Production Readiness Assessment
@@ -559,7 +552,7 @@ The remaining 17 hours (translations, per-module READMEs, `pre-commit` complianc
 4. Execute UAT against representative real bank-statement files from ≥3 banks × 4 formats.
 5. Author per-module `README.md` files before the first external-contributor PR window.
 6. Integrate OCA `pre-commit` hooks locally and in CI.
-7. Open the production-ready PR only after every Segmented PR Review phase disposition remains `APPROVED` and all critical-path items in [Section 9.3](#93-critical-path-58-hours-for-production-readiness) close.
+7. Open the production-ready PR only after every Segmented PR Review phase disposition is marked `APPROVED` (or explicitly `BLOCKED` with rationale per User Rule R-2) across Checkpoints 2–5, and all critical-path items in [Section 9.3](#93-critical-path-58-hours-for-production-readiness) close.
 
 ---
 
@@ -574,8 +567,10 @@ The remaining 17 hours (translations, per-module READMEs, `pre-commit` complianc
 
 ### 10.2 Module Manifests (canonical dependency and version references)
 
-- [`./addons/account_financial_report_ce/__manifest__.py`](./addons/account_financial_report_ce/__manifest__.py) — FR module (v `19.0.1.1.0`, AGPL-3, `depends = ["account", "analytic"]`, external deps `openpyxl`).
-- [`./addons/account_bank_reconciliation_ce/__manifest__.py`](./addons/account_bank_reconciliation_ce/__manifest__.py) — BR module (v `19.0.1.0.0`, AGPL-3, `depends = ["account"]`, external deps `ofxparse`, `post_init_hook = "post_init_hook"`).
+At this Checkpoint 1 Foundations milestone, the two addon module directories (`addons/account_financial_report_ce/`, `addons/account_bank_reconciliation_ce/`) are not yet in the working tree; they will be imported from `origin/pdlc` during Checkpoint 3 (FR) and Checkpoint 4 (BR), at which point the manifest paths below will resolve and be linked. The historical manifest metadata recorded in [`./blitzy/documentation/Project Guide.md`](./blitzy/documentation/Project%20Guide.md) captures the authoritative version and dependency facts:
+
+- `addons/account_financial_report_ce/__manifest__.py` — FR module (v `19.0.1.1.0`, AGPL-3, `depends = ["account", "analytic"]`, external deps `openpyxl`). To be imported at Checkpoint 3.
+- `addons/account_bank_reconciliation_ce/__manifest__.py` — BR module (v `19.0.1.0.0`, AGPL-3, `depends = ["account"]`, external deps `ofxparse`, `post_init_hook = "post_init_hook"`). To be imported at Checkpoint 4.
 
 ### 10.3 Historical Artifacts (Phase 1)
 
@@ -652,10 +647,12 @@ All paths are repository-root-relative. All statistics cited in this document ar
 
 ### 11.4 Module Manifests
 
-| Path | Role |
-|---|---|
-| [`./addons/account_financial_report_ce/__manifest__.py`](./addons/account_financial_report_ce/__manifest__.py) | FR module manifest (v `19.0.1.1.0`, AGPL-3). |
-| [`./addons/account_bank_reconciliation_ce/__manifest__.py`](./addons/account_bank_reconciliation_ce/__manifest__.py) | BR module manifest (v `19.0.1.0.0`, AGPL-3, `post_init_hook = "post_init_hook"`). |
+The two addon manifest files are not present in the Checkpoint 1 working tree; they will be imported from `origin/pdlc` during Checkpoint 3 (FR) and Checkpoint 4 (BR). The rows below record the canonical post-import paths and metadata for forward reference.
+
+| Path (to be imported) | Role | Import Checkpoint |
+|---|---|---|
+| `addons/account_financial_report_ce/__manifest__.py` | FR module manifest (v `19.0.1.1.0`, AGPL-3). | CP3 |
+| `addons/account_bank_reconciliation_ce/__manifest__.py` | BR module manifest (v `19.0.1.0.0`, AGPL-3, `post_init_hook = "post_init_hook"`). | CP4 |
 
 ### 11.5 Git Reference Points
 

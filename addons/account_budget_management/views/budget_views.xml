@@ -764,8 +764,10 @@
         defined in models/account_analytic_account.py:
 
         * Smart button: opens the set of budget lines that reference this
-          analytic account (via action_view_budget_lines — note the "view"
-          prefix, matching the method name on the model).
+          analytic account (via action_open_budget_lines — the "open"
+          prefix matches the method name on the model, consistent with
+          the schema-exposed members_exposed list for
+          AccountAnalyticAccount).
         * Summary group: planned amount, actual amount, consumption % —
           all computed, all read-only.
 
@@ -789,7 +791,7 @@
         <field name="arch" type="xml">
             <!-- Smart button inside the existing oe_button_box -->
             <div name="button_box" position="inside">
-                <button name="action_view_budget_lines"
+                <button name="action_open_budget_lines"
                         type="object"
                         class="oe_stat_button"
                         icon="fa-money"

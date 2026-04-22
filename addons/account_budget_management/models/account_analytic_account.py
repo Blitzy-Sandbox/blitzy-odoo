@@ -1,24 +1,23 @@
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 """
-Analytic Account Extension — Budget Awareness (BM-001 Scenario 3)
-=================================================================
+Analytic Account Extension — Budget Awareness (BM-001)
+======================================================
 
 This module extends the Odoo core ``account.analytic.account`` model
-with budget-aware computed fields so that users can navigate from an
-analytic dimension (cost centre, project, department) to the budgets
-that target it. The extension closes the Track B Phase 1 foundation
-by wiring analytic records to their budget consumers via the JSON
-``analytic_distribution`` field on ``budget.budget.line``.
+with budget-aware computed fields so that a user viewing an analytic
+dimension (cost centre, project, department) can immediately see the
+budget lines that target it, along with their planned and actual
+amounts and the resulting consumption percentage.
 
 Story Mapping
 -------------
 * BM-001 Scenario 3 — Analytic distribution linkage. A budget line may
-  target one or more analytic accounts via a JSON distribution
-  dictionary (key = analytic account ID, value = percentage share).
-  This model provides the inverse read path so a user viewing an
-  analytic account can immediately see every budget line that
-  references it.
+  target one or more analytic accounts via a JSON ``analytic_distribution``
+  dictionary (key = analytic account ID or comma-separated multi-plan
+  IDs, value = percentage share). This model provides the inverse read
+  path so a user viewing an analytic account can immediately see every
+  budget line that references it.
 
 * BM-003 Scenario 4 — Drill-down navigation. The
   ``budget_amount_planned`` / ``budget_amount_actual`` aggregates
@@ -27,84 +26,97 @@ Story Mapping
 
 * BM-005 Scenario 3 — Threshold monitoring. When the alert cron
   computes consumption percentages per budget line, the resulting
-  aggregate can be displayed on the analytic account form via the
+  aggregate can be displayed on the analytic-account form via the
   computed ``budget_consumption_percent`` field.
 
 Field Structure
 ---------------
-Four additive fields are declared; all are computed and non-stored
-(re-evaluated on each form open) so there is no schema footprint on
-``account_analytic_account`` beyond the usual inherit-in-place table:
+Five additive fields are declared; all are computed and non-stored
+(re-evaluated on each form open / domain search) so there is no new
+schema footprint on ``account_analytic_account`` beyond the usual
+inherit-in-place table:
 
-* ``budget_line_ids`` — reverse lookup of ``budget.budget.line``
-  records whose ``analytic_distribution`` JSON references this
-  analytic account. Implemented with a compute + search pair so that
-  Odoo domain builders can filter analytic accounts by budget-line
-  referencing predicates.
+* ``budget_line_ids`` — Many2many reverse lookup of
+  ``budget.budget.line`` records whose ``analytic_distribution`` JSON
+  references this analytic account. Implemented with a compute +
+  search pair so that Odoo domain builders can filter analytic
+  accounts by budget-line referencing predicates such as
+  ``('budget_line_ids', 'in', [budget_line_id])``.
 
-* ``budget_line_count`` — stored integer used by the smart-button
-  counter on the analytic account form to show "N budget lines target
-  this analytic dimension". Not stored in the DB because it would
-  require invalidation on every budget line write; instead it is
-  computed lazily from ``budget_line_ids``.
+* ``budget_line_count`` — Integer counter used by the smart-button on
+  the analytic account form to show "N budget lines target this
+  analytic dimension".
 
-* ``budget_amount_planned`` — weighted sum of ``planned_amount *
-  distribution_share / 100.0`` across every referencing budget line.
+* ``budget_amount_planned`` — Monetary weighted sum of
+  ``planned_amount * distribution_share / 100.0`` across every
+  referencing budget line.
 
-* ``budget_amount_actual`` — weighted sum of ``variance_actual *
-  distribution_share / 100.0`` across every referencing budget line.
-  Because ``variance_actual`` on ``budget.budget.line`` is itself a
-  computed field that reads ``account.move.line`` via ``_read_group``,
-  this aggregate transitively aggregates posted actuals.
+* ``budget_amount_actual`` — Monetary total of posted
+  ``account.move.line.balance`` values whose account is listed on any
+  referencing budget line, filtered by the budget's date range and
+  the analytic distribution. Computed in a single aggregated
+  ``_read_group`` per analytic account to meet the BM-003/BM-004 SLA
+  of <3s for ≤1,000 budget lines.
 
-* ``budget_consumption_percent`` — convenience ratio
-  ``budget_amount_actual / budget_amount_planned * 100`` rounded to
-  four digits. Used by the analytic-account dashboard to render the
-  percentage-consumed bar.
+* ``budget_consumption_percent`` — Float ratio
+  ``budget_amount_actual / budget_amount_planned * 100``, rounded to
+  two decimal digits. Returns ``0.0`` when the planned amount is zero
+  to avoid division errors.
 
 Rules Compliance
 ----------------
-* R-01 — No cross-module imports. Only Odoo core symbols are used.
+* R-01 — No cross-module imports. Only Odoo core symbols (``api``,
+  ``fields``, ``models``, ``_``) and the in-module ``budget.budget.line``
+  model are referenced.
 * R-03 — Uses ``_inherit = 'account.analytic.account'`` without
   ``_name`` (the correct pattern for additive field extension of an
   existing core model).
-* R-05 — No redefinition of core fields on ``account.move`` /
-  ``account.move.line``. This extension targets ``account.analytic.
-  account`` (a core model in ``addons/analytic/``), and adds only
-  computed fields — no existing field on the analytic account table
-  is redefined.
-* R-07 — No ``sudo()`` calls. Record-rule access is controlled by
-  Odoo core ``analytic.mixin`` and the standard analytic security.
+* R-05 — No redefinition of core fields. All five added fields are
+  computed (``compute=...``) — none is a plain stored column that
+  would collide with an existing definition. ``currency_id``,
+  ``company_id``, ``name``, ``code``, ``plan_id``, ``partner_id``,
+  ``balance``, ``debit``, ``credit`` (existing on the core model) are
+  reused, never redefined.
+* R-07 — No ``sudo()`` calls. Record-rule access for the referenced
+  ``account.move.line`` entries is controlled by standard Odoo
+  accounting security; users without read access to the relevant
+  journal items will see their actuals excluded from the aggregate,
+  which is the expected data-permission behaviour.
 * R-08 — No ``variance_*`` or ``alert_*`` prefixed fields appear on
-  this model so the Checkpoint 5 disjoint baseline is preserved.
+  this model so the BM-004 / BM-005 disjoint baseline is preserved.
 * R-09 — Module folder name ``account_budget_management`` matches AAP
   exactly.
 
 Performance
 -----------
-The reverse lookup uses a single parameterised SQL query against
-``budget_budget_line.analytic_distribution`` with a JSONB key-existence
-operator (``?``). This is O(N) in the number of budget lines and is
-fast enough for the BM-001 usage pattern (a single analytic account
-typically has a bounded number of referencing budget lines, commonly
-well under 100).
+Two distinct performance paths are relevant:
+
+1. **Reverse lookup** (``_compute_budget_line_ids``) — delegates to
+   ``analytic.mixin.distribution_analytic_account_ids`` which is a
+   Many2many computed + searchable field backed by a PostgreSQL GIN
+   index automatically created by ``analytic.mixin.init()`` over the
+   ``analytic_distribution`` JSON column. The search
+   ``('distribution_analytic_account_ids', 'in', analytic.id)``
+   therefore executes as an efficient indexed JSONB query.
+
+2. **Actuals aggregation** (``_compute_budget_amounts``) — performs a
+   single ``_read_group`` on ``account.move.line`` per analytic
+   account, grouped by ``account_id`` with ``balance:sum`` aggregate.
+   This avoids per-move-line Python iteration (prohibited by R-08
+   performance notes) and uses the JSONB GIN index on the ``analytic_
+   distribution`` column for the distribution filter.
 """
 
-import logging
-
-from odoo import api, fields, models
-
-_logger = logging.getLogger(__name__)
+from odoo import _, api, fields, models
 
 
 class AccountAnalyticAccount(models.Model):
     """Extend ``account.analytic.account`` with budget-aware fields.
 
-    The class body contains four computed fields and their compute
-    methods plus a single ``_search_budget_line_ids`` helper so Odoo
-    domain filters of the form
-    ``('budget_line_ids', 'in', <budget_line_ids>)`` resolve
-    efficiently to a SQL ``EXISTS`` subquery.
+    Adds five computed fields (see module docstring) and two public
+    helpers (``_search_budget_line_ids`` for inverse domain searches
+    and ``action_open_budget_lines`` for the analytic-form smart
+    button).
 
     No ``_name`` is declared — the class inherits its table from the
     core analytic account model via ``_inherit``, which is the
@@ -117,22 +129,27 @@ class AccountAnalyticAccount(models.Model):
     # Section 4.1 — Reverse-relation fields
     # ==================================================================
 
-    budget_line_ids = fields.One2many(
+    budget_line_ids = fields.Many2many(
         comodel_name='budget.budget.line',
+        string='Budget Lines',
         compute='_compute_budget_line_ids',
         search='_search_budget_line_ids',
-        string='Budget Lines',
-        help="Budget lines whose analytic distribution references this "
-             "analytic account. Computed dynamically by searching "
-             "``budget.budget.line.analytic_distribution`` for entries "
-             "keyed on this analytic account's ID.",
+        help=(
+            "Budget lines referencing this analytic account via the "
+            "analytic_distribution JSON field. Computed dynamically "
+            "through analytic.mixin.distribution_analytic_account_ids "
+            "so the search benefits from the GIN index on the JSON "
+            "column."
+        ),
     )
     budget_line_count = fields.Integer(
         string='Budget Line Count',
         compute='_compute_budget_line_count',
-        help="Number of budget lines currently referencing this "
-             "analytic account. Rendered on the analytic account form "
-             "as a smart-button counter.",
+        help=(
+            "Number of budget lines currently referencing this "
+            "analytic account. Rendered on the analytic account form "
+            "as a smart-button counter."
+        ),
     )
 
     # ==================================================================
@@ -143,211 +160,251 @@ class AccountAnalyticAccount(models.Model):
         string='Planned Budget',
         compute='_compute_budget_amounts',
         currency_field='currency_id',
-        help="Weighted sum of the planned amounts of every budget "
-             "line targeting this analytic account. The weight per "
-             "line is the percentage share declared in the line's "
-             "``analytic_distribution`` JSON (e.g. a line targeting "
-             "this analytic at 40% contributes 40% of its "
-             "``planned_amount`` to this aggregate).",
+        help=(
+            "Sum of planned amounts from budget lines referencing this "
+            "analytic account, weighted by the distribution percentage "
+            "from analytic_distribution. A line targeting this analytic "
+            "at 40% contributes 40% of its planned_amount to this "
+            "aggregate."
+        ),
     )
     budget_amount_actual = fields.Monetary(
-        string='Actual Consumption',
+        string='Actual Amount',
         compute='_compute_budget_amounts',
         currency_field='currency_id',
-        help="Weighted sum of posted-actuals for every budget line "
-             "targeting this analytic account. Actuals are computed "
-             "from posted ``account.move.line`` entries matching the "
-             "line's account + date range + analytic distribution; "
-             "see ``budget.budget.line._compute_variance``.",
+        help=(
+            "Sum of posted account.move.line balances whose account is "
+            "on any budget line referencing this analytic account, "
+            "within the budget line date ranges and matching the "
+            "analytic distribution. Computed via a single aggregated "
+            "_read_group per analytic account."
+        ),
     )
     budget_consumption_percent = fields.Float(
         string='Budget Consumption (%)',
         compute='_compute_budget_amounts',
-        digits=(7, 2),
-        help="Ratio ``budget_amount_actual / budget_amount_planned * "
-             "100``. Returns 0.0 when the planned amount is zero to "
-             "avoid division errors. Capped at 7.2 digits to handle "
-             "extreme over-budget consumption (e.g. 1500% — an edge "
-             "case observed when a very small budget is consumed by "
-             "a much larger actual).",
+        digits=(5, 2),
+        help=(
+            "Ratio of actual amount to planned budget, expressed as a "
+            "percentage. 100% means the actual equals the planned "
+            "budget. Returns 0.0 when the planned amount is zero to "
+            "avoid division-by-zero errors."
+        ),
     )
 
     # ==================================================================
-    # Section 4.3 — Compute methods
+    # Section 4.3 — Compute / search methods
     # ==================================================================
 
+    @api.depends_context('company')
     def _compute_budget_line_ids(self):
         """Populate the reverse lookup of budget lines by analytic ID.
 
-        Uses a single parameterised SQL query against
-        ``budget_budget_line.analytic_distribution`` leveraging the
-        PostgreSQL JSONB key-existence operator (``?``). For every
-        analytic account in ``self`` we stringify the ID and test for
-        its presence as a top-level key in each budget line's
-        distribution dict.
+        Uses ``analytic.mixin.distribution_analytic_account_ids`` (a
+        computed + searchable Many2many of analytic account records
+        flattened from the ``analytic_distribution`` JSON keys) so the
+        search is routed through the JSONB GIN index auto-created by
+        ``analytic.mixin.init()``.
 
-        Results are then browsed via the ORM so downstream code can
-        treat ``budget_line_ids`` as a normal recordset without losing
-        access-control enforcement.
-
-        The method short-circuits when ``self`` is empty, and for new
-        (un-saved) records it yields an empty recordset — matching
-        the standard Odoo convention for One2many inverse lookups on
-        fresh records.
+        Scoped by company to respect multi-company security. For
+        un-saved records (no numeric ID) the field is set to an empty
+        recordset — standard Odoo convention for reverse-relation
+        computed fields.
         """
         BudgetLine = self.env['budget.budget.line']
-        if not self:
-            return
-        # Pre-filter to real (saved) records with a numeric ID.
-        saved = self.filtered(lambda rec: isinstance(rec.id, int))
-        unsaved = self - saved
-        for rec in unsaved:
-            rec.budget_line_ids = BudgetLine.browse()
-        if not saved:
-            return
-        # Batched SQL: one query per analytic account keeps the JSONB
-        # operator expression simple and lets Odoo apply record rules
-        # during the follow-up ``browse``. The number of analytic
-        # accounts rendered in a single form / list view is bounded
-        # so this loop does not scale linearly with the table size.
-        for rec in saved:
-            self.env.cr.execute(
-                """
-                SELECT id
-                  FROM budget_budget_line
-                 WHERE analytic_distribution ? %s
-                """,
-                (str(rec.id),),
-            )
-            line_ids = [row[0] for row in self.env.cr.fetchall()]
-            rec.budget_line_ids = BudgetLine.browse(line_ids)
+        for analytic in self:
+            if not isinstance(analytic.id, int) or not analytic.id:
+                analytic.budget_line_ids = BudgetLine
+                continue
+            analytic.budget_line_ids = BudgetLine.search([
+                ('distribution_analytic_account_ids', 'in', analytic.id),
+                ('company_id', '=', analytic.company_id.id),
+            ])
 
     def _search_budget_line_ids(self, operator, value):
-        """Domain-search helper for ``budget_line_ids``.
+        """Domain-search helper for the computed ``budget_line_ids``.
 
-        Supports the ``'in'`` and ``'='`` operators with a single
-        integer, a list of integers, or a recordset of budget lines.
-        Returns a domain that resolves to the set of analytic account
-        IDs referenced by the supplied budget lines.
+        Supports the ``'in'``, ``'not in'``, ``'='`` and ``'!='``
+        operators with a single integer or a list/tuple of integer IDs
+        referring to ``budget.budget.line`` records. Returns a domain
+        on the analytic account model that resolves to the set of
+        analytic account IDs referenced by the supplied budget lines'
+        ``analytic_distribution`` JSON.
 
-        This enables canonical Odoo domain constructions like::
+        Uses ``analytic.mixin._get_analytic_account_ids_from_distributions``
+        (inherited transitively via ``budget.budget.line._inherit=
+        ['analytic.mixin']``) which handles both single-plan keys
+        (``"42"``) and multi-plan comma-separated keys (``"42,7"``).
 
-            ('budget_line_ids', 'in', budget_line.id)
-
-        which compiles to an ``IN`` subquery over the analytic IDs
-        extracted from each line's distribution dict.
+        Any operator outside the supported set is passed through on
+        ``id`` unchanged so that callers using unusual operators still
+        get deterministic (if broader) behaviour.
         """
-        if operator not in ('=', '!=', 'in', 'not in'):
-            raise NotImplementedError(
-                f"Unsupported operator {operator!r} for "
-                f"budget_line_ids search.",
-            )
+        if operator not in ('in', 'not in', '=', '!='):
+            return [('id', operator, value)]
+        if isinstance(value, int) and not isinstance(value, bool):
+            value = [value]
         BudgetLine = self.env['budget.budget.line']
-        # Normalise value to a recordset of budget lines.
-        if isinstance(value, int):
-            lines = BudgetLine.browse([value])
-        elif isinstance(value, (list, tuple)):
-            lines = BudgetLine.browse(list(value))
-        elif isinstance(value, models.BaseModel):
-            lines = value
-        else:
-            raise NotImplementedError(
-                f"Unsupported value type {type(value).__name__!r} "
-                f"for budget_line_ids search.",
+        budget_lines = BudgetLine.browse(value).exists()
+        account_ids = set()
+        for line in budget_lines:
+            account_ids.update(
+                BudgetLine._get_analytic_account_ids_from_distributions(
+                    [line.analytic_distribution],
+                ),
             )
-        # Union the analytic account IDs referenced across all
-        # supplied lines.
-        analytic_ids = set()
-        for line in lines:
-            dist = line.analytic_distribution or {}
-            for key in dist:
-                try:
-                    analytic_ids.add(int(key))
-                except (TypeError, ValueError):
-                    # Malformed key — skip silently; distribution JSON
-                    # should always contain integer-convertible keys
-                    # but we defend against bad data.
-                    continue
-        id_domain_op = 'in' if operator in ('=', 'in') else 'not in'
-        return [('id', id_domain_op, list(analytic_ids))]
+        if operator in ('in', '='):
+            return [('id', 'in', list(account_ids))]
+        return [('id', 'not in', list(account_ids))]
 
     @api.depends('budget_line_ids')
     def _compute_budget_line_count(self):
-        """Simple counter for the smart-button on the analytic form."""
-        for rec in self:
-            rec.budget_line_count = len(rec.budget_line_ids)
+        """Simple counter for the smart-button on the analytic form.
 
-    @api.depends(
-        'budget_line_ids',
-        'budget_line_ids.planned_amount',
-        'budget_line_ids.variance_actual',
-        'budget_line_ids.analytic_distribution',
-    )
-    def _compute_budget_amounts(self):
-        """Aggregate planned + actual budget amounts per analytic account.
-
-        For each referencing budget line the analytic distribution
-        dict is inspected and the analytic account's share extracted
-        (as a percentage, 0-100). That share is applied as a weight to
-        the line's ``planned_amount`` and ``variance_actual`` values.
-
-        ``variance_actual`` is itself a computed field on
-        ``budget.budget.line`` that runs a single ``_read_group``
-        over ``account.move.line``. By composing on that field we
-        avoid duplicating actuals-fetching logic in this model.
-
-        The computation uses floating-point arithmetic for the
-        percentage multiplication (OK for display purposes); rounding
-        to the line's currency precision is applied per line so that
-        consolidated totals remain currency-faithful at cent
-        precision.
+        Trigger is ``budget_line_ids`` so changes in the reverse
+        lookup (new / deleted budget lines, distribution edits) cause
+        the smart-button label to re-render on the next cache refresh.
         """
-        for rec in self:
-            planned_total = 0.0
-            actual_total = 0.0
-            for line in rec.budget_line_ids:
-                dist = line.analytic_distribution or {}
-                share = dist.get(str(rec.id), 0.0)
-                try:
-                    share = float(share)
-                except (TypeError, ValueError):
-                    share = 0.0
-                weight = share / 100.0
-                planned_total += (line.planned_amount or 0.0) * weight
-                actual_total += (line.variance_actual or 0.0) * weight
-            rec.budget_amount_planned = planned_total
-            rec.budget_amount_actual = actual_total
-            if planned_total:
-                rec.budget_consumption_percent = (
-                    actual_total / planned_total * 100.0
+        for analytic in self:
+            analytic.budget_line_count = len(analytic.budget_line_ids)
+
+    @api.depends('budget_line_ids', 'budget_line_ids.planned_amount')
+    def _compute_budget_amounts(self):
+        """Aggregate planned + actual budget amounts per analytic.
+
+        The method has two distinct legs:
+
+        * **Planned** — iterate each referencing budget line's
+          ``analytic_distribution`` JSON, locate keys containing this
+          analytic's ID (either as a single-plan key such as ``"42"``
+          or as a multi-plan comma-separated key such as ``"42,7"``),
+          and weight the line's ``planned_amount`` by the key's
+          percentage share. Summed across all referencing lines to
+          yield ``budget_amount_planned``.
+
+        * **Actual** — issue a single ``_read_group`` over
+          ``account.move.line`` filtered by the union of account IDs
+          from the referencing budget lines, the minimum-to-maximum
+          date window covering those lines, posted journal entries
+          only (``parent_state='posted'``), and the analytic
+          distribution via ``('analytic_distribution', 'in',
+          analytic.id)`` which routes through
+          ``analytic.mixin._search_analytic_distribution`` and the
+          GIN index. Grouped by ``account_id`` with a
+          ``balance:sum`` aggregate. The sum of the group results is
+          the ``budget_amount_actual``.
+
+        The consumption percentage is then
+        ``budget_amount_actual / budget_amount_planned * 100`` (or
+        ``0.0`` if the planned amount is zero).
+
+        All three fields are zero-initialised up front so that the
+        per-record ``continue`` branches in the no-data cases leave
+        the records in a well-defined state.
+        """
+        # Zero-initialise all three fields to avoid orphan state on
+        # analytic records that have no referencing budget lines.
+        for analytic in self:
+            analytic.budget_amount_planned = 0.0
+            analytic.budget_amount_actual = 0.0
+            analytic.budget_consumption_percent = 0.0
+
+        if not self:
+            return
+
+        AccountMoveLine = self.env['account.move.line']
+
+        for analytic in self:
+            lines = analytic.budget_line_ids
+            if not lines:
+                # No referencing budget lines → planned and actual
+                # remain 0.0 as zero-initialised above.
+                continue
+
+            # ------------------------------------------------------------
+            # Planned: weighted sum across referencing budget lines.
+            # ------------------------------------------------------------
+            planned = 0.0
+            for line in lines:
+                for key, percentage in (line.analytic_distribution or {}).items():
+                    ids_in_key = [
+                        int(part)
+                        for part in key.split(',')
+                        if part and part.isdigit()
+                    ]
+                    if analytic.id in ids_in_key:
+                        try:
+                            pct = float(percentage)
+                        except (TypeError, ValueError):
+                            pct = 0.0
+                        planned += (line.planned_amount or 0.0) * (pct / 100.0)
+            analytic.budget_amount_planned = planned
+
+            # ------------------------------------------------------------
+            # Actual: single aggregated _read_group per analytic.
+            # ------------------------------------------------------------
+            account_ids = lines.mapped('account_id').ids
+            dates_from = [d for d in lines.mapped('date_from') if d]
+            dates_to = [d for d in lines.mapped('date_to') if d]
+            if not (account_ids and dates_from and dates_to):
+                # Missing filter inputs → leave actual at 0.0. This
+                # matches the behaviour of the reporting wizards when
+                # budget lines are in an incomplete state.
+                if planned:
+                    analytic.budget_consumption_percent = 0.0
+                continue
+
+            domain = [
+                ('account_id', 'in', account_ids),
+                ('parent_state', '=', 'posted'),
+                ('date', '>=', min(dates_from)),
+                ('date', '<=', max(dates_to)),
+                ('analytic_distribution', 'in', analytic.id),
+            ]
+            groups = AccountMoveLine._read_group(
+                domain=domain,
+                groupby=['account_id'],
+                aggregates=['balance:sum'],
+            )
+            # Each group is a ``(account_record, balance_sum)`` tuple.
+            # Summing the balance_sum across all groups gives the
+            # total posted actual for this analytic's budget window.
+            total_actual = sum(
+                (balance_sum or 0.0) for _account, balance_sum in groups
+            )
+            analytic.budget_amount_actual = total_actual
+
+            # ------------------------------------------------------------
+            # Consumption percentage.
+            # ------------------------------------------------------------
+            if planned:
+                analytic.budget_consumption_percent = (
+                    total_actual / planned * 100.0
                 )
             else:
-                rec.budget_consumption_percent = 0.0
+                analytic.budget_consumption_percent = 0.0
 
     # ==================================================================
     # Section 4.4 — Action helpers
     # ==================================================================
 
-    def action_view_budget_lines(self):
-        """Open a window showing every budget line targeting this analytic.
+    def action_open_budget_lines(self):
+        """Open a window showing every budget line for this analytic.
 
-        Used by the smart-button on the analytic account form. Returns
-        an ``ir.actions.act_window`` action filtered by the IDs of the
-        current recordset's ``budget_line_ids``. When the recordset
-        contains a single analytic account the window title is
-        personalised with the analytic name.
+        Used by the smart-button on the analytic account form (see
+        ``views/budget_views.xml``:
+        ``view_account_analytic_account_form_budget_inherit``).
+        Returns an ``ir.actions.act_window`` filtered by the IDs in
+        the current record's ``budget_line_ids`` Many2many, with a
+        default company context that aligns new budget-line creation
+        with the analytic's company.
         """
         self.ensure_one()
         return {
-            'name': (
-                f"Budget Lines — {self.name}"
-                if self.name else "Budget Lines"
-            ),
             'type': 'ir.actions.act_window',
+            'name': _('Budget Lines'),
             'res_model': 'budget.budget.line',
             'view_mode': 'list,form',
             'domain': [('id', 'in', self.budget_line_ids.ids)],
-            'context': {
-                'default_analytic_distribution': {str(self.id): 100.0},
-            },
+            'context': {'default_company_id': self.company_id.id},
         }

@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 OCA, Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    PF-002 - Payment Follow-up: Default Mail Templates
+    ==================================================
+    Provides four default mail.template records for payment follow-up
+    emails. Each template targets res.partner (per the domain constraint
+    on account.followup.level.email_template_id) and progressively
+    escalates tone from a friendly first reminder to a final notice before
+    collections.
+
+    Template external IDs consumed by data/followup_data.xml:
+      email_template_followup_level_1 -> First Reminder  (7 days past due)
+      email_template_followup_level_2 -> Second Reminder (14 days)
+      email_template_followup_level_3 -> Warning         (21 days)
+      email_template_followup_level_4 -> Final Notice    (30 days)
+
+    Runtime integration:
+      - `object` is the res.partner record being emailed (not an invoice)
+      - `object._get_overdue_invoices()` returns the partner's open past-due
+        invoices (account.move recordset) iterated by the QWeb <t t-foreach>
+      - `object.total_overdue` is a Monetary computed field on res.partner
+      - `inv.days_overdue` is a stored computed Integer on account.move
+        (added by this module's models/account_move.py)
+
+    Templates are wrapped in <data noupdate="1"> so end users can freely
+    customize body_html, subject lines, and translations without risk of
+    upgrade overwrites. This mirrors the precedent in
+    addons/account/data/mail_template_data.xml.
+
+    Rules Compliance (AAP Section 0.7):
+      - R-01 (Module Independence): no refs to sibling new modules.
+      - R-02 (No Enterprise Dependencies): no refs to enterprise-only modules.
+      - R-05 (N/A for data file): does not declare fields on core models.
+      - R-06 (N/A for data file): this is mail template data, not cron.
+      - R-07 (N/A for data file): no Python code.
+      - R-09 (Exact folder name): resides in addons/account_payment_followup/.
+-->
+<odoo>
+    <!-- Mail templates are declared in a NOUPDATE block so users can
+         freely customize or delete them without upgrade overwrites. -->
+    <data noupdate="1">
+
+        <!--
+            ================================================================
+            Template 1 of 4 - Level 1 First Reminder (7 days past due)
+            Tone: Friendly, assumes oversight on the customer's part.
+            ================================================================
+        -->
+        <record id="email_template_followup_level_1" model="mail.template">
+            <field name="name">Payment Follow-up: First Reminder</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="subject">{{ object.company_id.name }} - Friendly Payment Reminder</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="partner_to">{{ object.id }}</field>
+            <field name="use_default_to" eval="True"/>
+            <field name="description">Friendly first reminder of overdue invoices sent around 7 days past the due date. Assumes oversight on the customer's part and thanks them for prompt payment.</field>
+            <field name="lang">{{ object.lang }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-family: Arial, sans-serif; font-size: 13px; color: #333333;">
+    <p style="margin: 0px; padding: 0px;">
+        Dear <t t-out="object.name or ''">Customer</t>,
+    </p>
+    <br/>
+    <p>We hope this message finds you well. This is a friendly reminder that the following invoice(s) appear to be past their due date in our records:</p>
+    <t t-set="overdue_invoices" t-value="object._get_overdue_invoices()"/>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 16px;">
+        <thead>
+            <tr style="background-color: #f5f5f5;">
+                <th style="border-bottom: 2px solid #dddddd; padding: 8px; text-align: left;">Invoice</th>
+                <th style="border-bottom: 2px solid #dddddd; padding: 8px; text-align: right;">Due Date</th>
+                <th style="border-bottom: 2px solid #dddddd; padding: 8px; text-align: right;">Days Overdue</th>
+                <th style="border-bottom: 2px solid #dddddd; padding: 8px; text-align: right;">Amount Due</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr t-foreach="overdue_invoices" t-as="inv">
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px;"><t t-out="inv.name or ''">INV/2024/0001</t></td>
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px; text-align: right;"><t t-out="format_date(inv.invoice_date_due) or ''">2024-01-01</t></td>
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px; text-align: right;"><t t-out="inv.days_overdue or 0">7</t></td>
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px; text-align: right;"><t t-out="format_amount(inv.amount_residual, inv.currency_id) or ''">$ 100.00</t></td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr style="font-weight: bold;">
+                <td colspan="3" style="border-top: 2px solid #dddddd; padding: 8px; text-align: right;">Total Overdue:</td>
+                <td style="border-top: 2px solid #dddddd; padding: 8px; text-align: right;"><t t-out="format_amount(object.total_overdue, object.currency_id) or ''">$ 100.00</t></td>
+            </tr>
+        </tfoot>
+    </table>
+    <p>If you have already sent payment, please disregard this message and accept our thanks. Otherwise, we would greatly appreciate it if you could arrange payment at your earliest convenience.</p>
+    <p>If you have any questions about these invoices or need to make alternative arrangements, please don't hesitate to reach out to our accounts receivable team.</p>
+    <br/>
+    <p>Thank you for your prompt attention to this matter, and for your continued business with us.</p>
+    <br/>
+    <p>Best regards,<br/>
+        <strong><t t-out="object.company_id.name or ''">Your Company</t></strong>
+    </p>
+</div>
+            </field>
+            <field name="report_template_ids" eval="[]"/>
+            <field name="auto_delete" eval="False"/>
+        </record>
+
+        <!--
+            ================================================================
+            Template 2 of 4 - Level 2 Second Reminder (14 days past due)
+            Tone: Firmer, references prior contact, requests prompt payment.
+            ================================================================
+        -->
+        <record id="email_template_followup_level_2" model="mail.template">
+            <field name="name">Payment Follow-up: Second Reminder</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="subject">{{ object.company_id.name }} - Second Payment Reminder</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="partner_to">{{ object.id }}</field>
+            <field name="use_default_to" eval="True"/>
+            <field name="description">Second payment reminder sent around 14 days past the due date. Firmer tone requesting prompt payment and referencing the previous reminder.</field>
+            <field name="lang">{{ object.lang }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-family: Arial, sans-serif; font-size: 13px; color: #333333;">
+    <p style="margin: 0px; padding: 0px;">
+        Dear <t t-out="object.name or ''">Customer</t>,
+    </p>
+    <br/>
+    <p>We previously contacted you regarding overdue balance(s) on your account. As of today, our records still show the following invoice(s) as unpaid:</p>
+    <t t-set="overdue_invoices" t-value="object._get_overdue_invoices()"/>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 16px;">
+        <thead>
+            <tr style="background-color: #f5f5f5;">
+                <th style="border-bottom: 2px solid #dddddd; padding: 8px; text-align: left;">Invoice</th>
+                <th style="border-bottom: 2px solid #dddddd; padding: 8px; text-align: right;">Due Date</th>
+                <th style="border-bottom: 2px solid #dddddd; padding: 8px; text-align: right;">Days Overdue</th>
+                <th style="border-bottom: 2px solid #dddddd; padding: 8px; text-align: right;">Amount Due</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr t-foreach="overdue_invoices" t-as="inv">
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px;"><t t-out="inv.name or ''">INV/2024/0001</t></td>
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px; text-align: right;"><t t-out="format_date(inv.invoice_date_due) or ''">2024-01-01</t></td>
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px; text-align: right;"><t t-out="inv.days_overdue or 0">14</t></td>
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px; text-align: right;"><t t-out="format_amount(inv.amount_residual, inv.currency_id) or ''">$ 100.00</t></td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr style="font-weight: bold;">
+                <td colspan="3" style="border-top: 2px solid #dddddd; padding: 8px; text-align: right;">Total Overdue:</td>
+                <td style="border-top: 2px solid #dddddd; padding: 8px; text-align: right;"><t t-out="format_amount(object.total_overdue, object.currency_id) or ''">$ 100.00</t></td>
+            </tr>
+        </tfoot>
+    </table>
+    <p>
+        <strong>We kindly request that you settle these amounts at your earliest opportunity.</strong>
+    </p>
+    <p>If payment has already been dispatched, please let us know so we can reconcile our records. If there are any disputes or concerns about these invoices, we would appreciate you contacting us promptly to resolve them.</p>
+    <p>Timely settlement helps us continue providing you with the best service. We are happy to discuss payment plans if needed.</p>
+    <br/>
+    <p>Sincerely,<br/>
+        <strong><t t-out="object.company_id.name or ''">Your Company</t></strong>
+        <br/>
+        Accounts Receivable Team
+    </p>
+</div>
+            </field>
+            <field name="report_template_ids" eval="[]"/>
+            <field name="auto_delete" eval="False"/>
+        </record>
+
+        <!--
+            ================================================================
+            Template 3 of 4 - Level 3 Warning (21 days past due)
+            Tone: Urgent, red-tinted table styling, outlines consequences.
+            ================================================================
+        -->
+        <record id="email_template_followup_level_3" model="mail.template">
+            <field name="name">Payment Follow-up: Warning</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="subject">{{ object.company_id.name }} - URGENT: Payment Warning</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="partner_to">{{ object.id }}</field>
+            <field name="use_default_to" eval="True"/>
+            <field name="description">Urgent payment warning sent around 21 days past the due date. Emphasizes the seriously overdue status and outlines potential consequences (credit suspension, collections referral, additional fees).</field>
+            <field name="lang">{{ object.lang }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-family: Arial, sans-serif; font-size: 13px; color: #333333;">
+    <p style="margin: 0px; padding: 0px;">
+        Dear <t t-out="object.name or ''">Customer</t>,
+    </p>
+    <br/>
+    <p style="color: #cc0000; font-weight: bold;">URGENT: Your account is now seriously overdue.</p>
+    <p>Despite previous reminders, the following invoice(s) remain unpaid:</p>
+    <t t-set="overdue_invoices" t-value="object._get_overdue_invoices()"/>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 16px;">
+        <thead>
+            <tr style="background-color: #ffeaea;">
+                <th style="border-bottom: 2px solid #cc0000; padding: 8px; text-align: left;">Invoice</th>
+                <th style="border-bottom: 2px solid #cc0000; padding: 8px; text-align: right;">Due Date</th>
+                <th style="border-bottom: 2px solid #cc0000; padding: 8px; text-align: right;">Days Overdue</th>
+                <th style="border-bottom: 2px solid #cc0000; padding: 8px; text-align: right;">Amount Due</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr t-foreach="overdue_invoices" t-as="inv">
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px;"><t t-out="inv.name or ''">INV/2024/0001</t></td>
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px; text-align: right;"><t t-out="format_date(inv.invoice_date_due) or ''">2024-01-01</t></td>
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px; text-align: right; color: #cc0000; font-weight: bold;"><t t-out="inv.days_overdue or 0">21</t></td>
+                <td style="border-bottom: 1px solid #eeeeee; padding: 8px; text-align: right;"><t t-out="format_amount(inv.amount_residual, inv.currency_id) or ''">$ 100.00</t></td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr style="font-weight: bold; background-color: #ffeaea;">
+                <td colspan="3" style="border-top: 2px solid #cc0000; padding: 8px; text-align: right;">Total Overdue:</td>
+                <td style="border-top: 2px solid #cc0000; padding: 8px; text-align: right;"><t t-out="format_amount(object.total_overdue, object.currency_id) or ''">$ 100.00</t></td>
+            </tr>
+        </tfoot>
+    </table>
+    <p>
+        <strong>Immediate action is required to bring your account current.</strong>
+        Continued non-payment may result in:
+    </p>
+    <ul>
+        <li>Suspension of credit terms on your account</li>
+        <li>Referral to our collections department</li>
+        <li>Additional fees and interest charges as permitted by contract</li>
+    </ul>
+    <p>If you are experiencing financial difficulty, please contact us immediately to discuss payment arrangements. We prefer to work together to resolve this situation.</p>
+    <p>Please find attached copies of the overdue invoices for your reference.</p>
+    <br/>
+    <p>Regards,<br/>
+        <strong><t t-out="object.company_id.name or ''">Your Company</t></strong>
+        <br/>
+        Accounts Receivable Department
+    </p>
+</div>
+            </field>
+            <field name="report_template_ids" eval="[]"/>
+            <field name="auto_delete" eval="False"/>
+        </record>
+
+        <!--
+            ================================================================
+            Template 4 of 4 - Level 4 Final Notice (30 days past due)
+            Tone: Formal / legal, full red header row, outlines legal steps.
+            ================================================================
+        -->
+        <record id="email_template_followup_level_4" model="mail.template">
+            <field name="name">Payment Follow-up: Final Notice</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="subject">{{ object.company_id.name }} - FINAL NOTICE: Immediate Action Required</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="partner_to">{{ object.id }}</field>
+            <field name="use_default_to" eval="True"/>
+            <field name="description">Final notice sent around 30 days past the due date before escalation to collections or legal action. Formal / legal tone with clear consequences and a 7-day payment deadline.</field>
+            <field name="lang">{{ object.lang }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-family: Arial, sans-serif; font-size: 13px; color: #333333;">
+    <p style="margin: 0px; padding: 0px;">
+        Dear <t t-out="object.name or ''">Customer</t>,
+    </p>
+    <br/>
+    <p style="color: #cc0000; font-weight: bold; font-size: 14px; text-transform: uppercase;">Final Notice Before Collections Action</p>
+    <p>This letter serves as our FINAL NOTICE regarding the seriously overdue balance on your account. Our previous reminders have not resulted in payment, and the following invoice(s) remain unpaid after more than 30 days past due:</p>
+    <t t-set="overdue_invoices" t-value="object._get_overdue_invoices()"/>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 16px; border: 2px solid #cc0000;">
+        <thead>
+            <tr style="background-color: #cc0000; color: #ffffff;">
+                <th style="padding: 8px; text-align: left;">Invoice</th>
+                <th style="padding: 8px; text-align: right;">Due Date</th>
+                <th style="padding: 8px; text-align: right;">Days Overdue</th>
+                <th style="padding: 8px; text-align: right;">Amount Due</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr t-foreach="overdue_invoices" t-as="inv">
+                <td style="border-bottom: 1px solid #dddddd; padding: 8px;"><t t-out="inv.name or ''">INV/2024/0001</t></td>
+                <td style="border-bottom: 1px solid #dddddd; padding: 8px; text-align: right;"><t t-out="format_date(inv.invoice_date_due) or ''">2024-01-01</t></td>
+                <td style="border-bottom: 1px solid #dddddd; padding: 8px; text-align: right; color: #cc0000; font-weight: bold;"><t t-out="inv.days_overdue or 0">30</t></td>
+                <td style="border-bottom: 1px solid #dddddd; padding: 8px; text-align: right;"><t t-out="format_amount(inv.amount_residual, inv.currency_id) or ''">$ 100.00</t></td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr style="font-weight: bold; background-color: #ffeaea;">
+                <td colspan="3" style="padding: 10px; text-align: right; font-size: 14px;">TOTAL OUTSTANDING:</td>
+                <td style="padding: 10px; text-align: right; font-size: 14px; color: #cc0000;"><t t-out="format_amount(object.total_overdue, object.currency_id) or ''">$ 100.00</t></td>
+            </tr>
+        </tfoot>
+    </table>
+    <p>
+        <strong>IF PAYMENT IS NOT RECEIVED WITHIN 7 CALENDAR DAYS of this notice, we will be forced to take the following actions:</strong>
+    </p>
+    <ol>
+        <li>Immediate suspension of all credit terms and account privileges</li>
+        <li>Referral of your account to a third-party collections agency</li>
+        <li>Reporting of the delinquency to relevant credit bureaus</li>
+        <li>Initiation of legal proceedings to recover the amounts owed, including attorney fees and court costs</li>
+    </ol>
+    <p>We strongly urge you to contact our accounts receivable department IMMEDIATELY to either remit payment in full or arrange a formal payment plan. This is your last opportunity to resolve this matter amicably.</p>
+    <p>Please find attached copies of the overdue invoices for your records.</p>
+    <p>If payment has been made within the last 48 hours, please contact us so we can update our records accordingly.</p>
+    <br/>
+    <p>Sincerely,<br/>
+        <strong><t t-out="object.company_id.name or ''">Your Company</t></strong>
+        <br/>
+        Accounts Receivable Department
+    </p>
+</div>
+            </field>
+            <field name="report_template_ids" eval="[]"/>
+            <field name="auto_delete" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,9 @@
+Date,Label,Amount,Reference,Partner
+2024-02-01,Invoice Payment INV/2024/0201,1250.00,REF-0201,Acme Corp
+2024-02-03,Office Supplies Purchase,-180.50,PUR-0203,Office Depot LLC
+2024-02-05,Consulting Fee Received,3500.00,CNS-0205,Global Consulting Inc
+2024-02-08,Monthly Bank Service Fee,-35.00,FEE-0208,
+2024-02-12,Utility Bill Payment,-425.75,UTL-0212,City Power & Water
+2024-02-15,Customer Payment INV/2024/0215,2100.00,REF-0215,Beta Industries Ltd
+2024-02-20,Vendor Payment,-890.25,VND-0220,Hardware Supplies Co
+2024-02-28,Interest Earned,12.50,INT-0228,First National Bank

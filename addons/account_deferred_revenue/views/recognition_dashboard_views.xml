@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    DR-004 Recognition Dashboard Views
+    ===================================
+
+    Provides the at-a-glance dashboard UI for deferred revenue recognition
+    tracking.  Backed by the TransientModel
+    `account.deferred.recognition.dashboard.wizard` defined in
+    `addons/account_deferred_revenue/wizard/recognition_dashboard_wizard.py`.
+
+    Implements DR-004 acceptance criteria:
+      - Summary cards (total revenue, total expenses, active count,
+        next-period recognition)
+      - Date range, company, and status filters
+      - Period breakdown via graph view
+      - Cross-tabulation via pivot view
+      - Drill-down buttons to filtered schedule lists
+
+    Views registered here:
+      1. view_deferred_recognition_dashboard_form        (primary dashboard)
+      2. view_deferred_recognition_dashboard_line_graph  (period chart)
+      3. view_deferred_recognition_dashboard_line_pivot  (cross-tab)
+      4. action_deferred_recognition_dashboard           (opens dashboard)
+
+    Referenced by:
+      - `views/menuitem.xml` via menu entry pointing at
+        `action_deferred_recognition_dashboard`.
+      - `views/account_deferred_line_views.xml` may reference the graph and
+        pivot views via their xmlids for drill-down wiring.
+
+    Rules compliance (AAP §0.7):
+      - R-01 Module Independence: Only references models defined within this
+        module (`account.deferred.recognition.dashboard.wizard`,
+        `account.deferred.line`).
+      - R-02 No Enterprise Dependencies: No Enterprise modules referenced.
+      - R-05 No Core Field Redefinition: Graph/pivot target net-new
+        `account.deferred.line`, not core models.
+      - R-09 Exact Module Folder Names: File lives at
+        addons/account_deferred_revenue/views/recognition_dashboard_views.xml.
+-->
+<odoo>
+
+    <!-- =================================================================
+         SECTION 1: Dashboard Form View
+
+         Full-page form (target='current' in the action) showing the filter
+         bar at top, summary KPI cards, status/method/period readouts, and
+         drill-down smart buttons.  The form is strictly read-only: users
+         cannot create, edit, or delete records through this view because
+         the backing model is a TransientModel populated at load time by
+         computed fields.
+
+         Model: account.deferred.recognition.dashboard.wizard
+         ================================================================= -->
+    <record id="view_deferred_recognition_dashboard_form" model="ir.ui.view">
+        <field name="name">account.deferred.recognition.dashboard.wizard.form</field>
+        <field name="model">account.deferred.recognition.dashboard.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Deferred Revenue Recognition Dashboard"
+                  create="false"
+                  edit="false"
+                  delete="false">
+                <!-- Header with a single Refresh action.  No save/discard
+                     footer buttons are required because the record is
+                     transient and computed fields re-evaluate on demand. -->
+                <header>
+                    <button name="action_refresh"
+                            type="object"
+                            string="Refresh"
+                            class="btn-primary"
+                            icon="fa-refresh"
+                            help="Force recomputation of all dashboard metrics based on the current filters"/>
+                </header>
+
+                <sheet>
+                    <!-- =====================================================
+                         Filter Bar
+
+                         Date range, company, and status filters drive every
+                         computed field on this dashboard.  Changing any
+                         filter triggers the wizard's @api.depends-based
+                         recomputation on the next refresh.
+                         ===================================================== -->
+                    <div class="oe_title">
+                        <h2>Filters</h2>
+                    </div>
+                    <group col="4">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="company_id"
+                               groups="base.group_multi_company"
+                               options="{'no_create': True}"/>
+                        <field name="status_filter"
+                               widget="radio"
+                               options="{'horizontal': true}"/>
+                        <!-- currency_id is hidden but must be present so
+                             monetary fields in the summary cards can
+                             resolve their currency_field reference. -->
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+
+                    <!-- =====================================================
+                         Summary Cards (KPI Row)
+
+                         Four clickable KPI cards laid out in a 4-column
+                         group.  Each card uses the standard Odoo
+                         oe_stat_button pattern: a <button> wraps a
+                         <field widget="statinfo"> to render the number
+                         and its label together.  Clicking a card invokes
+                         the corresponding drill-down action on the wizard
+                         and navigates to a filtered list view of the
+                         underlying schedules or recognition lines.
+                         ===================================================== -->
+                    <div class="oe_title">
+                        <h2>Portfolio Summary</h2>
+                    </div>
+                    <group col="4">
+                        <!-- Card 1: Total Deferred Revenue
+                             Drills into account.deferred.schedule records
+                             whose recognition account is of type income*. -->
+                        <button name="action_view_revenue"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-money"
+                                help="Drill into all active deferred revenue schedules">
+                            <field name="total_deferred_revenue"
+                                   widget="statinfo"
+                                   string="Deferred Revenue"/>
+                        </button>
+
+                        <!-- Card 2: Total Deferred Expenses
+                             Drills into account.deferred.schedule records
+                             whose recognition account is of type expense*. -->
+                        <button name="action_view_expenses"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-credit-card"
+                                help="Drill into all active deferred expense schedules">
+                            <field name="total_deferred_expenses"
+                                   widget="statinfo"
+                                   string="Deferred Expenses"/>
+                        </button>
+
+                        <!-- Card 3: Active Schedule Count
+                             Drills into all confirmed schedules with
+                             completion_status='active'. -->
+                        <button name="action_view_pending"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-list"
+                                help="Drill into all active deferred recognition schedules">
+                            <field name="active_schedule_count"
+                                   widget="statinfo"
+                                   string="Active Schedules"/>
+                        </button>
+
+                        <!-- Card 4: Next Period Recognition
+                             Drills into account.deferred.line records whose
+                             recognition_date falls within the next calendar
+                             month. -->
+                        <button name="action_view_next_period_lines"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-calendar"
+                                help="Drill into recognition lines scheduled for the next calendar month">
+                            <field name="next_period_recognition"
+                                   widget="statinfo"
+                                   string="Next Period"/>
+                        </button>
+                    </group>
+
+                    <!-- =====================================================
+                         Status Distribution
+
+                         Read-only JSON payload showing the count of
+                         schedules in each completion status (active,
+                         completed, on_hold).  The native `json` widget
+                         renders the structured data as a formatted
+                         key/value readout without requiring custom JS.
+                         ===================================================== -->
+                    <group string="Status Distribution">
+                        <field name="status_distribution_json"
+                               widget="json"
+                               string="By Status"
+                               readonly="1"
+                               nolabel="1"/>
+                    </group>
+
+                    <!-- =====================================================
+                         Recognition Method Breakdown
+
+                         Read-only JSON listing schedules grouped by
+                         recognition method (straight_line, date_based,
+                         manual) with count and total amount per group.
+                         ===================================================== -->
+                    <group string="By Recognition Method">
+                        <field name="schedule_breakdown_json"
+                               widget="json"
+                               string="Breakdown"
+                               readonly="1"
+                               nolabel="1"/>
+                    </group>
+
+                    <!-- =====================================================
+                         Upcoming Recognitions
+
+                         Read-only JSON payload with one entry per upcoming
+                         month for the next 12 months, each containing the
+                         month label, total amount scheduled for
+                         recognition, and line count.
+                         ===================================================== -->
+                    <group string="Upcoming Recognitions (next 12 months)">
+                        <field name="period_breakdown_json"
+                               widget="json"
+                               string="Period Breakdown"
+                               readonly="1"
+                               nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 2: Dashboard Graph View
+
+         Bar-chart aggregation of account.deferred.line.recognition_amount
+         bucketed by recognition_date month.  Bound to the concrete
+         account.deferred.line model (not the transient wizard) because
+         only persisted records can be aggregated by Odoo's read_group
+         machinery.  `sample="1"` enables the native empty-state demo
+         content so the chart renders meaningfully even on a freshly
+         installed database with no real data.
+         ================================================================= -->
+    <record id="view_deferred_recognition_dashboard_line_graph" model="ir.ui.view">
+        <field name="name">account.deferred.line.dashboard.graph</field>
+        <field name="model">account.deferred.line</field>
+        <field name="arch" type="xml">
+            <graph string="Upcoming Recognitions by Period"
+                   type="bar"
+                   stacked="1"
+                   sample="1">
+                <field name="recognition_date" interval="month" type="row"/>
+                <field name="recognition_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 3: Dashboard Pivot View
+
+         Cross-tabulation of account.deferred.line.recognition_amount with
+         company on the row axis and recognition month on the column axis.
+         Also bound to the concrete account.deferred.line model.
+         ================================================================= -->
+    <record id="view_deferred_recognition_dashboard_line_pivot" model="ir.ui.view">
+        <field name="name">account.deferred.line.dashboard.pivot</field>
+        <field name="model">account.deferred.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Recognition Line Pivot" sample="1">
+                <field name="company_id" type="row"/>
+                <field name="recognition_date" interval="month" type="col"/>
+                <field name="recognition_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 4: Window Action
+
+         Primary action that opens the dashboard wizard.  `target="current"`
+         places the dashboard in the full content area rather than a modal
+         dialog; this is the correct pattern for a dashboard-style view
+         (as opposed to a classic wizard).  The explicit `view_id`
+         reference guarantees that the form view above is the one rendered
+         even if additional form views are added later.
+         ================================================================= -->
+    <record id="action_deferred_recognition_dashboard" model="ir.actions.act_window">
+        <field name="name">Recognition Dashboard</field>
+        <field name="res_model">account.deferred.recognition.dashboard.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="view_id" ref="view_deferred_recognition_dashboard_form"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Monitor your deferred revenue recognition portfolio
+            </p>
+            <p>
+                This dashboard provides an at-a-glance view of your deferred
+                revenue and deferred expense recognition schedules, showing
+                pending amounts, upcoming recognition periods, and drill-down
+                access to the underlying schedules and lines.
+            </p>
+        </field>
+    </record>
+
+</odoo>

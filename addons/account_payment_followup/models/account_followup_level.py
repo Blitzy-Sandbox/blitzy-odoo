@@ -45,9 +45,6 @@ import logging
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import (
-    ValidationError,  # noqa: F401 - reserved for future BR-003 hard-constraint upgrades
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -108,11 +105,17 @@ class AccountFollowupLevel(models.Model):
     company_id = fields.Many2one(
         comodel_name='res.company',
         string='Company',
+        required=True,
         default=lambda self: self.env.company,
         index=True,
         help='Company this follow-up level applies to. Per PF-001 §9.1 '
-             'assumption, levels are company-specific; the default is set '
-             'to the current company.',
+             'assumption, levels are company-specific. Required (PF-001 '
+             'BR-001): every level must be owned by exactly one company '
+             'so that multi-company isolation is enforced at the record '
+             'level and the ``UNIQUE(sequence, company_id)`` SQL '
+             'constraint behaves deterministically (PostgreSQL treats '
+             'NULL values as distinct in UNIQUE constraints, which would '
+             'otherwise allow duplicate "global" levels to coexist).',
     )
 
     email_template_id = fields.Many2one(
@@ -227,24 +230,25 @@ class AccountFollowupLevel(models.Model):
     # -------------------------------------------------------------------------
     # SQL CONSTRAINTS (PF-001 BR-001, BR-002, BR-005)
     # -------------------------------------------------------------------------
+    # Odoo 19 migrated from class-level ``_sql_constraints`` list to the
+    # new ``models.Constraint(...)`` declarative attribute. The attribute
+    # name becomes the constraint identifier suffix (e.g.
+    # ``account_followup_level_sequence_company_unique``).
 
-    _sql_constraints = [
-        (
-            'sequence_company_unique',
-            'UNIQUE(sequence, company_id)',
-            'Follow-up level sequence must be unique per company (PF-001 BR-001).',
-        ),
-        (
-            'delay_non_negative',
-            'CHECK(delay >= 0)',
-            'Follow-up delay (days) cannot be negative (PF-001 BR-002).',
-        ),
-        (
-            'min_amount_non_negative',
-            'CHECK(min_amount >= 0)',
-            'Minimum amount threshold cannot be negative (PF-001 BR-005).',
-        ),
-    ]
+    _sequence_company_unique = models.Constraint(
+        'UNIQUE(sequence, company_id)',
+        'Follow-up level sequence must be unique per company (PF-001 BR-001).',
+    )
+
+    _delay_non_negative = models.Constraint(
+        'CHECK(delay >= 0)',
+        'Follow-up delay (days) cannot be negative (PF-001 BR-002).',
+    )
+
+    _min_amount_non_negative = models.Constraint(
+        'CHECK(min_amount >= 0)',
+        'Minimum amount threshold cannot be negative (PF-001 BR-005).',
+    )
 
     # -------------------------------------------------------------------------
     # PYTHON CONSTRAINTS
@@ -370,11 +374,14 @@ class AccountFollowupLevel(models.Model):
         """
         self.ensure_one()
         vals = {}
-        # Trust level update: only attempt write if the partner model exposes
-        # the ``trust`` field (depends on which modules are installed).
+        # Trust level update. The ``trust`` field is guaranteed to be present
+        # on ``res.partner`` because the module's ``__manifest__.py`` declares
+        # ``depends=['account', 'mail']`` and the ``account`` module adds the
+        # ``trust`` selection field on ``res.partner`` (see
+        # ``addons/account/models/partner.py`` line 565). No dynamic field
+        # existence check is required.
         if self.trigger_update_trust:
-            if 'trust' in partner._fields:
-                vals['trust'] = self.trigger_update_trust
+            vals['trust'] = self.trigger_update_trust
         if vals:
             partner.write(vals)
         # Notify the assigned salesperson (if any) via chatter.

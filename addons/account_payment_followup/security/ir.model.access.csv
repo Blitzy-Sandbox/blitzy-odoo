@@ -5,5 +5,3 @@ access_account_followup_line_user,account.followup.line user,model_account_follo
 access_account_followup_line_manager,account.followup.line manager,model_account_followup_line,account.group_account_manager,1,1,1,1
 access_account_followup_history_user,account.followup.history user,model_account_followup_history,account.group_account_user,1,1,1,0
 access_account_followup_history_manager,account.followup.history manager,model_account_followup_history,account.group_account_manager,1,1,1,0
-access_account_followup_report_wizard_user,account.followup.report.wizard user,model_account_followup_report_wizard,account.group_account_user,1,1,1,1
-access_account_followup_report_wizard_manager,account.followup.report.wizard manager,model_account_followup_report_wizard,account.group_account_manager,1,1,1,1

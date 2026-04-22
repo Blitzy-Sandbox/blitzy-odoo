@@ -19,15 +19,18 @@
              ================================================================= -->
 
         <!-- Rule 1: account.followup.level (PF-001)
-             Allows NULL company_id (global templates) OR records matching
-             the user's current company context. This enables deployments
-             to configure company-agnostic follow-up ladders that apply
-             across all companies. -->
+             Strict per-company isolation. `company_id` is declared
+             ``required=True`` on the model (PF-001 BR-001), so every
+             record is owned by exactly one company; there are no
+             "global" (NULL) records to leak across companies. This
+             domain mirrors the rules for follow-up lines and history
+             to guarantee consistent multi-company isolation across
+             the entire module. -->
         <record id="account_followup_level_company_rule" model="ir.rule">
             <field name="name">Follow-up Level: multi-company</field>
             <field name="model_id" ref="model_account_followup_level"/>
             <field name="global" eval="True"/>
-            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
 
         <!-- Rule 2: account.followup.line (PF-005)

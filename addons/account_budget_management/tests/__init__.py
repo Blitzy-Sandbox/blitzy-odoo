@@ -12,5 +12,9 @@ Per-story tests currently registered:
 * ``test_bm_003`` — BM-003: Actual vs Budget Reporting
   (``budget.vs.actual.report`` AbstractModel, ``read_group`` actuals
   aggregation, hierarchical grouping, multi-period totals).
+* ``test_bm_005`` — BM-005: Budget Alerts
+  (``budget.alert`` model, threshold evaluation cron, immutability
+  enforcement, severity mapping, recipient configuration, notification
+  dispatch, deduplication, SQL constraint).
 """
-from . import test_bm_003
+from . import test_bm_003, test_bm_005

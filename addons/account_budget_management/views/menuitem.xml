@@ -44,6 +44,13 @@
               action="action_budget_variance_analysis"
               sequence="40"/>
 
+    <!-- BM-004: Variance Analysis Wizard (interactive parameter selection) -->
+    <menuitem id="menu_budget_variance_wizard"
+              name="Variance Analysis Wizard"
+              parent="menu_budget_management_root"
+              action="action_budget_variance_wizard"
+              sequence="45"/>
+
     <!-- BM-005: Alerts dashboard -->
     <menuitem id="menu_budget_alert"
               name="Alerts"

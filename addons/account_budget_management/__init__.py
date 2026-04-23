@@ -17,10 +17,15 @@ Subpackages loaded here:
   (:class:`BudgetVsActualReport`). The subpackage is loaded at module
   install time so the helper is available to tests and any future
   QWeb / pivot consumer without requiring a dedicated action.
+* ``wizard`` — BM-004 Variance Analysis interactive parameter
+  wizard (:class:`BudgetVarianceWizard`). The subpackage hosts
+  :class:`odoo.models.TransientModel` classes that collect user
+  parameters and return ``ir.actions.act_window`` descriptors
+  opening the appropriate reporting surfaces.
 
 Precedent: ``addons/account_financial_report_ce/__init__.py`` uses the
 same ``from . import models, report, wizard`` pattern. We follow the
 OCA convention verbatim.
 """
 
-from . import models, report
+from . import models, report, wizard

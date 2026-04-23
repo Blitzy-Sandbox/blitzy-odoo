@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 Enterprise Accounting Team
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+
+    <!--
+    ====================================================================
+    BM-004 Variance Analysis Wizard Views
+    ====================================================================
+
+    Story:  tickets/stories/budget-management/BM-004-variance-analysis.md
+    Model:  wizard/budget_variance_wizard.py :: ``BudgetVarianceWizard``
+            (``budget.variance.wizard``)
+
+    This file registers:
+
+      * view_budget_variance_wizard_form : the wizard form.
+      * action_budget_variance_wizard    : the menu-entry action
+        opening the wizard in dialog target mode.
+
+    The menu entry for this action is defined in
+    ``views/menuitem.xml`` (ordered LAST among view files so that
+    this action is already loaded).
+
+    Rules compliance:
+      * R-01 Module independence: this XML file references only
+        ``budget.variance.wizard`` (from this module) and models from
+        ``account`` / ``analytic`` (both declared in manifest
+        ``depends``).
+      * R-02 No Enterprise: no Enterprise module references.
+      * R-08 Field partitioning: the wizard itself holds no
+        ``variance_*`` or ``alert_*`` fields; it is scope parameters
+        only, preserving the disjoint-set invariant.
+    ====================================================================
+    -->
+
+    <record id="view_budget_variance_wizard_form" model="ir.ui.view">
+        <field name="name">budget.variance.wizard.form</field>
+        <field name="model">budget.variance.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Variance Analysis">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <span>Variance Analysis</span>
+                        </h1>
+                        <p>
+                            Configure the parameters below and press
+                            <strong>Open Variance</strong> to launch
+                            the BM-004 variance list / pivot / graph
+                            against the chosen budget. Optionally
+                            press <strong>Drill Down</strong> for an
+                            aggregate journal-line view scoped to
+                            the wizard parameters.
+                        </p>
+                    </div>
+                    <group>
+                        <group string="Scope">
+                            <field name="budget_id"
+                                   options="{'no_create': True, 'no_open': False}"/>
+                            <field name="company_id"
+                                   invisible="not budget_id"/>
+                            <field name="currency_id"
+                                   invisible="1"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="include_draft_lines"/>
+                        </group>
+                        <group string="Granularity">
+                            <field name="period_granularity"
+                                   widget="radio"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Analytic Filters">
+                            <field name="analytic_plan_ids"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                            <field name="analytic_account_ids"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group string="Favorability &amp; Threshold">
+                            <field name="favorable_filter"
+                                   widget="radio"/>
+                            <field name="variance_threshold_percent"
+                                   widget="percentage"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_open_variance"
+                            type="object"
+                            string="Open Variance"
+                            class="btn-primary"/>
+                    <button name="action_drill_down"
+                            type="object"
+                            string="Drill Down"
+                            class="btn-secondary"/>
+                    <button string="Cancel"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_budget_variance_wizard" model="ir.actions.act_window">
+        <field name="name">Variance Analysis Wizard</field>
+        <field name="res_model">budget.variance.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_budget_variance_wizard_form"/>
+        <field name="target">new</field>
+        <field name="context">{}</field>
+    </record>
+
+</odoo>

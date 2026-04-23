@@ -7,3 +7,5 @@ access_budget_budget_period_user,budget.budget.period user,model_budget_budget_p
 access_budget_budget_period_manager,budget.budget.period manager,model_budget_budget_period,account.group_account_manager,1,1,1,1
 access_budget_alert_user,budget.alert user,model_budget_alert,account.group_account_user,1,0,0,0
 access_budget_alert_manager,budget.alert manager,model_budget_alert,account.group_account_manager,1,1,1,0
+access_budget_variance_wizard_user,budget.variance.wizard user,model_budget_variance_wizard,account.group_account_user,1,1,1,1
+access_budget_variance_wizard_manager,budget.variance.wizard manager,model_budget_variance_wizard,account.group_account_manager,1,1,1,1

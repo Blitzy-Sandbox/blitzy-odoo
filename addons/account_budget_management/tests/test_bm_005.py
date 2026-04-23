@@ -848,6 +848,87 @@ class TestBudgetAlerts(AccountTestInvoicingCommon):
         )
 
     # ------------------------------------------------------------------
+    # R-08 cross-model disjoint-set DB-level verification
+    # ------------------------------------------------------------------
+
+    def test_bm005_r08_disjoint_field_namespaces(self):
+        """
+        R-08 (cross-model DB-level verification): verify at the
+        ``ir.model.fields`` registry level that the ``variance_*`` and
+        ``alert_*`` field namespaces across ALL ``budget.*`` models are
+        pair-wise disjoint.
+
+        This test satisfies the Checkpoint-6 mandate:
+
+            "R-08 DB-level verification (in test_bm_005.py):
+             Query self.env['ir.model.fields'].search([
+                 ('model','like','budget.%'),('name','like','variance_%'),
+             ]).mapped('name') vs ('name','like','alert_%') —
+             verify disjoint."
+
+        Partitioning the two field namespaces at the database level
+        (not just at the source level) guards against future stories
+        introducing name collisions — e.g. a future ``variance_notified``
+        on ``budget.alert`` or a future ``alert_classification`` on
+        ``budget.budget.line`` would be caught here before merge.
+        """
+        IrModelFields = self.env['ir.model.fields']
+        # Use ilike to be case-robust; field names are lowercase by Odoo
+        # convention but we prefer defensive matching for future-proofing.
+        variance_fields = set(IrModelFields.search([
+            ('model', 'like', 'budget.%'),
+            ('name', 'like', 'variance_%'),
+        ]).mapped('name'))
+        alert_fields = set(IrModelFields.search([
+            ('model', 'like', 'budget.%'),
+            ('name', 'like', 'alert_%'),
+        ]).mapped('name'))
+
+        # Sanity: both sets must be non-empty — otherwise the test is
+        # vacuously true and would silently pass if the modules fail
+        # to load.
+        self.assertTrue(
+            variance_fields,
+            msg=(
+                "Expected at least one variance_* field across budget.* "
+                "models (from BM-004) but found none. The module may "
+                "not be loaded."
+            ),
+        )
+        self.assertTrue(
+            alert_fields,
+            msg=(
+                "Expected at least one alert_* field across budget.* "
+                "models (from BM-005) but found none. The module may "
+                "not be loaded."
+            ),
+        )
+
+        # The core invariant: no field name appears in BOTH namespaces.
+        intersection = variance_fields & alert_fields
+        self.assertEqual(
+            intersection,
+            set(),
+            msg=(
+                "R-08 DB-LEVEL VIOLATION: the variance_* and alert_* "
+                "field namespaces on budget.* models MUST be disjoint. "
+                f"Collision(s) found: {sorted(intersection)}. "
+                "BM-004 (variance_*) and BM-005 (alert_*) must operate "
+                "on non-overlapping model fields per Rule R-08."
+            ),
+        )
+
+        # Additional defensive check: disjoint as sets.
+        self.assertTrue(
+            variance_fields.isdisjoint(alert_fields),
+            msg=(
+                "R-08 DB-LEVEL VIOLATION: variance_* and alert_* field "
+                "namespaces must be strictly disjoint across budget.* "
+                "models."
+            ),
+        )
+
+    # ------------------------------------------------------------------
     # SQL constraint — unique threshold per window
     # ------------------------------------------------------------------
 

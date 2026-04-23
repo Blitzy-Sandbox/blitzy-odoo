@@ -23,15 +23,27 @@
           * variance_consumption_percent
           * variance_explanation_note (user-editable)
 
-        Delivered as pivot + graph + list views rather than through a
-        wizard-driven TransientModel because no ``budget.variance.wizard``
-        or ``budget.vs.actual.report`` model is in scope for this module
-        iteration (``wizard/`` and ``report/`` folders are empty per the
-        current pending changes). The BM-003/BM-004 performance targets
-        (<3s fiscal-year render for ≤1,000 budget lines) are met via
-        ``read_group`` SQL aggregation performed inside the computed
-        field methods (see ``_compute_variance`` on the model), not at
-        the view layer.
+        Delivered as pivot + graph + list views on ``budget.budget.line``
+        with the pre-computed ``variance_*`` fields. This view file is
+        COMPLEMENTED by:
+
+          * ``report/budget_vs_actual_report.py`` — the
+            :class:`BudgetVsActualReport` AbstractModel that powers
+            the BM-003 ``Actual vs Budget`` analysis dataset via a
+            single ``_read_group`` SQL aggregation (meeting the
+            BM-003/BM-004 performance target of <3s fiscal-year
+            render for ≤1,000 budget lines).
+          * ``wizard/budget_variance_wizard.py`` — the BM-004
+            :class:`BudgetVarianceWizard` TransientModel that
+            provides an interactive parameter-selection dialog.
+            Wizard views live in
+            ``views/budget_variance_wizard_views.xml``.
+
+        This file focuses on the **pivot / graph / list presentation**
+        surface for variance data. The wizard is the **parameter
+        entry** surface; the report AbstractModel is the **data
+        aggregation** surface. The three surfaces are intentionally
+        separated for single-responsibility clarity.
 
         Load order: THIRD among view files (after ``budget_views.xml``
         and ``budget_period_views.xml``, before ``budget_alert_views.xml``
@@ -373,9 +385,25 @@
         ]"/>
         <field name="search_view_id" ref="view_budget_budget_line_search"/>
         <field name="domain">[('state', '=', 'confirmed')]</field>
+        <!--
+            Default context — apply the "State is Confirmed" filter
+            and group by account type so that favorable /
+            unfavorable segmentation by account nature is visible on
+            open.
+
+            NOTE (Issue #4 fix): ``search_default_group_classification``
+            was removed because ``variance_classification`` is a
+            ``store=False`` computed field on ``budget.budget.line``
+            and cannot be used as a group-by key. The
+            ``group_account_type`` filter defined in
+            ``view_budget_budget_line_search`` groups by the stored
+            ``account_type`` related field, which correctly
+            segregates income, expense, and other account types —
+            the natural proxy for favorability segmentation.
+        -->
         <field name="context">{
             'search_default_state_confirmed': 1,
-            'search_default_group_classification': 1,
+            'search_default_group_account_type': 1,
         }</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">

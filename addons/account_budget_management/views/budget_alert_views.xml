@@ -19,9 +19,11 @@
         2. Model overrides (``models/budget_alert.py``): ``unlink()``
            raises ``UserError`` for non-system users; ``write()``
            raises ``UserError`` on mutation of ``_IMMUTABLE_FIELDS``.
-        3. View attributes (this file): form has ``edit="false"``,
-           ``create="false"``, ``delete="false"``; list and kanban
-           have ``create="false"`` and ``delete="false"``.
+        3. View attributes (this file): form, list, AND kanban all
+           carry ``create="false"``, ``edit="false"``, and
+           ``delete="false"`` — full 3-attribute parity across all
+           three surfaces (form, list, kanban) so the inline-edit
+           affordance is not surfaced to end users on any layout.
         4. Field attributes (this file): every user-visible field is
            marked ``readonly="1"`` as defense-in-depth.
 
@@ -168,6 +170,7 @@
         <field name="arch" type="xml">
             <list string="Budget Alerts"
                   create="false"
+                  edit="false"
                   delete="false"
                   default_order="alert_date desc, alert_severity desc"
                   decoration-muted="alert_severity == 'low'"
@@ -245,6 +248,7 @@
             <kanban default_group_by="alert_severity"
                     default_order="alert_date desc"
                     create="false"
+                    edit="false"
                     delete="false"
                     class="o_kanban_dashboard o_budget_alert_kanban"
                     sample="1">
@@ -263,7 +267,7 @@
                 <field name="currency_id"/>
                 <field name="company_id"/>
                 <templates>
-                    <t t-name="kanban-box">
+                    <t t-name="card">
                         <div t-attf-class="oe_kanban_card oe_kanban_global_click #{record.alert_severity.raw_value === 'critical' ? 'oe_kanban_color_2' : (record.alert_severity.raw_value === 'high' ? 'oe_kanban_color_3' : (record.alert_severity.raw_value === 'medium' ? 'oe_kanban_color_4' : 'oe_kanban_color_0'))}">
                             <div class="o_kanban_record_top">
                                 <div class="o_kanban_record_headings">

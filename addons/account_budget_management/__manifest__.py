@@ -73,19 +73,34 @@ only Odoo Community Edition dependencies — specifically ``account`` and
         # models that already have ir.model.access.csv rows.
         'data/budget_data.xml',
         'data/budget_alert_cron.xml',
-        # NOTE (Checkpoint 5 scope): View XML files (``views/budget_views.xml``,
-        # ``views/budget_period_views.xml``, ``views/budget_variance_views.xml``,
-        # ``views/budget_alert_views.xml``, ``views/menuitem.xml``) are deferred
-        # to Checkpoint 6 per AAP §0.6.2 ("no speculative views"). They are NOT
-        # listed in this ``data`` manifest key because they do not yet exist on
-        # disk; including them here would cause ``--stop-after-init`` install
-        # to fail with FileNotFoundError at the data-loading phase (AAP §0.1.2
-        # Story Gate rule condition (b)). The models, security, sequences, and
-        # cron infrastructure necessary for ``--stop-after-init`` success are
-        # already loaded by the entries above. View files will be appended to
-        # this list in dependency order (model-level views first, menu LAST)
-        # when Checkpoint 6 adds the BM-003/BM-004 wizard+report models and
-        # all five stories' UI entry points.
+        # Views — loaded in dependency order. Every view file references
+        # actions and/or search views that must already be registered when
+        # the menu hierarchy (``views/menuitem.xml``, loaded LAST) binds
+        # menu entries to actions.
+        #
+        # Load order rationale:
+        #   1. ``budget_views.xml``          — BM-001 core budget model views
+        #                                      (form/list/kanban/search plus
+        #                                      the primary ``action_budget_budget``
+        #                                      window).
+        #   2. ``budget_period_views.xml``   — BM-002 cross-budget period
+        #                                      browsing views + action.
+        #   3. ``budget_variance_views.xml`` — BM-003 / BM-004 variance
+        #                                      pivot/graph/list views +
+        #                                      ``action_budget_vs_actual_report``
+        #                                      and ``action_budget_variance_analysis``.
+        #   4. ``budget_variance_wizard_views.xml`` — BM-004 wizard form +
+        #                                      ``action_budget_variance_wizard``.
+        #   5. ``budget_alert_views.xml``    — BM-005 alert views + action.
+        #   6. ``menuitem.xml``              — MUST be LAST; every menu entry
+        #                                      references an action defined
+        #                                      above.
+        'views/budget_views.xml',
+        'views/budget_period_views.xml',
+        'views/budget_variance_views.xml',
+        'views/budget_variance_wizard_views.xml',
+        'views/budget_alert_views.xml',
+        'views/menuitem.xml',
     ],
     # Constraints (per EPIC-001 — Enterprise Accounting Parity, FEATURE-003):
     # - AGPL-3.0 license required (satisfied)

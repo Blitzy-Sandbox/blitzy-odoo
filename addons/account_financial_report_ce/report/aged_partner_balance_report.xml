@@ -23,7 +23,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
-                    <div class="page">
+                    <div class="page o_financial_report">
                         <!-- Report Header with AR/AP visual distinction -->
                         <div class="text-center">
                             <h2>
@@ -315,12 +315,12 @@
                                 <!-- Percentage Row -->
                                 <tr class="table-secondary small" t-if="doc.total_balance">
                                     <td><em>% of Total</em></td>
-                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_not_due / doc.total_balance * 100)"/></td>
-                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_bucket_1 / doc.total_balance * 100)"/></td>
-                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_bucket_2 / doc.total_balance * 100)"/></td>
-                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_bucket_3 / doc.total_balance * 100)"/></td>
-                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_bucket_4 / doc.total_balance * 100)"/></td>
-                                    <td class="text-end"><span t-esc="'%.1f%%' % (doc.total_bucket_5 / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'{:.1f}%'.format(doc.total_not_due / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'{:.1f}%'.format(doc.total_bucket_1 / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'{:.1f}%'.format(doc.total_bucket_2 / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'{:.1f}%'.format(doc.total_bucket_3 / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'{:.1f}%'.format(doc.total_bucket_4 / doc.total_balance * 100)"/></td>
+                                    <td class="text-end"><span t-esc="'{:.1f}%'.format(doc.total_bucket_5 / doc.total_balance * 100)"/></td>
                                     <td class="text-end">100%</td>
                                 </tr>
                             </tfoot>
@@ -343,39 +343,39 @@
                                 <div class="progress" style="height: 30px;">
                                     <!-- Not Due segment -->
                                     <div class="progress-bar bg-success" role="progressbar"
-                                         t-att-style="'width: %s%%' % pct_not_due"
-                                         t-att-title="'Not Due: %s (%.1f%%)' % (doc.total_not_due, pct_not_due)">
-                                        <t t-if="pct_not_due &gt; 5"><span t-esc="'%.1f%%' % pct_not_due"/></t>
+                                         t-att-style="'width: {}%'.format(pct_not_due)"
+                                         t-att-title="'Not Due: {} ({:.1f}%)'.format(doc.total_not_due, pct_not_due)">
+                                        <t t-if="pct_not_due &gt; 5"><span t-esc="'{:.1f}%'.format(pct_not_due)"/></t>
                                     </div>
                                     <!-- 1-30 days segment -->
                                     <div class="progress-bar bg-info" role="progressbar"
-                                         t-att-style="'width: %s%%' % pct_b1"
-                                         t-att-title="'1-30 days: %s (%.1f%%)' % (doc.total_bucket_1, pct_b1)">
-                                        <t t-if="pct_b1 &gt; 5"><span t-esc="'%.1f%%' % pct_b1"/></t>
+                                         t-att-style="'width: {}%'.format(pct_b1)"
+                                         t-att-title="'1-30 days: {} ({:.1f}%)'.format(doc.total_bucket_1, pct_b1)">
+                                        <t t-if="pct_b1 &gt; 5"><span t-esc="'{:.1f}%'.format(pct_b1)"/></t>
                                     </div>
                                     <!-- 31-60 days segment -->
                                     <div class="progress-bar bg-primary" role="progressbar"
-                                         t-att-style="'width: %s%%' % pct_b2"
-                                         t-att-title="'31-60 days: %s (%.1f%%)' % (doc.total_bucket_2, pct_b2)">
-                                        <t t-if="pct_b2 &gt; 5"><span t-esc="'%.1f%%' % pct_b2"/></t>
+                                         t-att-style="'width: {}%'.format(pct_b2)"
+                                         t-att-title="'31-60 days: {} ({:.1f}%)'.format(doc.total_bucket_2, pct_b2)">
+                                        <t t-if="pct_b2 &gt; 5"><span t-esc="'{:.1f}%'.format(pct_b2)"/></t>
                                     </div>
                                     <!-- 61-90 days segment -->
                                     <div class="progress-bar bg-secondary" role="progressbar"
-                                         t-att-style="'width: %s%%' % pct_b3"
-                                         t-att-title="'61-90 days: %s (%.1f%%)' % (doc.total_bucket_3, pct_b3)">
-                                        <t t-if="pct_b3 &gt; 5"><span t-esc="'%.1f%%' % pct_b3"/></t>
+                                         t-att-style="'width: {}%'.format(pct_b3)"
+                                         t-att-title="'61-90 days: {} ({:.1f}%)'.format(doc.total_bucket_3, pct_b3)">
+                                        <t t-if="pct_b3 &gt; 5"><span t-esc="'{:.1f}%'.format(pct_b3)"/></t>
                                     </div>
                                     <!-- 91-120 days segment -->
                                     <div class="progress-bar bg-warning" role="progressbar"
-                                         t-att-style="'width: %s%%' % pct_b4"
-                                         t-att-title="'91-120 days: %s (%.1f%%)' % (doc.total_bucket_4, pct_b4)">
-                                        <t t-if="pct_b4 &gt; 5"><span t-esc="'%.1f%%' % pct_b4"/></t>
+                                         t-att-style="'width: {}%'.format(pct_b4)"
+                                         t-att-title="'91-120 days: {} ({:.1f}%)'.format(doc.total_bucket_4, pct_b4)">
+                                        <t t-if="pct_b4 &gt; 5"><span t-esc="'{:.1f}%'.format(pct_b4)"/></t>
                                     </div>
                                     <!-- 120+ days segment -->
                                     <div class="progress-bar bg-danger" role="progressbar"
-                                         t-att-style="'width: %s%%' % pct_b5"
-                                         t-att-title="'120+ days: %s (%.1f%%)' % (doc.total_bucket_5, pct_b5)">
-                                        <t t-if="pct_b5 &gt; 5"><span t-esc="'%.1f%%' % pct_b5"/></t>
+                                         t-att-style="'width: {}%'.format(pct_b5)"
+                                         t-att-title="'120+ days: {} ({:.1f}%)'.format(doc.total_bucket_5, pct_b5)">
+                                        <t t-if="pct_b5 &gt; 5"><span t-esc="'{:.1f}%'.format(pct_b5)"/></t>
                                     </div>
                                 </div>
                             </t>

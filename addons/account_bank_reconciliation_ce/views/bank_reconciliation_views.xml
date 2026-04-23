@@ -234,13 +234,13 @@
                             domain="[('state', '=', 'rejected')]"/>
                     <separator/>
                     <!-- Confidence level filters
-                         High ≥ 90, Medium 70-89, Low < 70 -->
-                    <filter string="High Confidence (≥90%)"
+                         High ≥ 95, Medium 70-94, Low < 70 -->
+                    <filter string="High Confidence (≥95%)"
                             name="high_confidence"
-                            domain="[('confidence_score', '>=', 90)]"/>
-                    <filter string="Medium Confidence (70-89%)"
+                            domain="[('confidence_score', '>=', 95)]"/>
+                    <filter string="Medium Confidence (70-94%)"
                             name="medium_confidence"
-                            domain="[('confidence_score', '>=', 70), ('confidence_score', '&lt;', 90)]"/>
+                            domain="[('confidence_score', '>=', 70), ('confidence_score', '&lt;', 95)]"/>
                     <filter string="Low Confidence (&lt;70%)"
                             name="low_confidence"
                             domain="[('confidence_score', '&lt;', 70)]"/>

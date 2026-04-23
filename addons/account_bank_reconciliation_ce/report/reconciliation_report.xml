@@ -182,13 +182,13 @@
                                             </td>
                                             <td class="text-end">
                                                 <t t-if="stmt_rate >= 90">
-                                                    <span class="badge bg-success" t-esc="'%.1f%%' % stmt_rate"/>
+                                                    <span class="badge bg-success" t-esc="'{:.1f}%'.format(stmt_rate)"/>
                                                 </t>
                                                 <t t-elif="stmt_rate >= 70">
-                                                    <span class="badge bg-warning text-dark" t-esc="'%.1f%%' % stmt_rate"/>
+                                                    <span class="badge bg-warning text-dark" t-esc="'{:.1f}%'.format(stmt_rate)"/>
                                                 </t>
                                                 <t t-else="">
-                                                    <span class="badge bg-danger" t-esc="'%.1f%%' % stmt_rate"/>
+                                                    <span class="badge bg-danger" t-esc="'{:.1f}%'.format(stmt_rate)"/>
                                                 </t>
                                             </td>
                                             <td class="text-center">
@@ -222,7 +222,7 @@
                                             <strong class="text-danger" t-esc="total_unreconciled_count"/>
                                         </td>
                                         <td class="text-end">
-                                            <strong t-esc="'%.1f%%' % overall_rate"/>
+                                            <strong t-esc="'{:.1f}%'.format(overall_rate)"/>
                                         </td>
                                         <td/>
                                     </tr>
@@ -268,20 +268,20 @@
                                                 <td>
                                                     <span class="badge bg-success">High</span>
                                                 </td>
-                                                <td class="text-center">≥ 90%</td>
+                                                <td class="text-center">≥ 95%</td>
                                                 <td class="text-end"><span t-esc="high_count"/></td>
                                                 <td class="text-end">
-                                                    <span t-esc="'%.1f%%' % (high_count / total_matches * 100)"/>
+                                                    <span t-esc="'{:.1f}%'.format(high_count / total_matches * 100)"/>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <span class="badge bg-warning text-dark">Medium</span>
                                                 </td>
-                                                <td class="text-center">70 – 89%</td>
+                                                <td class="text-center">70 – 94%</td>
                                                 <td class="text-end"><span t-esc="medium_count"/></td>
                                                 <td class="text-end">
-                                                    <span t-esc="'%.1f%%' % (medium_count / total_matches * 100)"/>
+                                                    <span t-esc="'{:.1f}%'.format(medium_count / total_matches * 100)"/>
                                                 </td>
                                             </tr>
                                             <tr>
@@ -291,7 +291,7 @@
                                                 <td class="text-center">50 – 69%</td>
                                                 <td class="text-end"><span t-esc="low_count"/></td>
                                                 <td class="text-end">
-                                                    <span t-esc="'%.1f%%' % (low_count / total_matches * 100)"/>
+                                                    <span t-esc="'{:.1f}%'.format(low_count / total_matches * 100)"/>
                                                 </td>
                                             </tr>
                                             <tr t-if="none_count > 0">
@@ -301,7 +301,7 @@
                                                 <td class="text-center">&lt; 50%</td>
                                                 <td class="text-end"><span t-esc="none_count"/></td>
                                                 <td class="text-end">
-                                                    <span t-esc="'%.1f%%' % (none_count / total_matches * 100)"/>
+                                                    <span t-esc="'{:.1f}%'.format(none_count / total_matches * 100)"/>
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -320,35 +320,35 @@
                                     <div class="progress mb-2" style="height: 30px;">
                                         <t t-if="high_count">
                                             <div class="progress-bar bg-success" role="progressbar"
-                                                 t-att-style="'width: %s%%' % (high_count / total_matches * 100)"
+                                                 t-att-style="'width: {}%'.format(high_count / total_matches * 100)"
                                                  t-att-title="'High: %d matches' % high_count">
                                                 High (<span t-esc="high_count"/>)
                                             </div>
                                         </t>
                                         <t t-if="medium_count">
                                             <div class="progress-bar bg-warning" role="progressbar"
-                                                 t-att-style="'width: %s%%' % (medium_count / total_matches * 100)"
+                                                 t-att-style="'width: {}%'.format(medium_count / total_matches * 100)"
                                                  t-att-title="'Medium: %d matches' % medium_count">
                                                 Medium (<span t-esc="medium_count"/>)
                                             </div>
                                         </t>
                                         <t t-if="low_count">
                                             <div class="progress-bar bg-danger" role="progressbar"
-                                                 t-att-style="'width: %s%%' % (low_count / total_matches * 100)"
+                                                 t-att-style="'width: {}%'.format(low_count / total_matches * 100)"
                                                  t-att-title="'Low: %d matches' % low_count">
                                                 Low (<span t-esc="low_count"/>)
                                             </div>
                                         </t>
                                         <t t-if="none_count">
                                             <div class="progress-bar bg-secondary" role="progressbar"
-                                                 t-att-style="'width: %s%%' % (none_count / total_matches * 100)"
+                                                 t-att-style="'width: {}%'.format(none_count / total_matches * 100)"
                                                  t-att-title="'Below Threshold: %d matches' % none_count">
                                                 &lt;50%
                                             </div>
                                         </t>
                                     </div>
                                     <p class="text-muted small">
-                                        Confidence levels: High ≥90%, Medium 70-89%, Low 50-69%
+                                        Confidence levels: High ≥95%, Medium 70-94%, Low 50-69%
                                     </p>
 
                                     <!-- Match Quality Summary -->
@@ -357,19 +357,19 @@
                                         <t t-if="quality_rate >= 90">
                                             <div class="alert alert-success py-2 small">
                                                 <strong>Excellent:</strong>
-                                                <span t-esc="'%.1f%%' % quality_rate"/> of matches are Medium or High confidence.
+                                                <span t-esc="'{:.1f}%'.format(quality_rate)"/> of matches are Medium or High confidence.
                                             </div>
                                         </t>
                                         <t t-elif="quality_rate >= 70">
                                             <div class="alert alert-warning py-2 small">
                                                 <strong>Good:</strong>
-                                                <span t-esc="'%.1f%%' % quality_rate"/> of matches are Medium or High confidence.
+                                                <span t-esc="'{:.1f}%'.format(quality_rate)"/> of matches are Medium or High confidence.
                                             </div>
                                         </t>
                                         <t t-else="">
                                             <div class="alert alert-danger py-2 small">
                                                 <strong>Needs Review:</strong>
-                                                Only <span t-esc="'%.1f%%' % quality_rate"/> of matches are Medium or High confidence.
+                                                Only <span t-esc="'{:.1f}%'.format(quality_rate)"/> of matches are Medium or High confidence.
                                             </div>
                                         </t>
                                     </t>
@@ -492,28 +492,28 @@
                                         <div class="progress" style="height: 30px;">
                                             <t t-if="unrec_0_30">
                                                 <div class="progress-bar bg-secondary" role="progressbar"
-                                                     t-att-style="'width: %s%%' % (unrec_0_30 / unrec_total_for_bar * 100)"
+                                                     t-att-style="'width: {}%'.format(unrec_0_30 / unrec_total_for_bar * 100)"
                                                      t-att-title="'0-30 days: %d' % unrec_0_30">
                                                     0-30d
                                                 </div>
                                             </t>
                                             <t t-if="unrec_31_60">
                                                 <div class="progress-bar bg-info" role="progressbar"
-                                                     t-att-style="'width: %s%%' % (unrec_31_60 / unrec_total_for_bar * 100)"
+                                                     t-att-style="'width: {}%'.format(unrec_31_60 / unrec_total_for_bar * 100)"
                                                      t-att-title="'31-60 days: %d' % unrec_31_60">
                                                     31-60d
                                                 </div>
                                             </t>
                                             <t t-if="unrec_61_90">
                                                 <div class="progress-bar bg-warning" role="progressbar"
-                                                     t-att-style="'width: %s%%' % (unrec_61_90 / unrec_total_for_bar * 100)"
+                                                     t-att-style="'width: {}%'.format(unrec_61_90 / unrec_total_for_bar * 100)"
                                                      t-att-title="'61-90 days: %d' % unrec_61_90">
                                                     61-90d
                                                 </div>
                                             </t>
                                             <t t-if="unrec_90_plus">
                                                 <div class="progress-bar bg-danger" role="progressbar"
-                                                     t-att-style="'width: %s%%' % (unrec_90_plus / unrec_total_for_bar * 100)"
+                                                     t-att-style="'width: {}%'.format(unrec_90_plus / unrec_total_for_bar * 100)"
                                                      t-att-title="'90+ days: %d' % unrec_90_plus">
                                                     90+d
                                                 </div>
@@ -574,13 +574,13 @@
                                         <td class="text-end">
                                             <t t-set="final_rate" t-value="round(total_reconciled_count / total_line_count * 100, 1) if total_line_count else 0.0"/>
                                             <t t-if="final_rate >= 90">
-                                                <strong class="text-success" t-esc="'%.1f%%' % final_rate"/>
+                                                <strong class="text-success" t-esc="'{:.1f}%'.format(final_rate)"/>
                                             </t>
                                             <t t-elif="final_rate >= 70">
-                                                <strong class="text-warning" t-esc="'%.1f%%' % final_rate"/>
+                                                <strong class="text-warning" t-esc="'{:.1f}%'.format(final_rate)"/>
                                             </t>
                                             <t t-else="">
-                                                <strong class="text-danger" t-esc="'%.1f%%' % final_rate"/>
+                                                <strong class="text-danger" t-esc="'{:.1f}%'.format(final_rate)"/>
                                             </t>
                                         </td>
                                     </tr>
@@ -617,7 +617,7 @@
                                         <td><strong>Amount Match Rate</strong></td>
                                         <td class="text-end">
                                             <t t-set="amount_rate" t-value="round(abs(reconciled_amount) / abs(total_amount) * 100, 1) if total_amount else 0.0"/>
-                                            <strong t-esc="'%.1f%%' % amount_rate"/>
+                                            <strong t-esc="'{:.1f}%'.format(amount_rate)"/>
                                         </td>
                                     </tr>
                                 </table>
@@ -634,17 +634,17 @@
                             </t>
                             <t t-elif="final_overall_rate >= 90">
                                 <div class="alert alert-success text-center">
-                                    <strong>✓ Excellent Progress</strong> — <span t-esc="'%.1f%%' % final_overall_rate"/> of statement lines reconciled. <span t-esc="total_unreconciled_count"/> items remaining.
+                                    <strong>✓ Excellent Progress</strong> — <span t-esc="'{:.1f}%'.format(final_overall_rate)"/> of statement lines reconciled. <span t-esc="total_unreconciled_count"/> items remaining.
                                 </div>
                             </t>
                             <t t-elif="final_overall_rate >= 70">
                                 <div class="alert alert-warning text-center">
-                                    <strong>⚠ In Progress</strong> — <span t-esc="'%.1f%%' % final_overall_rate"/> of statement lines reconciled. <span t-esc="total_unreconciled_count"/> items require attention.
+                                    <strong>⚠ In Progress</strong> — <span t-esc="'{:.1f}%'.format(final_overall_rate)"/> of statement lines reconciled. <span t-esc="total_unreconciled_count"/> items require attention.
                                 </div>
                             </t>
                             <t t-elif="total_line_count > 0">
                                 <div class="alert alert-danger text-center">
-                                    <strong>✗ Action Required</strong> — Only <span t-esc="'%.1f%%' % final_overall_rate"/> of statement lines reconciled. <span t-esc="total_unreconciled_count"/> items need reconciliation.
+                                    <strong>✗ Action Required</strong> — Only <span t-esc="'{:.1f}%'.format(final_overall_rate)"/> of statement lines reconciled. <span t-esc="total_unreconciled_count"/> items need reconciliation.
                                 </div>
                             </t>
                         </div>

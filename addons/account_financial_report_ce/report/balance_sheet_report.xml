@@ -230,11 +230,11 @@
                                                              + (var_pct_val &lt; 0 and ' text-danger' or '')">
                                                 <t t-if="line.is_group">
                                                     <strong>
-                                                        <span t-esc="'%+.1f%%' % var_pct_val"/>
+                                                        <span t-esc="'{:+.1f}%'.format(var_pct_val)"/>
                                                     </strong>
                                                 </t>
                                                 <t t-else="">
-                                                    <span t-esc="'%+.1f%%' % var_pct_val"/>
+                                                    <span t-esc="'{:+.1f}%'.format(var_pct_val)"/>
                                                 </t>
                                             </td>
                                         </t>

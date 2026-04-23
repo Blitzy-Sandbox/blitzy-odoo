@@ -46,7 +46,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
-                    <div class="page">
+                    <div class="page o_financial_report">
                         <!-- Report Header -->
                         <div class="text-center">
                             <h2>Statement of Cash Flows</h2>
@@ -149,7 +149,7 @@
                                             </td>
                                             <td class="text-end">
                                                 <t t-if="doc.net_income_compare">
-                                                    <span t-esc="'%.1f%%' % (((doc.net_income - doc.net_income_compare) / abs(doc.net_income_compare)) * 100)"/>
+                                                    <span t-esc="'{:.1f}%'.format(((doc.net_income - doc.net_income_compare) / abs(doc.net_income_compare)) * 100)"/>
                                                 </t>
                                                 <t t-else="">
                                                     <span>—</span>
@@ -185,7 +185,7 @@
                                                 <span t-esc="dep_line.variance_absolute if dep_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                             </td>
                                             <td class="text-end">
-                                                <span t-esc="'%.1f%%' % (dep_line.variance_percentage) if dep_line and dep_line.variance_percentage else '—'"/>
+                                                <span t-esc="'{:.1f}%'.format(dep_line.variance_percentage) if dep_line and dep_line.variance_percentage else '—'"/>
                                             </td>
                                         </t>
                                     </tr>
@@ -215,7 +215,7 @@
                                                 <span t-esc="ar_line.variance_absolute if ar_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                             </td>
                                             <td class="text-end">
-                                                <span t-esc="'%.1f%%' % (ar_line.variance_percentage) if ar_line and ar_line.variance_percentage else '—'"/>
+                                                <span t-esc="'{:.1f}%'.format(ar_line.variance_percentage) if ar_line and ar_line.variance_percentage else '—'"/>
                                             </td>
                                         </t>
                                     </tr>
@@ -237,7 +237,7 @@
                                                 <span t-esc="ap_line.variance_absolute if ap_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                             </td>
                                             <td class="text-end">
-                                                <span t-esc="'%.1f%%' % (ap_line.variance_percentage) if ap_line and ap_line.variance_percentage else '—'"/>
+                                                <span t-esc="'{:.1f}%'.format(ap_line.variance_percentage) if ap_line and ap_line.variance_percentage else '—'"/>
                                             </td>
                                         </t>
                                     </tr>
@@ -259,7 +259,7 @@
                                                 <span t-esc="inv_line.variance_absolute if inv_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                             </td>
                                             <td class="text-end">
-                                                <span t-esc="'%.1f%%' % (inv_line.variance_percentage) if inv_line and inv_line.variance_percentage else '—'"/>
+                                                <span t-esc="'{:.1f}%'.format(inv_line.variance_percentage) if inv_line and inv_line.variance_percentage else '—'"/>
                                             </td>
                                         </t>
                                     </tr>
@@ -294,7 +294,7 @@
                                                 </td>
                                                 <td class="text-end">
                                                     <t t-if="line.variance_percentage">
-                                                        <span t-esc="'%.1f%%' % line.variance_percentage"/>
+                                                        <span t-esc="'{:.1f}%'.format(line.variance_percentage)"/>
                                                     </t>
                                                     <t t-else=""><span>—</span></t>
                                                 </td>
@@ -322,7 +322,7 @@
                                             <strong t-esc="operating_subtotal_line.variance_absolute if operating_subtotal_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td class="text-end">
-                                            <strong t-esc="'%.1f%%' % (operating_subtotal_line.variance_percentage) if operating_subtotal_line and operating_subtotal_line.variance_percentage else '—'"/>
+                                            <strong t-esc="'{:.1f}%'.format(operating_subtotal_line.variance_percentage) if operating_subtotal_line and operating_subtotal_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -356,7 +356,7 @@
                                             </td>
                                             <td class="text-end">
                                                 <t t-if="line.variance_percentage">
-                                                    <span t-esc="'%.1f%%' % line.variance_percentage"/>
+                                                    <span t-esc="'{:.1f}%'.format(line.variance_percentage)"/>
                                                 </t>
                                                 <t t-else=""><span>—</span></t>
                                             </td>
@@ -381,7 +381,7 @@
                                             <strong t-esc="investing_subtotal_line.variance_absolute if investing_subtotal_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td class="text-end">
-                                            <strong t-esc="'%.1f%%' % (investing_subtotal_line.variance_percentage) if investing_subtotal_line and investing_subtotal_line.variance_percentage else '—'"/>
+                                            <strong t-esc="'{:.1f}%'.format(investing_subtotal_line.variance_percentage) if investing_subtotal_line and investing_subtotal_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -415,7 +415,7 @@
                                             </td>
                                             <td class="text-end">
                                                 <t t-if="line.variance_percentage">
-                                                    <span t-esc="'%.1f%%' % line.variance_percentage"/>
+                                                    <span t-esc="'{:.1f}%'.format(line.variance_percentage)"/>
                                                 </t>
                                                 <t t-else=""><span>—</span></t>
                                             </td>
@@ -440,7 +440,7 @@
                                             <strong t-esc="financing_subtotal_line.variance_absolute if financing_subtotal_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td class="text-end">
-                                            <strong t-esc="'%.1f%%' % (financing_subtotal_line.variance_percentage) if financing_subtotal_line and financing_subtotal_line.variance_percentage else '—'"/>
+                                            <strong t-esc="'{:.1f}%'.format(financing_subtotal_line.variance_percentage) if financing_subtotal_line and financing_subtotal_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -465,7 +465,7 @@
                                             <strong t-esc="net_change_line.variance_absolute if net_change_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td class="text-end">
-                                            <strong t-esc="'%.1f%%' % (net_change_line.variance_percentage) if net_change_line and net_change_line.variance_percentage else '—'"/>
+                                            <strong t-esc="'{:.1f}%'.format(net_change_line.variance_percentage) if net_change_line and net_change_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -494,7 +494,7 @@
                                         </td>
                                         <td class="text-end">
                                             <t t-if="doc.beginning_cash_compare">
-                                                <span t-esc="'%.1f%%' % (((doc.beginning_cash - doc.beginning_cash_compare) / abs(doc.beginning_cash_compare)) * 100)"/>
+                                                <span t-esc="'{:.1f}%'.format(((doc.beginning_cash - doc.beginning_cash_compare) / abs(doc.beginning_cash_compare)) * 100)"/>
                                             </t>
                                             <t t-else=""><span>—</span></t>
                                         </td>
@@ -516,7 +516,7 @@
                                             <span t-esc="net_change_line.variance_absolute if net_change_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td class="text-end">
-                                            <span t-esc="'%.1f%%' % (net_change_line.variance_percentage) if net_change_line and net_change_line.variance_percentage else '—'"/>
+                                            <span t-esc="'{:.1f}%'.format(net_change_line.variance_percentage) if net_change_line and net_change_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -537,7 +537,7 @@
                                             <strong t-esc="closing_line.variance_absolute if closing_line else 0" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td class="text-end">
-                                            <strong t-esc="'%.1f%%' % (closing_line.variance_percentage) if closing_line and closing_line.variance_percentage else '—'"/>
+                                            <strong t-esc="'{:.1f}%'.format(closing_line.variance_percentage) if closing_line and closing_line.variance_percentage else '—'"/>
                                         </td>
                                     </t>
                                 </tr>

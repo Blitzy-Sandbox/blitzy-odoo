@@ -17,7 +17,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
-                    <div class="page">
+                    <div class="page o_financial_report">
                         <!-- Report Header: GAAP-formatted period display -->
                         <div class="text-center">
                             <h2>Profit and Loss Statement</h2>
@@ -117,7 +117,7 @@
                                                     <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                                 </td>
                                                 <td t-att-class="'text-end ' + ('text-success' if line.variance_percentage &gt;= 0 else 'text-danger')">
-                                                    <span t-esc="'%.1f%%' % (line.variance_percentage or 0)"/>
+                                                    <span t-esc="'{:.1f}%'.format(line.variance_percentage or 0)"/>
                                                 </td>
                                             </t>
                                         </tr>
@@ -139,7 +139,7 @@
                                             <strong t-esc="revenue_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td t-att-class="'text-end ' + ('text-success' if revenue_var &gt;= 0 else 'text-danger')">
-                                            <strong t-esc="'%.1f%%' % ((revenue_var / total_revenue_compare * 100) if total_revenue_compare else 0)"/>
+                                            <strong t-esc="'{:.1f}%'.format((revenue_var / total_revenue_compare * 100) if total_revenue_compare else 0)"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -183,7 +183,7 @@
                                                     <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                                 </td>
                                                 <td t-att-class="'text-end ' + ('text-success' if line.variance_percentage &lt;= 0 else 'text-danger')">
-                                                    <span t-esc="'%.1f%%' % (line.variance_percentage or 0)"/>
+                                                    <span t-esc="'{:.1f}%'.format(line.variance_percentage or 0)"/>
                                                 </td>
                                             </t>
                                         </tr>
@@ -205,7 +205,7 @@
                                             <strong t-esc="cogs_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td t-att-class="'text-end ' + ('text-success' if cogs_var &lt;= 0 else 'text-danger')">
-                                            <strong t-esc="'%.1f%%' % ((cogs_var / total_cogs_compare * 100) if total_cogs_compare else 0)"/>
+                                            <strong t-esc="'{:.1f}%'.format((cogs_var / total_cogs_compare * 100) if total_cogs_compare else 0)"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -230,7 +230,7 @@
                                             <strong t-esc="gp_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td t-att-class="'text-end ' + ('text-success' if gp_var &gt;= 0 else 'text-danger')">
-                                            <strong t-esc="'%.1f%%' % ((gp_var / gross_profit_compare * 100) if gross_profit_compare else 0)"/>
+                                            <strong t-esc="'{:.1f}%'.format((gp_var / gross_profit_compare * 100) if gross_profit_compare else 0)"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -274,7 +274,7 @@
                                                     <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                                 </td>
                                                 <td t-att-class="'text-end ' + ('text-success' if line.variance_percentage &lt;= 0 else 'text-danger')">
-                                                    <span t-esc="'%.1f%%' % (line.variance_percentage or 0)"/>
+                                                    <span t-esc="'{:.1f}%'.format(line.variance_percentage or 0)"/>
                                                 </td>
                                             </t>
                                         </tr>
@@ -296,7 +296,7 @@
                                             <strong t-esc="opex_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td t-att-class="'text-end ' + ('text-success' if opex_var &lt;= 0 else 'text-danger')">
-                                            <strong t-esc="'%.1f%%' % ((opex_var / total_opex_compare * 100) if total_opex_compare else 0)"/>
+                                            <strong t-esc="'{:.1f}%'.format((opex_var / total_opex_compare * 100) if total_opex_compare else 0)"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -321,7 +321,7 @@
                                             <strong t-esc="oi_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td t-att-class="'text-end ' + ('text-success' if oi_var &gt;= 0 else 'text-danger')">
-                                            <strong t-esc="'%.1f%%' % ((oi_var / operating_income_compare * 100) if operating_income_compare else 0)"/>
+                                            <strong t-esc="'{:.1f}%'.format((oi_var / operating_income_compare * 100) if operating_income_compare else 0)"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -365,7 +365,7 @@
                                                     <span t-esc="line.variance_absolute" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                                 </td>
                                                 <td t-att-class="'text-end ' + ('text-success' if line.variance_percentage &gt;= 0 else 'text-danger')">
-                                                    <span t-esc="'%.1f%%' % (line.variance_percentage or 0)"/>
+                                                    <span t-esc="'{:.1f}%'.format(line.variance_percentage or 0)"/>
                                                 </td>
                                             </t>
                                         </tr>
@@ -388,7 +388,7 @@
                                             <strong t-esc="other_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td t-att-class="'text-end ' + ('text-success' if other_var &gt;= 0 else 'text-danger')">
-                                            <strong t-esc="'%.1f%%' % ((other_var / total_other_compare * 100) if total_other_compare else 0)"/>
+                                            <strong t-esc="'{:.1f}%'.format((other_var / total_other_compare * 100) if total_other_compare else 0)"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -413,7 +413,7 @@
                                             <strong t-esc="ni_var" t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
                                         </td>
                                         <td t-att-class="'text-end ' + ('text-success' if ni_var &gt;= 0 else 'text-danger')">
-                                            <strong t-esc="'%.1f%%' % ((ni_var / net_income_compare * 100) if net_income_compare else 0)"/>
+                                            <strong t-esc="'{:.1f}%'.format((ni_var / net_income_compare * 100) if net_income_compare else 0)"/>
                                         </td>
                                     </t>
                                 </tr>
@@ -438,33 +438,33 @@
                                     <tr>
                                         <td>Gross Margin</td>
                                         <td class="text-end">
-                                            <span t-esc="'%.1f%%' % (doc.gross_profit / doc.total_revenue * 100)"/>
+                                            <span t-esc="'{:.1f}%'.format(doc.gross_profit / doc.total_revenue * 100)"/>
                                         </td>
                                         <t t-if="doc.compare_period and total_revenue_compare">
                                             <td class="text-end">
-                                                <span t-esc="'%.1f%%' % (gross_profit_compare / total_revenue_compare * 100)"/>
+                                                <span t-esc="'{:.1f}%'.format(gross_profit_compare / total_revenue_compare * 100)"/>
                                             </td>
                                         </t>
                                     </tr>
                                     <tr>
                                         <td>Operating Margin</td>
                                         <td class="text-end">
-                                            <span t-esc="'%.1f%%' % (doc.operating_income / doc.total_revenue * 100)"/>
+                                            <span t-esc="'{:.1f}%'.format(doc.operating_income / doc.total_revenue * 100)"/>
                                         </td>
                                         <t t-if="doc.compare_period and total_revenue_compare">
                                             <td class="text-end">
-                                                <span t-esc="'%.1f%%' % (operating_income_compare / total_revenue_compare * 100)"/>
+                                                <span t-esc="'{:.1f}%'.format(operating_income_compare / total_revenue_compare * 100)"/>
                                             </td>
                                         </t>
                                     </tr>
                                     <tr>
                                         <td>Net Margin</td>
                                         <td class="text-end">
-                                            <span t-esc="'%.1f%%' % (doc.net_income / doc.total_revenue * 100)"/>
+                                            <span t-esc="'{:.1f}%'.format(doc.net_income / doc.total_revenue * 100)"/>
                                         </td>
                                         <t t-if="doc.compare_period and total_revenue_compare">
                                             <td class="text-end">
-                                                <span t-esc="'%.1f%%' % (net_income_compare / total_revenue_compare * 100)"/>
+                                                <span t-esc="'{:.1f}%'.format(net_income_compare / total_revenue_compare * 100)"/>
                                             </td>
                                         </t>
                                     </tr>

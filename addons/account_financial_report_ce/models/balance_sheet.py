@@ -82,6 +82,21 @@ class BalanceSheetReport(models.TransientModel):
              "If not specified, will use company fiscal year settings.",
     )
 
+    # Optional account filter — declared here so QWeb templates that guard
+    # on ``doc.account_ids`` (e.g., "Filtered Accounts" header row) can
+    # evaluate without raising ``AttributeError`` when the report is
+    # generated from the unified wizard, which currently only populates
+    # ``account_ids`` for the General Ledger / Trial Balance reports but
+    # may be extended in future iterations to pass it to Balance Sheet
+    # as well. An empty recordset evaluates falsy, so the header row is
+    # hidden by default, preserving existing visual output.
+    account_ids = fields.Many2many(
+        comodel_name='account.account',
+        string='Filtered Accounts',
+        help="Restrict the Balance Sheet to these specific accounts. "
+             "When empty, all eligible accounts are included.",
+    )
+
     # -------------------------------------------------------------------------
     # ASSET CLASSIFICATION (per FR-001 Scenario 2)
     # -------------------------------------------------------------------------

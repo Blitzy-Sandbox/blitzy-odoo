@@ -38,7 +38,7 @@
         <field name="name">reconciliation.wizard.form</field>
         <field name="model">account.reconciliation.wizard</field>
         <field name="arch" type="xml">
-            <form string="Bank Reconciliation">
+            <form string="Bank Reconciliation" class="o_bank_reconciliation">
                 <!-- =============================================
                      Hidden / Invisible Fields
                      ============================================= -->
@@ -317,7 +317,7 @@
                             string="Batch Confirm All"
                             class="btn-secondary"
                             icon="fa-check-circle"
-                            help="Automatically confirm all high-confidence matches (score ≥ 90%%) in a single batch operation."
+                            help="Automatically confirm all high-confidence matches (score ≥ 95%%) in a single batch operation."
                             invisible="state == 'done'"/>
 
                     <!-- Close / Cancel -->

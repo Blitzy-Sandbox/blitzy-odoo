@@ -647,20 +647,50 @@ class FinancialReportAbstract(models.AbstractModel):
         rows = []
         line_ids = getattr(self, 'line_ids', self.env['account.financial.report.line.abstract'])
         for line in line_ids:
+            # CP12 F-3 (CRITICAL): guard every attribute access with
+            # ``getattr`` so the base implementation is safe for line
+            # models that do not declare the canonical fields.
+            #
+            # Different report subclasses use different line structures:
+            # * ``account.cash.flow.report.line`` has ``amount``, ``level``,
+            #   ``is_total`` and no ``account_ids``.
+            # * ``account.aged.partner.balance.report.partner`` (reached via
+            #   the ``partner_line_ids`` → ``line_ids`` alias) has ``name``
+            #   and ``total`` but no ``amount``, ``level``, ``is_total``,
+            #   and no ``account_ids``.
+            # * ``account.balance.sheet.report.line`` and
+            #   ``account.profit.loss.report.line`` expose the full canonical
+            #   schema.
+            #
+            # Direct attribute access raised ``AttributeError`` during
+            # ``action_export_xlsx`` for any line model that happens to be
+            # missing a referenced field.  Using ``getattr`` with sensible
+            # defaults preserves the empty-cell output for both the "field
+            # absent" and "field present but empty" cases.  Subclasses with
+            # richer line structures (e.g. aged-partner-balance aging
+            # buckets) are free to override ``_get_xlsx_data`` to emit
+            # detailed rows.
+            account_ids = getattr(line, 'account_ids', False)
+            # ``total`` is the aging-partner-line residual alias; fall back
+            # to it when ``amount`` is not defined so partner rows still
+            # carry their outstanding balance.
+            balance = getattr(line, 'amount', None)
+            if balance is None:
+                balance = getattr(line, 'total', 0.0)
             row = {
-                'code': ', '.join(line.account_ids.mapped('code')) if line.account_ids else '',
-                'name': line.name or '',
+                'code': ', '.join(account_ids.mapped('code')) if account_ids else '',
+                'name': getattr(line, 'name', '') or '',
                 'debit': 0.0,
                 'credit': 0.0,
-                'balance': line.amount or 0.0,
-                'level': line.level or 0,
-                'is_total': line.is_total,
+                'balance': balance or 0.0,
+                'level': getattr(line, 'level', 0) or 0,
+                'is_total': bool(getattr(line, 'is_total', False)),
             }
             if self.enable_comparison:
                 row.update({
-                    'comparison_amount': line.comparison_amount or 0.0,
-                    'variance_absolute': line.variance_absolute or 0.0,
-                    'variance_percentage': line.variance_percentage or 0.0,
+                    'comparison_amount': getattr(line, 'comparison_amount', 0.0) or 0.0,
+                    'variance_absolute': getattr(line, 'variance_absolute', 0.0) or 0.0,
+                    'variance_percentage': getattr(line, 'variance_percentage', 0.0) or 0.0,
                 })
             rows.append(row)
         return rows

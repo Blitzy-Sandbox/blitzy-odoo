@@ -1348,9 +1348,21 @@ class BankStatementImport(models.TransientModel):
         3. Attempt partner matching by name
         4. Create the statement line record
 
-        Statement lines are created directly (without an enclosing statement),
-        as Odoo's account.bank.statement model manages grouping automatically
-        through computed fields.
+        CP12 F-4 (CRITICAL — DATA INTEGRITY): statement lines are now
+        anchored to a freshly-created ``account.bank.statement`` record
+        (one statement per import) so they are not orphaned.  Previously
+        lines were created with only ``journal_id`` set; Odoo's
+        ``statement_id`` field is a stored ``Many2one`` (not an
+        auto-compute), so the lines had ``statement_id=NULL`` and could
+        not be grouped, reconciled through the statement form, or
+        displayed in any enclosing statement. The import still reported
+        "success", producing a silent data-integrity failure.
+
+        The statement is created with ``journal_id`` set on the
+        statement itself (via ``_compute_journal_id``) derived from the
+        ``journal_id`` on the lines, and a human-readable ``reference``
+        derived from the uploaded file name so operators can trace each
+        statement back to its source file.
 
         Args:
             journal (recordset): account.journal record for the bank journal.
@@ -1362,6 +1374,7 @@ class BankStatementImport(models.TransientModel):
         self.ensure_one()
 
         StLine = self.env['account.bank.statement.line']
+        Statement = self.env['account.bank.statement']
         created_lines = StLine
         duplicate_count = 0
         batch_vals = []
@@ -1425,6 +1438,46 @@ class BankStatementImport(models.TransientModel):
                 len(batch_vals),
                 journal.display_name,
             )
+            # CP12 F-4 (CRITICAL): create the parent
+            # ``account.bank.statement`` record FIRST, then attach every
+            # line's ``statement_id`` to it before batch-inserting the
+            # lines.  This prevents orphaned statement lines (lines
+            # with ``statement_id=NULL``) which would be invisible in
+            # any statement-centric view and would silently corrupt the
+            # bank-reconciliation working set.
+            line_dates = [
+                lv['date'] for lv in batch_vals if lv.get('date')
+            ]
+            statement_date = min(line_dates) if line_dates else date.today()
+            statement_reference = self.filename or _('Imported Statement')
+            # Derive a human-readable name; Odoo will finalize via
+            # ``_compute_name`` from ``journal.code`` + ``date``, but
+            # supplying a reference preserves traceability to the
+            # source file.
+            try:
+                parent_statement = Statement.create({
+                    'journal_id': journal.id,
+                    'date': statement_date,
+                    'reference': statement_reference,
+                })
+            except (ValueError, TypeError, KeyError, OSError) as exc:
+                _logger.exception(
+                    "Parent statement creation failed: journal=%s",
+                    journal.display_name,
+                )
+                raise UserError(
+                    _(
+                        "Could not create a bank statement in journal '%s' "
+                        "for the imported file. Please verify the journal "
+                        "configuration and try again.",
+                    ) % (journal.display_name or _('Unknown')),
+                ) from exc
+
+            # Attach the parent ``statement_id`` to every line now that
+            # the statement exists.
+            for line_vals in batch_vals:
+                line_vals['statement_id'] = parent_statement.id
+
             # CP10 Issue #6 (MINOR — information disclosure): ORM and
             # database-level exception text can include column names,
             # partial SQL fragments, or constraint messages that would
@@ -1437,6 +1490,9 @@ class BankStatementImport(models.TransientModel):
                     is_statement_line=True,
                 ).create(batch_vals)
             except (ValueError, TypeError, KeyError, OSError) as exc:
+                # Roll back the parent statement we just created so we
+                # don't leave an empty statement shell behind.
+                parent_statement.unlink()
                 _logger.exception(
                     "Statement line creation failed: journal=%s batch_size=%d",
                     journal.display_name, len(batch_vals),
@@ -1450,8 +1506,13 @@ class BankStatementImport(models.TransientModel):
                     ) % (journal.display_name or _('Unknown')),
                 ) from exc
 
-            # Collect associated statements for the result
-            statement_ids = created_lines.mapped('statement_id')
+            # Associate the parent statement (and any transitively
+            # associated statements via ``statement_id`` on the created
+            # lines, though this should always equal
+            # ``parent_statement``) with this import record so the
+            # operator can navigate from the wizard result to the newly
+            # created statement.
+            statement_ids = parent_statement | created_lines.mapped('statement_id')
             if statement_ids:
                 self.statement_ids = [(6, 0, statement_ids.ids)]
 

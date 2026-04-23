@@ -611,9 +611,14 @@ class ReconciliationWizard(models.TransientModel):
         self.ensure_one()
 
         MatchingModel = self.env['account.reconciliation.matching']
-        # Use the CONFIDENCE_HIGH threshold from the matching engine rather
-        # than a hard-coded value to stay in sync with engine constants.
-        high_threshold = MatchingModel.CONFIDENCE_HIGH
+        # CP12 F-5: route the HIGH-threshold read through the matching
+        # engine's runtime-configurable helper so that administrator
+        # overrides of ``ir.config_parameter`` (e.g. setting
+        # ``account_bank_reconciliation_ce.confidence_high = 90`` for a
+        # more lenient auto-confirm policy) take effect here as well.
+        # Falls back to the ``CONFIDENCE_HIGH`` class constant when the
+        # parameter is absent or unparseable.
+        high_threshold = MatchingModel._get_confidence_thresholds()['high']
 
         high_confidence_matches = self.match_ids.filtered(
             lambda m: (m.confidence_score >= high_threshold

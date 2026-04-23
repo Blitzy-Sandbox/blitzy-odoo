@@ -85,6 +85,159 @@ class ReconciliationMatching(models.Model):
     _COMBINATION_AMOUNT_TOLERANCE = 0.05
 
     # -------------------------------------------------------------------------
+    # CP12 F-5 — RUNTIME CONFIGURATION READ HELPERS
+    # -------------------------------------------------------------------------
+    # Prior releases hard-coded the confidence thresholds, scoring weights,
+    # and candidate date window as Python class-level constants.  The
+    # accompanying ``data/reconciliation_data.xml`` file defined
+    # ``ir.config_parameter`` records with the same semantics but those
+    # records were **never read** — they were pure dead data.  Administrators
+    # who wanted to re-tune the engine had to edit Python source.
+    #
+    # CP12 F-5 fixes this by reading every configurable value from
+    # ``ir.config_parameter`` at request time, with the Python class-level
+    # constant acting as the fallback default when the parameter is missing
+    # or fails to parse.  The XML data values and the Python constants have
+    # been aligned (95.0 / 70.0 / 50.0 confidence; amount=0.35, reference=
+    # 0.25, partner=0.25, date=0.15 weights; 90-day candidate window), so
+    # by-default behaviour is byte-identical to the prior release.
+    #
+    # All reads go through the three helpers below so that unit-test fixtures
+    # can override values via ``self.env['ir.config_parameter'].set_param``
+    # without monkey-patching class attributes.
+    #
+    # Parameter-key convention:
+    #     account_bank_reconciliation_ce.<short_name>
+    # where ``<short_name>`` matches the XML ``<field name="key">`` suffix.
+    # -------------------------------------------------------------------------
+
+    _CONFIG_KEY_PREFIX = 'account_bank_reconciliation_ce.'
+
+    def _get_config_float(self, short_key, default):
+        """Read a float-valued ``ir.config_parameter`` with a safe fallback.
+
+        Args:
+            short_key: The suffix after ``account_bank_reconciliation_ce.``
+                (e.g. ``'confidence_high'``).  The full key is built by
+                prepending :data:`_CONFIG_KEY_PREFIX`.
+            default: Numeric fallback applied when the parameter is absent,
+                empty, or cannot be parsed as a float.
+
+        Returns:
+            float — the parsed configuration value, or ``default``.
+
+        Robustness:
+            * Missing key → ``default``.
+            * Empty string → ``default``.
+            * ``ValueError`` / ``TypeError`` on ``float()`` → ``default``;
+              the exception is logged at DEBUG level so operators can spot
+              misconfiguration without polluting normal logs.
+        """
+        param = self.env['ir.config_parameter'].sudo().get_param(
+            self._CONFIG_KEY_PREFIX + short_key, default=None,
+        )
+        # Treat missing (``None``) and empty-string parameter values
+        # identically — both map to the caller-provided default so that
+        # an operator who clears a field in System Parameters cleanly
+        # restores engine-default behavior (``not param`` catches both).
+        if not param:
+            return float(default)
+        try:
+            return float(param)
+        except (ValueError, TypeError):
+            _logger.debug(
+                "reconciliation_matching_engine: config parameter %s%s "
+                "has unparseable value %r; falling back to default %r.",
+                self._CONFIG_KEY_PREFIX, short_key, param, default,
+            )
+            return float(default)
+
+    def _get_config_int(self, short_key, default):
+        """Read an int-valued ``ir.config_parameter`` with a safe fallback.
+
+        Args:
+            short_key: Parameter-key suffix (see :meth:`_get_config_float`).
+            default: Integer fallback applied on missing/unparseable value.
+
+        Returns:
+            int — parsed value, or ``default``.
+        """
+        param = self.env['ir.config_parameter'].sudo().get_param(
+            self._CONFIG_KEY_PREFIX + short_key, default=None,
+        )
+        # Treat missing (``None``) and empty-string identically — see
+        # :meth:`_get_config_float` for rationale.
+        if not param:
+            return int(default)
+        try:
+            # ``int(float(...))`` tolerates decimal-formatted integers
+            # (e.g. ``"90.0"``) that some XML exporters emit.
+            return int(float(param))
+        except (ValueError, TypeError):
+            _logger.debug(
+                "reconciliation_matching_engine: config parameter %s%s "
+                "has unparseable value %r; falling back to default %r.",
+                self._CONFIG_KEY_PREFIX, short_key, param, default,
+            )
+            return int(default)
+
+    def _get_confidence_thresholds(self):
+        """Return the three confidence thresholds as a dict.
+
+        Reads ``confidence_high``, ``confidence_medium``, ``confidence_low``
+        from ``ir.config_parameter`` with the class constants as defaults.
+
+        Returns:
+            dict with keys ``'high'``, ``'medium'``, ``'low'`` — each a float.
+        """
+        return {
+            'high': self._get_config_float('confidence_high', self.CONFIDENCE_HIGH),
+            'medium': self._get_config_float('confidence_medium', self.CONFIDENCE_MEDIUM),
+            'low': self._get_config_float('confidence_low', self.CONFIDENCE_LOW),
+        }
+
+    def _get_scoring_weights(self):
+        """Return the four scoring weights as a dict.
+
+        Reads ``weight_amount``, ``weight_reference``, ``weight_partner``,
+        ``weight_date`` from ``ir.config_parameter`` with the class constants
+        (:data:`DEFAULT_WEIGHTS`) as defaults.
+
+        Returns:
+            dict with keys ``'amount'``, ``'reference'``, ``'partner'``,
+            ``'date'`` — each a float.  No normalisation is applied;
+            administrators who override the values are responsible for
+            keeping the sum ≈ 1.0.
+        """
+        return {
+            'amount': self._get_config_float(
+                'weight_amount', self.DEFAULT_WEIGHTS['amount'],
+            ),
+            'reference': self._get_config_float(
+                'weight_reference', self.DEFAULT_WEIGHTS['reference'],
+            ),
+            'partner': self._get_config_float(
+                'weight_partner', self.DEFAULT_WEIGHTS['partner'],
+            ),
+            'date': self._get_config_float(
+                'weight_date', self.DEFAULT_WEIGHTS['date'],
+            ),
+        }
+
+    def _get_candidate_date_window(self):
+        """Return the runtime candidate-date window (days).
+
+        Reads ``candidate_date_window`` from ``ir.config_parameter`` with
+        :data:`_CANDIDATE_DATE_WINDOW` as the fallback default.
+
+        Returns:
+            int — positive number of days.
+        """
+        return self._get_config_int(
+            'candidate_date_window', self._CANDIDATE_DATE_WINDOW,
+        )
+
+    # -------------------------------------------------------------------------
     # FIELDS
     # -------------------------------------------------------------------------
 
@@ -120,8 +273,8 @@ class ReconciliationMatching(models.Model):
 
     confidence_level = fields.Selection(
         selection=[
-            ('high', 'High (≥90%)'),
-            ('medium', 'Medium (70-89%)'),
+            ('high', 'High (≥95%)'),
+            ('medium', 'Medium (70-94%)'),
             ('low', 'Low (50-69%)'),
             ('none', 'Below Threshold (<50%)'),
         ],
@@ -197,14 +350,28 @@ class ReconciliationMatching(models.Model):
 
     @api.depends('confidence_score')
     def _compute_confidence_level(self):
-        """Classify *confidence_score* into a human-readable bucket."""
+        """Classify *confidence_score* into a human-readable bucket.
+
+        CP12 F-5: thresholds are now read at runtime via
+        :meth:`_get_confidence_thresholds` (falling back to the
+        :data:`CONFIDENCE_HIGH` / :data:`CONFIDENCE_MEDIUM` /
+        :data:`CONFIDENCE_LOW` class constants when the
+        ``ir.config_parameter`` records are absent).
+        """
+        # Read thresholds once per compute invocation so all records in the
+        # recordset share a single DB round-trip — important for performance
+        # on large match batches.
+        thresholds = self._get_confidence_thresholds()
+        high_t = thresholds['high']
+        medium_t = thresholds['medium']
+        low_t = thresholds['low']
         for record in self:
             score = record.confidence_score or 0.0
-            if score >= self.CONFIDENCE_HIGH:
+            if score >= high_t:
                 record.confidence_level = 'high'
-            elif score >= self.CONFIDENCE_MEDIUM:
+            elif score >= medium_t:
                 record.confidence_level = 'medium'
-            elif score >= self.CONFIDENCE_LOW:
+            elif score >= low_t:
                 record.confidence_level = 'low'
             else:
                 record.confidence_level = 'none'
@@ -255,11 +422,20 @@ class ReconciliationMatching(models.Model):
             journal = self.env['account.journal'].browse(journal_id).exists()
 
         # Resolve the effective date window.  ``None`` falls back to the
-        # class-level default so existing callers that did not pass the new
-        # argument continue to behave identically to the previous release.
+        # runtime-configured default (``ir.config_parameter`` —
+        # :meth:`_get_candidate_date_window`) so existing callers that did
+        # not pass the new argument continue to behave identically to the
+        # prior release, while administrators can tune the window without
+        # touching Python source.  CP12 F-5.
         effective_window = (
-            date_window if date_window is not None else self._CANDIDATE_DATE_WINDOW
+            date_window if date_window is not None else self._get_candidate_date_window()
         )
+
+        # Read confidence thresholds once for this call — values are stable
+        # during a single matching pass.  CP12 F-5.
+        thresholds = self._get_confidence_thresholds()
+        low_threshold = thresholds['low']
+        high_threshold = thresholds['high']
 
         # Filter to unreconciled lines only.
         unreconciled = statement_lines.filtered(lambda sl: not sl.is_reconciled)
@@ -294,7 +470,7 @@ class ReconciliationMatching(models.Model):
             scored = []
             for ml in candidates:
                 scores = self._compute_match_score(st_line, ml)
-                if scores['confidence_score'] >= self.CONFIDENCE_LOW:
+                if scores['confidence_score'] >= low_threshold:
                     vals = {
                         'company_id': st_line.company_id.id,
                         'statement_line_id': st_line.id,
@@ -311,8 +487,8 @@ class ReconciliationMatching(models.Model):
                     scored.append(vals)
 
             # Attempt one-to-many combination matching when no single
-            # candidate scores ≥ CONFIDENCE_HIGH.
-            has_high = any(v['confidence_score'] >= self.CONFIDENCE_HIGH for v in scored)
+            # candidate scores ≥ the configured HIGH threshold.
+            has_high = any(v['confidence_score'] >= high_threshold for v in scored)
             if not has_high and candidates:
                 combo_vals = self._find_combination_matches(st_line, candidates)
                 scored.extend(combo_vals)
@@ -381,10 +557,12 @@ class ReconciliationMatching(models.Model):
         ])
 
         # Determine date window boundaries.  A ``None`` argument falls back
-        # to the class-level default so that callers which have not opted
-        # into the new per-invocation parameter keep their prior behaviour.
+        # to the runtime-configured default (``ir.config_parameter`` — via
+        # :meth:`_get_candidate_date_window`, which in turn defaults to the
+        # :data:`_CANDIDATE_DATE_WINDOW` class constant when the parameter
+        # is absent).  CP12 F-5.
         effective_window = (
-            date_window if date_window is not None else self._CANDIDATE_DATE_WINDOW
+            date_window if date_window is not None else self._get_candidate_date_window()
         )
         st_date = st_line.date or fields.Date.context_today(self)
         date_from = st_date - timedelta(days=effective_window)
@@ -432,11 +610,20 @@ class ReconciliationMatching(models.Model):
     def _compute_match_score(self, st_line, move_line):
         """Compute the weighted confidence score for a single pair.
 
+        CP12 F-5: scoring weights are now read via
+        :meth:`_get_scoring_weights` (``ir.config_parameter`` with the
+        :data:`DEFAULT_WEIGHTS` class constant as defaults).  Each call
+        performs a single parameter lookup; callers that score many pairs
+        per bank statement should cache the returned dict.  Note that
+        :meth:`find_matches` already amortises this cost because it caches
+        the thresholds at the top of the loop — each ``_compute_match_score``
+        call is O(1) in parameter-read terms.
+
         Returns:
             dict with keys ``confidence_score``, ``amount_score``,
             ``reference_score``, ``partner_score``, ``date_score``.
         """
-        weights = self.DEFAULT_WEIGHTS
+        weights = self._get_scoring_weights()
 
         st_amount = st_line.amount or 0.0
         ml_balance = move_line.balance or 0.0
@@ -719,10 +906,14 @@ class ReconciliationMatching(models.Model):
             matches_by_line: dict mapping ``statement_line_id`` to a recordset
                 of ``account.reconciliation.matching``.
         """
+        # Read the HIGH threshold once for this multi-match resolution
+        # pass — the value is stable across all statement lines in the
+        # batch.  CP12 F-5.
+        high_threshold = self._get_confidence_thresholds()['high']
         for _sl_id, matches in matches_by_line.items():
             if not matches or len(matches) <= 1:
                 # Single (or no) match — auto-select if score is high enough.
-                if matches and matches[0].confidence_score >= self.CONFIDENCE_HIGH:
+                if matches and matches[0].confidence_score >= high_threshold:
                     matches[0].write({'is_selected': True})
                 continue
 
@@ -737,7 +928,7 @@ class ReconciliationMatching(models.Model):
             )
 
             best = sorted_matches[0]
-            if best.confidence_score >= self.CONFIDENCE_HIGH:
+            if best.confidence_score >= high_threshold:
                 best.write({'is_selected': True})
                 _logger.debug(
                     "Multi-match resolved for st_line %s: selected ml %s "

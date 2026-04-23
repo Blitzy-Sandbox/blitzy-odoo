@@ -25,7 +25,7 @@
         <field name="name">bank.statement.import.wizard.form</field>
         <field name="model">account.bank.statement.import.wizard</field>
         <field name="arch" type="xml">
-            <form string="Import Bank Statement">
+            <form string="Import Bank Statement" class="o_bank_statement_import_wizard">
                 <!-- Hidden fields for state-based visibility and company isolation -->
                 <field name="state" invisible="1"/>
                 <field name="company_id" invisible="1"/>

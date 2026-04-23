@@ -63,7 +63,7 @@ class BankStatementLineExt(models.Model):
         copy=False,
         help=(
             'Best matching confidence score (0-100) assigned by the '
-            'reconciliation engine.  Values ≥90 are "High", 70-89 are '
+            'reconciliation engine.  Values ≥95 are "High", 70-94 are '
             '"Medium", and 50-69 are "Low" confidence.'
         ),
     )
@@ -405,7 +405,17 @@ class PartialReconcileHelper(models.TransientModel):
         elif self.write_off_account_id:
             # Write-off path -- create a journal entry for the difference,
             # then reconcile everything together.
-            write_off_move = self._create_write_off_entry(difference)
+            # CP12 F-6 (CRITICAL): pass ``target_account`` to the
+            # write-off builder so the mirror line lands on the same
+            # reconcilable account as the invoice's AR/AP line (and the
+            # switched statement counterpart lines).  Without this, the
+            # filter ``line.account_id == target_account`` below would
+            # select *nothing* from the write-off move, leaving the
+            # invoice's residual unresolved while the statement line
+            # appeared reconciled.
+            write_off_move = self._create_write_off_entry(
+                difference, target_account=target_account,
+            )
             wo_lines = write_off_move.line_ids.filtered(
                 lambda line: line.account_id == target_account,
             )
@@ -531,17 +541,40 @@ class PartialReconcileHelper(models.TransientModel):
     # HELPER METHODS
     # -------------------------------------------------------------------------
 
-    def _create_write_off_entry(self, difference):
+    def _create_write_off_entry(self, difference, target_account=None):
         """Create and post a journal entry for the write-off difference.
 
         The entry consists of two lines:
         1. A line on the **write-off account** absorbing the difference.
-        2. A balancing line on the **bank suspense account** (or the
-           statement line's counterpart account) so the move is balanced.
+        2. A balancing line on ``target_account`` (if supplied) so it
+           can be reconciled together with the invoice receivable/payable
+           lines and the switched statement counterpart lines.  When
+           ``target_account`` is not provided, the method falls back to
+           the journal's **suspense account** for backward compatibility.
+
+        CP12 F-6 (CRITICAL — ACCOUNTING CORRECTNESS): the counterpart
+        account defaulted to ``journal.suspense_account_id``.  The
+        enclosing ``action_reconcile`` method switches the statement
+        line's counterpart lines to ``target_account`` (the invoice's
+        AR/AP account) before reconciling.  As a result, the write-off
+        move's mirror line sat on the suspense account while the
+        reconcile filter ``lambda line: line.account_id == target_account``
+        on lines 408-413 selected *nothing* from the write-off move,
+        leaving the invoice's residual unresolved even though the
+        wizard reported the statement line as reconciled.
+
+        The fix accepts an optional ``target_account`` parameter from
+        the caller so that the mirror line lands on the *same*
+        reconcilable account as the invoice's AR/AP line, enabling full
+        reconciliation.
 
         :param difference: Signed monetary difference.  Positive means the
             statement exceeds journal items; negative means journal items
             exceed the statement.
+        :param target_account: Optional ``account.account`` record to use
+            as the write-off counterpart so the mirror line is
+            reconcilable with the invoice's AR/AP line. When ``None``,
+            the journal's suspense account is used (legacy behaviour).
         :returns: The posted ``account.move`` record.
         :raises UserError: If the write-off account is not configured.
         """
@@ -569,14 +602,17 @@ class PartialReconcileHelper(models.TransientModel):
         counter_debit = write_off_credit  # mirror
         counter_credit = write_off_debit  # mirror
 
-        # The counterpart account is the journal's suspense account (same
-        # account used by the bank statement line's counterpart move line)
-        # so that the resulting move line can be reconciled with the
-        # statement's suspense line.
-        counterpart_account = journal.suspense_account_id
+        # CP12 F-6 (CRITICAL): prefer the caller-supplied
+        # ``target_account`` so the mirror line is reconcilable with the
+        # invoice's AR/AP line.  When the caller does not supply one, we
+        # fall back to the journal's suspense account so any external
+        # caller that has not been updated yet still gets a balanced
+        # move.
+        counterpart_account = target_account or journal.suspense_account_id
         if not counterpart_account:
             raise UserError(_(
-                "The journal '%s' does not have a suspense account configured.",
+                "The journal '%s' does not have a suspense account configured "
+                "and no target account was supplied for the write-off mirror line.",
                 journal.display_name,
             ))
 

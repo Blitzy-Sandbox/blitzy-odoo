@@ -9,7 +9,7 @@
     bank reconciliation module:
 
       1. Matching engine configuration parameters — confidence thresholds
-         (High ≥90%, Medium 70-89%, Low 50-69%) and scoring weights
+         (High ≥95%, Medium 70-94%, Low 50-69%) and scoring weights
          (amount=0.35, reference=0.25, partner=0.25, date=0.15).
 
       2. Sample reconciliation rules — demonstrating regex-based label
@@ -31,13 +31,22 @@
          =================================================================
          Defines the score boundaries for the three confidence levels used
          by the matching engine (FEATURE-002 BR-002):
-           - High   ≥ 90%  → strong candidate for auto-reconcile
-           - Medium   70-89% → reasonable match, manual review suggested
+           - High   ≥ 95%  → strong candidate for auto-reconcile
+           - Medium   70-94% → reasonable match, manual review suggested
            - Low      50-69% → weak match, likely needs manual intervention
+
+         CP12 F-5 (MEDIUM): these values are now read at runtime by
+         ``ReconciliationMatching._get_config_float`` with the Python
+         class-level constants as defaults.  This eliminates the prior
+         drift where the XML values were never read and the Python
+         constants were the effective authority.  Administrators who
+         need to override the values should update these config params
+         (e.g. via Settings → Technical → System Parameters) instead of
+         editing the source code.
     -->
     <record id="matching_engine_confidence_high" model="ir.config_parameter">
         <field name="key">account_bank_reconciliation_ce.confidence_high</field>
-        <field name="value">90.0</field>
+        <field name="value">95.0</field>
     </record>
 
     <record id="matching_engine_confidence_medium" model="ir.config_parameter">
@@ -61,10 +70,13 @@
            - date      = 0.15 (medium — date proximity)
 
          The four weights sum to 1.00.
+
+         CP12 F-5 (MEDIUM): weights are now read at runtime; see the
+         confidence-threshold section above for the full rationale.
     -->
     <record id="matching_engine_weight_amount" model="ir.config_parameter">
         <field name="key">account_bank_reconciliation_ce.weight_amount</field>
-        <field name="value">0.40</field>
+        <field name="value">0.35</field>
     </record>
 
     <record id="matching_engine_weight_reference" model="ir.config_parameter">
@@ -74,12 +86,20 @@
 
     <record id="matching_engine_weight_partner" model="ir.config_parameter">
         <field name="key">account_bank_reconciliation_ce.weight_partner</field>
-        <field name="value">0.20</field>
+        <field name="value">0.25</field>
     </record>
 
     <record id="matching_engine_weight_date" model="ir.config_parameter">
         <field name="key">account_bank_reconciliation_ce.weight_date</field>
         <field name="value">0.15</field>
+    </record>
+
+    <!-- Candidate-retrieval date window (days).  Defaults to 90.  See
+         ``ReconciliationMatching._CANDIDATE_DATE_WINDOW`` Python constant.
+    -->
+    <record id="matching_engine_candidate_date_window" model="ir.config_parameter">
+        <field name="key">account_bank_reconciliation_ce.candidate_date_window</field>
+        <field name="value">90</field>
     </record>
 
     <!-- =================================================================

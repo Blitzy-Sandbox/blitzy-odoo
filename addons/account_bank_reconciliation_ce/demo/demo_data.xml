@@ -73,7 +73,7 @@
                         includes the structured invoice number INV/2025/00001
                         in the payment reference.
              Expected:  The matching engine scores this as HIGH confidence
-                        (≥90%) because both the amount and reference match
+                        (≥95%) because both the amount and reference match
                         an open receivable precisely.
              Demonstrates: BR-002 exact amount matching and reference scoring,
                            BR-004 invoice-number regex rule.
@@ -353,7 +353,7 @@
                        by recognizing common fee-related keywords in the
                        statement line description.  Creates a write-off entry
                        directing the full amount to a general expense account.
-             Trigger:  auto_reconcile — fees above 90% confidence are handled
+             Trigger:  auto_reconcile — fees above 95% confidence are handled
                        without manual intervention.
              Regex:    (?i)(BANK.*FEE|SERVICE.*CHARGE|MAINTENANCE.*FEE|BANK.*CHARGE)
              Targets:  demo_recon_stl_unmatched_fee (Line 5),
@@ -367,7 +367,7 @@
             <field name="match_label">match_regex</field>
             <field name="match_label_param">(?i)(BANK.*FEE|SERVICE.*CHARGE|MAINTENANCE.*FEE|BANK.*CHARGE)</field>
             <field name="confidence_threshold">80.0</field>
-            <field name="auto_reconcile_threshold">90.0</field>
+            <field name="auto_reconcile_threshold">95.0</field>
             <field name="match_date_range">0</field>
             <field name="match_amount_tolerance">0.0</field>
             <field name="is_ce_rule" eval="True"/>

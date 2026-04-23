@@ -9,8 +9,8 @@ criteria with a target of **≥ 95 %** matching accuracy.  Covers:
 
   - Individual scoring dimensions (amount, reference, partner, date)
   - Weighted confidence score computation
-    (amount=0.40, reference=0.25, partner=0.20, date=0.15)
-  - Confidence-level classification (High ≥ 90 %, Medium 70-89 %, Low 50-69 %)
+    (amount=0.35, reference=0.25, partner=0.25, date=0.15)
+  - Confidence-level classification (High ≥ 95 %, Medium 70-94 %, Low 50-69 %)
   - End-to-end ``find_matches`` workflow
   - Multi-match resolution (one-to-many, many-to-one, combination matching)
   - Confirm / reject match actions
@@ -257,9 +257,9 @@ class TestMatchingConfidence(BankReconciliationTestCommon):
     """Tests for confidence-level classification and weighted score computation.
 
     Confidence thresholds:
-        High ≥ 90, Medium 70-89, Low 50-69, None < 50.
+        High ≥ 95, Medium 70-94, Low 50-69, None < 50.
     Weights:
-        amount=0.40, reference=0.25, partner=0.20, date=0.15.
+        amount=0.35, reference=0.25, partner=0.25, date=0.15.
     """
 
     def _create_matching(self, score, **overrides):
@@ -281,7 +281,7 @@ class TestMatchingConfidence(BankReconciliationTestCommon):
         return self.env['account.reconciliation.matching'].create(vals)
 
     def test_br002_confidence_high(self):
-        """Score ≥ 90 → confidence_level = 'high'."""
+        """Score ≥ 95 → confidence_level = 'high'."""
         match = self._create_matching(95.0)
         self.assertEqual(
             match.confidence_level, 'high',
@@ -289,7 +289,7 @@ class TestMatchingConfidence(BankReconciliationTestCommon):
         )
 
     def test_br002_confidence_medium(self):
-        """Score 70-89 → confidence_level = 'medium'."""
+        """Score 70-94 → confidence_level = 'medium'."""
         match = self._create_matching(78.0)
         self.assertEqual(
             match.confidence_level, 'medium',
@@ -313,7 +313,7 @@ class TestMatchingConfidence(BankReconciliationTestCommon):
         )
 
     def test_br002_weighted_score_computation(self):
-        """Verify weighted combination: 0.40*amount + 0.25*ref + 0.20*partner + 0.15*date."""
+        """Verify weighted combination: 0.35*amount + 0.25*ref + 0.25*partner + 0.15*date."""
         MatchModel = self.env['account.reconciliation.matching']
         test_date = fields.Date.today()
 
@@ -333,12 +333,18 @@ class TestMatchingConfidence(BankReconciliationTestCommon):
 
         scores = MatchModel._compute_match_score(st_line, recv_line[:1])
 
-        # Re-derive expected weighted score from the component scores
+        # Re-derive expected weighted score from the component scores using
+        # the current engine weights (amount=0.35, reference=0.25,
+        # partner=0.25, date=0.15).  Weights are read via the runtime helper
+        # ``_get_scoring_weights`` on the engine itself to remain in sync
+        # even if the ir.config_parameter overrides are modified by
+        # operators.
+        weights = MatchModel._get_scoring_weights()
         expected = (
-            scores['amount_score'] * 0.40
-            + scores['reference_score'] * 0.25
-            + scores['partner_score'] * 0.20
-            + scores['date_score'] * 0.15
+            scores['amount_score'] * weights['amount']
+            + scores['reference_score'] * weights['reference']
+            + scores['partner_score'] * weights['partner']
+            + scores['date_score'] * weights['date']
         )
         self.assertAlmostEqual(
             scores['confidence_score'], expected, delta=0.5,

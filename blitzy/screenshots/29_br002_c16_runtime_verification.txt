@@ -1,0 +1,38 @@
+======================================================================
+C-16 RUNTIME VERIFICATION — Python class constants:
+  CONFIDENCE_HIGH   = 95.0
+  CONFIDENCE_MEDIUM = 70.0
+  CONFIDENCE_LOW    = 50.0
+  _CANDIDATE_DATE_WINDOW = 90
+  DEFAULT_WEIGHTS   = {'amount': 0.35, 'reference': 0.25, 'partner': 0.25, 'date': 0.15}
+  confidence_high = 90.0
+  confidence_medium = 70.0
+  confidence_low = 50.0
+  weight_amount = 0.40
+  weight_reference = 0.25
+  weight_partner = 0.20
+  weight_date = 0.15
+Unreconciled statement lines: 8
+Created 10 matching records
+  match 1: st_line=13 ml=104 score=45.75 level=none amt=43.6 ref=80.0 ptnr=0.0 date=70.0 type=one_to_many
+  match 2: st_line=13 ml=105 score=39.19 level=none amt=12.0 ref=80.0 ptnr=0.0 date=100.0 type=one_to_many
+  match 3: st_line=3 ml=37 score=45.75 level=none amt=43.6 ref=80.0 ptnr=0.0 date=70.0 type=one_to_many
+  match 4: st_line=3 ml=38 score=39.19 level=none amt=12.0 ref=80.0 ptnr=0.0 date=100.0 type=one_to_many
+  match 5: st_line=14 ml=103 score=50.00 level=low amt=100.0 ref=0.0 ptnr=0.0 date=100.0 type=one_to_one
+  match 6: st_line=14 ml=103 score=50.00 level=low amt=100.0 ref=0.0 ptnr=0.0 date=100.0 type=one_to_many
+  match 7: st_line=14 ml=112 score=1.79 level=none amt=0.8 ref=0.0 ptnr=0.0 date=10.0 type=one_to_many
+  match 8: st_line=4 ml=36 score=50.00 level=low amt=100.0 ref=0.0 ptnr=0.0 date=100.0 type=one_to_one
+  match 9: st_line=4 ml=36 score=50.00 level=low amt=100.0 ref=0.0 ptnr=0.0 date=100.0 type=one_to_many
+  match 10: st_line=4 ml=45 score=1.79 level=none amt=0.8 ref=0.0 ptnr=0.0 date=10.0 type=one_to_many
+C-16 WEIGHT VERIFICATION:
+  match 1: actual=45.7500 python=45.7495 (diff=0.0005) db_seed=47.9280 (diff=2.1780)
+  match 2: actual=39.1900 python=39.1930 (diff=0.0030) db_seed=39.7920 (diff=0.6020)
+  match 3: actual=45.7500 python=45.7495 (diff=0.0005) db_seed=47.9280 (diff=2.1780)
+C-16 CLASSIFICATION VERIFICATION:
+  match 1: score=45.75 actual=none py=none db=none py_auth=True
+  match 2: score=39.19 actual=none py=none db=none py_auth=True
+  match 3: score=45.75 actual=none py=none db=none py_auth=True
+  match 4: score=39.19 actual=none py=none db=none py_auth=True
+  match 5: score=50.00 actual=low py=low db=low py_auth=True
+  match 6: score=50.00 actual=low py=low db=low py_auth=True
+======================================================================

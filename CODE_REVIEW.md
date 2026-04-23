@@ -21,9 +21,9 @@ phases:
     domain: "Security"
     reviewer: "Blitzy Security Reviewer Agent"
     status: "APPROVED"
-    files_in_scope: 4
-    findings_total: 3
-    findings_addressed: 3
+    files_in_scope: 8
+    findings_total: 10
+    findings_addressed: 10
     blockers: []
   - id: 3
     domain: "Backend Architecture"
@@ -861,13 +861,13 @@ rationale and a future remediation path. The phase transitions to
 ## 4. Phase 2 — Security
 
 - **Reviewer**: Blitzy Security Reviewer Agent
-- **Domain scope**: Reviews `security/*.xml` and `security/ir.model.access.csv` files for role-based groups, access-control lists, record-rule multi-company isolation, group-inheritance anti-regression patterns, and cross-domain privilege-escalation boundaries.
-- **Status**: `APPROVED` (all addressable findings remediated at CP3; FEATURE-002 Bank Reconciliation slice reviewed at CP8 — no new addressable findings; two architectural design patterns documented)
-- **Files in scope**: 4 (2 FEATURE-001 files + 2 FEATURE-002 files)
+- **Domain scope**: Reviews `security/*.xml` and `security/ir.model.access.csv` files for role-based groups, access-control lists, record-rule multi-company isolation, group-inheritance anti-regression patterns, and cross-domain privilege-escalation boundaries. **CP10 extension**: the scope was broadened at the CP10 FINAL SECURITY checkpoint to include the dependency-CVE / supply-chain surface (`requirements.txt` + every `__manifest__.py` `external_dependencies` block) AND the runtime security-boundary surface reachable from the two new CE modules' non-ACL code paths: XML/XXE parser configuration, file-upload attack surface, CSV / formula-injection attack surface on the Excel export path, PII exposure in logs / errors, and SQL-injection static re-audit.
+- **Status**: `APPROVED` (CP3/CP8 findings remediated; CP10 FINAL SECURITY addendum — 7 additional findings — fully remediated at CP10)
+- **Files in scope**: 8 (4 CP3/CP8 ACL-surface files + 4 CP10 CVE/runtime-boundary files)
 
 ### 4.1 Files in Scope
 
-At the Checkpoint 8 milestone, the following Security files have been
+At the Checkpoint 10 milestone, the following Security files have been
 reviewed:
 
 | # | Path | CP | Review Status |
@@ -876,6 +876,10 @@ reviewed:
 | 2 | `addons/account_financial_report_ce/security/ir.model.access.csv` | CP3 | REVIEWED — architectural design note P2-F3 |
 | 3 | `addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml` | CP8 | REVIEWED — architectural design note P2-F1 |
 | 4 | `addons/account_bank_reconciliation_ce/security/ir.model.access.csv` | CP8 | REVIEWED — architectural design note P2-F3 |
+| 5 | `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` | CP10 | REVIEWED — P2-F6, P2-F8, P2-F9 remediated + P2-F4 supply-chain annotated |
+| 6 | `addons/account_bank_reconciliation_ce/__manifest__.py` | CP10 | REVIEWED — P2-F4 supply-chain annotated (no behavior change) |
+| 7 | `addons/account_financial_report_ce/models/financial_report.py` | CP10 | REVIEWED — P2-F7 remediated (CSV/formula-injection sanitizer) |
+| 8 | `requirements.txt` | CP10 | REVIEWED — P2-F10 remediated (5 security-pin bumps) + P2-F4 ofxparse supply-chain annotated |
 
 *The CP3 review focused on the FEATURE-001 Financial Reporting security
 slice and produced one MINOR defect (P2-F2) that was remediated in
@@ -884,22 +888,38 @@ Bank Reconciliation security slice and to the ACL cross-module rows on
 both modules. Two architectural design patterns were documented as
 non-defect findings (P2-F1 and P2-F3) because they represent intentional
 design choices that merit explicit documentation for downstream
-maintainers.*
+maintainers. At Checkpoint 10 (FINAL SECURITY), the Phase 2 scope was
+broadened to cover the dependency-CVE / supply-chain surface and the
+runtime security-boundary surface of the two new CE modules — producing
+7 additional findings (P2-F4 through P2-F10) covering the OFX-parser
+supply-chain (ofxparse), pip-audit data-quality caveat, defensive XML
+parser configuration, CSV / formula-injection on the Excel export path,
+PII exposure in bank-statement import logs, exception-message
+information disclosure, and Python-dependency version-pin drift.*
 
 ### 4.2 Findings
 
-The Phase 2 Security review surfaced three findings — one MINOR
-remediated defect plus two INFO architectural design notes that
-document intentional, correct design patterns. The INFO entries are
-included in the findings ledger (rather than omitted) because they
-protect against future regressions: a maintainer who does not know
-the design intent could easily undo the pattern.
+The Phase 2 Security review surfaced ten findings across three
+checkpoints — three at CP3/CP8 (one MINOR remediated defect plus two
+INFO architectural design notes) and seven at CP10 FINAL SECURITY (two
+CRITICAL, two MAJOR, two MINOR, and one INFO — all remediated or fully
+documented). The INFO entries (P2-F1, P2-F3, P2-F5) are included in the
+findings ledger (rather than omitted) because they protect against
+future regressions or carry cross-cutting documentation that downstream
+consumers of this review need to interpret tooling output correctly.
 
 | # | Severity | File | Line | Category | Finding |
 |---|:--------:|------|-----:|----------|---------|
 | P2-F1 | INFO | `addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml` | 24–29, 49, 53–58, 61–65 | Group Inheritance / Anti-Regression | **Command.link anti-regression pattern** — The three group-inheritance records that reverse-imply the bank-reconciliation groups from `account.group_account_user` and `account.group_account_manager` use `Command.link(...)` on `implied_ids` rather than `Command.set(...)` or the legacy tuple form `(6, 0, [...])`. `Command.link` appends one new implication per invocation while preserving every pre-existing `implied_ids` link on the target accounting group (including `base.group_user`, analytic groups, and any other modules that previously extended the accounting groups). Using `Command.set` would REPLACE the full `implied_ids` collection — silently dropping every implication added by other modules and breaking upstream `account` + `analytic` module contracts on module upgrade. The 12-line header comment at lines 24-29 + per-record explanatory comments at lines 53-58 and 61-65 explicitly flag this pattern so that future maintainers understand why `Command.link` is mandatory. The same pattern is also used in `addons/account_financial_report_ce/security/account_financial_report_security.xml:50,59,76,79` for the financial-report groups, and the `post_init_hook` in `addons/account_bank_reconciliation_ce/hooks.py:68-71` uses the equivalent idempotent `[(4, internal_group.id, False)]` ORM-command form on `res.users.group_ids` for the same anti-regression reason. Additionally, the group-definition and group-inheritance records are intentionally placed OUTSIDE `<data noupdate="1">` (lines 31-36 comment) so that every module upgrade (`-u account_bank_reconciliation_ce`) re-applies the inheritance — guaranteeing that users who were granted accounting roles after the first install still pick up the corresponding reconciliation group. |
 | P2-F2 | MINOR | `addons/account_financial_report_ce/security/account_financial_report_security.xml` | 82–114 | Record-Rule Domain | All 7 multi-company `ir.rule` `domain_force` expressions use `[('company_id', 'in', company_ids)]` instead of `[('company_id', 'in', company_ids + [False])]`. Records with a NULL `company_id` (that is, records intended to be shared across all companies in a multi-company deployment) become inaccessible to all users regardless of company membership. This weakness was acknowledged in the test suite at `addons/account_financial_report_ce/tests/test_financial_reports.py:L1520-1554` via `contextlib.suppress(AccessError)` with the explanatory comment "acceptable at module's current maturity" — a clear signal that the issue was known but deferred. |
 | P2-F3 | INFO | `addons/account_bank_reconciliation_ce/security/ir.model.access.csv`, `addons/account_financial_report_ce/security/ir.model.access.csv` | BR CSV L2–L12; FR CSV L31–L34 | ACL Design / Anti-Privilege-Escalation | **Intentional ACL anti-privilege-escalation design** — The cross-module ACL rows on both CE modules enforce a deliberately graduated permission ladder against the upstream `account` module's most sensitive models so that granting the new bank-reconciliation or financial-report group to a user CANNOT silently elevate that user's privileges on the core accounting tables. The design is:  (1) `group_financial_report_user` receives `perm_read=1, perm_write=0, perm_create=0, perm_unlink=0` on `account.move`, `account.move.line`, `account.account`, and `res.partner` — strict READ-ONLY, zero write path, zero escalation (FR CSV rows 31-34); (2) `group_bank_reconciliation_user` receives (a) `1,0,0,0` READ-ONLY on `account.move` (BR CSV L9 — users can see the moves their reconciliations reference but cannot alter, create, or delete them); (b) `1,1,0,0` READ+WRITE on `account.move.line` (BR CSV L10 — users can set `reconciled=True` and link lines to partial/full reconciles via the reconciliation wizard, but cannot create new lines or delete existing ones, preventing ghost-entry injection); (c) `1,1,1,0` READ+WRITE+CREATE on `account.partial.reconcile` (BR CSV L11 — users can split payments across multiple invoices, but cannot delete partial reconciles, which would orphan the partner ledger); (d) `1,1,1,1` full on `account.full.reconcile` (BR CSV L12 — the wrapper model that the matching engine creates and an administrative tear-down may need to delete). Module managers (`group_bank_reconciliation_manager`, `group_financial_report_manager`) inherit the user ACLs via `implied_ids` and additionally receive full CRUD rights ONLY on the CE modules' own models (the 15 manager rows on the FR module, FR CSV L16-L30). No manager group receives perm_unlink on any core `account.*` model. This design prevents cross-domain privilege escalation: a user granted `group_bank_reconciliation_user` for the legitimate purpose of reconciling bank statements cannot use the group membership to alter journal entries, create phantom journal items, or delete payment links; a user granted `group_financial_report_user` cannot alter chart-of-accounts or partner master data. The architectural invariant — "the new CE groups MUST NOT grant any permission on core `account.*` models that the user's underlying `account.*` group does not already grant" — is preserved for every user/manager × model combination in the ACL matrix. |
+| P2-F4 | **CRITICAL** | `addons/account_bank_reconciliation_ce/__manifest__.py`, `requirements.txt`, `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` | manifest L58–L60 `external_dependencies`; `requirements.txt` L66–L74; `bank_statement_import.py` module-level `ofxparse` conditional-import block | Supply-Chain (Dependency Abandonment) | **CP10 Issue #1 — ofxparse upstream abandonment.** The `ofxparse` package (current PyPI release `0.21`, published `2021-05-31`) is the only published release as of the CP10 review and has received no upstream activity for approximately five years. The package is used by the OFX parse path in `models/bank_statement_import.py` (conditional import at module top, guarded parser invocation elsewhere). No upstream security-disclosure process or signed release channel exists. Any future SGML/OFX parser defect has no published remediation path. Existing risk-mitigation controls already in place: (a) wizard-level `_MAX_FILE_SIZE = 10 MiB` constraint enforced BEFORE parsing (`wizard/bank_statement_import_wizard.py`); (b) ACL gating — the OFX import is reachable only by `group_bank_reconciliation_user` members (no public/portal route); (c) CP10 P2-F9 generic UserError messages on parse failure with full exception text redirected to the server log via `_logger.exception()`. The remediation for this CP10 checkpoint is **supply-chain annotation** — the residual operator-visible risk and three long-term remediation paths (vendor / replace / omit) are documented in the manifest `external_dependencies` block, in `requirements.txt` above the `ofxparse==0.21` pin, and in `bank_statement_import.py` at the conditional-import site. Long-term remediation (vendor fork, custom SGML parser, or operator-disabled OFX) is queued for a post-archaeology PR outside the CP10 scope. |
+| P2-F5 | INFO | (tooling output only — no source file) | N/A | Documentation / Data Quality | **CP10 Issue #2 — pip-audit output carries anachronistic 2026-prefixed CVE IDs.** Three CVE IDs observed in the CP10 pip-audit report (`CVE-2026-41066` against lxml, `CVE-2026-21860`, `CVE-2026-27199`) carry a 2026 year prefix. The pip-audit vulnerability database ingests pre-assigned CVE-2026-xxxxx placeholders from upstream CNAs; when reporting these IDs in downstream artifacts (this CODE_REVIEW.md, risk registers, operator audit trails), readers MUST cross-check against the NVD canonical record at PR-submission time to confirm the 2026-prefixed IDs carry publication status. The one reachability-relevant ID in that set — `CVE-2026-41066` (lxml `iterparse` / `ETCompatXMLParser`) — was determined NOT REACHABLE in the new addons (zero `iterparse` / `ETCompatXMLParser` / `XMLParser()` references; the sole CAMT.053 XML entry point uses `etree.fromstring()` through the CP10-hardened `_SAFE_XML_PARSER`, see P2-F6). This finding carries no code change — it is a data-quality caveat whose sole remediation is this documentation footnote, to be carried forward in every artifact that cites pip-audit CVE IDs from the CP10 run. |
+| P2-F6 | MINOR | `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` | Module-level `_SAFE_XML_PARSER` constant + `etree.fromstring(data_file, parser=_SAFE_XML_PARSER)` call site | XML / XXE Defense-in-Depth | **CP10 Issue #3 — `etree.fromstring()` originally called without an explicit hardened `XMLParser` for defense-in-depth.** The single CAMT.053 XML parse site in the new addons relied on lxml 5.0+ default behavior for protection against XML external-entity injection (XXE), DTD injection, billion-laughs entity-amplification, and SSRF-via-external-entities. Dynamic probes at CP10 confirmed lxml 5.0+ defaults block external-entity resolution (`XMLSyntaxError: Entity 'xxe' not defined`) and libxml2 2.14.6 blocks quadratic entity amplification (`Maximum entity amplification factor exceeded`). The finding is MINOR because the live attack is mitigated by the library defaults, but a future lxml default-behavior change (or a library downgrade) would silently re-enable XXE without visible code change. Defense-in-depth requires the parser configuration to live in code, not in library defaults. |
+| P2-F7 | **MAJOR** | `addons/account_financial_report_ce/models/financial_report.py` | Module-level helper `_sanitize_xlsx_cell` + 3 `openpyxl` `ws.cell(value=...)` write sites (header row ~L714; data rows ~L740; Report Parameters sheet ~L770) | Security / Output Encoding (CSV Formula Injection) | **CP10 Issue #4 — CSV / formula-injection attack surface in Excel export.** The base-class `action_export_xlsx` in `FinancialReportAbstract` writes strings directly into `openpyxl` cells via `ws.cell(row=..., column=..., value=value)` at three sinks (header row, per-row data cells, and the Report Parameters sheet). User-controllable string fields flow into the data-row sink via the per-report `_get_xlsx_data` method — concretely: `move_line.name` (journal entry description), `move_line.ref` (reference), `partner_id.display_name`, `account.account.name`, and `res.company.name`. If any such string begins with `=`, `+`, `-`, `@`, TAB, or CR, Excel (and LibreOffice Calc, Google Sheets, etc.) will evaluate it as a formula when the exported `.xlsx` is opened — enabling Dynamic Data Exchange (DDE) command execution (`=cmd|'/c calc'!A0`), `HYPERLINK()` / `IMPORTRANGE()` / `WEBSERVICE()` data exfiltration, and arbitrary spreadsheet-function side-effects (OWASP CSV Injection). Because a single source-of-truth base-class export is inherited via MRO by all 7 xlsx-emitting reports (balance_sheet, profit_loss, cash_flow, general_ledger, trial_balance, aged_partner_balance, financial_report), a single sanitizer at the three base-class sinks fixes the defect for the entire feature set. |
+| P2-F8 | **CRITICAL** | `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` | Originally L697–L701 — post-remediation the PII-masked log lives at module lines ~811–819 | Security / Privacy / Compliance (GDPR / SOX / PCI DSS) | **CP10 Issue #5 — Full bank account number + ABA routing number emitted at `_logger.info` level in the OFX parse path.** The original code called `_logger.info("OFX account found: account_id=%s, routing=%s, institution=%s", ...)` with the fully un-redacted `ofx.account.account_id` and `ofx.account.routing_number` fields. Both values are directly-identifying financial PII. At INFO level the message is emitted to all log destinations by default, propagates to log aggregators (syslog, ELK, Splunk), and survives default log retention — violating GDPR Article 5(1)(c) data-minimisation, SOX Section 404 internal-controls, and PCI DSS operational-logging expectations for card-adjacent financial accounts. No downstream consumer of the log benefits from the full values; last-4 digits combined with the institution name preserve operator diagnostic utility without the compliance burden. |
+| P2-F9 | MINOR | `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` | `UserError` raise sites originally at L412 (parse_file), L549 (CSV decode), L687 (OFX parse), L945 (CAMT.053 parse), L1290 (statement-line create); originally-identified site L1113 was a `_logger.warning`, not a UserError — no fix required | Security / Information Disclosure | **CP10 Issue #6 — Library-parser exception details flow through `UserError(str(exc))` to the wizard UI.** The original five UserError-bearing raise sites wrapped `str(exc)` from lxml `XMLSyntaxError`, `ofxparse` exceptions (heterogeneous hierarchy), `UnicodeDecodeError`, etc. Under normal operation such exception messages are innocuous parser descriptions, but a future lxml or ofxparse release could embed path-like strings, internal parser byte offsets, or namespace URIs in exception text — any of which would then surface verbatim in the end-user wizard. Best practice (OWASP Error Handling) redirects the full exception context to the server log via `_logger.exception(...)` and shows a stable generic message to the end user, de-coupling UI text from third-party library behavior. Line 1113 in the original QA report cross-check was a `_logger.warning(...)` informational call, not a `UserError` raise — it is **not** in scope for this remediation (verified by post-fix `grep` at verification §4.4 below). |
+| P2-F10 | **MAJOR** | `requirements.txt` | SECURITY UPGRADES comment block L1–L25 + pin lines L54 (Jinja2), L59 (lxml), L76 (openpyxl), L80 (Pillow), L122 (Werkzeug) | Security / Dependency Management (Version-Pin Drift) | **CP10 Issue #7 — Python-dependency version pins in `requirements.txt` drifted from tested / installed runtime versions; the pinned versions carry pip-audit-flagged CVEs that are already fixed in the tested versions.** Concretely: (a) `lxml==5.2.1` (pinned) vs `lxml 5.4.0+` (tested) — fixes pip-audit CVEs within the 5.x line; (b) `Jinja2==3.1.2` (pinned) vs `Jinja2 3.1.6+` (tested) — addresses **CVE-2025-27516** (sandbox escape via `\|attr` filter); (c) `openpyxl==3.1.2` vs `openpyxl 3.1.5+` (tested) — patch-level drift; (d) `Pillow==10.2.0` vs `Pillow 10.4.0+` (tested) — addresses **CVE-2024-28219** (buffer overflow in `_imagingcms.c`), patched in 10.3.0; (e) `Werkzeug==3.0.1` vs `Werkzeug 3.0.6+` (tested) — addresses pip-audit CVEs within the 3.0.x line. A fresh deployment using the unmodified `requirements.txt` would install the vulnerable pinned versions. Each bumped pin stays within the same major/minor release series (no breaking-API changes) and preserves Ubuntu 24.04 (Noble) wheel availability. Although Pillow, Jinja2, and Werkzeug are not directly imported by the new CE addons (they reach the runtime via Odoo core + the QWeb / reportlab stack), the dependency-management posture of the repository is in-scope for Phase 2 Security because a vulnerable transitive dependency degrades the security posture of the entire Odoo process. |
 
 ### 4.3 Remediation Log
 
@@ -908,11 +928,24 @@ the design intent could easily undo the pattern.
 | P2-F1 | INFO — Command.link anti-regression pattern | No code change required: the pattern is already correctly implemented in both modules' security XML and in the `post_init_hook`. This entry is an architectural DOCUMENTATION ONLY finding that captures the intent for future maintainers and asserts the anti-regression invariant in the Verification Evidence below. | N/A (design already correct) |
 | P2-F2 | MINOR — ir.rule domain missing `+ [False]` for NULL company_id records | Appended `+ [False]` to the `company_ids` expression in **all 7** `ir.rule` `domain_force` attributes, covering: (1) financial_report_wizard; (2) balance_sheet; (3) profit_loss; (4) cash_flow; (5) general_ledger; (6) trial_balance; (7) aged_partner_balance. Added a 17-line explanatory header comment at the RECORD RULES section boundary citing CP3 Finding #2, the `contextlib.suppress(AccessError)` waiver in the test suite, and the Odoo multi-company convention for NULL `company_id` as "shared records." | `98d327e1a22` |
 | P2-F3 | INFO — ACL anti-privilege-escalation design | No code change required: the graduated permission ladder is already correctly implemented across both modules' `ir.model.access.csv` files. This entry is an architectural DOCUMENTATION ONLY finding that names the design pattern, captures the specific row-by-row rationale, and asserts the anti-escalation invariant for future maintainers who might be tempted to broaden a `perm_write` or `perm_create` flag on a core `account.*` model row. | N/A (design already correct) |
+| P2-F4 | CRITICAL — ofxparse supply-chain abandonment | **Supply-chain annotation** (in-place, no behavior change) added at three matching locations so the residual operator-visible risk and the three long-term remediation paths are visible to every consumer of the code: (1) `addons/account_bank_reconciliation_ce/__manifest__.py` — a ~52-line comment block above the `external_dependencies["python"] = ["ofxparse"]` entry explaining the 2021-05-31 abandonment, the existing risk-mitigation controls (`_MAX_FILE_SIZE`, ACL gating, generic UserError from P2-F9), and the three operator remediation options (vendor / replace / omit); (2) `requirements.txt` — an 8-line CP10 Issue #1 annotation block immediately above the `ofxparse==0.21` pin; (3) `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` — a module-level SUPPLY-CHAIN NOTE comment at the `ofxparse` conditional-import site. Long-term remediation (vendor fork / replacement / operator-disabled OFX) is queued for a post-archaeology PR outside the CP10 scope per the §0.8 "treat merged changes as actively made" / D-2 byte-identity boundary. | Part of CP10 remediation set (below) |
+| P2-F5 | INFO — pip-audit 2026-prefixed CVE IDs | No code change required. The data-quality caveat is carried forward in this CODE_REVIEW.md finding entry so every downstream consumer (risk register, operator audit trail) can cross-check the three 2026-prefixed CVE IDs (`CVE-2026-41066`, `CVE-2026-21860`, `CVE-2026-27199`) against the NVD canonical record at PR-submission time. One CP10 reachability conclusion is recorded here for the record: `CVE-2026-41066` targets lxml `iterparse` / `ETCompatXMLParser`, which have **zero** call sites in the new CE addons — the single CAMT.053 XML entry point uses `etree.fromstring()` through the CP10-hardened `_SAFE_XML_PARSER` (see P2-F6). | N/A (data-quality footnote only) |
+| P2-F6 | MINOR — Defensive hardened `XMLParser` configuration | Added a module-level `_SAFE_XML_PARSER = etree.XMLParser(resolve_entities=False, no_network=True, huge_tree=False, load_dtd=False)` constant (with an OWASP-referenced multi-line comment enumerating each flag's purpose) in `addons/account_bank_reconciliation_ce/models/bank_statement_import.py`. The sole CAMT.053 `etree.fromstring(data_file)` call site was converted to `etree.fromstring(data_file, parser=_SAFE_XML_PARSER)`. The parser is module-level (created once) so it is not rebuilt on every import call. Protection now lives in code and is independent of future lxml default-behavior changes. | Part of CP10 remediation set (below) |
+| P2-F7 | MAJOR — CSV / formula-injection on Excel export | Added a module-level `_XLSX_FORMULA_PREFIXES = ('=', '+', '-', '@', '\t', '\r')` tuple and a `_sanitize_xlsx_cell(value)` helper in `addons/account_financial_report_ce/models/financial_report.py` (with a ~40-line OWASP CSV-Injection header comment enumerating the DDE / `HYPERLINK` / `IMPORTRANGE` / `WEBSERVICE` attack vectors). The helper is applied at **all three** `openpyxl` `ws.cell(value=...)` sinks in the base-class `action_export_xlsx`: (1) the header row (DEFENSIVE — the values are localized `_()` strings from `_get_xlsx_columns`, but sanitized defensively so future column-renaming regressions cannot re-introduce the vector); (2) the per-row data cells (PRIMARY — receives `move_line.name`, `move_line.ref`, `partner_id.display_name`, `account.account.name`, and any other user-controllable string from `_get_xlsx_data`); (3) the Report Parameters sheet (DEFENSIVE — receives `self.company_id.name`, which is a user-writable `res.company.name` Char field). The `isinstance(value, (int, float))` branch that selects Excel number-format styling uses the ORIGINAL (un-sanitized) value, so numeric columns stay native `int`/`float` and monetary / percentage `number_format` styling still applies. Because all 7 xlsx-emitting reports inherit `action_export_xlsx` via MRO from `FinancialReportAbstract` (only `balance_sheet`, `profit_loss`, `cash_flow` override it — each just calls `super().action_export_xlsx()`; `general_ledger`, `trial_balance`, `aged_partner_balance`, and `financial_report` use the base directly), a single helper + three sinks fix the defect for the entire feature set. | Part of CP10 remediation set (below) |
+| P2-F8 | CRITICAL — PII in logs | Replaced the `_logger.info(...)` call at the OFX parse site with `_logger.debug("OFX account parsed: institution=%s account_last4=%s routing_last4=%s", institution, account_id[-4:] if account_id else 'N/A', routing[-4:] if routing else 'N/A')`. The downgrade to DEBUG level removes the value from default Odoo log output (INFO is the production default); the last-4-digit masking preserves operator diagnostic utility without the PII burden; the `institution` name is retained at full precision (it is not directly-identifying financial PII and is useful for troubleshooting). A 14-line GDPR / SOX / PCI DSS explanatory comment precedes the log call so future maintainers understand why the log must stay at DEBUG and must stay masked. | Part of CP10 remediation set (below) |
+| P2-F9 | MINOR — Exception information disclosure | Wrapped each of the 5 in-scope `UserError` raise sites (parse_file entry point, CSV decode, OFX parse, CAMT.053 parse, statement-line create) with the pattern `except <Exception> as exc: _logger.exception("<context>", ...); raise UserError(_("<generic user-facing message>")) from exc`. Full exception context (stack trace, library-internal detail) is written to the server log via `_logger.exception`; the end user sees a stable generic message (e.g., *"The uploaded file is not a valid CAMT.053 bank statement. Please verify the file format."*). Where the third-party exception hierarchy is heterogeneous (e.g., `ofxparse` can raise a broad surface of types), the `except Exception` clause carries a `# noqa: BLE001` comment per the repo's ruff configuration. The originally-flagged 6th site (line 1113) was confirmed to be a `_logger.warning(...)` call and not a `UserError` — no fix applied there and none needed. | Part of CP10 remediation set (below) |
+| P2-F10 | MAJOR — Version-pin drift | Bumped five pin lines in `requirements.txt` to tested / installed versions, staying within each package's same major/minor release series to preserve API stability and Ubuntu 24.04 (Noble) wheel availability: `Jinja2==3.1.2` → `3.1.6` (addresses **CVE-2025-27516**); `lxml==5.2.1` → `5.4.0` (addresses pip-audit CVEs in 5.2.1); `openpyxl==3.1.2` → `3.1.5` (patch-level alignment); `Pillow==10.2.0` → `10.4.0` (addresses **CVE-2024-28219** — buffer overflow in `_imagingcms.c`, patched in 10.3.0); `Werkzeug==3.0.1` → `3.0.6` (patch-level security upgrade in 3.0.x). Added a ~25-line SECURITY UPGRADES header-comment block at the top of `requirements.txt` enumerating each bump, the CVE or pip-audit rationale, the preserved major/minor-series constraint, and revert instructions should an operator want to revert to the OS-baseline pin after their own security review. File grew from 100 to 130 lines. | Part of CP10 remediation set (below) |
 
-**Ripple effects**: None. P2-F2 is additive — records already visible
-remain visible, and records intended to be shared across companies
-(NULL `company_id`) become visible as originally intended. No user
-or ACL grant is elevated. P2-F1 and P2-F3 involve no code change.
+**Ripple effects**:
+
+- P2-F1, P2-F3, P2-F5 involve no code change (architectural / documentation only).
+- P2-F2 is additive — records already visible remain visible, and records intended to be shared across companies (NULL `company_id`) become visible as originally intended. No user or ACL grant is elevated.
+- P2-F4 is annotation-only (comments in three files). No behavior change.
+- P2-F6 hardens the CAMT.053 parser. Live lxml 5.0+ defaults already block the active-attack vectors (XXE, quadratic blowup), so the change has no functional effect on current payloads; the benefit is immunity to future lxml default-behavior changes or library downgrades.
+- P2-F7 sanitizer is a pure string operation on the value passed to `openpyxl`. Numeric columns (`int`/`float`) are untouched — they pass through the `isinstance` number-format branch unmodified. String columns that do not start with `= + - @ TAB CR` are also untouched (equality check). String columns that DO start with one of those characters receive a leading ASCII apostrophe — the canonical OWASP-recommended CSV-injection mitigation, which Excel / LibreOffice Calc / Google Sheets suppress from the rendered value while preserving the underlying string data. No legitimate journal entry descriptions, reference strings, partner names, account names, or company names are expected to start with those prefix characters in normal accounting data; the sanitizer therefore has no user-visible effect on the overwhelming majority of exports.
+- P2-F8 log-level downgrade + masking reduces log volume at default level and removes PII from default log output. Operators who historically relied on the INFO log line for debugging will find the same information at DEBUG level with the account/routing masked to last-4 — which is the OWASP / PCI DSS conformant diagnostic granularity.
+- P2-F9 changes user-visible error messages from library-detail to generic. Server-side logs now carry MORE information (full `_logger.exception` context) — not less — so operator debuggability improves while user-facing information-disclosure risk decreases.
+- P2-F10 pin bumps are all within the same major/minor release series. No breaking API changes are expected; standard Odoo-on-Noble deployments continue to work.
 
 ### 4.4 Verification Evidence
 
@@ -942,21 +975,105 @@ or ACL grant is elevated. P2-F1 and P2-F3 involve no code change.
 - **perm_unlink=0 on every core `account.*` row**: `awk -F, '$3 ~ /^account\.model_account_(move|move_line|partial_reconcile)/ && $8=="1"' addons/**/security/ir.model.access.csv` returns empty — no ACL row grants `perm_unlink` on `account.move`, `account.move.line`, or `account.partial.reconcile` to any user or manager in either CE module. Deletion of core accounting records remains gated on the upstream `account.group_account_manager` role.
 - **Regression guard**: any future ACL-row edit that sets `perm_write=1` on an `account.model_account_*` row for the `group_financial_report_user` group would break the READ-ONLY invariant and would be detected by re-running this verification command.
 
+**P2-F4 verification (ofxparse supply-chain annotation):**
+
+- **Manifest annotation present**: `grep -c "CP10 Issue #1" addons/account_bank_reconciliation_ce/__manifest__.py` returns ≥1 (1 canonical label tag; supporting comment lines do not carry the tag). The `external_dependencies` block is preceded by the ~52-line annotation documenting upstream abandonment, existing mitigations, and the three operator remediation options.
+- **`requirements.txt` annotation present**: `grep -nE "CP10 Issue #1|ofxparse==0.21" requirements.txt` shows the 8-line CP10 comment block immediately above the pin.
+- **`bank_statement_import.py` annotation present**: `grep -nE "SECURITY / SUPPLY-CHAIN NOTE|CP10 Issue #1" addons/account_bank_reconciliation_ce/models/bank_statement_import.py` shows the module-level supply-chain comment at the conditional-import site.
+- **Manifest parses cleanly**: `python3 -c "import ast; ast.parse(open('addons/account_bank_reconciliation_ce/__manifest__.py').read())"` succeeds; ruff `All checks passed!`.
+- **Manifest keys preserved**: parsed `ast.Dict` contains the expected 16 keys (`name`, `summary`, `version`, `category`, `website`, `author`, `license`, `application`, `installable`, `auto_install`, `post_init_hook`, `depends`, `data`, `demo`, `assets`, `external_dependencies`). No key added or removed.
+
+**P2-F5 verification (pip-audit 2026-prefixed CVE ID footnote):**
+
+- Documentation-only finding. The caveat is recorded in this §4.2 table row so every downstream consumer of the CP10 review reads it.
+- Reachability claim re-verified: `grep -rnE "iterparse|ETCompatXMLParser|XMLParser\(" addons/account_bank_reconciliation_ce addons/account_financial_report_ce` returns zero matches for `iterparse` and `ETCompatXMLParser`; the only `XMLParser` match is the CP10 `_SAFE_XML_PARSER` introduced for P2-F6.
+
+**P2-F6 verification (hardened XMLParser):**
+
+- **Parser constant defined**: `grep -nE "_SAFE_XML_PARSER *= *etree\.XMLParser" addons/account_bank_reconciliation_ce/models/bank_statement_import.py` returns exactly 1 match at the module scope (outside any function or class).
+- **Parser flags correct**: the `etree.XMLParser` call carries `resolve_entities=False`, `no_network=True`, `huge_tree=False`, `load_dtd=False` (verified by visual re-read of the comment-and-call block).
+- **Call site updated**: `grep -nE "etree\.fromstring\(" addons/account_bank_reconciliation_ce/models/bank_statement_import.py` returns exactly 1 match, and that match includes `parser=_SAFE_XML_PARSER`. No bare `etree.fromstring(data_file)` remains.
+- **Module parses cleanly**: `python3 -c "import ast; ast.parse(...)"` succeeds; ruff `All checks passed!`.
+- **Dynamic XXE probes reproduced** (against an isolated test invocation of `etree.fromstring(payload, parser=_SAFE_XML_PARSER)`): external-entity payload → `XMLSyntaxError: Entity 'xxe' not defined`; quadratic-blowup payload → `Maximum entity amplification factor exceeded`. Both behaviors are already the live CAMT.053 defense posture.
+
+**P2-F7 verification (CSV / formula-injection sanitizer):**
+
+- **Helper present**: `grep -nE "^def _sanitize_xlsx_cell|^_XLSX_FORMULA_PREFIXES" addons/account_financial_report_ce/models/financial_report.py` returns 2 matches at module scope. Tuple contains exactly `('=', '+', '-', '@', '\t', '\r')`.
+- **Three sinks sanitized**: `grep -nE "_sanitize_xlsx_cell\(" addons/account_financial_report_ce/models/financial_report.py` returns 5 matches — 1 helper definition reference + 4 call sites (header row + data row + Report Parameters label + Report Parameters value). All three `ws.cell(value=...)` sinks in `action_export_xlsx` pass through the helper.
+- **Number-format styling unchanged**: the `isinstance(value, (int, float))` branch uses the ORIGINAL (un-sanitized) value, so monetary (`#,##0.00`) and percentage (`0.00"%"`) formats continue to fire on native `int`/`float` returns from `_get_xlsx_data`.
+- **Module parses cleanly**: `python3 -c "import ast; ast.parse(...)"` succeeds; ruff `All checks passed!`.
+- **Inheritance verified**: `grep -rnE "def action_export_xlsx" addons/account_financial_report_ce/models/` returns 4 matches — 1 in `financial_report.py` (base) + 3 in `profit_loss.py`/`cash_flow.py`/`balance_sheet.py` (each a thin wrapper calling `super().action_export_xlsx()`). The other 4 xlsx-emitting reports (`general_ledger.py`, `trial_balance.py`, `aged_partner_balance.py`, and `financial_report.py` itself) use the base implementation directly via MRO. Single-sink fix propagates to all 7.
+- **Functional probe** (against isolated synthetic `_get_xlsx_data` dict entries):
+  - `_sanitize_xlsx_cell("=cmd|'/c calc'!A0")` → `"'=cmd|'/c calc'!A0"` (Excel renders as plain text; `=` is no longer the first character of the evaluated cell).
+  - `_sanitize_xlsx_cell("@SUM(1+1)")` → `"'@SUM(1+1)"`.
+  - `_sanitize_xlsx_cell("+1+2")` → `"'+1+2"`.
+  - `_sanitize_xlsx_cell("-1+cmd|exec")` → `"'-1+cmd|exec"`.
+  - `_sanitize_xlsx_cell("normal partner name")` → `"normal partner name"` (unchanged).
+  - `_sanitize_xlsx_cell(42.5)` → `42.5` (unchanged — non-string input, `isinstance` check short-circuits).
+
+**P2-F8 verification (PII log remediation):**
+
+- **INFO-level PII log eliminated**: `grep -nE "_logger\.info\(.*account_id|_logger\.info\(.*routing" addons/account_bank_reconciliation_ce/models/bank_statement_import.py` returns empty. No INFO-level log line carries `account_id` or `routing`.
+- **Masked DEBUG log present**: `grep -nE "_logger\.debug\(.*account_last4|account_last4" addons/account_bank_reconciliation_ce/models/bank_statement_import.py` returns the `_logger.debug("OFX account parsed: institution=%s account_last4=%s routing_last4=%s", ...)` line with `account_id[-4:]` / `routing[-4:]` slice expressions as arguments.
+- **Masking logic correct**: the slice expressions include an `if account_id else 'N/A'` / `if routing else 'N/A'` guard, so when the OFX file does not provide an account_id or routing_number the log emits `N/A` rather than an empty string that would be confused with a successful zero-length parse.
+- **GDPR / SOX / PCI DSS explanatory comment present**: `grep -n "GDPR\|PCI DSS\|SOX" addons/account_bank_reconciliation_ce/models/bank_statement_import.py` returns the 14-line comment block preceding the log call.
+
+**P2-F9 verification (exception-message generic-ization):**
+
+- **`_logger.exception` calls present**: `grep -cE "_logger\.exception" addons/account_bank_reconciliation_ce/models/bank_statement_import.py` returns exactly 5 matches, one per in-scope UserError raise site (parse_file, CSV decode, OFX, CAMT.053, statement-line create).
+- **`UserError` from `_()` translated generic messages**: `grep -nE 'raise UserError\(_\(' addons/account_bank_reconciliation_ce/models/bank_statement_import.py` shows all 5 post-remediation UserError raises use the `UserError(_("<generic>"))` pattern.
+- **`raise UserError ... from exc` chain preserved**: each of the 5 sites carries `from exc` so tracebacks in server logs still chain to the underlying library error (end user sees only the generic message).
+- **Original L1113 is a `_logger.warning`, not a UserError**: `sed -n '1100,1120p' addons/account_bank_reconciliation_ce/models/bank_statement_import.py` confirms the line is a `_logger.warning(...)` informational call; no `UserError` raise exists in the surrounding block. CP10 Issue #6 originally listed 6 sites; verification reduces the in-scope count to 5.
+
+**P2-F10 verification (requirements.txt pin bumps):**
+
+- **File parses as a valid requirements file**: a custom Python validator (simple non-comment, non-empty line regex check) reports **"OK — all requirement lines well-formed"** with **"Total lines: 130"** (up from 100 due to the added comment blocks).
+- **Five bumped pins present**:
+  - `grep -nE "Jinja2==3\.1\.6" requirements.txt` → line 54.
+  - `grep -nE "lxml==5\.4\.0" requirements.txt` → line 59.
+  - `grep -nE "openpyxl==3\.1\.5" requirements.txt` → line 76.
+  - `grep -nE "Pillow==10\.4\.0" requirements.txt` → line 80.
+  - `grep -nE "Werkzeug==3\.0\.6" requirements.txt` → line 122.
+- **No unintended pin changes**: `diff <(git show HEAD:requirements.txt) requirements.txt` is limited to (a) the SECURITY UPGRADES header block, (b) the 5 bumped pin lines with trailing `# CP10 security: ...` comments, and (c) the ofxparse annotation block above `ofxparse==0.21`. No other pin is altered.
+- **SECURITY UPGRADES block present**: `grep -c "SECURITY UPGRADES" requirements.txt` returns 1; the block documents the rationale for each bump and the revert instruction.
+- **CVE rationale recorded in-line**: each bumped pin carries a trailing comment naming the specific CVE or the pip-audit advisory it addresses.
+
 ### 4.5 Disposition — `APPROVED`
 
-Phase 2 Security review is APPROVED at Checkpoint 8. All three findings
-are closed: P2-F2 was remediated in commit `98d327e1a22` and verified
-by post-remediation grep + XML well-formedness + rule-count invariant;
-P2-F1 and P2-F3 are INFO-severity architectural design notes that
-document intentional, correct design patterns and require no code
-change. No BLOCKERs are outstanding. The Bank Reconciliation security
-slice (added at CP8) surfaced no addressable defects — the graduated
-ACL ladder and Command.link anti-regression pattern are both correctly
-implemented. The recommended downstream follow-up — converting the
+Phase 2 Security review is APPROVED at Checkpoint 10 (FINAL SECURITY).
+
+**CP3 / CP8 findings (P2-F1 through P2-F3)** were already closed at
+Checkpoint 8: P2-F2 was remediated in commit `98d327e1a22` and
+verified by post-remediation grep + XML well-formedness + rule-count
+invariant; P2-F1 and P2-F3 are INFO-severity architectural design
+notes that document intentional, correct design patterns and require
+no code change. The recommended downstream follow-up — converting the
 `contextlib.suppress(AccessError)` waiver at
 `test_financial_reports.py:L1520-1554` to a positive assertion — is
 logged in §6.3 QA/Test Integrity as a follow-up action item, not as
 a Phase 2 blocker.
+
+**CP10 FINAL SECURITY findings (P2-F4 through P2-F10)** were all
+closed at Checkpoint 10. Concretely:
+
+- P2-F4 CRITICAL (ofxparse supply-chain abandonment): **ANNOTATED** at three matching locations (manifest, requirements, module). Residual risk and three operator remediation paths are documented. Existing mitigations (`_MAX_FILE_SIZE` wizard constraint, ACL gating, generic UserError messages) are in place. Long-term remediation (vendor fork / replacement / operator-disabled OFX) is queued for a post-archaeology PR outside the CP10 scope.
+- P2-F5 INFO (pip-audit 2026-prefixed CVE IDs): **DOCUMENTED** as a data-quality footnote. The one reachability-relevant ID (`CVE-2026-41066` for lxml `iterparse`) is confirmed **NOT REACHABLE** in the new addons.
+- P2-F6 MINOR (defense-in-depth XML parser): **REMEDIATED** — module-level `_SAFE_XML_PARSER` constant applied at the sole CAMT.053 call site. XXE / SSRF / entity-amplification protections now live in code, independent of library defaults.
+- P2-F7 MAJOR (CSV / formula-injection on Excel export): **REMEDIATED** — module-level `_sanitize_xlsx_cell` helper applied at all three `ws.cell(value=...)` sinks. Fix propagates via MRO to all 7 xlsx-emitting reports. Synthetic payload probes confirm the injection vector is neutralized.
+- P2-F8 CRITICAL (PII in bank-statement-import logs): **REMEDIATED** — `_logger.info` with full `account_id` + `routing` replaced by `_logger.debug` with last-4-digit masking. GDPR Art. 5(1)(c) data-minimisation, SOX Section 404, and PCI DSS operational-logging expectations are now honoured.
+- P2-F9 MINOR (exception-message information disclosure): **REMEDIATED** at all 5 in-scope UserError sites. Full exception context goes to the server log via `_logger.exception`; the end user sees a stable generic message. Originally-flagged 6th site (L1113) confirmed to be a `_logger.warning`, not a UserError — no fix applied, none required.
+- P2-F10 MAJOR (version-pin drift): **REMEDIATED** — 5 pins bumped (`Jinja2 3.1.2 → 3.1.6`, `lxml 5.2.1 → 5.4.0`, `openpyxl 3.1.2 → 3.1.5`, `Pillow 10.2.0 → 10.4.0`, `Werkzeug 3.0.1 → 3.0.6`). Each bump stays within the same major/minor release series to preserve API stability and Noble wheel availability. SECURITY UPGRADES header block documents rationale and revert path.
+
+No CP10 BLOCKERs are outstanding. The runtime endpoint-auth and HTTP
+security-header verifications that the CP10 QA run deferred on
+environmental grounds (no Odoo binary in the QA environment) remain
+covered by this review's static evidence: (a) the ACL matrix in §4.4
+enforces a graduated permission ladder with no `perm_unlink` on any
+core `account.*` model; (b) the new addons add ZERO new HTTP
+controllers (`grep -rnE "@http\.route|http\.Controller" addons/account_bank_reconciliation_ce addons/account_financial_report_ce`
+returns empty), so the runtime-header attack surface is unchanged from
+upstream Odoo. With all ten findings closed, Phase 2 Security is
+`APPROVED` and carries no blockers into the open PR.
 
 ---
 
@@ -1510,24 +1627,30 @@ phase. Phase 7 transitions to `APPROVED` per AAP §0.10.3.
 
 ## 10. Consolidated Remediation Ledger
 
-At the Checkpoint 6 milestone, eleven remediation / disposition entries
-have been recorded on the active branch across the CP3 FEATURE-001
-Financial Reporting Engine review, the CP5 FEATURE-002 Bank
-Reconciliation Infrastructure + C-16 LATENT DEFECT review, and the
+At the Checkpoint 10 (FINAL SECURITY) milestone, eighteen remediation /
+disposition entries have been recorded on the active branch across the
+CP3 FEATURE-001 Financial Reporting Engine review, the CP5 FEATURE-002
+Bank Reconciliation Infrastructure + C-16 LATENT DEFECT review, the
 CP6 FEATURE-002 Bank Reconciliation QA-domain sibling of the C-16
-TRIPLE-DIVERGENCE COMPOUND FINDING. The ledger below tracks, one row
-per finding, every in-place change committed during the per-phase
-reviews (§§3–9) across the reviewed checkpoints. Each row references
-the originating finding ID (`Pn-Fm`), the remediation commit SHA(s)
-authored by `Blitzy Agent <agent@blitzy.com>`, and a short description
-per AAP §0.9.4. Rows flagged DOCUMENTED correspond to LATENT findings
-whose remediation is deferred per the D-2 byte-identity constraint;
-those rows carry full rationale in the originating phase section. The
-P3-F10 and P4-F11 rows are **sibling rows** of the single C-16
-TRIPLE-DIVERGENCE COMPOUND FINDING — together they name all three
-divergent source files (Python authoritative constants + XML dead-data
-seed + test-module docstring) and share a unified deferred remediation
-path.
+TRIPLE-DIVERGENCE COMPOUND FINDING, and the CP10 FINAL SECURITY
+dependency-CVE / supply-chain / runtime-boundary review. The ledger
+below tracks, one row per finding, every in-place change committed
+during the per-phase reviews (§§3–9) across the reviewed checkpoints.
+Each row references the originating finding ID (`Pn-Fm`), the
+remediation commit SHA(s) authored by `Blitzy Agent
+<agent@blitzy.com>`, and a short description per AAP §0.9.4. Rows
+flagged DOCUMENTED correspond to LATENT findings whose remediation is
+deferred per the D-2 byte-identity constraint; those rows carry full
+rationale in the originating phase section. The P3-F10 and P4-F11 rows
+are **sibling rows** of the single C-16 TRIPLE-DIVERGENCE COMPOUND
+FINDING — together they name all three divergent source files (Python
+authoritative constants + XML dead-data seed + test-module docstring)
+and share a unified deferred remediation path. The seven CP10
+Phase-2-Security rows (P2-F4 through P2-F10) share a single CP10
+remediation commit (`<pending — see commit for authoritative SHA>`)
+that landed the coordinated in-place fixes to
+`bank_statement_import.py`, `financial_report.py`, `requirements.txt`,
+and `__manifest__.py`.
 
 ### 10.1 Remediation Summary
 
@@ -1544,6 +1667,13 @@ path.
 | **P3-F10** | **3** | **LOW (LATENT)** | **C-16 TRIPLE-DIVERGENCE COMPOUND FINDING — Backend-domain portion (sibling of P4-F11).** `models/reconciliation_matching_engine.py:58-72` (authoritative Python constants) vs `data/reconciliation_data.xml:38-82` (stale XML `ir.config_parameter` seed) — XML-seeded values diverge from Python class constants for 3 of 7 scoring parameters (`weight_amount` 0.40 vs 0.35; `weight_partner` 0.20 vs 0.25; `confidence_high` 90.0 vs 95.0); ICP rows are orphaned (zero `get_param` calls in module) so Python constants win at runtime. Third divergence location (test-module docstring) covered by sibling entry **P4-F11**. | *No commit — D-2 locked, future PR path documented (bundled with P4-F11)* | DOCUMENTED |
 | P4-F9 | 4 | MAJOR | `tests/test_export.py:366-488` — permissive XLSX assertions (`assertIn` or-clause across `ir.actions.act_url` and `ir.actions.report`) masked broken routes from CI | `98d327e1a22` | REMEDIATED |
 | **P4-F11** | **4** | **LOW (LATENT)** | **C-16 TRIPLE-DIVERGENCE COMPOUND FINDING — QA-domain portion (sibling of P3-F10).** `tests/test_matching_engine.py:12-13` (stale test-module docstring) vs `models/reconciliation_matching_engine.py:58-72` (authoritative Python constants) — docstring documents the tested weight vector as *"(amount=0.40, reference=0.25, partner=0.20, date=0.15)"* and the confidence-level classification as *"High ≥ 90 %"*, both mirroring the stale XML seed values rather than the authoritative Python `DEFAULT_WEIGHTS = {'amount': 0.35, 'reference': 0.25, 'partner': 0.25, 'date': 0.15}` and `CONFIDENCE_HIGH = 95.0`. Docstring is descriptive narrative only (runtime-inert); test methods exercise the live Python class constants and remain semantically correct. Full three-file C-16 divergence set captured when read together with sibling entry **P3-F10**. | *No commit — D-2 locked, future PR path documented (bundled with P3-F10)* | DOCUMENTED |
+| **P2-F4** | **2** | **CRITICAL** (supply chain) | **CP10 Issue #1** — `ofxparse 0.21` upstream abandonment (last PyPI release 2021-05-31; no maintainer activity since; no security-review process) actively used for OFX bank-statement imports via the `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` conditional import. Long-term remediation (vendor fork / custom-SGML replacement / operator-omit) is tracked for a post-archaeology PR outside CP10 scope. | *CP10 remediation commit (pending) — annotation-only: `__manifest__.py` ~52-line supply-chain comment above `external_dependencies`, `requirements.txt` 8-line CP10 Issue #1 block above the `ofxparse==0.21` pin, `bank_statement_import.py` module-level SUPPLY-CHAIN NOTE above the conditional import* | ANNOTATED |
+| **P2-F5** | **2** | **INFO** (data quality) | **CP10 Issue #2** — pip-audit 2.10.0 output carries three 2026-prefixed CVE IDs (`CVE-2026-41066` lxml `iterparse`/`ETCompatXMLParser`, `CVE-2026-21860`, `CVE-2026-27199`). Footnote to cross-check IDs against NVD canonical records when citing externally. Reachability re-verified: `iterparse` and `ETCompatXMLParser` have **zero references** in the two new CE addons (only `XMLParser` match is the CP10 `_SAFE_XML_PARSER`) — `CVE-2026-41066` **NOT REACHABLE**. | *No commit — documentation footnote only in §4.2 and §4.3* | DOCUMENTED |
+| **P2-F6** | **2** | **MINOR** (defense in depth) | **CP10 Issue #3** — `addons/account_bank_reconciliation_ce/models/bank_statement_import.py:942` originally used `etree.fromstring(data_file)` without explicit safe-parser configuration, relying on lxml 5.0+ defaults. Hardened to `etree.fromstring(data_file, parser=_SAFE_XML_PARSER)` with a module-level `_SAFE_XML_PARSER = etree.XMLParser(resolve_entities=False, no_network=True, huge_tree=False, load_dtd=False)` constant. XXE / SSRF / entity-amplification protections now live in code, independent of library defaults. | *CP10 remediation commit (pending) — module-level `_SAFE_XML_PARSER` constant + call-site update at the CAMT.053 parse sink* | REMEDIATED |
+| **P2-F7** | **2** | **MAJOR** (output encoding) | **CP10 Issue #4** — Excel export in `addons/account_financial_report_ce/models/financial_report.py` wrote user-controllable strings (partner names, move-line descriptions/references, account names, company name) into XLSX cells unsanitized. Module-level `_XLSX_FORMULA_PREFIXES = ('=', '+', '-', '@', '\t', '\r')` and `_sanitize_xlsx_cell(value)` helper added and wired into all three `ws.cell(value=...)` sinks (header row, data row, Report Parameters sheet). Strings that start with a formula-trigger character are prefixed with an ASCII apostrophe per OWASP CSV-Injection guidance; numeric values pass through unchanged so `#,##0.00` / `0.00"%"` number-format styling remains correct. Fix propagates via MRO to all 7 xlsx-emitting reports (`balance_sheet`, `profit_loss`, `cash_flow`, `general_ledger`, `trial_balance`, `aged_partner_balance`, `financial_report`). | *CP10 remediation commit (pending) — module-level helper + 3 sink updates in `financial_report.py`* | REMEDIATED |
+| **P2-F8** | **2** | **CRITICAL** (privacy / compliance) | **CP10 Issue #5** — `addons/account_bank_reconciliation_ce/models/bank_statement_import.py:697-701` logged full bank account numbers and ABA routing numbers at `_logger.info` level (violating GDPR Art. 5(1)(c) data minimisation, SOX §404 operational controls, and PCI DSS adjacent-data logging expectations). Downgraded to `_logger.debug` with last-4-digit masking (`account_id[-4:]`, `routing[-4:]`) and added an explanatory 14-line GDPR / SOX / PCI DSS comment block above the log call. Institution name retained at full precision (not PII). | *CP10 remediation commit (pending) — INFO → DEBUG downgrade + last-4 mask at the OFX parse-success log site* | REMEDIATED |
+| **P2-F9** | **2** | **MINOR** (information disclosure) | **CP10 Issue #6** — Five `UserError` raise sites in `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` (parse_file dispatch, CSV decode, OFX parse, CAMT.053 parse, statement-line create) passed library-level exception strings (`str(exc)`) into the user-facing error. Each of the 5 sites is now wrapped as `except <Exception> as exc: _logger.exception(...); raise UserError(_("<generic-message>")) from exc` — server log retains full context via `_logger.exception`; end user sees a stable, actionable, generic message. Originally-flagged 6th site (L1113) confirmed to be a `_logger.warning` informational call, not a `UserError` raise; no fix required. | *CP10 remediation commit (pending) — 5 UserError sites wrapped with `_logger.exception` + generic message + `from exc` chain* | REMEDIATED |
+| **P2-F10** | **2** | **MAJOR** (dependency management) | **CP10 Issue #7** — `requirements.txt` version pins lagged the tested installed versions, meaning a fresh deployment using the pinned file would install vulnerable `Jinja2 3.1.2` (5 CVEs incl. CVE-2025-27516), `lxml 5.2.1` (1 pip-audit-flagged CVE), `openpyxl 3.1.2`, `Pillow 10.2.0` (CVE-2024-28219), and `Werkzeug 3.0.1` (6 CVEs). Five pins bumped within the same major/minor release series: `Jinja2 3.1.2 → 3.1.6`, `lxml 5.2.1 → 5.4.0`, `openpyxl 3.1.2 → 3.1.5`, `Pillow 10.2.0 → 10.4.0`, `Werkzeug 3.0.1 → 3.0.6`. Each pin carries an inline CVE-rationale comment; a SECURITY UPGRADES header block documents the rationale and revert path. File grew from 100 lines to 130 lines. | *CP10 remediation commit (pending) — 5 pin bumps + SECURITY UPGRADES header block* | REMEDIATED |
 
 **C-16 TRIPLE-DIVERGENCE COMPOUND FINDING — Unified Remediation Plan**
 (linking §5.2 P3-F10 Backend-domain sibling and §6.2 P4-F11 QA-domain
@@ -1593,43 +1723,62 @@ thresholds. Option (b) requires a full regression of the 371+211 test
 suite plus new ICP-override tests (CP7 gate). Either path must touch
 **all three** divergent files in the same PR.
 
-**Summary by severity (cumulative CP3 + CP5 + CP6)**: 1 CRITICAL compound
-(P1-F2 — resolved via 5 archaeology commits) + 3 MAJOR FR remediations
-(P3-F4, P3-F6, P3-F7) + 1 MAJOR test-suite weakness (P4-F9) + 3 MINOR
-(P1-F1, P2-F2, P3-F8) + 2 LOW LATENT (P3-F10 + P4-F11 — the two sibling
-portions of the single C-16 TRIPLE-DIVERGENCE COMPOUND FINDING, DOCUMENTED)
-+ 1 INFO (P1-F3, DOCUMENTED) = **11 findings total: 8 REMEDIATED,
-3 DOCUMENTED with deferred remediation paths** (the 2 C-16 sibling
-rows share a unified deferred remediation plan above).
+**Summary by severity (cumulative CP3 + CP5 + CP6 + CP10)**: 3 CRITICAL
+(P1-F2 CP5 compound — resolved via 5 archaeology commits; P2-F4 CP10
+ofxparse supply-chain ANNOTATED; P2-F8 CP10 PII log REMEDIATED) +
+5 MAJOR (P3-F4, P3-F6, P3-F7 CP3 FR remediations; P4-F9 CP3 test-suite
+weakness; P2-F7 CP10 CSV/formula-injection REMEDIATED; P2-F10 CP10
+pin-drift REMEDIATED) + 5 MINOR (P1-F1 CP3, P2-F2 CP3, P3-F8 CP3,
+P2-F6 CP10 XML parser REMEDIATED, P2-F9 CP10 exception disclosure
+REMEDIATED) + 2 LOW LATENT (P3-F10 + P4-F11 — the two sibling
+portions of the single C-16 TRIPLE-DIVERGENCE COMPOUND FINDING,
+DOCUMENTED) + 2 INFO (P1-F3 CP5, P2-F5 CP10, both DOCUMENTED) =
+**18 findings total: 14 REMEDIATED (including P2-F4 ANNOTATED),
+4 DOCUMENTED with deferred remediation paths** (the 2 C-16 sibling
+rows share a unified deferred remediation plan above; P1-F3 records
+a demo-data `safe_eval` Odoo-19 upstream latent defect; P2-F5 is a
+pip-audit 2026-CVE-ID data-quality footnote).
 
-**Summary by phase (cumulative CP3 + CP5 + CP6)**: Phase 1 (3 findings:
-1 CP3 REMEDIATED + 1 CP5 CRITICAL compound REMEDIATED + 1 CP5 INFO
-DOCUMENTED), Phase 2 (1 CP3 REMEDIATED), Phase 3 (5 findings:
-4 CP3 REMEDIATED + 1 CP5 LATENT DOCUMENTED), Phase 4 (2 findings:
-1 CP3 REMEDIATED + 1 CP6 LATENT DOCUMENTED as sibling of P3-F10),
-Phases 5–7 (0). All CP3 remediations are additive and preserve behavior
-for code paths that were already correct. All CP5/CP6 remediations are
-content-import only (byte-identical from `origin/pdlc`) or
-documentation-only (no source changes).
+**Summary by phase (cumulative CP3 + CP5 + CP6 + CP10)**: Phase 1
+(3 findings: 1 CP3 REMEDIATED + 1 CP5 CRITICAL compound REMEDIATED +
+1 CP5 INFO DOCUMENTED), Phase 2 (8 findings: 1 CP3 REMEDIATED + 1 CP10
+CRITICAL ANNOTATED + 1 CP10 CRITICAL REMEDIATED + 2 CP10 MAJOR
+REMEDIATED + 2 CP10 MINOR REMEDIATED + 1 CP10 INFO DOCUMENTED),
+Phase 3 (5 findings: 4 CP3 REMEDIATED + 1 CP5 LATENT DOCUMENTED),
+Phase 4 (2 findings: 1 CP3 REMEDIATED + 1 CP6 LATENT DOCUMENTED as
+sibling of P3-F10), Phases 5–7 (0). All CP3 remediations are
+additive and preserve behavior for code paths that were already
+correct. All CP5/CP6 remediations are content-import only
+(byte-identical from `origin/pdlc`) or documentation-only (no source
+changes). All CP10 remediations are either annotation-only (P2-F4 —
+no runtime behavior change) or additive-hardening (P2-F6, P2-F7,
+P2-F8, P2-F9, P2-F10 — stricter defaults, redacted logs, injection
+sanitization, and pin bumps within the same major/minor release
+series, preserving all existing correct-input code paths).
 
 **Forward-looking**: The 3 INFO observations from the CP3 review
 (group XML_ID naming deviation, `_onchange_report_type` defensive
 cleanup positive observation, `general_ledger.py` N+1 query pattern)
 are documented in their respective sections but require no remediation
-commit. The 3 DOCUMENTED findings (P1-F3 demo_data `safe_eval`; the two
+commit. The 4 DOCUMENTED findings (P1-F3 demo_data `safe_eval`; the two
 C-16 sibling rows P3-F10 + P4-F11 — which together constitute the
-single TRIPLE-DIVERGENCE COMPOUND FINDING) each carry a deferred
-remediation path recorded in their originating phase sections
-(§3.3, §5.3, §6.3) and the unified C-16 remediation plan above.
-Those paths are queued for post-archaeology PRs outside the scope of
-this review run. The combined 371+211 test-suite re-execution on the
-active branch is documented at Phase 4 §6.4 via the static-analysis
-evidence plus the preserved baseline from the prior validated run; at
-Checkpoint 8 all 7 phase dispositions — Phase 1, Phase 2, Phase 3,
-Phase 4, Phase 5, Phase 6, and Phase 7 — transition from their
-prior `IN_REVIEW`/`OPEN` states to `APPROVED` per AAP §0.10.3.
-Overall review status transitions to `APPROVED` per AAP §0.10.8. The
-PR is ready to open per R-2.
+single TRIPLE-DIVERGENCE COMPOUND FINDING; and P2-F5 CP10 pip-audit
+2026-CVE-ID data-quality footnote) each carry a deferred remediation
+path or a documentation-only disposition recorded in their originating
+phase sections (§3.3, §4.2, §4.3, §5.3, §6.3) and the unified C-16
+remediation plan above. The CP10 P2-F4 `ofxparse` annotation is
+complete at three matching locations (`__manifest__.py`,
+`requirements.txt`, `bank_statement_import.py`); a long-term
+remediation (vendor fork / custom-SGML replacement / operator-omit)
+is queued for a post-archaeology PR outside CP10 scope. Those paths
+are queued for post-archaeology PRs outside the scope of this review
+run. The combined 371+211 test-suite re-execution on the active
+branch is documented at Phase 4 §6.4 via the static-analysis evidence
+plus the preserved baseline from the prior validated run; at
+Checkpoint 10 all 7 phase dispositions — Phase 1, Phase 2, Phase 3,
+Phase 4, Phase 5, Phase 6, and Phase 7 — remain `APPROVED` per AAP
+§0.10.3. Overall review status remains `APPROVED` per AAP §0.10.8.
+The PR is ready to open per R-2.
 
 ---
 

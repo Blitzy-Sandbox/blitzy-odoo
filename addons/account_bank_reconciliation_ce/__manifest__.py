@@ -55,6 +55,56 @@
             "account_bank_reconciliation_ce/static/src/scss/reconciliation.scss",
         ],
     },
+    # ----------------------------------------------------------------------
+    # External Python dependencies
+    # ----------------------------------------------------------------------
+    #
+    # CP10 Issue #1 CRITICAL — Supply-chain residual risk (ofxparse):
+    #
+    # The ``ofxparse`` package (PyPI https://pypi.org/project/ofxparse/) is
+    # declared below because this module supports OFX bank-statement imports
+    # (see ``models/bank_statement_import.py`` — conditional import guarded
+    # by ``try/except ImportError``).  The CP10 FINAL SECURITY checkpoint
+    # flagged the following supply-chain concerns that operators MUST weigh
+    # before enabling OFX workflows in production:
+    #
+    #   * Upstream abandonment — the current PyPI release ``0.21`` was
+    #     published on 2021-05-31 and there has been no maintainer activity
+    #     since.  Any security defect discovered in the SGML/OFX parser has
+    #     NO published upstream fix path.
+    #   * No security-review process — the package ships without a security
+    #     disclosure policy or a signed release channel.
+    #   * Installed-but-optional — ``ofxparse`` is a soft dependency; the
+    #     OFX parser guards on ``ofxparse is not None`` and raises a
+    #     ``UserError`` when absent.  Operators MAY omit the package from
+    #     their deployment requirements to eliminate the attack surface if
+    #     OFX imports are not needed.
+    #
+    # Existing risk-mitigation controls already in place:
+    #
+    #   * Wizard-level file-size cap (``_MAX_FILE_SIZE = 10 MiB``) enforced
+    #     BEFORE parsing — see
+    #     ``wizard/bank_statement_import_wizard.py`` constraint.
+    #   * ACL gating — OFX import is reachable only via the
+    #     ``group_bank_reconciliation_user`` group; no public/portal route.
+    #   * Generic UserError messages on parse failure (exception text is
+    #     redirected to the server log via ``_logger.exception``), so parser
+    #     internals are not exposed to end users.
+    #
+    # Long-term remediation (tracked in CODE_REVIEW.md §4 Phase 2 Security
+    # CP10 addendum) — operators choose exactly ONE of:
+    #
+    #   (a) Vendor ``ofxparse`` into a maintained internal fork with a
+    #       documented security-review process, OR
+    #   (b) Replace with a custom SGML/OFX parser that lives inside this
+    #       addon (removing the external dependency entirely), OR
+    #   (c) Disable the OFX import feature by omitting ``ofxparse`` from
+    #       the deployment's ``requirements.txt`` — users then see a
+    #       UserError if they attempt an OFX upload.
+    #
+    # Reference: ``requirements.txt`` has a matching CP10 Issue #1 comment
+    # block above the ``ofxparse==0.21`` pin.
+    # ----------------------------------------------------------------------
     "external_dependencies": {
         "python": ["ofxparse"],
     },

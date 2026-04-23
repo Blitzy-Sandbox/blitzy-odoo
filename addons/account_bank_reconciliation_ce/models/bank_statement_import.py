@@ -38,12 +38,71 @@ except ImportError:
     etree = None
 
 # Conditional import for OFX parsing
+#
+# SECURITY / SUPPLY-CHAIN NOTE (CP10 Issue #1 — CRITICAL supply-chain risk):
+# -------------------------------------------------------------------------
+# ``ofxparse`` (PyPI ``ofxparse==0.21``) is the standard Python library for
+# parsing Open Financial Exchange files, but it has not received an upstream
+# release since 2021-05-31 (≈5 years at time of CP10).  No security review
+# or CVE-advisory process is published upstream.  The library is used here
+# behind a conditional import so that installations that do not need OFX
+# ingest can omit the dependency entirely, and OFX ingest is fenced off at
+# runtime via the ``OfxParser is None`` guard at the start of
+# :meth:`BankStatementImport._parse_ofx` (below).  Operators enabling OFX
+# import accept the residual risk of consuming an unmaintained upstream
+# library.  The recommended long-term remediation path — documented in
+# ``CODE_REVIEW.md`` §4 Phase 2 Security CP10 supply-chain addendum — is
+# either to (a) vendor ``ofxparse`` into a maintained internal fork that
+# carries explicit security review, or (b) replace the OFX parser with a
+# custom SGML implementation.  Until one of (a)/(b) is adopted, the only
+# user-controlled data that reaches ``ofxparse`` is the uploaded OFX file
+# itself, which is subject to the 10 MB ``_MAX_FILE_SIZE`` wizard
+# constraint and the standard Odoo group-based ACL gating.
 try:
     from ofxparse import OfxParser
 except ImportError:
     OfxParser = None
 
 _logger = logging.getLogger(__name__)
+
+# Security-hardened XML parser for CAMT.053 (CP10 Issue #3 — defense-in-depth).
+#
+# Rationale
+# ---------
+# ``lxml.etree.fromstring`` is security-sensitive because CAMT.053 bank
+# statement files are attacker-controllable uploads and XML parsers can,
+# with insecure defaults, be coaxed into resolving external entities
+# (XXE), fetching remote DTDs (SSRF), loading local DTDs, or amplifying
+# entities (billion-laughs DoS).  Modern ``lxml`` 5.x defaults already
+# block external-entity resolution and amplified-entity expansion (see
+# ``xmlCtxtSetMaxAmplification``), but relying on library defaults makes
+# the security property library-version-dependent — any future default
+# change or accidental downgrade would silently re-enable the attack
+# surface.  Binding the hardened configuration to this module-level
+# parser object makes the security property code-local and explicit.
+#
+# Flags (matches the OWASP XXE Prevention Cheat Sheet for lxml):
+# - ``resolve_entities=False``: do not expand ANY entity references
+#   (external OR internal), neutralising XXE and billion-laughs entirely.
+# - ``no_network=True``: forbid the parser from issuing network reads
+#   (SSRF defence against <!ENTITY SYSTEM "http://attacker/…">).
+# - ``huge_tree=False``: reject absurdly large documents so DoS via
+#   deeply-nested trees is bounded in addition to the 10 MB upload cap.
+# - ``load_dtd=False``: do not load the document's DTD even if declared.
+#
+# The parser is constructed only when ``lxml`` successfully imported
+# (``etree is not None``); otherwise the CAMT.053 code path is disabled
+# at :meth:`_parse_camt053` behind an explicit ``UserError`` guard.
+_SAFE_XML_PARSER = (
+    etree.XMLParser(
+        resolve_entities=False,
+        no_network=True,
+        huge_tree=False,
+        load_dtd=False,
+    )
+    if etree is not None
+    else None
+)
 
 # CAMT.053 ISO 20022 namespace constants
 CAMT_053_NS = 'urn:iso:std:iso:20022:tech:xsd:camt.053.001'
@@ -402,14 +461,29 @@ class BankStatementImport(models.TransientModel):
         )
 
         # Step 2: Parse file
+        #
+        # CP10 Issue #6 (MINOR — information disclosure): the user-facing
+        # message MUST NOT expose library-level exception details (parser
+        # byte offsets, internal paths, namespace URIs, etc.).  Full
+        # exception details are captured by ``_logger.exception`` for
+        # server-side diagnostics; the end user sees a generic, actionable
+        # message.  ``%s`` of ``self.filename`` is logged only on the
+        # server side — the filename is already user-authored and present
+        # in the wizard record.
         try:
             parsed_lines = self._parse_file()
         except (ValueError, KeyError, TypeError, OSError) as exc:
-            _logger.error(
-                "Failed to parse bank statement file: %s", exc,
+            _logger.exception(
+                "Failed to parse bank statement file: filename=%s format=%s",
+                self.filename or 'unknown',
+                self.file_format or 'unknown',
             )
             raise UserError(
-                _("Failed to parse the bank statement file.\n\nError: %s") % exc,
+                _(
+                    "The uploaded bank statement file could not be parsed. "
+                    "Please verify the file is a valid %s statement and try "
+                    "again.  Contact your administrator if the issue persists.",
+                ) % (self.file_format or _('bank statement')),
             ) from exc
 
         log_lines.append(_("Parsed %d transaction lines.") % len(parsed_lines))
@@ -540,13 +614,24 @@ class BankStatementImport(models.TransientModel):
         if delimiter in ('\\t', 'tab', 'TAB'):
             delimiter = '\t'
 
+        # CP10 Issue #6 (MINOR — information disclosure): full decoder
+        # exception details (byte offsets, codec internals) stay in the
+        # server log via ``_logger.exception``; the user-facing message
+        # states the encoding and remedial action without re-emitting
+        # library-level text.
         try:
             text_data = data_file.decode(encoding)
         except (UnicodeDecodeError, LookupError) as exc:
+            _logger.exception(
+                "CSV decode failed: encoding=%s filename=%s",
+                encoding, self.filename or 'unknown',
+            )
             raise UserError(
-                _("Cannot decode the CSV file with encoding '%s'. "
-                  "Please verify the encoding setting.\n\nError: %s")
-                % (encoding, str(exc)),
+                _(
+                    "The CSV file could not be decoded with encoding '%s'. "
+                    "Please verify the CSV encoding setting matches the file "
+                    "(common alternatives: utf-8, utf-8-sig, latin-1, cp1252).",
+                ) % encoding,
             ) from exc
 
         reader = csv.reader(io.StringIO(text_data), delimiter=delimiter)
@@ -679,12 +764,28 @@ class BankStatementImport(models.TransientModel):
                   "Please install it with: pip install ofxparse"),
             )
 
+        # CP10 Issue #6 (MINOR — information disclosure): the ofxparse
+        # library's exceptions can carry byte offsets, internal paths, and
+        # other library-internals.  Route full context to ``_logger.exception``
+        # (server-side only) and surface a generic remedial message to the
+        # user.  ``BLE001`` is intentionally triggered here — ``ofxparse``
+        # raises bare ``Exception`` subclasses (``ParseError``, ``SoupError``,
+        # etc.) with no stable class hierarchy, so a broad except is the
+        # only reliable way to catch every parse failure.
         lines = []
         try:
             ofx = OfxParser.parse(io.BytesIO(data_file))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — ofxparse has no stable exception base class
+            _logger.exception(
+                "OFX parse failed: filename=%s",
+                self.filename or 'unknown',
+            )
             raise UserError(
-                _("Failed to parse the OFX file.\n\nError: %s") % str(exc),
+                _(
+                    "The uploaded OFX file could not be parsed. Please verify "
+                    "the file is a valid Open Financial Exchange (OFX) "
+                    "statement from your bank and try again.",
+                ),
             ) from exc
 
         if not ofx.account:
@@ -693,11 +794,28 @@ class BankStatementImport(models.TransientModel):
             )
 
         account = ofx.account
-        _logger.info(
-            "OFX account found: account_id=%s, routing=%s, institution=%s",
-            getattr(account, 'account_id', 'N/A'),
-            getattr(account, 'routing_number', 'N/A'),
-            getattr(account, 'institution', 'N/A'),
+        # CP10 Issue #5 (CRITICAL — PII exposure in logs): bank account
+        # numbers and ABA routing numbers must never appear at INFO level
+        # in server logs.  Emitting them at INFO propagates PII to every
+        # log destination (stdout, syslog, ELK, Splunk, …) and violates
+        # GDPR Article 5(1)(c) (data minimisation) and SOX / PCI DSS
+        # operational controls.  Remediation:
+        #   1. Downgrade to DEBUG level so PII is emitted only when an
+        #      operator deliberately enables verbose logging.
+        #   2. Redact the account identifier and routing number to their
+        #      last 4 digits — sufficient for troubleshooting correlation
+        #      while preventing the full number from reaching any log
+        #      aggregator.
+        #   3. Log institution name at full precision (public-domain
+        #      data — the bank name is not PII under any regime we serve).
+        account_id = getattr(account, 'account_id', '') or ''
+        routing = getattr(account, 'routing_number', '') or ''
+        institution = getattr(account, 'institution', '') or 'unknown'
+        _logger.debug(
+            "OFX account parsed: institution=%s account_last4=%s routing_last4=%s",
+            institution,
+            account_id[-4:] if account_id else 'N/A',
+            routing[-4:] if routing else 'N/A',
         )
 
         statement = getattr(account, 'statement', None)
@@ -938,11 +1056,37 @@ class BankStatementImport(models.TransientModel):
 
         lines = []
 
+        # CP10 Issue #3 (MINOR — defense-in-depth for XML parsing):
+        # parse the attacker-controllable CAMT.053 payload using the
+        # module-level ``_SAFE_XML_PARSER`` so the security-critical
+        # flags (``resolve_entities=False``, ``no_network=True``,
+        # ``huge_tree=False``, ``load_dtd=False``) are applied regardless
+        # of the installed ``lxml`` version's defaults.  The module-level
+        # parser is instantiated only when lxml imported successfully —
+        # the preceding ``etree is None`` guard already ensures we are
+        # on the lxml-available path.
+        #
+        # CP10 Issue #6 (MINOR — information disclosure): full lxml
+        # exception details (byte offsets, namespace URIs) stay in
+        # ``_logger.exception``; the user-facing message is generic.
+        # ``BLE001`` is intentionally triggered — ``lxml`` raises a mix
+        # of ``XMLSyntaxError``, ``ValueError``, ``TypeError`` depending
+        # on payload shape, so a broad except keeps the guard robust.
         try:
-            root = etree.fromstring(data_file)
-        except Exception as exc:
+            root = etree.fromstring(data_file, parser=_SAFE_XML_PARSER)
+        except Exception as exc:  # noqa: BLE001 — lxml raises varied exception classes by payload shape
+            _logger.exception(
+                "CAMT.053 parse failed: filename=%s bytes=%d",
+                self.filename or 'unknown',
+                len(data_file) if data_file else 0,
+            )
             raise UserError(
-                _("Failed to parse the CAMT.053 XML file.\n\nError: %s") % str(exc),
+                _(
+                    "The uploaded file is not a valid CAMT.053 bank "
+                    "statement. Please verify the file is a well-formed "
+                    "ISO 20022 CAMT.053 XML document exported from your "
+                    "bank and try again.",
+                ),
             ) from exc
 
         # Detect the namespace from the root element
@@ -1281,16 +1425,29 @@ class BankStatementImport(models.TransientModel):
                 len(batch_vals),
                 journal.display_name,
             )
+            # CP10 Issue #6 (MINOR — information disclosure): ORM and
+            # database-level exception text can include column names,
+            # partial SQL fragments, or constraint messages that would
+            # leak schema details through the wizard UI.  Full context
+            # goes to ``_logger.exception`` for operator diagnostics; the
+            # end user receives a generic, actionable message referencing
+            # the journal that was the write target.
             try:
                 created_lines = StLine.with_context(
                     is_statement_line=True,
                 ).create(batch_vals)
             except (ValueError, TypeError, KeyError, OSError) as exc:
-                _logger.error(
-                    "Failed to create statement lines: %s", exc,
+                _logger.exception(
+                    "Statement line creation failed: journal=%s batch_size=%d",
+                    journal.display_name, len(batch_vals),
                 )
                 raise UserError(
-                    _("Failed to create statement lines.\n\nError: %s") % exc,
+                    _(
+                        "The bank statement lines could not be created in "
+                        "journal '%s'. Please verify the journal configuration "
+                        "and try again. Contact your administrator if the "
+                        "issue persists.",
+                    ) % (journal.display_name or _('Unknown')),
                 ) from exc
 
             # Collect associated statements for the result

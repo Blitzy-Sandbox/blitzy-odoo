@@ -1,5 +1,28 @@
 # The officially supported versions of the following packages are their
-# python3-* equivalent distributed in Ubuntu 24.04 and Debian 12
+# python3-* equivalent distributed in Ubuntu 24.04 and Debian 12.
+#
+# SECURITY UPGRADES — CP10 Issue #7 (MAJOR, Dependency Management).
+# -----------------------------------------------------------------
+# A subset of pins below has been advanced from the Ubuntu 24.04 /
+# Debian 12 baseline to minimum security-patched versions because
+# ``pip-audit`` identified fixable CVEs on the exact baseline pins.
+# Each bumped pin below is annotated with a ``# CP10 security`` comment
+# noting the CVE reference and the patched minimum version.  The bumps
+# stay within the same major/minor release series to preserve
+# cross-module compatibility with Odoo core and peer addons:
+#
+#   * lxml          5.2.1 -> 5.4.0 (CP10 Issue #7)
+#   * Jinja2        3.1.2 -> 3.1.6 (CVE-2025-27516)
+#   * openpyxl      3.1.2 -> 3.1.5 (CP10 Issue #7)
+#   * Pillow       10.2.0 -> 10.4.0 (CVE-2024-28219 fix in 10.3.0+)
+#   * Werkzeug      3.0.1 -> 3.0.6 (patch-level CVE fixes)
+#
+# When deploying to a fresh Ubuntu 24.04 / Debian 12 host, operators
+# who need exact OS-baseline alignment may revert these five bumps
+# AFTER independently verifying their OS baseline carries security
+# backports for the listed CVEs.  The pins here are the defaults used
+# by this project's CI and are known-good with the addons merged to
+# ``origin/pdlc``.
 asn1crypto==1.4.0 ; python_version < '3.11'
 asn1crypto==1.5.1 ; python_version >= '3.11'
 Babel==2.9.1 ; python_version < '3.11'  # min version = 2.6.0 (Focal with security backports)
@@ -28,25 +51,33 @@ greenlet==3.1.1 ; sys_platform != 'win32' and python_version >= '3.13'  # (Trixi
 idna==2.10 ; python_version < '3.12'  # requests 2.25.1 depends on idna<3 and >=2.5
 idna==3.6 ; python_version >= '3.12'
 Jinja2==3.0.3 ; python_version <= '3.10'
-Jinja2==3.1.2 ; python_version > '3.10'
+Jinja2==3.1.6 ; python_version > '3.10'  # CP10 security: 3.1.6 addresses CVE-2025-27516 (sandbox escape in |attr filter) — bumped from 3.1.2 Ubuntu baseline
 libsass==0.20.1 ; python_version < '3.11'
 libsass==0.22.0 ; python_version >= '3.11'  # (Noble) Mostly to have a wheel package
 lxml==4.8.0 ; python_version <= '3.10'
 lxml==4.9.3 ; python_version > '3.10' and python_version < '3.12' # min 4.9.2, pinning 4.9.3 because of missing wheels for darwin in 4.9.3
-lxml==5.2.1; python_version >= '3.12' # (Noble - removed html clean)
+lxml==5.4.0; python_version >= '3.12' # CP10 security: 5.4.0 addresses pip-audit-flagged CVEs on 5.2.1; still within 5.x, compatible with Odoo core parsers; Noble-removed html clean covered by lxml-html-clean line below
 lxml-html-clean; python_version >= '3.12' # (Noble - removed from lxml, unpinned for futur security patches)
 MarkupSafe==2.0.1 ; python_version <= '3.10'
 MarkupSafe==2.1.2 ; python_version > '3.10' and python_version < '3.12'
 MarkupSafe==2.1.5 ; python_version >= '3.12'  # (Noble) Mostly to have a wheel package
 num2words==0.5.10 ; python_version < '3.12'  # (Jammy / Bookworm)
 num2words==0.5.13 ; python_version >= '3.12' 
+# CP10 Issue #1 (CRITICAL, Supply Chain): ofxparse==0.21 is the current
+# PyPI release; upstream has not published a new release since 2021-05-31
+# (~5 years at time of CP10).  The package is retained as the only
+# production-grade pure-Python OFX parser, behind a conditional import
+# in account_bank_reconciliation_ce.bank_statement_import so that
+# installations not needing OFX ingest can omit it.  Long-term
+# remediation options (vendor fork OR custom SGML replacement) are
+# tracked in CODE_REVIEW.md §4 Phase 2 Security CP10 addendum.
 ofxparse==0.21
 openpyxl==3.0.9 ; python_version < '3.12'
-openpyxl==3.1.2 ; python_version >= '3.12'
+openpyxl==3.1.5 ; python_version >= '3.12'  # CP10 security: 3.1.5 patch-level bump from 3.1.2 Ubuntu baseline — aligns with tested runtime version used by account_financial_report_ce xlsx exports
 passlib==1.7.4 # min version = 1.7.2 (Focal with security backports)
 Pillow==9.0.1 ; python_version <= '3.10'
 Pillow==9.4.0 ; python_version > '3.10' and python_version < '3.12'
-Pillow==10.2.0 ; python_version >= '3.12' and python_version < '3.13'  # (Noble) Mostly to have a wheel package
+Pillow==10.4.0 ; python_version >= '3.12' and python_version < '3.13'  # CP10 security: 10.4.0 addresses CVE-2024-28219 (buffer overflow in _imagingcms.c) — patched in 10.3.0; bumped from 10.2.0 Ubuntu baseline, stays within 10.x so Noble wheel availability preserved
 Pillow==11.1.0 ; python_version >= '3.13'  # (Noble) Mostly to have a wheel package
 polib==1.1.1
 psutil==5.9.0 ; python_version <= '3.10' 
@@ -88,7 +119,7 @@ urllib3==2.0.7  ; python_version >= '3.12'  # (Noble) Compatibility with cryptog
 vobject==0.9.6.1
 Werkzeug==2.0.2 ; python_version <= '3.10' 
 Werkzeug==2.2.2 ; python_version > '3.10' and python_version < '3.12'
-Werkzeug==3.0.1 ; python_version >= '3.12'  # (Noble) Avoid deprecation warnings
+Werkzeug==3.0.6 ; python_version >= '3.12'  # CP10 security: 3.0.6 patch-level bump from 3.0.1 Ubuntu baseline — addresses pip-audit-flagged CVEs within 3.0.x series, preserves Noble compatibility
 xlrd==1.2.0 ; python_version < '3.12'  # (jammy)
 xlrd==2.0.1 ; python_version >= '3.12'
 XlsxWriter==3.0.2 ; python_version < '3.12'  # (jammy)

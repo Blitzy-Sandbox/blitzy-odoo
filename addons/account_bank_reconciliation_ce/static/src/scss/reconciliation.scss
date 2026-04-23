@@ -13,11 +13,9 @@ $reconciliation-warning-color: #ffc107;
 $reconciliation-danger-color: #dc3545;
 $reconciliation-info-color: #17a2b8;
 
-// Confidence Tier Colors (semantic mapping) — thresholds match
-// reconciliation_matching_engine.py constants: CONFIDENCE_HIGH = 95.0,
-// CONFIDENCE_MEDIUM = 70.0, CONFIDENCE_LOW = 50.0.
-$confidence-high-color: $reconciliation-success-color;   // High ≥95% — green
-$confidence-medium-color: $reconciliation-warning-color;  // Medium 70-94% — amber
+// Confidence Tier Colors (semantic mapping)
+$confidence-high-color: $reconciliation-success-color;   // High ≥90% — green
+$confidence-medium-color: $reconciliation-warning-color;  // Medium 70-89% — amber
 $confidence-low-color: #6c757d;                           // Low 50-69% — grey
 
 // Bank Reconciliation Container

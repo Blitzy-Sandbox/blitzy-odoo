@@ -24,4 +24,4 @@ See:
     - AAP Section 0.7.2 RF4 (FNV-1a parity contract)
 """
 
-from . import auth_v2, fnv_hash
+from . import auth_v2, feature_flags, fnv_hash

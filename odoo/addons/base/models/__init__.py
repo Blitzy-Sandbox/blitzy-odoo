@@ -53,9 +53,4 @@ from . import res_device
 
 from . import decimal_precision
 
-# Cross-language FNV-1a 32-bit parity test (Rule RF4 / AAP FR-7).
-# This test runs without depending on the auth_v2 addon — its FNV
-# implementation is inlined. The addon-local mirror at
-# ``addons/auth_v2/tests/test_feature_flags.py`` exercises the addon's
-# production ``fnv_hash.fnv1a32`` instead.
 from . import test_feature_flags

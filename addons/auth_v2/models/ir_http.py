@@ -37,6 +37,17 @@ Resolution flow (when AUTH_V2_ENABLED is True):
     6. ``request.update_env(user=user_record.id)`` to install the user
        into the environment so downstream Odoo code (controllers, ORM
        checks, etc.) sees the authenticated user.
+
+       **Odoo 19 API substitution (DO NOT change to ``request.uid = ...``):**
+       The AAP's literal phrasing in §0.4.1.3 is ``request.uid = user_record.id``,
+       but this idiom is FORBIDDEN in Odoo 19. The ``request.uid`` property
+       setter at ``odoo/http.py`` raises ``NotImplementedError("Use
+       request.update_env instead.")`` to force callers onto the canonical
+       ``request.update_env(user=...)`` pattern, which also invalidates
+       the ``request.env`` cache so subsequent ORM calls see the new user.
+       The base class's ``_auth_method_bearer`` uses the same pattern, so
+       this override is consistent with Odoo 19 internals. Future
+       contributors: do not "fix" this back to direct ``uid`` assignment.
     7. Return ``None`` WITHOUT calling ``super()._authenticate(endpoint)``
        (Rule R4 / R13 -- once V2 owns the request, legacy MUST NOT run).
 

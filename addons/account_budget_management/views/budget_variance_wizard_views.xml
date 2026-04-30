@@ -14,7 +14,8 @@
 
     This file registers:
 
-      * view_budget_variance_wizard_form : the wizard form.
+      * view_budget_variance_wizard_form : the wizard form,
+        organized as Filter Inputs (top) + Variance Summary (bottom).
       * action_budget_variance_wizard    : the menu-entry action
         opening the wizard in dialog target mode.
 
@@ -28,9 +29,11 @@
         ``account`` / ``analytic`` (both declared in manifest
         ``depends``).
       * R-02 No Enterprise: no Enterprise module references.
-      * R-08 Field partitioning: the wizard itself holds no
-        ``variance_*`` or ``alert_*`` fields; it is scope parameters
-        only, preserving the disjoint-set invariant.
+      * R-08 Field partitioning: the wizard's ``variance_*`` output
+        fields are read-only summary surfaces displayed alongside the
+        neutrally-named filter input fields; zero ``alert_*`` fields
+        appear on this wizard, preserving partition with BM-005's
+        ``budget.alert`` model.
     ====================================================================
     -->
 
@@ -46,12 +49,13 @@
                         </h1>
                         <p>
                             Configure the parameters below and press
-                            <strong>Open Variance</strong> to launch
-                            the BM-004 variance list / pivot / graph
-                            against the chosen budget. Optionally
-                            press <strong>Drill Down</strong> for an
-                            aggregate journal-line view scoped to
-                            the wizard parameters.
+                            <strong>Generate Report</strong> to launch
+                            the BM-004 variance drill-down on
+                            ``account.move.line``. Use
+                            <strong>View Lines</strong> to open the
+                            ``budget.budget.line`` list with the same
+                            filters; press <strong>Preview</strong>
+                            to refresh the variance summary in place.
                         </p>
                     </div>
                     <group>
@@ -64,38 +68,83 @@
                                    invisible="1"/>
                             <field name="date_from"/>
                             <field name="date_to"/>
-                            <field name="include_draft_lines"/>
+                            <field name="target_move"
+                                   widget="radio"/>
                         </group>
-                        <group string="Granularity">
+                        <group string="Granularity &amp; Format">
                             <field name="period_granularity"
+                                   widget="radio"/>
+                            <field name="include_ytd"
+                                   invisible="period_granularity == 'none'"/>
+                            <field name="show_trend_indicators"
+                                   invisible="period_granularity == 'none'"/>
+                            <field name="report_format"
                                    widget="radio"/>
                         </group>
                     </group>
                     <group>
                         <group string="Analytic Filters">
-                            <field name="analytic_plan_ids"
-                                   widget="many2many_tags"
+                            <field name="analytic_plan_id"
                                    options="{'no_create': True}"/>
                             <field name="analytic_account_ids"
                                    widget="many2many_tags"
                                    options="{'no_create': True}"/>
+                            <field name="show_analytic_breakdown"/>
                         </group>
-                        <group string="Favorability &amp; Threshold">
-                            <field name="favorable_filter"
+                        <group string="Classification &amp; Notes">
+                            <field name="account_type_filter"
                                    widget="radio"/>
-                            <field name="variance_threshold_percent"
-                                   widget="percentage"/>
+                            <field name="classification_filter"
+                                   widget="radio"/>
+                            <field name="include_notes"/>
+                            <field name="notes_filter"/>
                         </group>
+                    </group>
+                    <group string="Variance Summary"
+                           col="4">
+                        <field name="variance_line_count"
+                               readonly="1"/>
+                        <field name="variance_classification"
+                               readonly="1"/>
+                        <field name="variance_total_budget"
+                               readonly="1"/>
+                        <field name="variance_total_actual"
+                               readonly="1"/>
+                        <field name="variance_absolute"
+                               readonly="1"/>
+                        <field name="variance_percent_display"
+                               readonly="1"/>
+                        <field name="variance_favorable_amount"
+                               readonly="1"/>
+                        <field name="variance_unfavorable_amount"
+                               readonly="1"/>
+                        <field name="variance_net_position"
+                               readonly="1"/>
+                        <field name="variance_favorable_count"
+                               readonly="1"/>
+                        <field name="variance_unfavorable_count"
+                               readonly="1"/>
+                        <field name="variance_trend_period_count"
+                               readonly="1"
+                               invisible="period_granularity == 'none'"/>
+                        <field name="variance_percent"
+                               invisible="1"/>
+                        <field name="variance_trend_data"
+                               invisible="1"/>
                     </group>
                 </sheet>
                 <footer>
-                    <button name="action_open_variance"
+                    <button name="action_generate_report"
                             type="object"
-                            string="Open Variance"
+                            string="Generate Report"
                             class="btn-primary"/>
-                    <button name="action_drill_down"
+                    <button name="action_view_budget_lines"
                             type="object"
-                            string="Drill Down"
+                            string="View Lines"
+                            class="btn-secondary"/>
+                    <button name="action_preview"
+                            type="object"
+                            string="Preview"
                             class="btn-secondary"/>
                     <button string="Cancel"
                             class="btn-secondary"

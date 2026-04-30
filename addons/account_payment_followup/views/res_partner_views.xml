@@ -13,9 +13,9 @@
 
     Implements:
       - PF-001 Scenarios 1-5: Follow-up level configuration — exposes the
-        currently-applicable ``followup_level_id``, ``followup_next_action_date``,
-        and ``followup_status`` on the partner form so accountants can
-        verify which level is active and when the next action is due.
+        currently-applicable ``followup_level_id`` and
+        ``followup_next_action_date`` on the partner form so accountants
+        can verify which level is active and when the next action is due.
       - PF-005 Scenarios 1-6: Overdue calculation — surfaces
         ``has_overdue_invoices``, ``max_days_overdue``, ``total_overdue``,
         and the five aging buckets (``aging_bucket_current``,
@@ -119,7 +119,6 @@
                                    name="followup_status_group">
                                 <field name="followup_level_id"/>
                                 <field name="followup_next_action_date"/>
-                                <field name="followup_status"/>
                                 <field name="has_overdue_invoices"/>
                                 <field name="max_days_overdue"/>
                             </group>

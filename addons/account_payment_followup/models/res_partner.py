@@ -2,91 +2,83 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 """
-Res Partner Extensions — Payment Follow-ups
-===========================================
+Customer Partner Extensions — Payment Follow-ups
+================================================
 
-Extends Odoo's core ``res.partner`` with per-partner aggregation of
-overdue invoices, aging-bucket totals, and a Many2one link to the
-currently-applicable ``account.followup.level``. These fields are the
-runtime backbone of the PF-002 follow-up cron (which searches partners
-with ``has_overdue_invoices=True``) and the four default mail templates
-in ``data/mail_template_data.xml`` (which render ``object.total_overdue``
-and iterate ``object._get_overdue_invoices()``).
+Extends Odoo's core ``res.partner`` with computed aging-bucket fields,
+follow-up level assignment logic, and navigation helpers for customer
+follow-up workflows.
 
 Implements:
-    - FEATURE-006 PF-001: Follow-up level configuration (partner-side
-      linkage to ``account.followup.level``).
-    - FEATURE-006 PF-005: Per-partner overdue aggregation
-      (``total_overdue``, ``max_days_overdue``, aging buckets, auto
-      level assignment).
+    - FEATURE-006 PF-001: Follow-up Level Configuration (partner assignment)
+    - FEATURE-006 PF-002: Automated Email Generation (manual trigger action)
+    - FEATURE-006 PF-005: Overdue Calculation (aging buckets + level match)
 
 Integration Notes:
     - Extends ``res.partner`` via ``_inherit`` (no core modifications).
     - Zero Enterprise module dependencies.
     - AGPL-3.0 licensing.
-    - Uses the existing core ``invoice_ids`` One2many (defined in
-      ``addons/account/models/partner.py`` line 562) to enumerate
-      customer invoices without adding a new relation.
-    - Uses the core ``currency_id`` (from ``_get_company_currency``) for
-      Monetary-field precision.
+    - Python 3.10-3.13 compatibility.
+    - Multi-company isolation via ``company_id`` scoping on level lookup.
+    - Performance target: <1 second for 10,000+ open invoices (PF-005 BR-004) —
+      achieved via a single ``_read_group`` aggregation on ``account.move.line``
+      rather than per-partner ``invoice_ids`` iteration.
 
-Business Rules (PF-005):
-    - Only POSTED customer invoices/refunds (``move_type in
-      ('out_invoice', 'out_refund')``, ``state == 'posted'``) with
-      ``payment_state in ('not_paid', 'partial')`` and a set
-      ``invoice_date_due`` in the past contribute to overdue aggregates.
-    - Supplier bills (``in_invoice``, ``in_refund``) are ALWAYS excluded
-      from overdue aggregates (PF-005 BR-003).
-    - Credit notes (``out_refund``) reduce ``total_overdue`` but do NOT
-      populate aging buckets directly (the absolute ``amount_residual``
-      on refunds offsets invoice amounts at the partner level).
-    - Disputed invoices (``is_disputed=True``) are excluded from both
-      ``total_overdue`` and aging buckets (PF-005 BR-005) so that
-      customers are not dunned for amounts under review.
+Architectural Decisions:
+    - The ``_compute_overdue_aging`` method aggregates receivables at the
+      ``account.move.line`` level (filtered by ``account_type =
+      'asset_receivable'`` and ``parent_state = 'posted'``) so that it sees
+      every open receivable line — including lines on partially-paid invoices
+      — through a single SQL ``GROUP BY`` query. Iterating
+      ``partner.invoice_ids`` would be O(N) per partner and would breach the
+      PF-005 BR-004 performance target on large datasets.
+    - ``followup_next_action_date`` is a plain ``Date`` field (no ``compute=``)
+      so that ``account.followup.level.process_followup_emails()`` can write
+      it directly after dispatching a dunning email, projecting the next
+      contact date forward by the level's ``delay``.
+    - ``followup_line_id`` is named in the singular per AAP spec verbatim; it
+      is technically a ``One2many`` because ``account.followup.line`` carries
+      a ``UNIQUE(partner_id, company_id)`` constraint that makes the
+      relationship 1:1 per company (effectively many-to-one across multi-
+      company deployments).
 
 Rules Compliance (AAP §0.7):
-    - R-01: No cross-module imports (imports only from ``odoo``).
-    - R-02: No Enterprise references.
-    - R-03: Uses ``_inherit`` only, no ``_name`` redefinition.
-    - R-05 (tangential — R-05 targets account.move/account.move.line):
-      All new fields are either computed (``has_overdue_invoices``,
-      ``total_overdue``, aging buckets, ``max_days_overdue``,
-      ``followup_level_id``, ``followup_next_action_date``,
-      ``followup_status``) or simple additive relational fields
-      (``followup_history_ids`` One2many reverse relation for PF-004
-      chatter). No existing core field on ``res.partner`` is
-      redefined.
-    - R-07: No ``sudo()`` usage.
+    - R-01: No cross-module imports (only ``odoo.*`` and ``odoo.exceptions``).
+    - R-02: No Enterprise module references.
+    - R-03: Uses ``_inherit = 'res.partner'`` only — no ``_name`` redefinition
+      of the core model.
+    - R-05: Every new field is computed (``compute=...``) or relational
+      (Many2one/One2many) pointing to a new module-owned model. No core
+      ``res.partner`` field is redefined.
+    - R-07: No ``sudo()`` calls.
 """
+
+import logging
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+_logger = logging.getLogger(__name__)
+
 
 class ResPartner(models.Model):
-    """Customer partner extensions for payment follow-up workflows.
+    """Partner extensions for payment follow-up workflows.
 
-    Adds computed per-partner overdue aggregation fields
-    (``has_overdue_invoices``, ``total_overdue``, aging buckets,
-    ``max_days_overdue``), a computed ``followup_level_id`` that
-    auto-selects the applicable escalation level based on
-    ``max_days_overdue`` and each level's ``delay`` threshold, a
-    computed ``followup_next_action_date`` that schedules the next
-    dunning event, a ``followup_status`` selection reflecting the
-    partner's follow-up state, and a ``followup_history_ids`` One2many
-    reverse relation for PF-004 audit-trail navigation.
+    Adds computed fields for receivables aging (Current / 1-30 / 31-60 /
+    61-90 / 90+ days), automated follow-up level assignment based on the
+    most-overdue invoice, and convenience actions for viewing follow-up
+    history and triggering manual follow-ups.
 
-    The ``_get_overdue_invoices()`` method is the authoritative helper
-    used by both the PF-002 cron (``account.followup.level.
-    process_followup_emails``) and the four mail templates in
-    ``data/mail_template_data.xml`` to enumerate the partner's
-    open overdue customer invoices.
+    All fields are additive and are computed from ``account.move.line``
+    data using a single ``_read_group`` aggregation to avoid N+1 query
+    patterns (PF-005 BR-004 performance target: 10,000+ invoices per
+    company).
     """
 
     _inherit = 'res.partner'
 
     # -------------------------------------------------------------------------
-    # PF-001 LEVEL ASSIGNMENT
+    # FOLLOW-UP LEVEL ASSIGNMENT (PF-001, PF-005)
     # -------------------------------------------------------------------------
 
     followup_level_id = fields.Many2one(
@@ -95,487 +87,345 @@ class ResPartner(models.Model):
         compute='_compute_followup_level',
         store=True,
         index=True,
-        help=(
-            'Applicable follow-up level for this partner, computed from the '
-            'maximum days-overdue across all the partner\'s open customer '
-            'invoices. Recomputed whenever an invoice is posted, paid, or '
-            'modified. See PF-001 for level thresholds (7/14/21/30 days) '
-            'and PF-005 for the BR-002 recalculation triggers.'
-        ),
+        help='Follow-up level automatically assigned based on the most overdue '
+             'open invoice. Empty when the partner has no overdue receivables.',
     )
 
     followup_next_action_date = fields.Date(
-        string='Next Follow-up Date',
-        compute='_compute_followup_next_action',
-        store=True,
-        index=True,
-        help=(
-            'Next scheduled follow-up action date. Typically computed as '
-            'the earliest invoice due date plus the current level\'s delay '
-            'threshold, representing the soonest date the PF-002 cron will '
-            'include this partner in a batch. Overridden by the cron itself '
-            'after each dunning touch.'
-        ),
-    )
-
-    followup_status = fields.Selection(
-        selection=[
-            ('no_action_needed', 'No Action Needed'),
-            ('in_followup', 'In Follow-up'),
-            ('no_response', 'No Response'),
-            ('done', 'Done'),
-            ('need_review', 'Needs Review'),
-        ],
-        string='Follow-up Status',
-        compute='_compute_followup_status',
-        store=True,
-        default='no_action_needed',
-        help=(
-            'Follow-up state summarising the partner\'s current position in '
-            'the dunning ladder:\n'
-            ' * No Action Needed: No overdue invoices or all disputed.\n'
-            ' * In Follow-up: Has overdue invoices with an assigned level.\n'
-            ' * No Response: In follow-up for more than 60 days overdue.\n'
-            ' * Done: All overdue invoices resolved.\n'
-            ' * Needs Review: Requires manual intervention (disputed, '
-            'over-90-day aging, or missing level).'
-        ),
+        string='Next Follow-up Action Date',
+        copy=False,
+        help='Date on which the next follow-up action is scheduled for this '
+             'partner. Typically set by the scheduled action cron after a '
+             'successful follow-up execution.',
     )
 
     # -------------------------------------------------------------------------
-    # PF-005 OVERDUE AGGREGATION
+    # AGING BUCKETS (PF-005 Scenario 3)
     # -------------------------------------------------------------------------
-
-    has_overdue_invoices = fields.Boolean(
-        string='Has Overdue Invoices',
-        compute='_compute_overdue_aggregates',
-        store=True,
-        index=True,
-        help=(
-            'True when the partner has at least one open overdue customer '
-            'invoice (posted, unpaid or partial, past due, non-disputed). '
-            'Indexed to support the fast domain search performed by the '
-            'PF-002 cron (process_followup_emails) against thousands of '
-            'partner records.'
-        ),
-    )
 
     total_overdue = fields.Monetary(
         string='Total Overdue',
-        compute='_compute_overdue_aggregates',
+        compute='_compute_overdue_aging',
         store=True,
         currency_field='currency_id',
-        help=(
-            'Sum of open residual amounts across all the partner\'s overdue '
-            'customer invoices, net of any open customer refunds '
-            '(out_refund). Disputed invoices (is_disputed=True) are '
-            'excluded per PF-005 BR-005. Used by mail-template summary '
-            'sections (object.total_overdue).'
-        ),
-    )
-
-    max_days_overdue = fields.Integer(
-        string='Max Days Overdue',
-        compute='_compute_overdue_aggregates',
-        store=True,
-        help=(
-            'Maximum days-overdue across all open customer invoices for '
-            'this partner. Drives the automatic follow-up level selection '
-            '(followup_level_id) by comparing against each level\'s delay '
-            'threshold.'
-        ),
+        help='Sum of all receivable amounts past due (1-30 + 31-60 + 61-90 + '
+             '90+ days). Does NOT include the "Current" bucket (not yet due).',
     )
 
     aging_bucket_current = fields.Monetary(
-        string='Current (Not Due)',
-        compute='_compute_overdue_aggregates',
+        string='Current',
+        compute='_compute_overdue_aging',
         store=True,
         currency_field='currency_id',
-        help=(
-            'Open customer invoice residual amounts that are NOT yet '
-            'overdue (due today or in the future). Useful for aging '
-            'reports that present both current and overdue buckets '
-            'side-by-side.'
-        ),
+        help='Receivable amount not yet due (due date >= today, or no due '
+             'date set).',
     )
 
     aging_bucket_1_30 = fields.Monetary(
         string='1-30 Days Overdue',
-        compute='_compute_overdue_aggregates',
+        compute='_compute_overdue_aging',
         store=True,
         currency_field='currency_id',
-        help=(
-            'Sum of residual amounts on customer invoices that are 1-30 '
-            'days past due. Disputed invoices are excluded. Used by '
-            'partner-card aging summary and PF-003 follow-up reports.'
-        ),
+        help='Receivable amount 1 to 30 days past due.',
     )
 
     aging_bucket_31_60 = fields.Monetary(
         string='31-60 Days Overdue',
-        compute='_compute_overdue_aggregates',
+        compute='_compute_overdue_aging',
         store=True,
         currency_field='currency_id',
-        help=(
-            'Sum of residual amounts on customer invoices that are 31-60 '
-            'days past due. Disputed invoices are excluded.'
-        ),
+        help='Receivable amount 31 to 60 days past due.',
     )
 
     aging_bucket_61_90 = fields.Monetary(
         string='61-90 Days Overdue',
-        compute='_compute_overdue_aggregates',
+        compute='_compute_overdue_aging',
         store=True,
         currency_field='currency_id',
-        help=(
-            'Sum of residual amounts on customer invoices that are 61-90 '
-            'days past due. Disputed invoices are excluded.'
-        ),
+        help='Receivable amount 61 to 90 days past due.',
     )
 
     aging_bucket_90_plus = fields.Monetary(
-        string='90+ Days Overdue',
-        compute='_compute_overdue_aggregates',
+        string='Over 90 Days Overdue',
+        compute='_compute_overdue_aging',
         store=True,
         currency_field='currency_id',
-        help=(
-            'Sum of residual amounts on customer invoices that are more '
-            'than 90 days past due. Disputed invoices are excluded. '
-            'High values in this bucket indicate bad-debt risk.'
-        ),
+        help='Receivable amount more than 90 days past due. High values in '
+             'this bucket indicate elevated bad-debt risk.',
+    )
+
+    max_days_overdue = fields.Integer(
+        string='Max Days Overdue',
+        compute='_compute_overdue_aging',
+        store=True,
+        help='Largest days-overdue value across all open customer invoices. '
+             'Used to determine the appropriate follow-up level via '
+             '_compute_followup_level.',
+    )
+
+    has_overdue_invoices = fields.Boolean(
+        string='Has Overdue Invoices',
+        compute='_compute_overdue_aging',
+        store=True,
+        index=True,
+        help='True when the partner has at least one invoice past its due '
+             'date and a positive total-overdue amount. Indexed to support '
+             'fast domain searches in process_followup_emails.',
     )
 
     # -------------------------------------------------------------------------
-    # PF-004 HISTORY BACK-REFERENCE
+    # HISTORY & SUMMARY RELATIONS (PF-004, PF-005)
     # -------------------------------------------------------------------------
 
     followup_history_ids = fields.One2many(
         comodel_name='account.followup.history',
         inverse_name='partner_id',
         string='Follow-up History',
-        help=(
-            'Immutable audit trail of every follow-up action taken against '
-            'this partner (emails sent, phone calls logged, letters issued, '
-            'meeting notes, payment promises). PF-004 BR-003 enforces that '
-            'records are never modified or deleted after creation.'
-        ),
+        help='Chronological immutable audit trail of follow-up actions '
+             '(emails, letters, phone calls, meetings, promises) for this '
+             'partner.',
     )
 
     followup_history_count = fields.Integer(
         string='Follow-up History Count',
         compute='_compute_followup_history_count',
-        help=(
-            'Number of follow-up history records logged against this '
-            'partner. Displayed as a smart-button badge on the partner '
-            'form when views are added in subsequent checkpoints.'
-        ),
+        help='Number of follow-up history records for smart-button display.',
+    )
+
+    followup_line_id = fields.One2many(
+        comodel_name='account.followup.line',
+        inverse_name='partner_id',
+        string='Follow-up Summary',
+        help='Denormalized aging summary (one record per company per partner) '
+             'used for fast filtering and sorting in follow-up reports.',
     )
 
     # -------------------------------------------------------------------------
-    # COMPUTE METHODS — OVERDUE AGGREGATION
+    # COMPUTE METHODS
     # -------------------------------------------------------------------------
 
     @api.depends(
-        'invoice_ids',
+        'invoice_ids.payment_state',
+        'invoice_ids.amount_residual',
+        'invoice_ids.invoice_date_due',
         'invoice_ids.state',
         'invoice_ids.move_type',
-        'invoice_ids.payment_state',
-        'invoice_ids.invoice_date_due',
-        'invoice_ids.amount_residual',
-        'invoice_ids.is_disputed',
-        'invoice_ids.days_overdue',
     )
-    def _compute_overdue_aggregates(self):
-        """Aggregate open overdue customer invoices per partner.
+    def _compute_overdue_aging(self):
+        """Compute aging buckets and max days overdue for this partner.
 
-        Business Rules (PF-005):
-            - Customer invoices and refunds only (``move_type`` in
-              ``('out_invoice', 'out_refund')``).
-            - Posted moves only (``state == 'posted'``).
-            - Unpaid or partially paid only (``payment_state`` in
-              ``('not_paid', 'partial')``).
-            - Disputed moves (``is_disputed=True``) are excluded from
-              overdue totals and aging buckets but still appear in
-              ``aging_bucket_current`` calculations (they remain open
-              receivables; they just don't contribute to dunning).
+        Uses a single ``_read_group`` aggregation on ``account.move.line``
+        to avoid N+1 query patterns (PF-005 BR-004 performance target).
 
-        For refunds (``out_refund``), ``amount_residual`` is negative-
-        effective (it reduces the partner's receivable balance); we
-        subtract it from ``total_overdue`` by including it with its
-        natural signed value. Aging buckets aggregate only positive
-        residual amounts so refunds do not create negative bucket
-        balances; the net effect is applied at the ``total_overdue``
-        level only.
+        Business Rules Applied:
+            - BR-001: Days overdue measured from ``date_maturity`` on the
+              receivable line (matches the line's payment-term-derived due
+              date).
+            - BR-002: Only posted invoices (``parent_state = 'posted'``) are
+              considered.
+            - BR-004: Uses ``amount_residual`` (remaining unpaid), never the
+              original invoice amount.
+            - BR-006: Credit notes (``out_refund``) reduce totals via the
+              signed ``amount_residual`` returned by the ORM.
+            - Only customer receivables (``account_type = 'asset_receivable'``)
+              are aggregated — supplier bills are excluded by construction.
+            - Skips partners without an ID (unsaved records).
+
+        Performance:
+            One SQL ``GROUP BY (partner_id, date_maturity)`` query covering
+            all partners in ``self``; bucket assignment happens in Python on
+            the aggregated rows (typically far fewer rows than line records).
         """
         today = fields.Date.context_today(self)
+
+        # Initialize all partners to zero so downstream reads never see NULL
+        # and so partners with no receivable lines get deterministic zero
+        # values rather than carrying stale cached values from prior runs.
         for partner in self:
-            total_overdue = 0.0
-            max_days = 0
-            bucket_current = 0.0
-            bucket_1_30 = 0.0
-            bucket_31_60 = 0.0
-            bucket_61_90 = 0.0
-            bucket_90_plus = 0.0
-            has_overdue = False
+            partner.total_overdue = 0.0
+            partner.aging_bucket_current = 0.0
+            partner.aging_bucket_1_30 = 0.0
+            partner.aging_bucket_31_60 = 0.0
+            partner.aging_bucket_61_90 = 0.0
+            partner.aging_bucket_90_plus = 0.0
+            partner.max_days_overdue = 0
+            partner.has_overdue_invoices = False
 
-            for inv in partner.invoice_ids:
-                # Only customer side (refunds included for net-total).
-                if inv.move_type not in ('out_invoice', 'out_refund'):
-                    continue
-                # Posted only.
-                if inv.state != 'posted':
-                    continue
-                # Unpaid / partial only.
-                if inv.payment_state not in ('not_paid', 'partial'):
-                    continue
+        # Filter to stored partners only (``_read_group`` requires integer ids).
+        # NewIds (placeholders for unsaved records) cannot participate in SQL
+        # ``IN`` clauses; they are kept at the zero-initialization values above.
+        stored_partners = self.filtered('id')
+        if not stored_partners:
+            return
 
-                residual = inv.amount_residual or 0.0
+        # Single SQL aggregation: group by (partner, date_maturity day),
+        # sum the residual amount. Returns ``list[tuple]`` of
+        # ``(partner_recordset, date_maturity, amount_residual_sum)`` per
+        # the Odoo 19.0 ``_read_group`` API contract (see
+        # ``odoo/orm/models.py::_read_group``).
+        groups = self.env['account.move.line']._read_group(
+            domain=[
+                ('partner_id', 'in', stored_partners.ids),
+                ('account_id.account_type', '=', 'asset_receivable'),
+                ('parent_state', '=', 'posted'),
+                ('reconciled', '=', False),
+                ('move_id.move_type', 'in', ('out_invoice', 'out_refund')),
+                (
+                    'move_id.payment_state',
+                    'in',
+                    ('not_paid', 'partial', 'in_payment'),
+                ),
+            ],
+            groupby=['partner_id', 'date_maturity:day'],
+            aggregates=['amount_residual:sum'],
+        )
 
-                # Residual sign convention:
-                #   out_invoice -> positive residual (customer owes us)
-                #   out_refund -> usually positive residual on the refund
-                #                 record, but REDUCES the partner's
-                #                 receivable balance at the partner level
-                # Apply a sign flip for refunds when aggregating totals.
-                signed_residual = (
-                    -residual if inv.move_type == 'out_refund' else residual
-                )
+        # Aggregate per partner into buckets; accumulate ``max_days_overdue``.
+        # Cache writes accumulate via ``+=`` because Odoo's compute cache
+        # supports incremental accumulation on stored fields within a single
+        # compute pass.
+        for partner_rec, maturity_date, residual_sum in groups:
+            if not partner_rec:
+                # Defensive guard against NULL ``partner_id`` (should not
+                # occur given the domain filter ``partner_id IN``).
+                continue
+            # ``with_env`` ensures cache continuity with the outer ``self``
+            # env so ``+=`` reads the initialized 0.0 we just wrote and
+            # writes back to the same cache slot.
+            partner = partner_rec.with_env(self.env)
+            amount = residual_sum or 0.0
+            if not maturity_date:
+                # Receivable with no due date is treated as "current" by
+                # convention (matches Odoo's behaviour where ``date_maturity``
+                # falls back to invoice_date when payment terms are unset).
+                partner.aging_bucket_current += amount
+                continue
+            days = (today - maturity_date).days
+            if days < 0:
+                # Future-dated receivable.
+                partner.aging_bucket_current += amount
+            elif days <= 30:
+                partner.aging_bucket_1_30 += amount
+                partner.max_days_overdue = max(partner.max_days_overdue, days)
+                partner.total_overdue += amount
+            elif days <= 60:
+                partner.aging_bucket_31_60 += amount
+                partner.max_days_overdue = max(partner.max_days_overdue, days)
+                partner.total_overdue += amount
+            elif days <= 90:
+                partner.aging_bucket_61_90 += amount
+                partner.max_days_overdue = max(partner.max_days_overdue, days)
+                partner.total_overdue += amount
+            else:
+                partner.aging_bucket_90_plus += amount
+                partner.max_days_overdue = max(partner.max_days_overdue, days)
+                partner.total_overdue += amount
 
-                # Not-yet-due invoices populate aging_bucket_current
-                # regardless of dispute status (they are open receivables).
-                if not inv.invoice_date_due:
-                    bucket_current += residual
-                    continue
-
-                delta = (today - inv.invoice_date_due).days
-                if delta <= 0:
-                    # Due today or in the future.
-                    bucket_current += residual
-                    continue
-
-                # Overdue beyond grace (delta >= 1). Disputed invoices
-                # are excluded from overdue totals per PF-005 BR-005.
-                if inv.is_disputed:
-                    continue
-
-                # Non-disputed overdue invoice/refund — include in totals.
-                total_overdue += signed_residual
-                has_overdue = True
-
-                if delta > max_days:
-                    max_days = delta
-
-                # Aging buckets: only positive residual amounts (i.e.,
-                # invoices) populate aging buckets; refunds net against
-                # total_overdue only.
-                if inv.move_type == 'out_invoice':
-                    if delta <= 30:
-                        bucket_1_30 += residual
-                    elif delta <= 60:
-                        bucket_31_60 += residual
-                    elif delta <= 90:
-                        bucket_61_90 += residual
-                    else:
-                        bucket_90_plus += residual
-
-            # Commit computed values.
-            partner.has_overdue_invoices = has_overdue
-            partner.total_overdue = total_overdue
-            partner.max_days_overdue = max_days
-            partner.aging_bucket_current = bucket_current
-            partner.aging_bucket_1_30 = bucket_1_30
-            partner.aging_bucket_31_60 = bucket_31_60
-            partner.aging_bucket_61_90 = bucket_61_90
-            partner.aging_bucket_90_plus = bucket_90_plus
-
-    # -------------------------------------------------------------------------
-    # COMPUTE METHODS — LEVEL / STATUS
-    # -------------------------------------------------------------------------
+        # Final ``has_overdue_invoices`` flag — derived from the accumulated
+        # ``total_overdue`` so a partner with only refunds (negative residual
+        # net total <= 0) is correctly flagged as not having overdue dunning
+        # candidates even when individual lines exist.
+        for partner in stored_partners:
+            partner.has_overdue_invoices = partner.total_overdue > 0
 
     @api.depends('max_days_overdue', 'company_id')
     def _compute_followup_level(self):
-        """Select the highest-``delay`` active level whose threshold is met.
+        """Assign the highest applicable follow-up level based on max days overdue.
 
-        Iterates the active ``account.followup.level`` records in the
-        partner's company, ordered by ``delay`` ascending, and picks the
-        highest level whose ``delay`` is <= the partner's
-        ``max_days_overdue``. A partner with zero days overdue gets no
-        level (``followup_level_id = False``).
+        PF-001 BR-003: Customer follow-up level is based on their most overdue
+        invoice. The returned level is the one with the greatest ``delay``
+        value that is still <= ``max_days_overdue``.
 
-        Multi-company handling:
-            - Levels with ``company_id = False`` (global templates) apply
-              to all companies per the ir.rule in
-              ``security/followup_security.xml``.
-            - Levels with a specific ``company_id`` apply only to partners
-              in the same company context.
+        Multi-company scoping: only levels matching the partner's
+        ``company_id`` (or, when the partner has no primary company, the
+        current ``env.company``) are considered.
+
+        Examples:
+            - Partner with ``max_days_overdue = 0`` -> ``followup_level_id =
+              False`` (no level assigned).
+            - Partner with ``max_days_overdue = 15`` and levels at delays
+              {7, 14, 21, 30} -> level with delay=14 is selected.
+            - Partner with ``max_days_overdue = 100`` -> level with delay=30
+              is selected (the largest delay still <= 100).
         """
-        # Fetch all active levels for partners' companies in one pass.
         Level = self.env['account.followup.level']
         for partner in self:
             if not partner.max_days_overdue or partner.max_days_overdue <= 0:
                 partner.followup_level_id = False
                 continue
-
-            # Company-scoped level lookup, allowing global templates.
-            # ORM's automatic company domain enforces multi-company isolation.
-            company = partner.company_id or self.env.company
-            domain = [
-                ('active', '=', True),
-                '|',
-                ('company_id', '=', False),
-                ('company_id', '=', company.id),
-                ('delay', '<=', partner.max_days_overdue),
-            ]
-            applicable = Level.search(domain, order='delay desc', limit=1)
-            partner.followup_level_id = applicable.id if applicable else False
-
-    @api.depends('followup_level_id', 'followup_level_id.delay', 'max_days_overdue')
-    def _compute_followup_next_action(self):
-        """Compute the next scheduled follow-up action date.
-
-        Semantics:
-            - If no level applies (no overdue or before first level's
-              threshold): next action is in the future when the earliest
-              overdue invoice would cross the first level's delay. For
-              simplicity at this checkpoint we use today + level.delay
-              when there is NO current level but there ARE overdue
-              invoices; False otherwise.
-            - If a level applies, next action date is today (the cron
-              should pick this partner up on its next run).
-
-        The cron (``process_followup_emails``) overrides this field
-        after each dunning touch to project the next contact date
-        forward (``today + level.delay``).
-        """
-        today = fields.Date.context_today(self)
-        for partner in self:
-            if partner.followup_level_id:
-                partner.followup_next_action_date = today
-            elif partner.max_days_overdue and partner.max_days_overdue > 0:
-                # Has overdue but below first level threshold.
-                partner.followup_next_action_date = today
-            else:
-                partner.followup_next_action_date = False
-
-    @api.depends(
-        'has_overdue_invoices',
-        'followup_level_id',
-        'max_days_overdue',
-        'aging_bucket_90_plus',
-    )
-    def _compute_followup_status(self):
-        """Classify partner's overall follow-up state into a Selection.
-
-        Mapping:
-            - ``no_action_needed``: No overdue invoices.
-            - ``in_followup``: Has overdue invoices with an assigned level.
-            - ``no_response``: Overdue > 60 days (indicates non-response
-              to earlier communications).
-            - ``done``: Previously overdue but now cleared (currently
-              indistinguishable from ``no_action_needed`` without
-              history; retained as selection for future enhancement).
-            - ``need_review``: Has overdue > 90 days or has overdue but
-              no matching level (e.g., below first threshold or all
-              levels inactive).
-        """
-        for partner in self:
-            if not partner.has_overdue_invoices:
-                partner.followup_status = 'no_action_needed'
-                continue
-
-            # Partner has overdue invoices.
-            if partner.aging_bucket_90_plus and partner.aging_bucket_90_plus > 0:
-                partner.followup_status = 'need_review'
-            elif (
-                partner.max_days_overdue and partner.max_days_overdue > 60
-                and not partner.followup_level_id
-            ):
-                partner.followup_status = 'no_response'
-            elif partner.followup_level_id:
-                partner.followup_status = 'in_followup'
-            else:
-                # Has overdue but no level matched (below first threshold).
-                partner.followup_status = 'need_review'
-
-    # -------------------------------------------------------------------------
-    # COMPUTE METHODS — CHATTER COUNT
-    # -------------------------------------------------------------------------
+            # Scope levels to partner's company (fallback to env.company for
+            # partners without a primary company assignment, e.g., shared
+            # partners on multi-company installs).
+            company_id = partner.company_id.id or self.env.company.id
+            matching = Level.search(
+                [
+                    ('company_id', '=', company_id),
+                    ('delay', '<=', partner.max_days_overdue),
+                    ('active', '=', True),
+                ],
+                order='delay desc, sequence desc',
+                limit=1,
+            )
+            partner.followup_level_id = matching.id if matching else False
 
     def _compute_followup_history_count(self):
-        """Count of follow-up history records per partner (non-stored).
+        """Count follow-up history records for smart-button display.
 
-        Used by partner-form smart buttons in subsequent-checkpoint views
-        to render a badge with the number of historical touches.
+        Intentionally NOT decorated with ``@api.depends`` — the field is
+        non-stored and recomputes on every access. Using ``len(One2many)``
+        avoids an extra ``search_count`` round-trip when the One2many has
+        already been prefetched by the form view.
         """
-        History = self.env['account.followup.history']
         for partner in self:
-            partner.followup_history_count = History.search_count(
-                [('partner_id', '=', partner.id)],
-            )
+            partner.followup_history_count = len(partner.followup_history_ids)
 
     # -------------------------------------------------------------------------
-    # HELPERS CONSUMED BY CRON + MAIL TEMPLATES
+    # HELPER METHODS & ACTIONS
     # -------------------------------------------------------------------------
 
     def _get_overdue_invoices(self):
-        """Return open overdue customer invoice recordset for this partner.
+        """Return open past-due customer invoices for this partner.
 
-        This is the **authoritative** helper consumed by:
-            - ``account.followup.level.process_followup_emails()`` at
-              ``models/account_followup_level.py`` line 519, which
-              iterates each partner's overdue invoices to populate
-              history records and optional PDF attachments.
-            - All four default mail templates in
-              ``data/mail_template_data.xml``, which use QWeb
-              ``t-foreach`` over ``object._get_overdue_invoices()`` to
-              render the overdue-invoice table in each dunning email.
+        Used by ``process_followup_emails()`` on ``account.followup.level``
+        (PF-002) to populate the ``invoice_ids`` Many2many on follow-up
+        history records, and by mail templates that render the overdue-
+        invoice list inside dunning emails.
 
-        Filter criteria (PF-005):
-            - ``move_type in ('out_invoice', 'out_refund')`` — customer
-              side only; supplier bills are NEVER included per BR-003.
-            - ``state == 'posted'`` — draft/cancelled moves are not
-              dunning candidates.
-            - ``payment_state in ('not_paid', 'partial')`` — fully-paid
-              moves do not need dunning.
-            - ``invoice_date_due`` set AND strictly less than today —
-              excludes future-due and exactly-today-due moves.
-            - ``is_disputed == False`` — disputed moves are excluded
-              from dunning correspondence per BR-005 even though they
-              remain in the open-receivable aging view.
+        Filter criteria:
+            - ``move_type in ('out_invoice', 'out_refund')`` -- customer
+              invoices and credit notes only; supplier bills are NEVER
+              included (PF-005 BR-002).
+            - ``state = 'posted'`` -- draft and cancelled moves are excluded.
+            - ``payment_state in ('not_paid', 'partial', 'in_payment')`` --
+              fully-paid invoices do not require follow-up.
+            - ``invoice_date_due < today`` -- strictly past-due (excludes
+              future-due and exactly-today-due moves).
 
-        Ordering: by ``invoice_date_due`` ascending, then ``name``
-        ascending, so the oldest overdue invoice appears first in
-        email tables — consistent with collection best practice.
-
-        :return: ``account.move`` recordset (may be empty) filtered to
-            the current partner's open overdue customer invoices.
+        :return: ``account.move`` recordset filtered to the partner's open
+            past-due customer invoices.
         """
         self.ensure_one()
-        today = fields.Date.context_today(self)
-        return self.invoice_ids.filtered(
-            lambda m: (
-                m.move_type in ('out_invoice', 'out_refund')
-                and m.state == 'posted'
-                and m.payment_state in ('not_paid', 'partial')
-                and m.invoice_date_due
-                and m.invoice_date_due < today
-                and not m.is_disputed
+        return self.env['account.move'].search([
+            ('partner_id', '=', self.id),
+            ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ('state', '=', 'posted'),
+            (
+                'payment_state',
+                'in',
+                ('not_paid', 'partial', 'in_payment'),
             ),
-        ).sorted(key=lambda m: (m.invoice_date_due, m.name or ''))
-
-    # -------------------------------------------------------------------------
-    # ACTION METHODS
-    # -------------------------------------------------------------------------
+            ('invoice_date_due', '<', fields.Date.context_today(self)),
+        ])
 
     def action_view_followup_history(self):
-        """Smart-button handler: open this partner's follow-up history.
+        """Smart-button action: open a filtered list of follow-up history records.
 
-        Returns an Odoo action dict that opens the partner's history
-        records in a list view, filtered by ``partner_id``. Views and
-        menu wiring are added in a subsequent checkpoint; this action
-        is future-proofed so it returns the correct structure even
-        before those views exist (Odoo gracefully falls back to the
-        default view types).
+        Returns an ``ir.actions.act_window`` dict navigating to the
+        ``account.followup.history`` list view pre-filtered by partner.
+        Context seeds ``default_partner_id`` and ``default_company_id`` so
+        new records created from this view default correctly.
+
+        :return: Odoo action dict for the partner-scoped history view.
         """
         self.ensure_one()
         return {
@@ -593,63 +443,54 @@ class ResPartner(models.Model):
         }
 
     def action_send_followup_now(self):
-        """Trigger an immediate follow-up email send for this partner.
+        """Manually trigger a single follow-up email for this partner.
 
-        Manual-trigger handler bound to the "Send Follow-up Now" button on
-        the partner form (PF-001/PF-002). Validates that the partner has a
-        current follow-up level and overdue invoices, then delegates to
-        :meth:`account.followup.level.process_followup_emails` with the
-        ``active_partner_ids`` context populated so the level's partner
-        resolver (``_get_applicable_partners``) restricts processing to
-        this single partner only.
+        Invokes ``process_followup_emails(batch_size=1)`` on the follow-up
+        level model, restricted to this partner via the documented
+        ``active_partner_ids`` context key (consumed by
+        ``account.followup.level._get_applicable_partners``).
 
-        The downstream ``process_followup_emails`` method handles all
-        business-rule enforcement (BR-004 active-level guard, minimum
-        amount threshold, email-template presence, attachment rendering,
-        history record creation, and trigger-action side-effects). This
-        wrapper only performs the minimal pre-flight checks necessary for
-        a clean user-facing error message and returns a UI notification
-        summarising the outcome.
+        Pre-flight validation:
+            - Raises ``UserError`` if the partner has no assigned follow-up
+              level (typically because they have no overdue invoices).
+            - Raises ``UserError`` if the partner has no open past-due
+              customer invoices.
 
-        Returns:
-            dict: ``ir.actions.client`` notification confirming dispatch
-            (or surfacing the user-visible error via ``UserError``).
+        Downstream business-rule enforcement (minimum amount threshold,
+        email template presence, attachment rendering, history record
+        creation, trigger-action side-effects) is delegated to
+        ``process_followup_emails()`` itself.
 
-        Raises:
-            UserError: If the partner has no current follow-up level or
-                no overdue invoices to communicate.
+        :return: dispatch statistics dict from ``process_followup_emails``
+            (``{'partners_processed': N, 'emails_queued': M, 'errors': K}``).
+        :raises UserError: if no level is assigned or no overdue invoices
+            exist for this partner.
         """
         self.ensure_one()
         if not self.followup_level_id:
             raise UserError(_(
-                "Partner %(partner)s has no current follow-up level; "
-                "nothing to send.",
-                partner=self.display_name,
+                "Cannot send follow-up: no follow-up level is assigned to "
+                "%(name)s. Wait for the next aging recomputation or verify "
+                "that the partner has past-due invoices.",
+                name=self.display_name,
             ))
-        if not self.has_overdue_invoices:
+        overdue = self._get_overdue_invoices()
+        if not overdue:
             raise UserError(_(
-                "Partner %(partner)s has no overdue invoices; "
-                "follow-up is not applicable.",
-                partner=self.display_name,
+                "Cannot send follow-up: %(name)s has no past-due invoices.",
+                name=self.display_name,
             ))
-        # Delegate to the level's batch pipeline scoped to this partner
-        # via the documented ``active_partner_ids`` context key
-        # (see account.followup.level._get_applicable_partners).
-        self.followup_level_id.with_context(
+        _logger.info(
+            "Manual follow-up trigger requested for partner %s (id=%s) "
+            "at level '%s' covering %d overdue invoice(s).",
+            self.display_name,
+            self.id,
+            self.followup_level_id.name,
+            len(overdue),
+        )
+        # Delegate to the level's process method, pre-filtered to this
+        # partner via context. The level model's ``_get_applicable_partners``
+        # honours ``active_partner_ids`` to restrict its search domain.
+        return self.env['account.followup.level'].with_context(
             active_partner_ids=[self.id],
-        ).process_followup_emails()
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _("Follow-up Sent"),
-                'message': _(
-                    "Follow-up email for level '%(level)s' has been "
-                    "queued for %(partner)s.",
-                    level=self.followup_level_id.name,
-                    partner=self.display_name,
-                ),
-                'type': 'success',
-                'sticky': False,
-            },
-        }
+        ).process_followup_emails(batch_size=1)

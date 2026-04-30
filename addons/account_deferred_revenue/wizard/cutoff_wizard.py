@@ -3,61 +3,101 @@
 
 """DR-003 Cut-off Entry Generation Wizard.
 
-This TransientModel implements the period-end cut-off workflow defined
-by user story DR-003.  It lets an accountant post the accumulated
-recognition amount of one or more deferred schedules up to a chosen
-cut-off date as a single journal entry per schedule.
+This :class:`~odoo.models.TransientModel` implements the period-end
+cut-off workflow defined by user story DR-003.  It lets an accountant
+post the accumulated recognition amount of one or more deferred
+schedules up to a chosen cut-off date as a single journal entry per
+schedule, with optional auto-reversal in the next period and full
+lock-date enforcement.
 
-Key design points
+Key Design Points
 -----------------
 *   The wizard NEVER modifies the schedule definition itself — it only
-    flips qualifying ``account.deferred.line`` records to ``state =
-    'posted'`` and attaches the resulting ``account.move`` via the
-    ``move_id`` M2o on each line.  The schedule's computed
+    flips qualifying ``account.deferred.line`` records to
+    ``state='posted'`` and attaches the resulting ``account.move`` via
+    the ``move_id`` Many2one on each line plus the ``move_line_ids``
+    Many2many for granular traceability.  The schedule's computed
     ``posted_amount`` / ``remaining_amount`` / ``completion_status``
     fields reflect the change automatically through their
     ``@api.depends`` chain.
 
 *   Lock-date enforcement follows the pattern established by the core
-    ``addons/account/wizard/account_automatic_entry_wizard.py``
-    (specifically ``_check_date`` / ``_compute_lock_date_message``).
+    :mod:`addons.account.wizard.account_automatic_entry_wizard`
+    (specifically ``_check_date`` and ``_compute_lock_date_message``).
     The non-blocking diagnostic banner uses
-    ``account.move._get_lock_date_message`` while the blocking
-    post-time guard uses ``account.move._get_violated_lock_dates``.
+    :meth:`~odoo.addons.account.models.account_move.AccountMove._get_lock_date_message`
+    while the blocking post-time guard uses
+    :meth:`~odoo.addons.account.models.res_company.ResCompany._get_violated_lock_dates`.
 
-*   Reversal generation leverages ``account.move._reverse_moves`` so the
-    reversal entry is properly linked via ``reversed_entry_id`` for the
-    audit trail (DR-003 Scenario 5).
+*   Reversal generation leverages
+    :meth:`~odoo.addons.account.models.account_move.AccountMove._reverse_moves`
+    so the reversal entry is properly linked via ``reversed_entry_id``
+    and ``adjusting_entry_origin_move_ids`` for the audit trail
+    (DR-003 Scenario 5).  Reversals are created with
+    ``auto_post='at_date'`` so they post automatically when the
+    reversal date arrives via the standard
+    ``ir_cron_auto_post_draft_entry`` cron job.
 
 *   The wizard supports four operating modes selected via the ``mode``
-    field: ``single`` (one schedule), ``batch`` (multiple schedules),
-    ``preview`` (no posting, fills ``preview_move_data``), and
-    ``reversal`` (post + auto-reverse).
+    field:
 
-Rules compliance (AAP §0.7)
+        ``single``    — one schedule, one move.
+        ``batch``     — many schedules, one consolidated move per
+                        company.
+        ``preview``   — compute and display only; no posting.
+        ``reversal``  — post + auto-reverse (equivalent to enabling
+                        ``post_reversal`` in any mode).
+
+Rules Compliance (AAP §0.7)
 ---------------------------
-*   R-01 Module Independence: no imports from sibling new modules.
-*   R-02 No Enterprise Dependencies: no imports of Enterprise addons.
-*   R-03 _inherit vs _name: this is a net-new model — uses ``_name``.
-*   R-05 No Core Field Redefinition: never modifies ``account.move`` or
-    ``account.move.line`` field definitions; only creates records.
-*   R-07 No sudo() without justification: this module does not use
-    ``sudo()`` at all.
+*   **R-01** Module Independence: only imports from :mod:`odoo` core;
+    no imports of sibling new modules.
+*   **R-02** No Enterprise Dependencies: zero references to Enterprise
+    addons.
+*   **R-03** ``_inherit`` vs ``_name``: this is a NET-NEW model — uses
+    ``_name`` (no ``_inherit`` on a pre-existing model name).
+*   **R-05** No Core Field Redefinition: never modifies
+    ``account.move`` or ``account.move.line`` field definitions; only
+    creates records via ``self.env['account.move'].create(...)`` and
+    invokes public API methods.
+*   **R-07** No ``sudo()`` without justification: a single ``sudo()``
+    call on ``account.lock_exception.search`` is documented inline
+    with the required ``# sudo required: ...`` comment.
 """
+
+import json
 from collections import defaultdict
+from datetime import date as date_type  # noqa: F401 - exported for type hints
+
+from dateutil.relativedelta import relativedelta
+from markupsafe import Markup
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools import format_date
+from odoo.tools import (  # noqa: F401 - groupby imported per AAP spec
+    format_date,
+    formatLang,
+    groupby,
+)
 
 # ---------------------------------------------------------------------
-# Module constants
+# Module-level constants
 # ---------------------------------------------------------------------
 
-#: Account types considered revenue for cut-off posting direction.
+#: ``account.account.account_type`` values that classify a recognition
+#: account as REVENUE for cut-off direction.  When the recognition
+#: account belongs to one of these types the wizard posts:
+#:
+#:     Debit  schedule.deferred_account_id     (clears the liability)
+#:     Credit schedule.recognition_account_id  (books revenue)
 _INCOME_ACCOUNT_TYPES = ('income', 'income_other')
 
-#: Account types considered expense for cut-off posting direction.
+#: ``account.account.account_type`` values that classify a recognition
+#: account as EXPENSE for cut-off direction.  When the recognition
+#: account belongs to one of these types the wizard posts:
+#:
+#:     Debit  schedule.recognition_account_id  (books expense)
+#:     Credit schedule.deferred_account_id     (clears the asset)
 _EXPENSE_ACCOUNT_TYPES = ('expense', 'expense_depreciation', 'expense_direct_cost')
 
 
@@ -66,539 +106,1053 @@ class AccountDeferredCutoffWizard(models.TransientModel):
 
     Instantiated either from the Accounting → Deferred Revenue →
     Cut-off Entries menu (standalone invocation with empty defaults) or
-    from an ``account.deferred.schedule`` form/list Action
-    (``binding_model_id`` wiring populates ``default_schedule_ids`` via
-    context).
+    from an :class:`~odoo.addons.account_deferred_revenue.models.account_deferred_schedule.AccountDeferredSchedule`
+    form/list Action (``binding_model_id`` wiring populates
+    ``default_schedule_ids`` via context).
+
+    Per :rule:`R-03` this is a **net-new model** — uses ``_name`` (no
+    ``_inherit`` of a pre-existing model name).  Per :rule:`R-05` no
+    field on ``account.move`` or ``account.move.line`` is redefined;
+    the wizard only CREATES move records using the public ORM API.
     """
 
     _name = 'account.deferred.cutoff.wizard'
     _description = 'Deferred Revenue Cut-off Entry Wizard'
+    # Auto-validates company consistency on every Many2one with
+    # ``check_company=True`` (:attr:`journal_id`, schedule company, etc.)
     _check_company_auto = True
 
-    # -----------------------------------------------------------------
-    # SECTION 1 — Mode & Schedule Selection
-    # -----------------------------------------------------------------
+    # =====================================================================
+    # SECTION 1 — Mode and schedule selection
+    # =====================================================================
     mode = fields.Selection(
         selection=[
             ('single', 'Single Schedule'),
-            ('batch', 'Batch (Multiple Schedules)'),
+            ('batch', 'Batch (all pending)'),
             ('preview', 'Preview Only'),
-            ('reversal', 'Post with Reversal'),
+            ('reversal', 'Generate with Reversal'),
         ],
         string='Mode',
         default='single',
         required=True,
-        help='Operating mode of the wizard: '
-             'single posts one schedule at a time; '
-             'batch groups multiple schedules into a single operation; '
-             'preview computes move data without posting; '
-             'reversal posts the cut-off entry and auto-creates a '
-             'reversal entry dated the first day of the next period.',
+        help=(
+            "Single: generate one journal entry per schedule. "
+            "Batch: process all schedules with pending recognition lines up "
+            "to the cut-off date and produce one consolidated entry per "
+            "company. "
+            "Preview: compute and display entries without posting. "
+            "Reversal: post entries and create reversal entries dated the "
+            "first day of the next period (auto-post at date)."
+        ),
     )
+
+    cutoff_date = fields.Date(
+        string='Cut-off Date',
+        required=True,
+        default=fields.Date.context_today,
+        help=(
+            "Recognition lines with state='draft' AND "
+            "recognition_date <= cutoff_date will be included in the "
+            "generated entry."
+        ),
+    )
+
+    schedule_ids = fields.Many2many(
+        comodel_name='account.deferred.schedule',
+        string='Schedules',
+        help=(
+            "Schedules to process. Populated from context "
+            "``default_schedule_ids`` when invoked from a schedule action; "
+            "may be edited manually in batch / reversal modes."
+        ),
+    )
+
     schedule_id = fields.Many2one(
         comodel_name='account.deferred.schedule',
         string='Schedule',
         compute='_compute_schedule_id',
-        inverse='_inverse_schedule_id',
         store=False,
-        help='Single-mode picker showing the first schedule from '
-             'schedule_ids.  Changes propagate back to schedule_ids.',
-    )
-    schedule_ids = fields.Many2many(
-        comodel_name='account.deferred.schedule',
-        string='Schedules',
-        help='Schedules to be processed by the cut-off wizard.  In '
-             'single mode this contains exactly one record; in batch '
-             'and reversal modes it may contain many.',
+        help=(
+            "Convenience reference for single mode (first schedule in "
+            "schedule_ids). Populated by the ``_compute_schedule_id`` "
+            "compute method."
+        ),
     )
 
-    # -----------------------------------------------------------------
+    # =====================================================================
     # SECTION 2 — Posting configuration
-    # -----------------------------------------------------------------
-    cutoff_date = fields.Date(
-        string='Cut-off Date',
-        default=fields.Date.context_today,
-        required=True,
-        help='Period-end date up to which recognition lines are posted. '
-             'Recognition lines whose ``recognition_date <= cutoff_date`` '
-             'and whose ``state == "draft"`` qualify for posting.',
-    )
+    # =====================================================================
     journal_id = fields.Many2one(
         comodel_name='account.journal',
         string='Journal',
+        domain="[('type', '=', 'general'), ('company_id', '=', company_id)]",
         required=True,
         check_company=True,
-        domain="[('type', '=', 'general')]",
         default=lambda self: self._default_journal_id(),
-        help='Journal in which the cut-off entry (and reversal, if '
-             'requested) is created.',
+        help='General journal where cut-off entries will be posted.',
     )
+
+    post_reversal = fields.Boolean(
+        string='Generate Reversal',
+        default=False,
+        help=(
+            "When enabled, a reversal entry is created and dated the "
+            "first day of the period following ``cutoff_date``. The "
+            "reversal uses ``auto_post='at_date'`` so it posts "
+            "automatically when its date arrives."
+        ),
+    )
+
+    reversal_date = fields.Date(
+        string='Reversal Date',
+        compute='_compute_reversal_date',
+        store=True,
+        readonly=False,
+        help=(
+            "Defaults to the first day of the month following "
+            "``cutoff_date``. May be manually edited to any date strictly "
+            "after the cut-off date."
+        ),
+    )
+
+    # =====================================================================
+    # SECTION 3 — Move-data buffers (computed JSON)
+    # =====================================================================
+    move_data = fields.Json(
+        string='Move Data',
+        compute='_compute_move_data',
+        store=False,
+        help=(
+            "JSON payload of ``account.move`` value dicts that will be "
+            "created on action_post. Computed from the qualifying "
+            "recognition lines via :meth:`_get_move_dict_vals_change_period`."
+        ),
+    )
+
+    preview_move_data = fields.Json(
+        string='Preview Move Data',
+        compute='_compute_preview_move_data',
+        store=False,
+        help=(
+            "JSON payload formatted for the preview panel UI. Capped to "
+            "the first 4 moves to avoid UI overload; remaining moves are "
+            "summarized via the ``discarded_number`` option."
+        ),
+    )
+
+    # =====================================================================
+    # SECTION 4 — Company and currency
+    # =====================================================================
     company_id = fields.Many2one(
         comodel_name='res.company',
         string='Company',
-        default=lambda self: self.env.company,
         required=True,
+        default=lambda self: self.env.company,
     )
+
     company_currency_id = fields.Many2one(
         comodel_name='res.currency',
         related='company_id.currency_id',
         string='Company Currency',
         readonly=True,
     )
-    post_reversal = fields.Boolean(
-        string='Auto-reverse Next Period',
-        default=False,
-        help='When checked, the wizard creates a reversal entry dated '
-             'the first day of the next period immediately after '
-             'posting the cut-off entry.  Equivalent to selecting '
-             'the "reversal" mode.',
-    )
-    reversal_date = fields.Date(
-        string='Reversal Date',
-        help='Date for the auto-generated reversal entry.  Defaults to '
-             'the first day of the month following cutoff_date when '
-             'post_reversal is enabled.',
-    )
 
-    # -----------------------------------------------------------------
-    # SECTION 3 — Preview & computed diagnostics
-    # -----------------------------------------------------------------
+    # =====================================================================
+    # SECTION 5 — Lock-date diagnostic field
+    # =====================================================================
     lock_date_message = fields.Char(
         string='Lock Date Warning',
         compute='_compute_lock_date_message',
-        help='Non-blocking diagnostic message shown when cutoff_date '
-             'violates any company lock date (fiscal, tax, hard, sale, '
-             'purchase).  The blocking constraint is enforced at post '
-             'time by the ``_check_date`` constrains method.',
-    )
-    preview_move_data = fields.Json(
-        string='Preview',
-        compute='_compute_move_data',
-        help='Structured preview of the journal entries that would be '
-             'created.  Populated from the same code path that builds '
-             'the actual account.move records, ensuring the preview '
-             'exactly matches what will be posted.',
-    )
-    move_data = fields.Json(
-        string='Move Data',
-        compute='_compute_move_data',
-        help='Internal buffer consumed by action_post / '
-             'action_post_with_reversal to create account.move '
-             'records.  Not displayed to the user.',
+        help=(
+            "Non-blocking diagnostic message shown when ``cutoff_date`` "
+            "falls within a locked period. The blocking enforcement is "
+            "performed at post time by ``_check_date``."
+        ),
     )
 
-    # -----------------------------------------------------------------
-    # SECTION 4 — Default helpers
-    # -----------------------------------------------------------------
+    # =====================================================================
+    # SECTION 6 — Default helpers
+    # =====================================================================
     @api.model
     def _default_journal_id(self):
-        """Select the default journal.
+        """Pick the company's default general journal.
 
-        Prefer the company's ``automatic_entry_default_journal_id`` if
-        set, otherwise fall back to the first general journal for the
-        company.
+        Prefers ``automatic_entry_default_journal_id`` (the same journal
+        used by ``account.automatic.entry.wizard``) when set; falls back
+        to the first ``type='general'`` journal of the current company.
+        Returns ``False`` when no general journal exists so the wizard
+        renders cleanly in test environments without seed data.
         """
         company = self.env.company
         journal = company.automatic_entry_default_journal_id
         if journal and journal.type == 'general':
             return journal.id
         journal = self.env['account.journal'].search(
-            [
-                ('type', '=', 'general'),
-                ('company_id', '=', company.id),
-            ],
+            [('type', '=', 'general'), ('company_id', '=', company.id)],
             limit=1,
         )
         return journal.id if journal else False
 
     @api.model
     def default_get(self, fields_list):
-        """Pre-populate schedule_ids from the active context.
+        """Pre-populate ``schedule_ids`` and ``mode`` from the context.
 
-        When the wizard is invoked from the schedule form/list via the
-        ``binding_model_id`` action, Odoo populates ``active_model``
-        and ``active_ids`` in the context.  This method copies those
-        IDs into ``schedule_ids`` so the user sees the selected
-        schedules pre-filled in the wizard form.
+        When the wizard is invoked from
+        :meth:`account.deferred.schedule.action_generate_cutoff` the
+        context provides ``default_schedule_ids`` and ``default_mode``.
+        Standard binding-action invocation provides ``active_model``
+        and ``active_ids`` — those are used as a fallback so the wizard
+        also works when wired via ``binding_model_id`` on the schedule
+        list view.
+
+        Also aligns ``company_id`` with the first schedule's company so
+        ``_check_company_auto`` constraints pass even when the user's
+        default company differs from the schedule's.
         """
-        result = super().default_get(fields_list)
+        res = super().default_get(fields_list)
 
-        # Honour an explicit default_schedule_ids already in context
-        if 'schedule_ids' in fields_list and not result.get('schedule_ids'):
-            active_model = self.env.context.get('active_model')
-            active_ids = self.env.context.get('active_ids') or []
-            if active_model == 'account.deferred.schedule' and active_ids:
-                result['schedule_ids'] = [(6, 0, active_ids)]
-                if 'mode' in fields_list and not result.get('mode'):
-                    result['mode'] = 'single' if len(active_ids) == 1 else 'batch'
-        return result
+        # Honour explicit default_schedule_ids first; fall back to active_ids
+        if 'schedule_ids' in fields_list and not res.get('schedule_ids'):
+            ctx_ids = self.env.context.get('default_schedule_ids')
+            if not ctx_ids and self.env.context.get('active_model') == 'account.deferred.schedule':
+                ctx_ids = self.env.context.get('active_ids') or []
+            if ctx_ids:
+                # Normalise (6, 0, [...]) form vs plain id list
+                if isinstance(ctx_ids, list) and ctx_ids and isinstance(ctx_ids[0], (list, tuple)):
+                    res['schedule_ids'] = ctx_ids
+                else:
+                    res['schedule_ids'] = [(6, 0, list(ctx_ids))]
 
-    # -----------------------------------------------------------------
-    # SECTION 5 — Compute & inverse methods
-    # -----------------------------------------------------------------
+        # Align company with first schedule when not explicitly set
+        if res.get('schedule_ids') and 'company_id' in fields_list and not res.get('company_id'):
+            first_id = None
+            entry = res['schedule_ids'][0]
+            # ``entry`` may be (6, 0, [ids]) or a bare id
+            if isinstance(entry, (list, tuple)) and len(entry) == 3:
+                ids_list = entry[2] or []
+                first_id = ids_list[0] if ids_list else None
+            elif isinstance(entry, int):
+                first_id = entry
+            if first_id:
+                schedule = self.env['account.deferred.schedule'].browse(first_id)
+                if schedule.exists() and schedule.company_id:
+                    res['company_id'] = schedule.company_id.id
+
+        # Default mode from context if not set elsewhere
+        if 'mode' in fields_list and not res.get('mode'):
+            res['mode'] = self.env.context.get('default_mode', 'single')
+
+        return res
+
+    # =====================================================================
+    # SECTION 7 — Compute methods
+    # =====================================================================
     @api.depends('schedule_ids')
     def _compute_schedule_id(self):
-        """Expose the first schedule as a single-row handle."""
-        for wizard in self:
-            wizard.schedule_id = wizard.schedule_ids[:1].id if wizard.schedule_ids else False
+        """Expose the first schedule as the single-row picker.
 
-    def _inverse_schedule_id(self):
-        """Mirror schedule_id picker changes back into schedule_ids."""
-        for wizard in self:
-            if wizard.schedule_id:
-                wizard.schedule_ids = [(6, 0, [wizard.schedule_id.id])]
-            elif wizard.mode == 'single':
-                wizard.schedule_ids = [(6, 0, [])]
-
-    @api.depends('cutoff_date', 'company_id')
-    def _compute_lock_date_message(self):
-        """Surface a warning if cutoff_date falls within a locked period.
-
-        This is NON-blocking — the blocking check lives in
-        ``_check_date`` (@api.constrains).  The message mirrors the
-        wording produced by
-        ``account.move._get_lock_date_message`` for consistency with
-        the core accounting UX.
+        The form view binds ``schedule_id`` for ``mode='single'`` so the
+        user has a one-row picker; in ``batch`` / ``reversal`` modes
+        ``schedule_ids`` is the source of truth.
         """
-        Move = self.env['account.move']
+        for wizard in self:
+            wizard.schedule_id = wizard.schedule_ids[:1] if wizard.schedule_ids else False
+
+    @api.depends('cutoff_date')
+    def _compute_reversal_date(self):
+        """Default reversal date: first day of the month after cutoff_date.
+
+        Uses :class:`dateutil.relativedelta.relativedelta` for
+        calendar-aware month arithmetic so the result is correct
+        regardless of ``cutoff_date``'s month length (handles February,
+        30/31-day months, year rollover).  ``readonly=False`` and
+        ``store=True`` allow the user to override the default in the
+        form.
+        """
+        for wizard in self:
+            if wizard.cutoff_date:
+                wizard.reversal_date = (
+                    wizard.cutoff_date + relativedelta(months=1)
+                ).replace(day=1)
+            else:
+                wizard.reversal_date = False
+
+    @api.depends('cutoff_date', 'company_id', 'journal_id')
+    def _compute_lock_date_message(self):
+        """Surface a non-blocking warning if cutoff_date violates a lock.
+
+        Mirrors :meth:`account.automatic.entry.wizard._compute_lock_date_message`:
+        builds a phantom move record on the wizard's journal/company so
+        that :meth:`account.move._get_lock_date_message` can compute a
+        consistent localized message.  When no lock is violated, sets
+        the field to ``False`` so the form's ``invisible`` rule hides
+        the banner.
+        """
         for wizard in self:
             wizard.lock_date_message = False
             if not wizard.cutoff_date or not wizard.company_id:
                 continue
-            try:
-                violated = Move.with_company(wizard.company_id)._get_violated_lock_dates(
-                    wizard.cutoff_date, False,
-                )
-            except Exception:  # noqa: BLE001 - method signature varies by Odoo version
-                continue
-            if violated:
-                wizard.lock_date_message = _(
-                    'The cut-off date %(date)s is protected by a lock '
-                    'date.  Choose a later posting date or lift the '
-                    'lock before continuing.',
-                    date=format_date(wizard.env, wizard.cutoff_date),
-                )
+            ref_move = self.env['account.move'].new({
+                'journal_id': wizard.journal_id.id if wizard.journal_id else False,
+                'company_id': wizard.company_id.id,
+                'move_type': 'entry',
+                'date': wizard.cutoff_date,
+            })
+            message = ref_move._get_lock_date_message(wizard.cutoff_date, has_tax=False)
+            if message:
+                wizard.lock_date_message = message
 
-    @api.depends(
-        'schedule_ids',
-        'cutoff_date',
-        'journal_id',
-        'company_id',
-        'mode',
-    )
+    @api.depends('schedule_ids', 'cutoff_date', 'journal_id', 'company_id', 'mode')
     def _compute_move_data(self):
-        """Compute the move_data and preview_move_data payloads.
+        """Compute the move dict list for posting.
 
-        Each schedule that has at least one qualifying line
-        (``state='draft'`` AND ``recognition_date <= cutoff_date``)
-        produces one move dict containing two balanced move lines:
-        a debit of the deferred account and a credit of the
-        recognition account (reversed for expense-type accounts).
-
-        The result is a list of dicts with keys:
-          - ``schedule_id``: the deferred schedule id
-          - ``schedule_name``: display label
-          - ``date``: cutoff_date (ISO string)
-          - ``journal_id``: selected journal id
-          - ``ref``: textual reference for the move
-          - ``line_ids_to_post``: list of deferred-line ids covered
-          - ``lines``: list of move-line dicts with
-            ``account_id``, ``debit``, ``credit``, ``partner_id``,
-            ``name``, ``analytic_distribution``
-          - ``total``: total recognition amount for the schedule
+        Delegates to :meth:`_get_move_dict_vals_change_period` which
+        encapsulates the single/batch branching logic.  The computation
+        catches :class:`UserError` and :class:`ValidationError` so the
+        UI never freezes — blocking validation lives in
+        :meth:`_check_date` (called only at save/post time) and the
+        diagnostic banner is updated separately by
+        :meth:`_compute_lock_date_message`.
         """
         for wizard in self:
-            moves = []
-            if not (wizard.schedule_ids and wizard.cutoff_date and wizard.journal_id):
-                wizard.move_data = moves
-                wizard.preview_move_data = moves
+            if not wizard.schedule_ids or not wizard.cutoff_date or not wizard.journal_id:
+                wizard.move_data = False
                 continue
-
-            for schedule in wizard.schedule_ids:
-                if schedule.state != 'confirmed':
-                    continue
-                qualifying = schedule.line_ids.filtered(
-                    lambda line, cutoff=wizard.cutoff_date: (
-                        line.state == 'draft'
-                        and line.recognition_date
-                        and line.recognition_date <= cutoff
-                    ),
+            try:
+                move_vals_list = wizard._get_move_dict_vals_change_period(
+                    schedules=wizard.schedule_ids,
+                    cutoff_date=wizard.cutoff_date,
                 )
-                if not qualifying:
-                    continue
+            except (UserError, ValidationError):
+                # Compute methods MUST NOT raise to the UI; surface via
+                # ``lock_date_message`` (computed) and ``_check_date``
+                # (constraint, evaluated at save/post time).
+                wizard.move_data = False
+            else:
+                wizard.move_data = move_vals_list or False
 
-                total = sum(qualifying.mapped('recognition_amount'))
-                if schedule.currency_id.is_zero(total):
-                    continue
+    @api.depends('move_data')
+    def _compute_preview_move_data(self):
+        """Format ``move_data`` for the read-only preview panel.
 
-                account_type = schedule.recognition_account_id.account_type
-                is_expense = account_type in _EXPENSE_ACCOUNT_TYPES
-                # Default posting direction:
-                #  - Revenue: Debit deferred_account, Credit recognition_account
-                #  - Expense: Debit recognition_account, Credit deferred_account
-                if is_expense:
-                    debit_account = schedule.recognition_account_id
-                    credit_account = schedule.deferred_account_id
-                else:
-                    debit_account = schedule.deferred_account_id
-                    credit_account = schedule.recognition_account_id
-
-                ref = _(
-                    'Cut-off %(schedule)s up to %(date)s',
-                    schedule=schedule.name or '',
-                    date=format_date(wizard.env, wizard.cutoff_date),
-                )
-                moves.append({
-                    'schedule_id': schedule.id,
-                    'schedule_name': schedule.name,
-                    'date': fields.Date.to_string(wizard.cutoff_date),
-                    'journal_id': wizard.journal_id.id,
-                    'company_id': wizard.company_id.id,
-                    'currency_id': schedule.currency_id.id,
-                    'ref': ref,
-                    'line_ids_to_post': qualifying.ids,
-                    'total': total,
-                    'lines': [
-                        {
-                            'account_id': debit_account.id,
-                            'account_name': debit_account.display_name,
-                            'debit': total,
-                            'credit': 0.0,
-                            'partner_id': schedule.partner_id.id or False,
-                            'name': ref,
-                            'analytic_distribution': schedule.analytic_distribution or {},
-                        },
-                        {
-                            'account_id': credit_account.id,
-                            'account_name': credit_account.display_name,
-                            'debit': 0.0,
-                            'credit': total,
-                            'partner_id': schedule.partner_id.id or False,
-                            'name': ref,
-                            'analytic_distribution': schedule.analytic_distribution or {},
-                        },
-                    ],
-                })
-            wizard.move_data = moves
-            wizard.preview_move_data = moves
-
-    # -----------------------------------------------------------------
-    # SECTION 6 — Validation constraints
-    # -----------------------------------------------------------------
-    @api.constrains('cutoff_date', 'company_id')
-    def _check_date(self):
-        """Reject posting to a period protected by any lock date.
-
-        Runs on create and write; enforced at post time via
-        ``action_post`` / ``action_post_with_reversal`` which write the
-        wizard record.  Mirrors the pattern established by
-        ``account.automatic.entry.wizard._check_date``.
+        Mirrors :meth:`account.automatic.entry.wizard._compute_preview_move_data`:
+        renders the first 4 moves via
+        :meth:`account.move._move_dict_to_preview_vals` and wraps the
+        result with column metadata and a discarded-count summary for
+        any extra moves.
         """
-        Move = self.env['account.move']
+        for wizard in self:
+            if not wizard.move_data:
+                wizard.preview_move_data = False
+                continue
+            # JSON field's raw value may be a Python list (typical) or a
+            # serialized JSON string (edge cases in some ORM cycles).
+            move_vals = (
+                wizard.move_data
+                if isinstance(wizard.move_data, list)
+                else json.loads(wizard.move_data)
+            )
+            preview_columns = [
+                {'field': 'account_id', 'label': _('Account')},
+                {'field': 'name', 'label': _('Label')},
+                {'field': 'partner_id', 'label': _('Partner')},
+                {'field': 'debit', 'label': _('Debit'), 'class': 'text-end text-nowrap'},
+                {'field': 'credit', 'label': _('Credit'), 'class': 'text-end text-nowrap'},
+            ]
+            preview_vals = []
+            currency = wizard.company_id.currency_id
+            for move in move_vals[:4]:
+                preview_vals.append(
+                    self.env['account.move']._move_dict_to_preview_vals(move, currency),
+                )
+            preview_discarded = max(0, len(move_vals) - len(preview_vals))
+            wizard.preview_move_data = {
+                'groups_vals': preview_vals,
+                'options': {
+                    'discarded_number': (
+                        _("%d more moves", preview_discarded)
+                        if preview_discarded else False
+                    ),
+                    'columns': preview_columns,
+                },
+            }
+
+    # =====================================================================
+    # SECTION 8 — Validation constraints
+    # =====================================================================
+    @api.constrains('cutoff_date', 'company_id', 'schedule_ids', 'journal_id')
+    def _check_date(self):
+        """Block posting to a locked period.
+
+        Calls :meth:`res.company._get_violated_lock_dates` (which
+        returns a list of ``(lock_date, lock_date_field)`` tuples) and
+        raises :class:`ValidationError` whenever the cut-off date
+        violates one or more lock dates that are not covered by an
+        active :class:`account.lock_exception` for the current user.
+
+        Hard lock dates are non-overridable per Odoo's lock-exception
+        model (only ``fiscalyear_lock_date``, ``tax_lock_date``,
+        ``sale_lock_date`` and ``purchase_lock_date`` may be excepted),
+        so any ``hard_lock_date`` violation always triggers the error.
+        """
+        # Lock-exception field selection from
+        # ``addons/account/models/account_lock_exception.py`` (line 51-61):
+        # only soft locks are excepted; hard_lock_date is never overridable.
+        excepted_lock_types = {
+            'fiscalyear_lock_date',
+            'tax_lock_date',
+            'sale_lock_date',
+            'purchase_lock_date',
+        }
+
         for wizard in self:
             if not wizard.cutoff_date or not wizard.company_id:
                 continue
-            try:
-                violated = Move.with_company(wizard.company_id)._get_violated_lock_dates(
-                    wizard.cutoff_date, False,
-                )
-            except Exception:  # noqa: BLE001 - tolerate signature variation
+            violated = wizard.company_id._get_violated_lock_dates(
+                wizard.cutoff_date,
+                False,
+                wizard.journal_id,
+            )
+            if not violated:
                 continue
-            if violated:
+
+            # Identify lock-types that an active exception could waive
+            potentially_excepted = {
+                lock_field
+                for (_lock_date, lock_field) in violated
+                if lock_field in excepted_lock_types
+            }
+            covered_lock_types = set()
+            if potentially_excepted:
+                # sudo required: read-only check of lock exceptions across users
+                # for this company. account.lock_exception is restricted to
+                # accountant users; standard users posting cut-off entries
+                # need to inspect exceptions granted to them by an accountant.
+                # Reading is safe — we never write through this sudo handle.
+                active_exceptions = self.env['account.lock_exception'].sudo().search([
+                    ('company_id', '=', wizard.company_id.id),
+                    ('user_id', 'in', [self.env.uid, False]),
+                    ('state', '=', 'active'),
+                    '|',
+                    ('end_datetime', '=', False),
+                    ('end_datetime', '>', fields.Datetime.now()),
+                ])
+                covered_lock_types = set(
+                    active_exceptions.mapped('lock_date_field') or [],
+                )
+
+            uncovered = [
+                (lock_date, lock_field)
+                for (lock_date, lock_field) in violated
+                if lock_field not in covered_lock_types
+            ]
+            if uncovered:
                 raise ValidationError(_(
-                    'The cut-off date %(date)s is protected by a lock '
-                    'date.  Choose a later posting date or lift the '
-                    'lock before continuing.',
-                    date=format_date(wizard.env, wizard.cutoff_date),
+                    "The cut-off date %(date)s is protected by: %(lock_date_info)s. "
+                    "Adjust the date or request a temporary lock exception "
+                    "from your accountant.",
+                    date=format_date(self.env, wizard.cutoff_date),
+                    lock_date_info=self.env['res.company']._format_lock_dates(uncovered),
                 ))
 
-    @api.constrains('schedule_ids', 'mode')
-    def _check_schedule_ids(self):
-        """Mode-appropriate schedule selection requirement."""
-        for wizard in self:
-            if wizard.mode == 'single' and len(wizard.schedule_ids) > 1:
-                raise ValidationError(_(
-                    'Single mode accepts exactly one schedule.  Switch '
-                    'to batch mode or remove schedules.',
-                ))
-            if wizard.mode in ('batch', 'reversal') and not wizard.schedule_ids:
-                raise ValidationError(_(
-                    'At least one schedule must be selected in %(mode)s mode.',
-                    mode=dict(self._fields['mode'].selection).get(wizard.mode),
-                ))
+    # =====================================================================
+    # SECTION 9 — Helper methods (move-dict construction)
+    # =====================================================================
+    def _get_lock_safe_date(self, target_date):
+        """Return the earliest lock-safe accounting date >= ``target_date``.
 
-    # -----------------------------------------------------------------
-    # SECTION 7 — Action methods
-    # -----------------------------------------------------------------
-    def action_preview(self):
-        """Populate ``preview_move_data`` without posting.
+        Mirrors :meth:`account.automatic.entry.wizard._get_lock_safe_date`:
+        builds a phantom :class:`account.move` on the wizard's journal
+        so :meth:`~account.move._get_accounting_date` can leverage the
+        journal's sequence-aware accounting-date computation.
 
-        Implements DR-003 Scenario 2.  The user stays in the wizard;
-        the preview panel renders the computed move dicts read-only so
-        they can verify accounts and amounts before committing.
+        :raises UserError: when no safe date can be found within 60 days
+            of ``target_date`` — typically indicates a malformed lock
+            configuration that the user must resolve manually.
+        :returns: a :class:`datetime.date` instance.
         """
         self.ensure_one()
-        # Force recomputation so the user always sees fresh data
+        reference_move = self.env['account.move'].new({
+            'journal_id': self.journal_id.id if self.journal_id else False,
+            'company_id': self.company_id.id,
+            'move_type': 'entry',
+            'invoice_date': target_date,
+        })
+        safe_date = reference_move._get_accounting_date(target_date, False)
+        if safe_date and (safe_date - target_date).days > 60:
+            raise UserError(_(
+                "Could not find a lock-safe date within 60 days of "
+                "%(target)s for journal %(journal)s. Please review your "
+                "fiscal lock dates.",
+                target=format_date(self.env, target_date),
+                journal=(
+                    self.journal_id.display_name if self.journal_id
+                    else _('[no journal]')
+                ),
+            ))
+        return safe_date or target_date
+
+    def _get_cut_off_label_format(self):
+        """Return the translatable format string used as the move ref.
+
+        Placeholders supported by :meth:`_format_strings`:
+
+        * ``{schedule_name}`` — the deferred schedule's display name.
+        * ``{cutoff_date}``   — the localized cut-off date.
+        * ``{amount}``        — formatted monetary amount (when set).
+        * ``{partner}``       — partner display name (when set).
+        """
+        self.ensure_one()
+        return _("Deferred Revenue Cut-off: {schedule_name} - Period ending {cutoff_date}")
+
+    def _format_strings(self, template, schedule, amount=None):
+        """Substitute named placeholders in ``template`` with schedule data.
+
+        Used to produce both the move ``ref`` and the per-line ``name``
+        labels.  Uses :func:`odoo.tools.format_date` for date
+        localization and :func:`odoo.tools.formatLang` for monetary
+        formatting in the company currency.
+        """
+        self.ensure_one()
+        currency = self.company_id.currency_id
+        return template.format(
+            schedule_name=schedule.name or _('Deferred Schedule'),
+            cutoff_date=format_date(self.env, self.cutoff_date),
+            amount=(
+                formatLang(self.env, abs(amount), currency_obj=currency)
+                if amount else ''
+            ),
+            partner=(
+                schedule.partner_id.display_name
+                if schedule.partner_id else ''
+            ),
+        )
+
+    def _get_move_line_dict_vals_change_period(self, schedule, recognition_amount, label):
+        """Build the (debit, credit) line tuple for one recognition tranche.
+
+        Posting direction depends on the recognition-account type:
+
+        * **Revenue** (``income`` / ``income_other``):
+              Debit  ``schedule.deferred_account_id``
+              Credit ``schedule.recognition_account_id``
+
+        * **Expense** (``expense`` / ``expense_depreciation`` /
+          ``expense_direct_cost``):
+              Debit  ``schedule.recognition_account_id``
+              Credit ``schedule.deferred_account_id``
+
+        Both lines preserve ``schedule.analytic_distribution`` so any
+        analytic plan attribution flows through the cut-off entry.
+
+        Multi-currency: when ``schedule.currency_id`` differs from the
+        company currency, ``amount_currency`` is populated on each
+        line.  The schedule's currency drives the foreign value; the
+        company currency drives the native ``debit`` / ``credit``.
+
+        :returns: a list of two ``(0, 0, vals)`` tuples suitable for
+            assignment to ``account.move.line_ids``.
+        """
+        self.ensure_one()
+        company_currency = self.company_id.currency_id
+        schedule_currency = schedule.currency_id or company_currency
+        is_multi_currency = (
+            schedule_currency and company_currency
+            and schedule_currency != company_currency
+        )
+
+        # Round amounts in company currency for native debit/credit
+        rounded_amount = company_currency.round(recognition_amount)
+
+        # Determine direction based on recognition account type.
+        # Revenue = liability clearing; Expense = asset clearing.
+        recognition_type = schedule.recognition_account_id.account_type
+        is_revenue = recognition_type in _INCOME_ACCOUNT_TYPES
+
+        if is_revenue:
+            debit_account = schedule.deferred_account_id
+            credit_account = schedule.recognition_account_id
+        else:
+            # Expense (or any non-revenue type): debit recognition (book
+            # expense), credit deferred (clear prepaid asset).
+            debit_account = schedule.recognition_account_id
+            credit_account = schedule.deferred_account_id
+
+        base_line_vals = {
+            'name': label,
+            'partner_id': schedule.partner_id.id or False,
+            'currency_id': schedule_currency.id if schedule_currency else False,
+            'analytic_distribution': schedule.analytic_distribution or False,
+        }
+
+        # Foreign-currency amounts (signed: debit positive, credit negative)
+        fcy_amount = (
+            schedule_currency.round(recognition_amount)
+            if is_multi_currency else 0.0
+        )
+
+        debit_line = dict(base_line_vals)
+        debit_line.update({
+            'debit': rounded_amount,
+            'credit': 0.0,
+            'account_id': debit_account.id,
+        })
+        if is_multi_currency:
+            debit_line['amount_currency'] = fcy_amount
+
+        credit_line = dict(base_line_vals)
+        credit_line.update({
+            'debit': 0.0,
+            'credit': rounded_amount,
+            'account_id': credit_account.id,
+        })
+        if is_multi_currency:
+            credit_line['amount_currency'] = -fcy_amount
+
+        return [(0, 0, debit_line), (0, 0, credit_line)]
+
+    def _get_move_dict_vals_change_period(self, schedules, cutoff_date):
+        """Build the list of ``account.move`` value dicts for posting.
+
+        Behavior:
+
+        * Filters each schedule's ``line_ids`` to those with
+          ``state='draft'`` AND ``recognition_date <= cutoff_date``.
+        * In ``single`` / ``preview`` / ``reversal`` modes: produces
+          one move per schedule with that schedule's qualifying lines.
+        * In ``batch`` mode: groups schedules by ``company_id`` and
+          produces one consolidated move per company.
+        * Each schedule contributes one debit + credit pair per
+          qualifying recognition line, built by
+          :meth:`_get_move_line_dict_vals_change_period`.
+        * Each move's ``date`` is the lock-safe date derived from
+          ``cutoff_date`` via :meth:`_get_lock_safe_date`.
+        * Each move's ``ref`` is the formatted cut-off label.
+
+        :param schedules: an :class:`account.deferred.schedule`
+            recordset to process.
+        :param cutoff_date: the cut-off date.
+        :returns: a list of dicts suitable for
+            ``self.env['account.move'].create(move_vals_list)``.
+        """
+        self.ensure_one()
+        if not schedules:
+            return []
+
+        safe_date = self._get_lock_safe_date(cutoff_date)
+        label_template = self._get_cut_off_label_format()
+        move_vals_list = []
+
+        if self.mode == 'batch':
+            # Group schedules by company. The wizard's journal is shared
+            # across the batch; only the company differs (multi-company
+            # scenarios). One consolidated move per company.
+            schedules_by_company = defaultdict(
+                lambda: self.env['account.deferred.schedule'],
+            )
+            for schedule in schedules:
+                schedules_by_company[schedule.company_id] += schedule
+
+            for company, company_schedules in schedules_by_company.items():
+                line_ids = []
+                schedule_line_map = []  # (schedule, qualifying_lines) for linking
+                total_amount = 0.0
+                for schedule in company_schedules:
+                    qualifying_lines = schedule.line_ids.filtered(
+                        lambda line, c=cutoff_date: (
+                            line.state == 'draft'
+                            and line.recognition_date
+                            and line.recognition_date <= c
+                        ),
+                    )
+                    if not qualifying_lines:
+                        continue
+                    schedule_line_map.append((schedule.id, qualifying_lines.ids))
+                    for rec_line in qualifying_lines:
+                        label = self._format_strings(
+                            label_template, schedule, rec_line.recognition_amount,
+                        )
+                        line_pairs = self._get_move_line_dict_vals_change_period(
+                            schedule, rec_line.recognition_amount, label,
+                        )
+                        line_ids.extend(line_pairs)
+                        total_amount += rec_line.recognition_amount
+
+                if line_ids:
+                    # Use the first schedule's label as the move ref for
+                    # consolidated batches; the per-line labels carry the
+                    # detailed schedule attribution.
+                    first_schedule = company_schedules[:1]
+                    move_vals_list.append({
+                        'move_type': 'entry',
+                        'journal_id': self.journal_id.id,
+                        'company_id': company.id,
+                        'date': fields.Date.to_string(safe_date),
+                        'ref': self._format_strings(
+                            label_template, first_schedule, total_amount,
+                        ),
+                        'line_ids': line_ids,
+                        # Embedded routing table consumed by
+                        # ``_link_recognition_lines`` to associate posted
+                        # lines back to their schedules.
+                        'deferred_cutoff_routing': schedule_line_map,
+                    })
+        else:
+            # single / preview / reversal: one move per schedule
+            for schedule in schedules:
+                qualifying_lines = schedule.line_ids.filtered(
+                    lambda line, c=cutoff_date: (
+                        line.state == 'draft'
+                        and line.recognition_date
+                        and line.recognition_date <= c
+                    ),
+                )
+                if not qualifying_lines:
+                    continue
+                line_ids = []
+                total_amount = 0.0
+                for rec_line in qualifying_lines:
+                    label = self._format_strings(
+                        label_template, schedule, rec_line.recognition_amount,
+                    )
+                    line_pairs = self._get_move_line_dict_vals_change_period(
+                        schedule, rec_line.recognition_amount, label,
+                    )
+                    line_ids.extend(line_pairs)
+                    total_amount += rec_line.recognition_amount
+
+                move_vals_list.append({
+                    'move_type': 'entry',
+                    'journal_id': self.journal_id.id,
+                    'company_id': schedule.company_id.id,
+                    'date': fields.Date.to_string(safe_date),
+                    'ref': self._format_strings(
+                        label_template, schedule, total_amount,
+                    ),
+                    'line_ids': line_ids,
+                    'deferred_cutoff_routing': [(schedule.id, qualifying_lines.ids)],
+                })
+
+        return move_vals_list
+
+    def _link_recognition_lines(self, created_moves, routing_data):
+        """Mark recognition lines as posted and link them to their moves.
+
+        Walks the ``routing_data`` list (one entry per created move) and
+        for each ``(schedule_id, recognition_line_ids)`` mapping:
+
+        1. Sets ``state='posted'`` on the recognition lines.
+        2. Sets ``move_id`` on the recognition lines to the matching
+           created move (enforcing the bidirectional schedule/move
+           invariant).
+        3. Populates ``move_line_ids`` (Many2many) on each recognition
+           line with the move's deferred / recognition account lines.
+        4. Sets ``deferred_schedule_id`` and ``deferred_line_id`` on
+           each created move line for traceability from the journal
+           entry side.
+
+        :param created_moves: an :class:`account.move` recordset of the
+            posted cut-off entries.
+        :param routing_data: a list of lists of ``(schedule_id,
+            line_ids_list)`` tuples — one outer entry per created move.
+        """
+        self.ensure_one()
+        DeferredSchedule = self.env['account.deferred.schedule']
+        DeferredLine = self.env['account.deferred.line']
+
+        # Iterate moves and routing in lock-step (same order as
+        # _get_move_dict_vals_change_period produced them).
+        for move, schedule_routing in zip(created_moves, routing_data):
+            for schedule_id, line_ids in schedule_routing:
+                schedule = DeferredSchedule.browse(schedule_id).exists()
+                if not schedule:
+                    continue
+                rec_lines = DeferredLine.browse(line_ids).exists()
+                if not rec_lines:
+                    continue
+
+                # Identify move lines belonging to this schedule by
+                # matching on the schedule's deferred / recognition
+                # accounts.
+                schedule_accounts = (
+                    schedule.deferred_account_id | schedule.recognition_account_id
+                )
+                schedule_move_lines = move.line_ids.filtered(
+                    lambda ml, accs=schedule_accounts: ml.account_id in accs,
+                )
+
+                # Stamp the schedule back-reference on the move lines
+                if schedule_move_lines:
+                    schedule_move_lines.write({
+                        'deferred_schedule_id': schedule.id,
+                    })
+
+                # Mark recognition lines as posted and link to the move
+                rec_lines.write({
+                    'state': 'posted',
+                    'move_id': move.id,
+                })
+
+                # Populate the per-line many2many of move lines
+                if schedule_move_lines:
+                    rec_lines.write({
+                        'move_line_ids': [(6, 0, schedule_move_lines.ids)],
+                    })
+                # Stamp the deferred_line_id back-reference on the
+                # individual move lines, matching by recognition_date
+                # where possible (date-aligned schedules) and falling
+                # back to the first qualifying line (consolidated
+                # schedules with a single-tranche cutoff).
+                for ml in schedule_move_lines:
+                    matching = rec_lines.filtered(
+                        lambda r, d=move.date: r.recognition_date == d,
+                    )[:1]
+                    if not matching:
+                        matching = rec_lines[:1]
+                    if matching:
+                        ml.deferred_line_id = matching.id
+
+    # =====================================================================
+    # SECTION 10 — Action methods (UI buttons)
+    # =====================================================================
+    def action_preview(self):
+        """Force preview computation and re-open the wizard form.
+
+        DR-003 Scenario 2: no journal entries are created.  Invalidates
+        the JSON caches so the user always sees fresh data even if the
+        underlying schedules were modified after the wizard was first
+        rendered.
+        """
+        self.ensure_one()
+        # Invalidate the computed caches so the recompute fires
         self.invalidate_recordset(['move_data', 'preview_move_data'])
+        # Read the (now-fresh) value to confirm at least one move is
+        # buildable; otherwise raise a user-friendly error.
+        if not self.move_data:
+            raise UserError(_(
+                "No qualifying recognition lines were found at cut-off "
+                "date %(date)s for the selected schedule(s). Verify the "
+                "schedules are confirmed and have draft recognition lines "
+                "on or before this date.",
+                date=format_date(self.env, self.cutoff_date),
+            ))
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Cut-off Preview'),
+            'name': _('Cut-off Entry Preview'),
             'res_model': self._name,
             'res_id': self.id,
             'view_mode': 'form',
             'target': 'new',
-            'context': dict(self.env.context, default_mode='preview'),
+            'context': dict(self.env.context, deferred_cutoff_show_preview=True),
         }
 
     def action_post(self):
-        """Create and post journal entries for all qualifying schedules.
+        """Create, post, and link cut-off journal entries.
 
-        Implements DR-003 Scenario 1 (single period) and Scenario 3
-        (batch).  Iterates through the precomputed ``move_data`` and
-        creates one ``account.move`` per schedule.  The qualifying
-        deferred lines are updated to ``state='posted'`` with
-        ``move_id`` pointing at the new move.
+        DR-003 Scenario 1 (single) and Scenario 3 (batch).  Pulls the
+        precomputed ``move_data`` (built by
+        :meth:`_get_move_dict_vals_change_period`), creates one
+        :class:`account.move` per entry, posts them, and runs
+        :meth:`_link_recognition_lines` to flip the recognition lines
+        to ``state='posted'`` and stamp the move references.
+
+        Records a chatter message on each affected schedule for the
+        audit trail (DR-003 Scenario 1 fourth assertion: "each entry
+        should reference the source deferral schedule").
+
+        :returns: an ``ir.actions.act_window`` opening the posted moves.
         """
         self.ensure_one()
-        moves = self._create_moves(self.move_data or [])
-        if not moves:
+        if not self.schedule_ids:
             raise UserError(_(
-                'No qualifying recognition lines were found for the '
-                'selected schedules and cut-off date.',
+                "No schedules selected. Please select at least one schedule "
+                "to generate cut-off entries.",
             ))
-        return self._action_view_moves(moves)
+        if not self.move_data:
+            raise UserError(_(
+                "No qualifying recognition lines were found at cut-off "
+                "date %(date)s. Nothing to post.",
+                date=format_date(self.env, self.cutoff_date),
+            ))
+
+        move_vals_list = (
+            self.move_data
+            if isinstance(self.move_data, list)
+            else json.loads(self.move_data)
+        )
+        if not move_vals_list:
+            raise UserError(_("No journal entry data was computed."))
+
+        # Strip out the routing data before passing to ORM create.
+        routing_data = []
+        clean_vals_list = []
+        for vals in move_vals_list:
+            cleaned = dict(vals)
+            routing = cleaned.pop('deferred_cutoff_routing', [])
+            routing_data.append(routing)
+            clean_vals_list.append(cleaned)
+
+        created_moves = self.env['account.move'].create(clean_vals_list)
+        created_moves.action_post()
+
+        # Link recognition lines and stamp move-line back-references
+        self._link_recognition_lines(created_moves, routing_data)
+
+        # Audit-trail chatter on each affected schedule
+        for move, schedule_routing in zip(created_moves, routing_data):
+            for schedule_id, _line_ids in schedule_routing:
+                schedule = self.env['account.deferred.schedule'].browse(schedule_id)
+                if schedule.exists():
+                    schedule.message_post(body=Markup(
+                        _("Cut-off entry posted: %(link)s")
+                        % {'link': move._get_html_link()},
+                    ))
+
+        return self._action_view_moves(created_moves, with_reversal=False)
 
     def action_post_with_reversal(self):
-        """Create cut-off entries plus reversal entries (Scenario 5).
+        """Post cut-off entries plus reversal entries.
 
-        Uses ``account.move._reverse_moves`` so the reversal entry is
-        properly linked via ``reversed_entry_id`` and the audit trail
-        is preserved.  The reversal is dated ``reversal_date`` (or the
-        first day of the month following cutoff_date when unset) and
-        set to ``auto_post='at_date'`` so it posts automatically on
-        that date.
+        DR-003 Scenario 5.  Calls :meth:`action_post` to generate the
+        cut-off moves, then immediately calls
+        :meth:`account.move._reverse_moves` with
+        ``default_values_list`` containing the per-move reversal date
+        and ``auto_post='at_date'`` so the reversals post automatically
+        on the reversal date via the standard
+        ``ir_cron_auto_post_draft_entry`` cron.
+
+        Reversals are linked back to their originals via
+        ``adjusting_entry_origin_move_ids`` for full audit traceability.
+        Each affected schedule receives a chatter message documenting
+        the scheduled reversal.
+
+        :returns: an ``ir.actions.act_window`` showing both the cut-off
+            and the reversal moves.
         """
         self.ensure_one()
-        moves = self._create_moves(self.move_data or [])
-        if not moves:
+        if not self.reversal_date:
             raise UserError(_(
-                'No qualifying recognition lines were found for the '
-                'selected schedules and cut-off date.',
+                "Reversal date is required. Defaults to the first day of "
+                "the month following the cut-off date — adjust if needed.",
+            ))
+        if self.cutoff_date and self.reversal_date <= self.cutoff_date:
+            raise UserError(_(
+                "Reversal date %(rev)s must be strictly after the cut-off "
+                "date %(cut)s.",
+                rev=format_date(self.env, self.reversal_date),
+                cut=format_date(self.env, self.cutoff_date),
             ))
 
-        reversal_date = self.reversal_date or self._default_reversal_date()
-        # Reverse moves with auto_post='at_date' for the next period
-        reversal_moves = moves._reverse_moves(
-            default_values_list=[
-                {
-                    'date': reversal_date,
-                    'ref': _('Reversal of %(ref)s', ref=move.ref or move.name or ''),
-                    'auto_post': 'at_date',
-                }
-                for move in moves
-            ],
+        # Run the standard post first; if no moves get created the
+        # action_post call raises a UserError that we let propagate.
+        if not self.schedule_ids:
+            raise UserError(_(
+                "No schedules selected. Please select at least one schedule "
+                "to generate cut-off entries.",
+            ))
+        if not self.move_data:
+            raise UserError(_(
+                "No qualifying recognition lines were found at cut-off "
+                "date %(date)s. Nothing to post.",
+                date=format_date(self.env, self.cutoff_date),
+            ))
+
+        # Replicate action_post inline so we keep a handle on the
+        # created moves (rather than recovering them from an action dict).
+        move_vals_list = (
+            self.move_data
+            if isinstance(self.move_data, list)
+            else json.loads(self.move_data)
+        )
+        routing_data = []
+        clean_vals_list = []
+        for vals in move_vals_list:
+            cleaned = dict(vals)
+            routing = cleaned.pop('deferred_cutoff_routing', [])
+            routing_data.append(routing)
+            clean_vals_list.append(cleaned)
+
+        created_moves = self.env['account.move'].create(clean_vals_list)
+        created_moves.action_post()
+        self._link_recognition_lines(created_moves, routing_data)
+
+        # Audit-trail chatter for the cut-off moves
+        for move, schedule_routing in zip(created_moves, routing_data):
+            for schedule_id, _line_ids in schedule_routing:
+                schedule = self.env['account.deferred.schedule'].browse(schedule_id)
+                if schedule.exists():
+                    schedule.message_post(body=Markup(
+                        _("Cut-off entry posted: %(link)s")
+                        % {'link': move._get_html_link()},
+                    ))
+
+        # Build per-move reversal default values
+        default_values_list = [
+            {
+                'date': self.reversal_date,
+                'auto_post': 'at_date',
+                'ref': _("Reversal of %s", move.ref or move.name or ''),
+            }
+            for move in created_moves
+        ]
+        reversal_moves = created_moves._reverse_moves(
+            default_values_list=default_values_list,
             cancel=False,
         )
-        # Return the action showing both the posted cut-off entries
-        # and the scheduled reversal entries.
-        all_moves = moves | reversal_moves
-        return self._action_view_moves(all_moves)
 
-    def _default_reversal_date(self):
-        """Compute the default reversal date: first day of next month."""
-        self.ensure_one()
-        if not self.cutoff_date:
-            return fields.Date.context_today(self)
-        # Advance to the first day of the following month
-        d = self.cutoff_date
-        if d.month == 12:
-            return d.replace(year=d.year + 1, month=1, day=1)
-        return d.replace(month=d.month + 1, day=1)
+        # Link reversals back to originals via adjusting_entry_origin_move_ids
+        for original, reversal in zip(created_moves, reversal_moves):
+            reversal.adjusting_entry_origin_move_ids = [(4, original.id)]
 
-    def _create_moves(self, move_data):
-        """Create and post ``account.move`` records from move_data.
-
-        Returns the recordset of created moves.  Flips qualifying
-        ``account.deferred.line`` records to posted and attaches them
-        to the new moves via ``move_id``.
-        """
-        Move = self.env['account.move']
-        DeferredLine = self.env['account.deferred.line']
-
-        created = Move
-        for entry in move_data:
-            line_ids_to_post = entry.get('line_ids_to_post') or []
-            if not line_ids_to_post:
-                continue
-            move_vals = {
-                'date': entry['date'],
-                'ref': entry['ref'],
-                'journal_id': entry['journal_id'],
-                'company_id': entry['company_id'],
-                'move_type': 'entry',
-                'line_ids': [
-                    (
-                        0,
-                        0,
-                        {
-                            'account_id': line['account_id'],
-                            'debit': line['debit'],
-                            'credit': line['credit'],
-                            'partner_id': line.get('partner_id') or False,
-                            'name': line['name'],
-                            'analytic_distribution': line.get('analytic_distribution') or False,
+        # Audit-trail chatter for the reversal moves
+        for reversal_move, schedule_routing in zip(reversal_moves, routing_data):
+            for schedule_id, _line_ids in schedule_routing:
+                schedule = self.env['account.deferred.schedule'].browse(schedule_id)
+                if schedule.exists():
+                    schedule.message_post(body=Markup(
+                        _(
+                            "Reversal entry scheduled for %(date)s: %(link)s",
+                        ) % {
+                            'date': format_date(self.env, self.reversal_date),
+                            'link': reversal_move._get_html_link(),
                         },
-                    )
-                    for line in entry['lines']
-                ],
-            }
-            move = Move.create(move_vals)
-            move.action_post()
-            created |= move
+                    ))
 
-            # Attach the qualifying deferred lines to the new move
-            lines = DeferredLine.browse(line_ids_to_post).exists()
-            if lines:
-                lines.write({
-                    'state': 'posted',
-                    'move_id': move.id,
-                })
-        return created
+        all_moves = created_moves | reversal_moves
+        return self._action_view_moves(all_moves, with_reversal=True)
 
-    def _action_view_moves(self, moves):
-        """Build an action that displays the created moves to the user."""
+    # =====================================================================
+    # SECTION 11 — Internal action helper (kept private; not in schema)
+    # =====================================================================
+    def _action_view_moves(self, moves, with_reversal=False):
+        """Build the ``ir.actions.act_window`` opening the created moves.
+
+        Single move => form view; multiple moves => list+form view.
+        ``with_reversal=True`` adjusts the action title.
+        """
         self.ensure_one()
-        if len(moves) == 1:
+        title = (
+            _('Cut-off Entries with Reversal') if with_reversal
+            else (
+                _('Cut-off Entry') if len(moves) == 1
+                else _('Cut-off Entries')
+            )
+        )
+        if len(moves) == 1 and not with_reversal:
             return {
                 'type': 'ir.actions.act_window',
-                'name': _('Cut-off Journal Entry'),
+                'name': title,
                 'res_model': 'account.move',
                 'res_id': moves.id,
                 'view_mode': 'form',
+                'views': [(False, 'form')],
                 'target': 'current',
             }
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Cut-off Journal Entries'),
+            'name': title,
             'res_model': 'account.move',
-            'view_mode': 'list,form',
             'domain': [('id', 'in', moves.ids)],
+            'view_mode': 'list,form',
             'target': 'current',
         }
-
-    # -----------------------------------------------------------------
-    # SECTION 8 — Grouping helpers (public, useful for tests and UX)
-    # -----------------------------------------------------------------
-    def group_moves_by_journal(self):
-        """Return a dict of ``journal_id → list[move_data]``.
-
-        Used by DR-003 Scenario 3 batch generation to demonstrate that
-        moves can be consolidated per-journal.  The actual posting path
-        (``_create_moves``) already creates one move per schedule; this
-        helper is exposed for reporting and tests.
-        """
-        self.ensure_one()
-        grouping = defaultdict(list)
-        for entry in self.move_data or []:
-            grouping[entry['journal_id']].append(entry)
-        return dict(grouping)

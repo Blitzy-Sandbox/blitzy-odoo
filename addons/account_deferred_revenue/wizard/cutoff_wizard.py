@@ -60,9 +60,11 @@ Rules Compliance (AAP §0.7)
     ``account.move`` or ``account.move.line`` field definitions; only
     creates records via ``self.env['account.move'].create(...)`` and
     invokes public API methods.
-*   **R-07** No ``sudo()`` without justification: a single ``sudo()``
-    call on ``account.lock_exception.search`` is documented inline
-    with the required ``# sudo required: ...`` comment.
+*   **R-07** No ``sudo()`` without justification: this file does not
+    use ``sudo()`` at all.  Lock-date enforcement is delegated entirely
+    to :meth:`res.company._get_violated_lock_dates` which performs the
+    cross-user exception lookup with the appropriate elevated
+    privileges encapsulated inside the core ``account`` module.
 """
 
 import json
@@ -114,6 +116,8 @@ class AccountDeferredCutoffWizard(models.TransientModel):
     ``_inherit`` of a pre-existing model name).  Per :rule:`R-05` no
     field on ``account.move`` or ``account.move.line`` is redefined;
     the wizard only CREATES move records using the public ORM API.
+    Per :rule:`R-07` the wizard does not use ``sudo()``; lock-exception
+    handling is delegated to ``res.company._get_violated_lock_dates``.
     """
 
     _name = 'account.deferred.cutoff.wizard'
@@ -484,75 +488,56 @@ class AccountDeferredCutoffWizard(models.TransientModel):
     def _check_date(self):
         """Block posting to a locked period.
 
-        Calls :meth:`res.company._get_violated_lock_dates` (which
-        returns a list of ``(lock_date, lock_date_field)`` tuples) and
-        raises :class:`ValidationError` whenever the cut-off date
-        violates one or more lock dates that are not covered by an
-        active :class:`account.lock_exception` for the current user.
+        Delegates to :meth:`res.company._get_violated_lock_dates`
+        (defined in ``addons/account/models/company.py``) which itself
+        invokes :meth:`_get_violated_soft_lock_date` per soft lock-date
+        field.  That helper returns a violation only when the
+        accounting date violates the *user-specific* lock date — the
+        date computed by :meth:`_get_user_lock_date` which **already
+        incorporates any active** :class:`account.lock_exception`
+        records that apply to the current user.  In other words, a user
+        with a valid exception covering ``cutoff_date`` will receive an
+        empty ``violated`` list, while a user with a stale or
+        irrelevant exception will still see the violation.
+
+        We therefore do **not** maintain a redundant clearance loop in
+        this wizard — doing so risks dismissing legitimate violations
+        when an exception is present but its ``lock_date`` does not
+        actually cover ``cutoff_date``.  Trusting the core helper
+        guarantees consistent behaviour with the rest of the
+        accounting subsystem (e.g., ``account.move.action_post``,
+        ``account.automatic.entry.wizard._check_date``) and avoids
+        the lock-exception-clearance bug flagged in code review CR-2
+        (CP4).
 
         Hard lock dates are non-overridable per Odoo's lock-exception
         model (only ``fiscalyear_lock_date``, ``tax_lock_date``,
-        ``sale_lock_date`` and ``purchase_lock_date`` may be excepted),
+        ``sale_lock_date`` and ``purchase_lock_date`` may be
+        excepted), and ``_get_violated_lock_dates`` accounts for the
+        ``hard_lock_date`` independently of the exception machinery,
         so any ``hard_lock_date`` violation always triggers the error.
-        """
-        # Lock-exception field selection from
-        # ``addons/account/models/account_lock_exception.py`` (line 51-61):
-        # only soft locks are excepted; hard_lock_date is never overridable.
-        excepted_lock_types = {
-            'fiscalyear_lock_date',
-            'tax_lock_date',
-            'sale_lock_date',
-            'purchase_lock_date',
-        }
 
+        :raises ValidationError: when the cut-off date violates one or
+            more user-effective lock dates.
+        """
         for wizard in self:
             if not wizard.cutoff_date or not wizard.company_id:
                 continue
+            # ``_get_violated_lock_dates`` returns ONLY violations that
+            # remain after exception application; an empty result means
+            # the user is authorised to post on ``cutoff_date``.
             violated = wizard.company_id._get_violated_lock_dates(
                 wizard.cutoff_date,
                 False,
                 wizard.journal_id,
             )
-            if not violated:
-                continue
-
-            # Identify lock-types that an active exception could waive
-            potentially_excepted = {
-                lock_field
-                for (_lock_date, lock_field) in violated
-                if lock_field in excepted_lock_types
-            }
-            covered_lock_types = set()
-            if potentially_excepted:
-                # sudo required: read-only check of lock exceptions across users
-                # for this company. account.lock_exception is restricted to
-                # accountant users; standard users posting cut-off entries
-                # need to inspect exceptions granted to them by an accountant.
-                # Reading is safe — we never write through this sudo handle.
-                active_exceptions = self.env['account.lock_exception'].sudo().search([
-                    ('company_id', '=', wizard.company_id.id),
-                    ('user_id', 'in', [self.env.uid, False]),
-                    ('state', '=', 'active'),
-                    '|',
-                    ('end_datetime', '=', False),
-                    ('end_datetime', '>', fields.Datetime.now()),
-                ])
-                covered_lock_types = set(
-                    active_exceptions.mapped('lock_date_field') or [],
-                )
-
-            uncovered = [
-                (lock_date, lock_field)
-                for (lock_date, lock_field) in violated
-                if lock_field not in covered_lock_types
-            ]
-            if uncovered:
+            if violated:
                 raise ValidationError(_(
                     "The cut-off date %(date)s is protected by: %(lock_date_info)s. "
                     "Adjust the date or request a temporary lock exception "
                     "from your accountant.",
                     date=format_date(self.env, wizard.cutoff_date),
-                    lock_date_info=self.env['res.company']._format_lock_dates(uncovered),
+                    lock_date_info=self.env['res.company']._format_lock_dates(violated),
                 ))
 
     # =====================================================================
@@ -631,16 +616,32 @@ class AccountDeferredCutoffWizard(models.TransientModel):
     def _get_move_line_dict_vals_change_period(self, schedule, recognition_amount, label):
         """Build the (debit, credit) line tuple for one recognition tranche.
 
-        Posting direction depends on the recognition-account type:
+        **Accounting convention summary**
 
-        * **Revenue** (``income`` / ``income_other``):
-              Debit  ``schedule.deferred_account_id``
-              Credit ``schedule.recognition_account_id``
+        A cut-off entry shifts the recognized portion of a deferred
+        balance from the balance-sheet *deferral* account into the P&L
+        *recognition* account.  The direction of the entry is driven
+        by whether the recognition account is income- or expense-typed:
 
-        * **Expense** (``expense`` / ``expense_depreciation`` /
-          ``expense_direct_cost``):
-              Debit  ``schedule.recognition_account_id``
-              Credit ``schedule.deferred_account_id``
+        * **Revenue case** (recognition account ``account_type`` in
+          :data:`_INCOME_ACCOUNT_TYPES`): the schedule originated from
+          a customer invoice whose proceeds were initially booked as a
+          *liability* on ``deferred_account_id`` (e.g., "Unearned
+          Revenue").  The cut-off entry reduces the liability and
+          books revenue in the same period:
+
+              Debit  ``schedule.deferred_account_id``     (clears liability)
+              Credit ``schedule.recognition_account_id``  (books revenue)
+
+        * **Expense case** (recognition account ``account_type`` in
+          :data:`_EXPENSE_ACCOUNT_TYPES`): the schedule originated
+          from a vendor bill whose payment was initially capitalised
+          as an *asset* on ``deferred_account_id`` (e.g., "Prepaid
+          Expense").  The cut-off entry reduces the asset and books
+          the expense in the period of consumption:
+
+              Debit  ``schedule.recognition_account_id``  (books expense)
+              Credit ``schedule.deferred_account_id``     (clears asset)
 
         Both lines preserve ``schedule.analytic_distribution`` so any
         analytic plan attribution flows through the cut-off entry.

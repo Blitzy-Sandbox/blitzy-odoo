@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    DR-004 Recognition Dashboard PDF Report Template
+    ================================================
+
+    Defines the QWeb PDF report rendered by
+    ``account.deferred.recognition.dashboard.wizard.action_export_pdf``.
+    The report renders the dashboard's current state (summary KPIs,
+    period breakdown, schedule breakdown, status distribution) as a
+    standalone PDF using Odoo's ``wkhtmltopdf`` integration.
+
+    The bound ``ir.actions.report`` record (``action_report_recognition_dashboard``)
+    is referenced from
+    ``wizard/recognition_dashboard_wizard.py::action_export_pdf``
+    via ``self.env.ref('account_deferred_revenue.action_report_recognition_dashboard')``
+    and then ``.report_action(self, config=False)``.
+
+    Per AAP §0.5.1.3 (DR-004 dashboard) and the CP4 review feedback
+    (Major: missing action_export_pdf), this file delivers the QWeb
+    template + ir.actions.report record needed to satisfy the export
+    workflow.
+
+    Rules compliance (AAP §0.7):
+      - R-01 Module Independence: Only references models defined within
+        this module.
+      - R-02 No Enterprise Dependencies: No Enterprise modules referenced.
+      - R-05 No Core Field Redefinition: No core models are altered.
+      - R-09 Exact Module Folder Names: File lives at
+        addons/account_deferred_revenue/data/recognition_dashboard_report.xml.
+-->
+<odoo>
+
+    <!-- =================================================================
+         SECTION 1: ir.actions.report record
+
+         Registers the QWeb PDF report bound to the dashboard wizard
+         transient model.  Renders ``report_recognition_dashboard``
+         (defined in SECTION 2 below) as a single-document PDF via
+         Odoo's standard ``wkhtmltopdf`` pipeline.
+         ================================================================= -->
+    <record id="action_report_recognition_dashboard" model="ir.actions.report">
+        <field name="name">Recognition Dashboard</field>
+        <field name="model">account.deferred.recognition.dashboard.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">account_deferred_revenue.report_recognition_dashboard</field>
+        <field name="report_file">account_deferred_revenue.report_recognition_dashboard</field>
+        <field name="print_report_name">'Recognition Dashboard - %s' % (object.date_to or '')</field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 2: QWeb Template
+
+         Renders one PDF page per wizard record (typically a single
+         transient instance).  Pulls from the wizard's computed fields
+         (KPIs + breakdown JSON payloads) and formats them in standard
+         Bootstrap-style tables.
+
+         The template uses ``web.html_container`` and
+         ``web.external_layout`` to inherit the company header/footer
+         and any custom paper-format settings the user has applied.
+         ================================================================= -->
+    <template id="report_recognition_dashboard">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page o_recognition_dashboard_report">
+
+                        <!-- ============================================ -->
+                        <!-- Header — title, company, filter summary       -->
+                        <!-- ============================================ -->
+                        <div class="text-center report-header mb-4">
+                            <h2>Recognition Dashboard</h2>
+                            <p t-if="doc.company_id">
+                                <strong>Company: </strong>
+                                <span t-field="doc.company_id.name"/>
+                            </p>
+                            <p>
+                                <strong>Period: </strong>
+                                <span t-field="doc.date_from"/>
+                                <span> to </span>
+                                <span t-field="doc.date_to"/>
+                            </p>
+                            <p>
+                                <strong>Status Filter: </strong>
+                                <span t-esc="doc.status_filter or 'all'"/>
+                            </p>
+                        </div>
+
+                        <!-- ============================================ -->
+                        <!-- Summary KPI cards                             -->
+                        <!-- ============================================ -->
+                        <h3 class="mt-4 mb-3">Summary</h3>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th class="text-end">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Total Deferred Revenue</td>
+                                    <td class="text-end">
+                                        <span t-field="doc.total_deferred_revenue"
+                                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Total Deferred Expenses</td>
+                                    <td class="text-end">
+                                        <span t-field="doc.total_deferred_expenses"
+                                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Active Schedule Count</td>
+                                    <td class="text-end">
+                                        <span t-esc="doc.active_schedule_count"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Next Period Recognition</td>
+                                    <td class="text-end">
+                                        <span t-field="doc.next_period_recognition"
+                                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- ============================================ -->
+                        <!-- Schedule breakdown by recognition method      -->
+                        <!-- ============================================ -->
+                        <h3 class="mt-4 mb-3">By Recognition Method</h3>
+                        <t t-set="method_payload" t-value="doc.schedule_breakdown_json or []"/>
+                        <table class="table table-sm table-bordered" t-if="method_payload">
+                            <thead>
+                                <tr>
+                                    <th>Recognition Method</th>
+                                    <th class="text-end">Count</th>
+                                    <th class="text-end">Total Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="method_payload" t-as="row">
+                                    <td><span t-esc="row.get('recognition_method', '')"/></td>
+                                    <td class="text-end"><span t-esc="row.get('count', 0)"/></td>
+                                    <td class="text-end">
+                                        <span t-esc="row.get('total_amount', 0.0)"
+                                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-else="" class="text-muted">No recognition method data for the selected filters.</p>
+
+                        <!-- ============================================ -->
+                        <!-- Period breakdown by month                     -->
+                        <!-- ============================================ -->
+                        <h3 class="mt-4 mb-3">Upcoming Recognitions by Period</h3>
+                        <t t-set="period_payload" t-value="doc.period_breakdown_json or []"/>
+                        <table class="table table-sm table-bordered" t-if="period_payload">
+                            <thead>
+                                <tr>
+                                    <th>Period</th>
+                                    <th class="text-end">Line Count</th>
+                                    <th class="text-end">Total Recognition</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="period_payload" t-as="row">
+                                    <td><span t-esc="row.get('month', '')"/></td>
+                                    <td class="text-end"><span t-esc="row.get('count', 0)"/></td>
+                                    <td class="text-end">
+                                        <span t-esc="row.get('total', 0.0)"
+                                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-else="" class="text-muted">No recognition lines in the selected date range.</p>
+
+                        <!-- ============================================ -->
+                        <!-- Status distribution                           -->
+                        <!-- ============================================ -->
+                        <h3 class="mt-4 mb-3">Status Distribution</h3>
+                        <t t-set="status_payload" t-value="doc.status_distribution_json or {}"/>
+                        <table class="table table-sm table-bordered" t-if="status_payload">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th class="text-end">Schedule Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="status_payload.items() if hasattr(status_payload, 'items') else []"
+                                    t-as="entry">
+                                    <td><span t-esc="entry[0]"/></td>
+                                    <td class="text-end"><span t-esc="entry[1]"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-else="" class="text-muted">No status distribution data available.</p>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

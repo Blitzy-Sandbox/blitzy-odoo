@@ -41,6 +41,10 @@
         # Data records (sequences, default configurations) — must exist before
         # views that may reference default values at render time.
         "data/deferred_data.xml",
+        # DR-004 PDF report definition (ir.actions.report + QWeb template).
+        # Registered before views so view-level <button> references to the
+        # action xmlid resolve at view-load time.
+        "data/recognition_dashboard_report.xml",
         # Views — base-model views before wizard views before menus.
         "views/account_deferred_schedule_views.xml",
         "views/account_deferred_line_views.xml",

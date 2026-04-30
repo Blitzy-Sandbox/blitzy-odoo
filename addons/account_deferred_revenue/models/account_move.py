@@ -120,7 +120,10 @@ class AccountMove(models.Model):
             'type': 'ir.actions.act_window',
             'name': _('Deferred Revenue Schedules'),
             'res_model': 'account.deferred.schedule',
-            'view_mode': 'tree,form',
+            # Odoo 19 convention: 'list' replaces the legacy 'tree' alias.
+            # Functionally identical (Odoo aliases tree -> list internally),
+            # but the preferred style across this module's views is 'list'.
+            'view_mode': 'list,form',
             'domain': [('source_move_id', '=', self.id)],
             'context': {
                 'default_source_move_id': self.id,

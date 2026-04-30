@@ -250,8 +250,11 @@
          ``active_model`` and ``active_ids`` in the context, which the
          wizard's ``default_get`` uses to pre-populate ``schedule_ids``.
 
-         ``binding_view_types`` = 'form,list' means the action appears on
-         both the schedule form view and the schedule list view.
+         ``binding_view_types`` = 'list,form' means the action appears on
+         both the schedule list view and the schedule form view.  The
+         'list,form' ordering follows the Odoo 19 convention (list first,
+         form second) consistent with the rest of this module's view
+         declarations and with the FEATURE-001/FEATURE-002 precedent.
          ================================================================= -->
     <record id="action_deferred_cutoff_wizard" model="ir.actions.act_window">
         <field name="name">Generate Cut-off Entries</field>
@@ -260,7 +263,7 @@
         <field name="target">new</field>
         <field name="view_id" ref="view_deferred_cutoff_wizard_form"/>
         <field name="binding_model_id" ref="model_account_deferred_schedule"/>
-        <field name="binding_view_types">form,list</field>
+        <field name="binding_view_types">list,form</field>
     </record>
 
 </odoo>

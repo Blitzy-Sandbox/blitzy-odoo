@@ -81,13 +81,21 @@ Integration points:
   ``action_deferred_recognition_dashboard``.
 """
 
+import base64
+import io
+import logging
 from collections import defaultdict
 
 from dateutil.relativedelta import relativedelta
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font
+from openpyxl.utils import get_column_letter
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import format_date
+
+_logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Module-level constants — account.account.account_type values that classify
@@ -303,17 +311,38 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
     # SECTION 4 — Validation constraints.
     # -----------------------------------------------------------------
 
+    # Maximum dashboard date-range span, in days.  Set to ``5 * 366``
+    # so the constraint accepts up to and including five full leap
+    # years (the worst-case maximal span for any 5-year window) and
+    # rejects ranges that exceed that bound.  Bounding the range
+    # prevents the dashboard's ``read_group`` aggregations from
+    # degenerating into expensive scans across the full
+    # ``account.move.line`` history (DoS-style risk on a multi-year
+    # corpus) — a Phase 5 Security requirement of CP4.
+    _MAX_DATE_RANGE_DAYS = 5 * 366
+
     @api.constrains('date_from', 'date_to')
     def _check_date_range(self):
-        """Guarantee ``date_from`` is never after ``date_to``.
+        """Guarantee a sensible ``date_from``/``date_to`` window.
 
         Called by the ORM whenever the wizard is created or either
         date is updated.  Because the fields are ``required=True`` and
         have lambda defaults that set them to January 1 and December
         31 of the current year respectively, this constraint only
-        fires when the user explicitly inverts the range — in which
-        case we raise a localized :class:`~odoo.exceptions.UserError`
-        with a user-actionable message.
+        fires when the user explicitly modifies the range.
+
+        Two invariants are enforced:
+
+        1. ``date_from <= date_to`` — a strictly inverted range is a
+           user error and results in a translated
+           :class:`~odoo.exceptions.UserError`.
+        2. ``date_to - date_from <= 5 * 366 days`` (~ five years) — a
+           wider window risks an expensive ``read_group`` aggregation
+           over the full ``account.move.line`` history, so this
+           constraint protects the dashboard from accidental DoS-
+           style queries (Phase 5 Security mandate of CP4).  The
+           ``5 * 366`` figure caps the worst-case range covering five
+           leap years.
         """
         for wizard in self:
             if (
@@ -324,6 +353,27 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
                 raise UserError(_(
                     'The "From" date (%(from)s) must be on or before '
                     'the "To" date (%(to)s).',
+                    **{
+                        'from': format_date(self.env, wizard.date_from),
+                        'to': format_date(self.env, wizard.date_to),
+                    },
+                ))
+            # Phase 5 Security — bound the dashboard window so a
+            # malicious or careless user cannot trigger a multi-year
+            # ``read_group`` aggregation.  Using day-difference is the
+            # simplest portable check; the ``5 * 366`` bound matches
+            # the documented "5-year" target (worst-case leap-year
+            # span).
+            if (
+                wizard.date_from
+                and wizard.date_to
+                and (wizard.date_to - wizard.date_from).days
+                > self._MAX_DATE_RANGE_DAYS
+            ):
+                raise UserError(_(
+                    "Date range cannot exceed 5 years to prevent "
+                    "expensive aggregations on the dashboard.  "
+                    "Selected range: %(from)s to %(to)s.",
                     **{
                         'from': format_date(self.env, wizard.date_from),
                         'to': format_date(self.env, wizard.date_to),
@@ -506,19 +556,19 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
                 # card at its zero initialisation.
                 continue
 
-            line_groups = Line.read_group(
+            # ``_read_group`` (replaces deprecated ``read_group`` per
+            # Odoo 19) returns a list of tuples ``(agg_1, ..., agg_n)``
+            # when ``groupby`` is empty: typically ``[(sum_value,)]``
+            # for non-empty domains, and ``[(None,)]`` when no rows
+            # match.  Handle both shapes defensively.
+            line_groups = Line._read_group(
                 domain=line_domain,
-                fields=['recognition_amount:sum'],
                 groupby=[],
-                lazy=False,
+                aggregates=['recognition_amount:sum'],
             )
-            # ``read_group`` with an empty groupby returns a
-            # single-element list containing the aggregated sum or an
-            # empty list when the domain matches zero rows; handle
-            # both cases defensively.
-            if line_groups:
+            if line_groups and line_groups[0]:
                 wizard.next_period_recognition = (
-                    line_groups[0].get('recognition_amount') or 0.0
+                    line_groups[0][0] or 0.0
                 )
 
     # -----------------------------------------------------------------
@@ -565,38 +615,39 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
 
             # Breakdown 1 — by recognition_method.
             #
-            # ``lazy=False`` materialises every groupby value in a
-            # single call; the default ``lazy=True`` would force
-            # callers to issue follow-up calls per leaf group.
-            method_groups = Schedule.read_group(
+            # ``_read_group`` (replaces deprecated ``read_group`` per
+            # Odoo 19) returns a list of tuples whose layout is
+            # ``(groupby_value_1, ..., aggregate_1, ...)``.  For
+            # ``groupby=['recognition_method']`` and
+            # ``aggregates=['__count', 'total_amount:sum']`` each row
+            # is ``(method_str, count_int, total_amount_float)``.
+            method_groups = Schedule._read_group(
                 domain=schedule_domain,
-                fields=['total_amount:sum'],
                 groupby=['recognition_method'],
-                lazy=False,
+                aggregates=['__count', 'total_amount:sum'],
             )
             wizard.schedule_breakdown_json = [
                 {
-                    'recognition_method': g.get('recognition_method') or '',
-                    'count': g.get('__count') or 0,
-                    'total_amount': g.get('total_amount') or 0.0,
+                    'recognition_method': method or '',
+                    'count': count or 0,
+                    'total_amount': total or 0.0,
                 }
-                for g in method_groups
+                for method, count, total in method_groups
             ]
 
             # Breakdown 2 — by completion_status.
             #
-            # An empty ``fields`` list tells read_group to return
-            # just the ``__count`` aggregation per group — which is
-            # exactly the data we need for the status badges.
-            status_groups = Schedule.read_group(
+            # ``aggregates=['__count']`` produces a per-group count
+            # without any field aggregation; row layout is
+            # ``(completion_status_str, count_int)``.
+            status_groups = Schedule._read_group(
                 domain=schedule_domain,
-                fields=[],
                 groupby=['completion_status'],
-                lazy=False,
+                aggregates=['__count'],
             )
             wizard.status_distribution_json = {
-                (g.get('completion_status') or 'unknown'): (g.get('__count') or 0)
-                for g in status_groups
+                (status or 'unknown'): (count or 0)
+                for status, count in status_groups
             }
 
             # Breakdown 3 — by recognition_date month (on the line model).
@@ -614,25 +665,28 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
                 ('recognition_date', '>=', wizard.date_from),
                 ('recognition_date', '<=', wizard.date_to),
             ]
-            period_groups = Line.read_group(
+            # ``_read_group`` with ``:month`` granularity returns a
+            # Python ``date`` representing the first day of each
+            # month bucket (e.g. ``date(2024, 1, 1)`` for January
+            # 2024) — NOT a pre-formatted string like the deprecated
+            # ``read_group`` produced.  We format the bucket date
+            # ourselves with ``format_date(... 'MMMM yyyy')`` so the
+            # JSON payload still carries a human-readable label.
+            period_groups = Line._read_group(
                 domain=line_domain,
-                fields=['recognition_amount:sum'],
                 groupby=['recognition_date:month'],
-                lazy=False,
+                aggregates=['__count', 'recognition_amount:sum'],
             )
-            # ``read_group`` with a ``:month`` granularity already
-            # produces human-readable labels (e.g. "January 2024"); we
-            # expose them verbatim so the dashboard widget can render
-            # them without further formatting.  The ``__range`` dict
-            # on each group carries the ISO date bounds if an OWL
-            # component ever needs to drill into a specific month.
             wizard.period_breakdown_json = [
                 {
-                    'month': g.get('recognition_date:month') or '',
-                    'total': g.get('recognition_amount') or 0.0,
-                    'count': g.get('__count') or 0,
+                    'month': (
+                        format_date(self.env, month_date, date_format='MMMM yyyy')
+                        if month_date else ''
+                    ),
+                    'total': total or 0.0,
+                    'count': count or 0,
                 }
-                for g in period_groups
+                for month_date, count, total in period_groups
             ]
 
     # -----------------------------------------------------------------
@@ -875,4 +929,231 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
             'view_mode': 'form',
             'target': 'current',
             'context': self.env.context,
+        }
+
+    # -----------------------------------------------------------------
+    # SECTION 9 — Export action methods (PDF and XLSX).
+    #
+    # DR-004 Acceptance Criteria + AAP §0.5.1.3 require the dashboard
+    # to be exportable to both PDF (QWeb) and XLSX (openpyxl).  PDF
+    # rendering uses the standard Odoo ``ir.actions.report`` machinery
+    # via ``report_action``; XLSX rendering builds a workbook in
+    # memory, persists it as an ``ir.attachment``, and returns a
+    # download URL.  Both actions are wired to ``<button>`` elements
+    # in the dashboard form view.
+    #
+    # The XLSX export pattern follows the FEATURE-001 precedent in
+    # ``addons/account_financial_report_ce/models/financial_report.py``
+    # (action_export_xlsx) — base64-encoded workbook stored as an
+    # ir.attachment with mimetype ``application/vnd.openxmlformats-...``
+    # then served via ``/web/content/<id>?download=true``.
+    # -----------------------------------------------------------------
+
+    def action_export_pdf(self):
+        """Export the dashboard's current state as a QWeb-rendered PDF.
+
+        Forces a fresh recomputation of every computed field (so the
+        PDF reflects the user's current filter configuration), then
+        delegates to the standard Odoo ``ir.actions.report``
+        machinery to render
+        ``account_deferred_revenue.report_recognition_dashboard``
+        (the QWeb template registered in
+        ``data/recognition_dashboard_report.xml``).
+
+        :returns: an ``ir.actions.report`` action dict that triggers
+            QWeb PDF rendering through Odoo's ``wkhtmltopdf``
+            integration.
+        :rtype: dict
+        """
+        self.ensure_one()
+        # Refresh computed fields so the rendered PDF reflects any
+        # filter changes the user made since the last access.  We
+        # invalidate the same fields that ``action_refresh`` does so
+        # the QWeb template (which reads them via ``t-field``) sees
+        # current data.
+        self.invalidate_recordset(fnames=[
+            'total_deferred_revenue',
+            'total_deferred_expenses',
+            'active_schedule_count',
+            'next_period_recognition',
+            'schedule_breakdown_json',
+            'period_breakdown_json',
+            'status_distribution_json',
+        ])
+        report_xml_id = (
+            'account_deferred_revenue.action_report_recognition_dashboard'
+        )
+        report_action = self.env.ref(report_xml_id)
+        return report_action.report_action(self, config=False)
+
+    def action_export_xlsx(self):
+        """Export the dashboard's current state as an XLSX workbook.
+
+        Builds a multi-sheet ``openpyxl.Workbook`` containing:
+
+        * **Summary** — KPI cards (totals + counts).
+        * **Schedule Breakdown** — recognition_method groups.
+        * **Period Breakdown** — month-by-month aggregates.
+        * **Status Distribution** — completion_status counts.
+        * **Filters** — date range, company, status filter (audit
+          trail).
+
+        The workbook is base64-encoded into an ``ir.attachment`` and a
+        download URL action is returned, mirroring the FEATURE-001
+        precedent in
+        ``addons/account_financial_report_ce/models/financial_report.py``.
+
+        Performance: ``_compute_summary`` and ``_compute_breakdown``
+        each run in O(rows) on the filtered subset; the workbook
+        write itself adds <100ms on typical hardware for the small
+        result set produced by the dashboard.
+
+        :returns: an ``ir.actions.act_url`` dict pointing to the
+            generated attachment download URL.
+        :rtype: dict
+        """
+        self.ensure_one()
+
+        # Force a fresh compute so the workbook reflects the current
+        # filter configuration.
+        self.invalidate_recordset(fnames=[
+            'total_deferred_revenue',
+            'total_deferred_expenses',
+            'active_schedule_count',
+            'next_period_recognition',
+            'schedule_breakdown_json',
+            'period_breakdown_json',
+            'status_distribution_json',
+        ])
+
+        # ---------------- Build workbook in memory ----------------
+        wb = Workbook()
+        bold_font = Font(bold=True, size=11)
+        header_align = Alignment(horizontal='center', wrap_text=True)
+        monetary_fmt = '#,##0.00'
+
+        # --- Sheet 1: Summary KPI cards --------------------------------
+        ws_summary = wb.active
+        ws_summary.title = (_('Summary'))[:31]
+        summary_rows = [
+            (_('Metric'), _('Value')),
+            (_('Total Deferred Revenue'), self.total_deferred_revenue or 0.0),
+            (_('Total Deferred Expenses'), self.total_deferred_expenses or 0.0),
+            (_('Active Schedule Count'), self.active_schedule_count or 0),
+            (_('Next Period Recognition'), self.next_period_recognition or 0.0),
+        ]
+        for r_idx, (label, value) in enumerate(summary_rows, start=1):
+            cell_label = ws_summary.cell(row=r_idx, column=1, value=label)
+            cell_value = ws_summary.cell(row=r_idx, column=2, value=value)
+            if r_idx == 1:
+                cell_label.font = bold_font
+                cell_value.font = bold_font
+                cell_label.alignment = header_align
+                cell_value.alignment = header_align
+            elif isinstance(value, (int, float)) and r_idx != 4:
+                # Apply monetary format to currency-bearing rows; the
+                # active-schedule-count row (r_idx == 4) is an integer
+                # and stays in default format.
+                cell_value.number_format = monetary_fmt
+        ws_summary.column_dimensions[get_column_letter(1)].width = 32
+        ws_summary.column_dimensions[get_column_letter(2)].width = 22
+
+        # --- Sheet 2: Schedule Breakdown (by recognition method) ------
+        ws_methods = wb.create_sheet(title=(_('Schedule Breakdown'))[:31])
+        method_headers = [_('Recognition Method'), _('Count'), _('Total Amount')]
+        for c_idx, header in enumerate(method_headers, start=1):
+            cell = ws_methods.cell(row=1, column=c_idx, value=header)
+            cell.font = bold_font
+            cell.alignment = header_align
+        method_payload = self.schedule_breakdown_json or []
+        for r_idx, entry in enumerate(method_payload, start=2):
+            ws_methods.cell(row=r_idx, column=1, value=entry.get('recognition_method', ''))
+            ws_methods.cell(row=r_idx, column=2, value=entry.get('count', 0))
+            cell_total = ws_methods.cell(
+                row=r_idx, column=3, value=entry.get('total_amount', 0.0),
+            )
+            cell_total.number_format = monetary_fmt
+        for col_idx, width in enumerate([28, 12, 18], start=1):
+            ws_methods.column_dimensions[get_column_letter(col_idx)].width = width
+
+        # --- Sheet 3: Period Breakdown (by recognition month) --------
+        ws_periods = wb.create_sheet(title=(_('Period Breakdown'))[:31])
+        period_headers = [_('Period'), _('Line Count'), _('Total Recognition')]
+        for c_idx, header in enumerate(period_headers, start=1):
+            cell = ws_periods.cell(row=1, column=c_idx, value=header)
+            cell.font = bold_font
+            cell.alignment = header_align
+        period_payload = self.period_breakdown_json or []
+        for r_idx, entry in enumerate(period_payload, start=2):
+            ws_periods.cell(row=r_idx, column=1, value=entry.get('month', ''))
+            ws_periods.cell(row=r_idx, column=2, value=entry.get('count', 0))
+            cell_total = ws_periods.cell(
+                row=r_idx, column=3, value=entry.get('total', 0.0),
+            )
+            cell_total.number_format = monetary_fmt
+        for col_idx, width in enumerate([22, 14, 22], start=1):
+            ws_periods.column_dimensions[get_column_letter(col_idx)].width = width
+
+        # --- Sheet 4: Status Distribution -----------------------------
+        ws_status = wb.create_sheet(title=(_('Status Distribution'))[:31])
+        ws_status.cell(row=1, column=1, value=_('Status')).font = bold_font
+        ws_status.cell(row=1, column=2, value=_('Count')).font = bold_font
+        ws_status.cell(row=1, column=1).alignment = header_align
+        ws_status.cell(row=1, column=2).alignment = header_align
+        status_payload = self.status_distribution_json or {}
+        if isinstance(status_payload, dict):
+            for r_idx, (status, count) in enumerate(
+                sorted(status_payload.items()), start=2,
+            ):
+                ws_status.cell(row=r_idx, column=1, value=status)
+                ws_status.cell(row=r_idx, column=2, value=count)
+        ws_status.column_dimensions[get_column_letter(1)].width = 18
+        ws_status.column_dimensions[get_column_letter(2)].width = 12
+
+        # --- Sheet 5: Filters (audit trail) --------------------------
+        ws_filters = wb.create_sheet(title=(_('Filters'))[:31])
+        filter_rows = [
+            (_('Date From'), str(self.date_from) if self.date_from else _('N/A')),
+            (_('Date To'), str(self.date_to) if self.date_to else _('N/A')),
+            (_('Company'), self.company_id.name if self.company_id else ''),
+            (_('Status Filter'), self.status_filter or ''),
+        ]
+        for r_idx, (label, value) in enumerate(filter_rows, start=1):
+            label_cell = ws_filters.cell(row=r_idx, column=1, value=label)
+            label_cell.font = bold_font
+            ws_filters.cell(row=r_idx, column=2, value=value)
+        ws_filters.column_dimensions[get_column_letter(1)].width = 22
+        ws_filters.column_dimensions[get_column_letter(2)].width = 32
+
+        # ---------------- Serialise to bytes ----------------
+        output = io.BytesIO()
+        wb.save(output)
+        xlsx_bytes = output.getvalue()
+        output.close()
+
+        # ---------------- Persist as ir.attachment ----------------
+        filename = (
+            f'recognition_dashboard_{fields.Date.context_today(self)}.xlsx'
+        )
+        attachment = self.env['ir.attachment'].create({
+            'name': filename,
+            'type': 'binary',
+            'datas': base64.encodebytes(xlsx_bytes),
+            'res_model': self._name,
+            'res_id': self.id,
+            'mimetype': (
+                'application/vnd.openxmlformats-officedocument'
+                '.spreadsheetml.sheet'
+            ),
+        })
+
+        _logger.info(
+            "DR-004 dashboard XLSX export created: %s (%d bytes)",
+            filename, len(xlsx_bytes),
+        )
+
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%d?download=true' % attachment.id,
+            'target': 'new',
         }

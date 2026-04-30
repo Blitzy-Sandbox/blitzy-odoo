@@ -57,7 +57,11 @@ AAP Rule Compliance:
 * **R-05** (no core field redefinition): tests only READ
   ``account.move.has_deferred_schedules`` (a new computed field) without
   redefining anything on the core model.
-* **R-07** (no unjustified ``sudo()``): no ``sudo()`` calls in this file.
+* **R-07** (justified ``sudo()`` only): a single ``sudo()`` call is used in
+  ``test_max_months_warning_threshold_edge_cases`` to set
+  ``ir.config_parameter`` values (which require admin privilege); the call
+  is annotated with the required ``# sudo required: ...`` inline comment.
+  No other ``sudo()`` calls appear in this file.
 """
 
 from datetime import date
@@ -1198,6 +1202,9 @@ class TestDeferredScheduleDefinition(AccountTestInvoicingCommon):
         # In both cases, the constraint must continue to function correctly
         # (raise on end <= start; warning-only on long schedules).
         # ------------------------------------------------------------------
+        # sudo required: writing to ir.config_parameter requires admin
+        # privilege per R-07; reading the test's mutated value via the
+        # same elevated handle keeps the parameter scope consistent.
         Config = self.env['ir.config_parameter'].sudo()
         param_key = 'account_deferred_revenue.max_months_warning'
         original_value = Config.get_param(param_key, default='60')

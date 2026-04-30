@@ -87,9 +87,10 @@
         # Data - sequences and cron jobs (R-06: AM-004 cron as XML ir.cron record)
         "data/asset_sequence.xml",
         "data/depreciation_cron.xml",
-        # Views - categories before assets (M2o target must exist first)
-        "views/account_asset_category_views.xml",
+        # Views - asset views FIRST so action_account_asset is registered
+        # before category_views references it via %(action_account_asset)d.
         "views/account_asset_views.xml",
+        "views/account_asset_category_views.xml",
         "views/depreciation_board_views.xml",
         # Wizards - transient models for asset modification and disposal
         "views/asset_modification_views.xml",

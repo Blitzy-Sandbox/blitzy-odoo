@@ -297,21 +297,22 @@ class AccountAssetCategory(models.Model):
     asset_account_id = fields.Many2one(
         comodel_name='account.account',
         string='Default Asset Account',
-        domain="[('account_type', '=', 'asset_fixed'), ('company_id', '=', company_id)]",
+        domain="[('account_type', '=', 'asset_fixed')]",
         check_company=True,
         help=(
             'Fixed-asset account (type ``asset_fixed``) inherited by assets '
-            'in this category at creation. The ``check_company`` flag and '
-            'the company-scoped domain together enforce that the account '
-            'belongs to the same company as the category in multi-company '
-            'deployments.'
+            'in this category at creation. The ``check_company`` flag '
+            'enforces multi-company isolation: ``account.account`` in '
+            'Odoo 19.0 uses ``company_ids`` (Many2many) which is '
+            'transparently checked by Odoo via the model-level '
+            '``_check_company_auto = True`` setting.'
         ),
     )
 
     expense_account_id = fields.Many2one(
         comodel_name='account.account',
         string='Default Depreciation Expense Account',
-        domain="[('account_type', '=', 'expense_depreciation'), ('company_id', '=', company_id)]",
+        domain="[('account_type', '=', 'expense_depreciation')]",
         check_company=True,
         help=(
             'Depreciation expense account (type ``expense_depreciation``) '
@@ -323,7 +324,7 @@ class AccountAssetCategory(models.Model):
     accumulated_depreciation_account_id = fields.Many2one(
         comodel_name='account.account',
         string='Default Accumulated Depreciation Account',
-        domain="[('account_type', '=', 'asset_non_current'), ('company_id', '=', company_id)]",
+        domain="[('account_type', '=', 'asset_non_current')]",
         check_company=True,
         help=(
             'Accumulated depreciation (contra-asset) account inherited by '

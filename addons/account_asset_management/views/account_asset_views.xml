@@ -266,7 +266,6 @@
                                       decoration-info="state == 'draft'"
                                       create="false"
                                       delete="false"
-                                      editable="false"
                                       limit="80">
                                     <field name="sequence" string="Period"/>
                                     <field name="depreciation_date"/>
@@ -400,7 +399,7 @@
 
                 <!-- Group-by toolbox -->
                 <separator/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter name="groupby_state"
                             string="Status"
                             context="{'group_by': 'state'}"/>

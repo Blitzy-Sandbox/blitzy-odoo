@@ -61,7 +61,7 @@
                                 type="action"
                                 name="%(action_account_asset)d"
                                 icon="fa-cubes"
-                                context="{'search_default_category_id': active_id}"
+                                context="{'search_default_category_id': id}"
                                 invisible="asset_count == 0">
                             <field name="asset_count"
                                    widget="statinfo"
@@ -196,7 +196,7 @@
 
                 <!-- Group-by -->
                 <separator/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter name="groupby_method"
                             string="Depreciation Method"
                             context="{'group_by': 'depreciation_method'}"/>

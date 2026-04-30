@@ -183,6 +183,16 @@ class AccountAssetDepreciationLine(models.Model):
     # State and audit
     # ------------------------------------------------------------------
 
+    # NOTE: ``tracking=True`` is intentionally NOT set on this Selection
+    # field even though the AAP design discusses it. The depreciation line
+    # model does not inherit ``mail.thread`` (chatter would add per-line
+    # audit storage that scales linearly with schedule length, which can
+    # be 480+ records per asset). Audit trail for asset-level state
+    # transitions (draft -> open -> close) is captured on the parent
+    # ``account.asset`` model, which DOES inherit ``mail.thread`` and
+    # ``mail.activity.mixin`` and emits chatter messages whenever a
+    # depreciation line is posted (see ``account.asset.message_post``
+    # calls in ``_cron_post_depreciation_entries``).
     state = fields.Selection(
         selection=[
             ('draft', 'Draft'),
@@ -193,7 +203,6 @@ class AccountAssetDepreciationLine(models.Model):
         default='draft',
         required=True,
         copy=False,
-        tracking=True,
         help='Draft: scheduled but not yet posted. '
              'Posted: journal entry created and posted. '
              'Skipped: line marked as intentionally not posted (admin '
@@ -228,6 +237,23 @@ class AccountAssetDepreciationLine(models.Model):
     # SQL constraints
     # ------------------------------------------------------------------
 
+    # Odoo 19 native constraint enforcement. The ``models.Constraint`` is
+    # the supported Odoo 19 mechanism that actually creates the PostgreSQL
+    # CHECK constraint (see ``odoo/orm/table_objects.py::Constraint``).
+    # The generated database object is named
+    # ``account_asset_depreciation_line_positive_amount``.
+    _positive_amount = models.Constraint(
+        'CHECK(depreciation_amount >= 0)',
+        'Depreciation amount must be non-negative.',
+    )
+
+    # Backwards-compatibility declaration kept for schema/spec alignment
+    # with the AAP exports list (``members_exposed`` includes
+    # ``_sql_constraints``). Odoo 19 emits a deprecation warning for this
+    # attribute via ``odoo/orm/model_classes.py`` but the actual CHECK is
+    # enforced by the ``_positive_amount`` Constraint above; both entries
+    # describe the SAME logical constraint and produce the SAME database
+    # guarantee.
     _sql_constraints = [
         (
             'positive_amount',

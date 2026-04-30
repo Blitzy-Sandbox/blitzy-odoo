@@ -304,7 +304,7 @@
 
                 <!-- Group-by options -->
                 <separator/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter name="groupby_asset"
                             string="Asset"
                             context="{'group_by': 'asset_id'}"/>

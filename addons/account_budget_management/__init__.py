@@ -1,31 +1,33 @@
 # Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""Top-level package entry for ``account_budget_management`` (FEATURE-003).
+"""Top-level package entry for the FEATURE-003 budget management addon.
 
 This file is the Python package initializer required by Odoo's module
-loader. Without it, the module folder cannot be imported as a Python
-package and none of the model classes defined under ``models/`` are
+loader. Without it, the addon folder cannot be imported as a Python
+package and none of the model classes defined in its subpackages are
 registered with the ORM.
 
-Subpackages loaded here:
+Subpackages loaded here (order-sensitive):
 
-* ``models`` — persistent and inherit-based models
-  (:class:`BudgetBudget`, :class:`BudgetBudgetLine`,
-  :class:`BudgetBudgetPeriod`, :class:`BudgetAlert`, and the
-  ``account.analytic.account`` inherit extension).
-* ``report`` — BM-003 Actual-vs-Budget AbstractModel helper
-  (:class:`BudgetVsActualReport`). The subpackage is loaded at module
-  install time so the helper is available to tests and any future
-  QWeb / pivot consumer without requiring a dedicated action.
-* ``wizard`` — BM-004 Variance Analysis interactive parameter
-  wizard (:class:`BudgetVarianceWizard`). The subpackage hosts
-  :class:`odoo.models.TransientModel` classes that collect user
-  parameters and return ``ir.actions.act_window`` descriptors
-  opening the appropriate reporting surfaces.
+* ``models`` — persistent ORM classes (``budget.budget``,
+  ``budget.budget.line``, ``budget.budget.period``, ``budget.alert``)
+  plus the ``_inherit`` extension of ``account.analytic.account``.
+  Loaded first so dependent classes can resolve every relational and
+  ``self.env[...]`` reference at registration time.
+* ``report`` — BM-003 actual-vs-budget :class:`AbstractModel` helper
+  (``budget.vs.actual.report``). Loaded after ``models`` because the
+  helper consumes persistent budget records.
+* ``wizard`` — BM-004 variance analysis :class:`TransientModel`
+  (``budget.variance.wizard``). Loaded after ``models`` because the
+  wizard issues ``self.env['budget.budget.line']`` lookups when the
+  user requests a variance run.
 
-Precedent: ``addons/account_financial_report_ce/__init__.py`` uses the
-same ``from . import models, report, wizard`` pattern. We follow the
-OCA convention verbatim.
+Comma order in the import statement below follows ruff's alphabetical
+``I001`` convention; the only ordering that materially affects ORM
+registration is that ``models`` must be one of the items in this
+module-level import statement, which it is. Both ``report`` and
+``wizard`` perform their cross-references at runtime via
+``self.env[]`` lookups, so their relative position is irrelevant.
 """
 
 from . import models, report, wizard

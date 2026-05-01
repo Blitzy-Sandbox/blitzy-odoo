@@ -3,71 +3,151 @@
     Copyright 2024 Enterprise Accounting Team
     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
-    AM-004 Automatic Depreciation Entries: Scheduled Action.
+    Automatic Depreciation Entry Posting (FEATURE-004, AM-004)
+    ==========================================================
 
-    Per AAP Rule R-06 (MUST: ir.cron via XML for AM-004 and PF-002),
-    this scheduled job is declared as an XML record (model="ir.cron")
-    rather than a Python-level scheduling primitive. The cron entry
-    point is the @api.model method
-    account.asset._cron_post_depreciation_entries which:
+    Scheduled action that runs daily at 02:00 to identify all open assets
+    whose depreciation lines are due for posting (depreciation_date <= today
+    AND state='draft'), create the corresponding account.move entries
+    (debit depreciation expense, credit accumulated depreciation), and
+    transition each depreciation line to 'posted'.
 
-      * Searches for all open assets with at least one due draft
-        depreciation line.
-      * Posts each due line via the depreciation-line model's
-        action_post method (which creates a balanced
-        account.move and (conditionally on the asset category's
-        auto_post_depreciation flag) posts it).
-      * Auto-closes assets whose net book value has reached the
-        salvage value (AM-004 AC6 "Fully Depreciated Asset").
-      * Logs structured INFO / WARNING / EXCEPTION records for
-        observability.
-      * Returns a dict {success, skipped, errors} of per-line
-        and per-asset counters.
+    MANDATORY per AAP Rule R-06 (MUST   ir.cron via XML for AM-004 and
+    PF-002): ir.cron MUST be declared as an XML record. Python-level cron
+    scheduling primitives (threading.Timer, APScheduler, sched, etc.) are
+    STRICTLY PROHIBITED anywhere in the module. After module install, this
+    cron MUST be visible in Settings > Technical > Automation > Scheduled
+    Actions (Gate 13   Registration-Invocation Pairing) and MUST be manually
+    invokable via the "Run Manually" action on the cron form view.
 
-    Wrapped in <data noupdate="1"> so administrator customization
-    of the schedule (interval, active flag, user) is preserved
-    across module upgrades.
+    Contract With account.asset._cron_post_depreciation_entries
+    ===========================================================
+    The "code" field below invokes ``model._cron_post_depreciation_entries()``
+    where ``model`` is bound by Odoo's cron machinery to
+    ``self.env['account.asset']`` based on the ``model_id`` reference. The
+    method (defined in ``models/account_asset.py``, decorated with
+    ``@api.model``) handles:
 
-    Visibility: after install, the cron is reachable at
-    Settings > Technical > Automation > Scheduled Actions
-    under the name "AM-004: Post Asset Depreciation Entries".
+      * **Batch processing**   a single ORM ``search`` retrieves all open
+        assets with at least one due draft depreciation line; per-asset
+        and per-line filtering uses Python ``filtered`` on already-loaded
+        recordsets so the cron avoids N+1 queries even with thousands of
+        assets in the portfolio.
+      * **Idempotency** (AM-004 AC6 "Already Depreciated Error")   each
+        depreciation line's ``action_post`` is a no-op when state != 'draft';
+        re-running the cron after a partial failure (or running it twice
+        manually via the "Run Manually" button) does not create duplicate
+        journal entries. This property is verified by
+        ``tests/test_am_004.py``.
+      * **Fault tolerance** (AM-004 AC6)   per-line ``UserError`` (locked
+        period, missing accounts, etc.) is caught, logged at WARNING, and
+        the next line in the same asset is processed. Per-asset
+        ``Exception`` is caught with ``_logger.exception`` so one asset's
+        failure cannot abort the rest of the batch.
+      * **Auto-close** (AM-004 AC6 "Fully Depreciated Asset")   after
+        posting the due lines for an asset, if the recomputed
+        ``net_book_value`` is at or below ``salvage_value``, the asset is
+        transitioned to ``state='close'`` automatically with a chatter
+        notice and an activity log entry.
+      * **Structured logging** (AM-004 AC5)   emits INFO log records for
+        cron start (asset count, today's date), cron completion
+        (success/skipped/errors counters), WARNING records for each
+        skipped line with the reason, and EXCEPTION records (with full
+        traceback) for each errored asset.
+
+    Schedule Rationale (per AM-004 Scheduled Action Considerations)
+    ===============================================================
+    Daily cadence (interval_number=1, interval_type='days') guarantees
+    every scheduled depreciation date is processed exactly once per day.
+    The 02:00 execution time is the canonical low-traffic window observed
+    in core ``addons/account/data/service_cron.xml`` and avoids daytime
+    user impact. The ``nextcall`` eval expression schedules the FIRST run
+    at 02:00 *tomorrow* (today's date at 02:00 plus one day) so the cron
+    does not fire immediately during module install/upgrade; subsequent
+    runs occur every 24 hours at the same time of day.
+
+    Field Notes (Odoo 19.0 ir.cron schema)
+    ======================================
+    * ``ir.cron`` uses ``_inherits = {'ir.actions.server': ...}`` in
+      Odoo 19.0, so ``name``, ``model_id``, ``state``, and ``code`` are
+      delegated fields from ``ir.actions.server``.
+    * ``user_id``, ``active``, ``interval_number``, ``interval_type``,
+      ``nextcall``, and ``priority`` are direct fields on ``ir.cron``.
+    * The legacy ``numbercall`` and ``doall`` fields have been REMOVED
+      from ``ir.cron`` in Odoo 19.0 (verified against
+      ``odoo/addons/base/models/ir_cron.py`` and the live ``ir_cron``
+      PostgreSQL table schema). Including ``<field name="numbercall">``
+      or ``<field name="doall">`` would cause module install to fail
+      with a missing-field error. Cron repetition is now controlled
+      solely by the ``active`` boolean (unlimited runs are implicit
+      while ``active=True``); the legacy "thundering herd" catch-up
+      semantics formerly governed by ``doall`` are now handled
+      internally by the cron executor reading the live ``nextcall``
+      field at each scheduling cycle.
+    * ``priority`` defaults to 5 in Odoo 19.0; an explicit value of 5 is
+      set below to make the priority intent explicit and to match the
+      schema's exposed members. Lower number = higher priority (0 is
+      highest urgency, 10 is lowest).
+
+    The ``<data noupdate="1">`` wrapper preserves administrator
+    customizations of the cron (e.g., schedule time via ``nextcall``,
+    interval changes, active toggle, user override) across module
+    upgrades. Without this attribute, a module upgrade would overwrite
+    administrator-configured schedules with the static defaults declared
+    here.
+
+    Rules Compliance (AAP Section 0.7)
+    ==================================
+    * R-01 (Module Independence): no references to sibling new modules
+      (account_budget_management, account_deferred_revenue,
+      account_payment_followup)   this XML file uses only the local
+      external ID ``model_account_asset`` and the core ``base.user_root``
+      reference.
+    * R-02 (No Enterprise Dependencies): no references to Enterprise
+      addons (account_asset, account_accountant, account_reports,
+      account_budget, account_followup, account_deferred_revenue).
+    * R-03 (N/A): this is XML data, not Python model code; ``_inherit``
+      and ``_name`` are model-class concerns.
+    * R-05 (N/A): this file declares an ``ir.cron`` data record, not a
+      Python field on a core model.
+    * R-06 (MUST   ir.cron via XML): cron declared here in XML, NOT via
+      Python scheduling primitives. Compliance verified by static grep
+      audit of the module: zero hits for ``threading.Timer``,
+      ``APScheduler``, or ``sched.``.
+    * R-07 (N/A here): this XML file contains no Python ``sudo()`` calls.
+      The ``_cron_post_depreciation_entries`` method in
+      ``models/account_asset.py`` is responsible for R-07 compliance
+      and contains zero ``sudo()`` calls (the cron's elevated privilege
+      is delivered via ``user_id ref="base.user_root"`` below, not via
+      runtime privilege escalation).
+    * R-09 (Exact folder name): file resides in
+      ``addons/account_asset_management/data/``   folder name matches
+      AAP Rule R-09 character-for-character.
+
+    Precedent
+    =========
+    Pattern mirrors ``addons/account/data/service_cron.xml`` (Odoo core
+    canonical ``ir_cron_auto_post_draft_entry`` precedent) for the
+    ``state='code'`` + ``model._method()`` invocation style and the
+    ``DateTime.now().replace(hour=2, minute=0) + timedelta(days=1)``
+    eval expression for the next-day 02:00 ``nextcall`` schedule. The
+    ``<data noupdate="1">`` wrapping pattern follows
+    ``addons/mail/data/ir_cron_data.xml`` (OCA preferred convention so
+    that administrator customizations are preserved across upgrades).
 -->
 <odoo>
     <data noupdate="1">
 
-        <!--
-            Cron user: defaults to the OdooBot internal user
-            (base.user_root) so the cron always runs with
-            administrative privileges and never depends on a
-            still-active human user. This matches the precedent set
-            by Odoo core's addons/account/data/service_cron.xml
-            scheduled actions.
-
-            Interval: daily at 03:00 server time. Daily cadence
-            ensures depreciation entries are posted on or shortly
-            after their scheduled date; running once per day is
-            sufficient because the cron is idempotent (re-runs are
-            no-ops for already-posted lines).
-
-            state="code" mode invokes the Python expression in
-            "code" against "model", where "model" is the
-            recordset of account.asset (the model_id reference
-            below). The recordset is empty at cron-trigger time, so
-            model._cron_post_depreciation_entries() invokes the
-            @api.model method directly.
-
-            numbercall defaults to -1 (unlimited) and
-            priority defaults to 5 (low priority) so the cron
-            does not pre-empt time-critical accounting jobs.
-        -->
         <record id="ir_cron_asset_depreciation" model="ir.cron">
-            <field name="name">AM-004: Post Asset Depreciation Entries</field>
+            <field name="name">Assets: Post Depreciation Entries</field>
             <field name="model_id" ref="model_account_asset"/>
             <field name="state">code</field>
             <field name="code">model._cron_post_depreciation_entries()</field>
             <field name="user_id" ref="base.user_root"/>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
+            <field name="nextcall"
+                   eval="(DateTime.now().replace(hour=2, minute=0, second=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
             <field name="active" eval="True"/>
             <field name="priority">5</field>
         </record>

@@ -740,6 +740,91 @@ class BudgetBudgetLine(models.Model):
                     allowed=', '.join(_ALLOWED_ACCOUNT_TYPES),
                 ))
 
+    @api.constrains('analytic_distribution')
+    def _check_analytic_distribution_keys(self):
+        """Validate that analytic_distribution keys are integer-parseable.
+
+        ``analytic_distribution`` is a JSON dict provided by
+        ``analytic.mixin`` whose keys are ID-strings (single
+        ``account.analytic.account`` IDs) or comma-separated
+        composite ID-strings (multi-axis distributions like
+        ``"5,7"``). Downstream code paths — notably
+        ``analytic.mixin._get_analytic_account_ids_from_distributions``
+        consumed by :meth:`_match_analytic_distribution` and the
+        ``_compute_variance`` actuals branch — call ``int(_id)``
+        directly on every comma-split fragment of every key. A key
+        that is not parseable as an integer (for example the literal
+        string ``"False"`` or any non-numeric token introduced by an
+        ill-formed import / integration payload) crashes the entire
+        budget reporting pipeline at evaluation time with
+        ``ValueError: invalid literal for int() with base 10: ...``.
+
+        This constraint catches such malformed distributions at
+        ``create`` / ``write`` time and surfaces a localized
+        :class:`ValidationError` that points the operator at the
+        offending key — rejecting bad data BEFORE it can corrupt
+        downstream variance computation, BM-005 alert evaluation,
+        and BM-003 actuals reporting.
+
+        Validation rules:
+
+            * ``None`` and the empty dict are accepted (a budget
+              line without any analytic scope is the default).
+            * Each key must be a string (Odoo's ``fields.Json``
+              normalises JSON keys to ``str``); empty keys are
+              rejected.
+            * Each comma-separated fragment of a key must parse as a
+              positive integer via ``int(fragment)``.
+
+        QA finding reference: Phase 2 / Issue #2 — non-integer keys
+        accepted at ``create`` time leading to downstream crashes.
+        """
+        for line in self:
+            distribution = line.analytic_distribution
+            if not distribution:
+                # ``None`` / empty dict — no analytic scope — accept.
+                continue
+            for key in distribution:
+                # ``fields.Json`` always serialises keys as strings;
+                # the defensive ``str()`` cast guards against
+                # construction paths (e.g., direct cache writes) that
+                # might pass a non-string key.
+                key_str = str(key) if key is not None else ''
+                if not key_str:
+                    raise ValidationError(_(
+                        "Analytic distribution contains an empty "
+                        "key on budget line for account "
+                        "%(account)s. Each key must be a non-empty "
+                        "string of comma-separated analytic account "
+                        "IDs.",
+                        account=(
+                            line.account_id.display_name
+                            or _('(none)')
+                        ),
+                    ))
+                # Multi-axis distributions encode several analytic
+                # account IDs in a single key as
+                # ``"<id1>,<id2>,..."``. Every fragment must parse as
+                # a positive integer (analytic account IDs in Odoo
+                # are always positive). ``str.isdigit()`` rejects
+                # empty strings, leading sign characters, and any
+                # non-decimal-digit content in a single check.
+                for fragment in key_str.split(','):
+                    fragment = fragment.strip()
+                    if not fragment or not fragment.isdigit():
+                        raise ValidationError(_(
+                            "Invalid analytic distribution key "
+                            "'%(key)s' on budget line for account "
+                            "%(account)s: every comma-separated "
+                            "segment must be a positive integer ID "
+                            "of an account.analytic.account record.",
+                            key=key_str,
+                            account=(
+                                line.account_id.display_name
+                                or _('(none)')
+                            ),
+                        ))
+
     # ==================================================================
     # Action helpers
     # ==================================================================

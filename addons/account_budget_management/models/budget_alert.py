@@ -80,6 +80,8 @@ Performance
 
 import logging
 
+from psycopg2 import IntegrityError
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -582,11 +584,34 @@ class BudgetAlert(models.Model):
                 existing = self.search(domain, limit=1)
                 if existing:
                     continue
-                alert = self._create_alert_for_line(
-                    line, threshold, consumption, actual,
-                )
-                alert._send_notification()
-                created_count += 1
+                # Robustness: even with the deduplication ``search()``
+                # above, a concurrent cron invocation (or a manual
+                # operator-triggered run within the same wall-clock
+                # second) can race between the search and the create.
+                # The UNIQUE(budget_line_id, alert_threshold_percent,
+                # alert_date) constraint then surfaces as a
+                # ``psycopg2.IntegrityError``. Wrapping the create +
+                # notification in a savepoint allows us to catch the
+                # exception and keep the rest of the cron batch
+                # processing without aborting the surrounding
+                # transaction. (QA Phase 2 / Issue #3.)
+                try:
+                    with self.env.cr.savepoint():
+                        alert = self._create_alert_for_line(
+                            line, threshold, consumption, actual,
+                        )
+                        alert._send_notification()
+                        created_count += 1
+                except IntegrityError as exc:
+                    _logger.warning(
+                        "BM-005: skipping duplicate alert for "
+                        "budget line %s, threshold %s%% (race with "
+                        "concurrent cron run): %s",
+                        line.id,
+                        threshold,
+                        exc,
+                    )
+                    continue
         _logger.info(
             "BM-005: Created %s new alert event(s)", created_count,
         )

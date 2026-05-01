@@ -335,6 +335,14 @@ class AccountFollowupLevel(models.Model):
             - Must have overdue invoices (``has_overdue_invoices=True``)
             - Must be assigned to a level in ``self`` (after
               ``res.partner._compute_followup_level`` evaluation)
+            - Cooldown enforced: a partner whose
+              ``followup_next_action_date`` is strictly in the future
+              (set by a previous successful run of
+              ``process_followup_emails``) is skipped this run.
+              Partners with no recorded next action date (i.e.,
+              ``followup_next_action_date`` is ``False`` — typical for
+              the first follow-up touch) and partners whose next-action
+              date is on or before today are included.
             - Honors ``active_partner_ids`` context key for manual-trigger path
             - Limited to ``batch_size`` partners (PF-002 performance target)
 
@@ -343,15 +351,29 @@ class AccountFollowupLevel(models.Model):
         thresholds may differ across levels and the comparison must happen
         against the partner's currently-assigned level only.
 
+        QA finding reference: Phase 2 / Issue #4 — without the cooldown
+        filter, partners receive a fresh email on every cron tick after
+        their first qualifying run, even though
+        ``process_followup_emails`` records ``today + level.delay`` on
+        ``partner.followup_next_action_date`` to express the intended
+        cooldown window. The cooldown is now enforced at search time so
+        a same-day re-run of the cron skips already-touched partners.
+
         :param batch_size: maximum number of partners to return (default 500)
         :return: ``res.partner`` recordset
         """
         Partner = self.env['res.partner']
+        today = fields.Date.context_today(self)
         # Base domain: customers with overdue receivables assigned to one of
-        # our levels.
+        # our levels AND whose cooldown window has elapsed (or who have
+        # never been touched, in which case followup_next_action_date is
+        # ``False``).
         domain = [
             ('has_overdue_invoices', '=', True),
             ('followup_level_id', 'in', self.ids),
+            '|',
+            ('followup_next_action_date', '=', False),
+            ('followup_next_action_date', '<=', today),
         ]
         # Manual-trigger path (called from res.partner.action_send_followup_now
         # or wizard-driven flows): restrict to explicitly-selected partners.

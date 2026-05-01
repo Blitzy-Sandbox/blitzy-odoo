@@ -854,6 +854,38 @@ class AccountAssetDisposalWizard(models.TransientModel):
                     tot=wizard.total_quantity,
                 ))
 
+    @api.constrains('disposal_reason')
+    def _check_disposal_reason(self):
+        """AM-006 AC3: Provide a friendly error when disposal_reason is blank.
+
+        The ``disposal_reason`` field is also declared with
+        ``required=True`` which sets a database-level ``NOT NULL``
+        constraint on the column. However, a ``NOT NULL`` violation
+        surfaces to the end user as a raw
+        ``psycopg2.errors.NotNullViolation`` traceback rather than a
+        localized, human-readable message. This Python-level
+        constraint runs whenever ``disposal_reason`` is set to an
+        empty string, ``None``, or whitespace-only content (the
+        common ways users "submit blank" through the form widget) and
+        produces the AM-006 AC3 audit-trail justification message in
+        the user's language via the ``_(...)`` translation marker.
+
+        The QA finding (Phase 2 / Issue #1) explicitly requested this
+        constraint so that the reproduction path "Open the disposal
+        wizard, call ``create()`` without a disposal reason" now
+        produces a ``ValidationError`` with the message
+        "Disposal Reason is required." instead of a database-level
+        traceback.
+        """
+        for wizard in self:
+            if (
+                not wizard.disposal_reason
+                or not wizard.disposal_reason.strip()
+            ):
+                raise ValidationError(_(
+                    'Disposal Reason is required.',
+                ))
+
     # =========================================================================
     # ACTION METHODS
     # =========================================================================
@@ -895,6 +927,7 @@ class AccountAssetDisposalWizard(models.TransientModel):
         self._check_proceeds_configuration()
         self._check_gain_loss_accounts()
         self._check_partial_quantity()
+        self._check_disposal_reason()
         self.write({'state': 'confirmed'})
         _logger.info(
             'AM-006: disposal wizard %d confirmed for asset %s '

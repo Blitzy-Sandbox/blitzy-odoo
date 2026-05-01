@@ -277,7 +277,7 @@
                                 <div class="border rounded p-3 bg-light">
                                     <p class="text-muted mb-1 small">Recovery Rate</p>
                                     <h4 class="mb-0">
-                                        <span t-esc="'%.1f%%' % (effectiveness.get('recovery_rate_pct') or 0.0)"/>
+                                        <span t-esc="('%.1f' % (effectiveness.get('recovery_rate_pct') or 0.0)) + '%'"/>
                                     </h4>
                                 </div>
                             </div>
@@ -314,7 +314,7 @@
                                                 <td class="text-end"><span t-esc="level_stat.get('sent_count') or 0"/></td>
                                                 <td class="text-end"><span t-esc="level_stat.get('response_count') or 0"/></td>
                                                 <td class="text-end">
-                                                    <span t-esc="'%.1f%%' % (level_stat.get('response_rate_pct') or 0.0)"/>
+                                                    <span t-esc="('%.1f' % (level_stat.get('response_rate_pct') or 0.0)) + '%'"/>
                                                 </td>
                                             </tr>
                                         </tbody>

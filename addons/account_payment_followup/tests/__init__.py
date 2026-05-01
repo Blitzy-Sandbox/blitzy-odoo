@@ -37,6 +37,16 @@ parser, and email-generation modules with file-name-aligned identifiers:
     ``account_financial_report_ce/tests/test_balance_sheet.py``,
     ``test_aged_partner.py`` etc., providing a high-resolution
     coverage layer on top of the per-story ``test_pf_003.py`` module.
+  * ``test_overdue_calculation`` — PF-005 phase-plan acceptance tests
+    (35 methods covering the agent-prompt's nine-phase plan: days-
+    overdue calculation, level assignment, aging-bucket boundaries,
+    disputed-invoice framework, partial-payment residual semantics,
+    recalculation triggers, BR-006 credit notes, and performance /
+    integration). Mirrors the per-component file naming convention
+    used by FEATURE-001's
+    ``account_financial_report_ce/tests/test_aged_partner.py``,
+    providing a complementary coverage layer alongside
+    ``test_pf_005.py``.
 
 The order of imports matters: ``common`` MUST come first so the base
 class is available to subclasses; the per-story modules then extend it.
@@ -46,6 +56,7 @@ from . import (
     common,
     test_email_generation,
     test_followup_report,
+    test_overdue_calculation,
     test_pf_001,
     test_pf_002,
     test_pf_003,

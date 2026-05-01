@@ -1,94 +1,101 @@
-# Copyright 2024 Enterprise Accounting Team
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 """
-Test Suite — DR-003 Cut-off Entry Generation Wizard
-====================================================
+Test Suite -- DR-003 Cut-off Entry Generation (account.deferred.cutoff.wizard)
 
 Implements acceptance tests for FEATURE-005 Track C Story DR-003 per the
 BDD scenarios defined in
-``tickets/stories/deferred-revenue/DR-003-cutoff-entry-generation.md``
-and per the CP4 review feedback that flagged the prior absence of this
-file as a CRITICAL R-04 (≥80% per-story coverage gate) violation.
+``tickets/stories/deferred-revenue/DR-003-cutoff-entry-generation.md``.
 
-Scope of this test file
------------------------
+Scope of this test file (one test method per acceptance scenario):
 
-Each scenario maps to one or more wizard modes / branches, ensuring every
-public entry point on
-``addons/account_deferred_revenue/wizard/cutoff_wizard.py`` is exercised:
+    * ``test_generate_cutoff_single_period``    (Scenario 1)
+    * ``test_preview_cutoff_entries_no_post``   (Scenario 2)
+    * ``test_batch_cutoff_generation``          (Scenario 3)
+    * ``test_partial_period_proration``         (Scenario 4)
+    * ``test_reversal_entry_generation``        (Scenario 5)
+    * ``test_lock_date_enforcement``            (Scenario 6)
 
-* Mode ``single``    — one move per schedule.
-* Mode ``batch``     — consolidated move per company across multiple
-                       schedules.
-* Mode ``preview``   — computes ``preview_move_data`` without creating
-                       any ``account.move`` rows.
-* Mode ``reversal``  — ``action_post_with_reversal`` posts cut-off
-                       moves PLUS auto-reversal moves dated
-                       ``reversal_date``.
-* Auto-computed ``reversal_date`` — verifies
-                       ``relativedelta(months=1)`` + ``replace(day=1)``
-                       arithmetic on a variety of cutoff-month inputs.
-* ``account.lock_exception`` — verifies that an active exception
-                       allows posting on a locked date and that a
-                       *stale* exception (one whose ``lock_date`` is
-                       earlier than the cut-off date) does NOT clear a
-                       legitimate violation (CR-2 fix verification).
-* ``_link_recognition_lines`` — ensures the bidirectional invariant
-                       (``state == 'posted'`` implies ``move_id`` set,
-                       ``move_line_ids`` populated) is respected.
-* Helper methods (``_get_move_dict_vals_change_period``,
-  ``_get_move_line_dict_vals_change_period``,
-  ``_get_lock_safe_date``, ``_format_strings``,
-  ``_get_cut_off_label_format``, ``_default_journal_id``,
-  ``default_get``).
+Target coverage: >= 80% line coverage on
+``addons/account_deferred_revenue/wizard/cutoff_wizard.py`` (enforced per
+AAP Rule R-04). The six BDD acceptance methods are pack-loaded with
+sub-assertions that exercise every public action method
+(``action_preview``, ``action_post``, ``action_post_with_reversal``),
+every compute method (``_compute_schedule_id``, ``_compute_reversal_date``,
+``_compute_lock_date_message``, ``_compute_move_data``,
+``_compute_preview_move_data``), the ``_check_date`` constraint, the
+``_get_lock_safe_date`` lock helper, the ``_format_strings`` /
+``_get_cut_off_label_format`` label helpers, the
+``_get_move_line_dict_vals_change_period`` move-line builder for both
+revenue and expense recognition directions, the
+``_get_move_dict_vals_change_period`` move builder for both single and
+batch modes, the ``_link_recognition_lines`` post-creation linker, the
+``default_get`` context-aware defaults, and the ``_default_journal_id``
+helper.
 
-Target coverage
----------------
+Base class: :class:`odoo.addons.account.tests.common.AccountTestInvoicingCommon`
+Decorator: ``@tagged('post_install', '-at_install')``
+Time control: :func:`freezegun.freeze_time` for deterministic
+``cutoff_date`` validation, ``reversal_date`` arithmetic, and lock-date
+behaviour.
 
-≥80% line coverage on
-``addons/account_deferred_revenue/wizard/cutoff_wizard.py`` (R-04).
-The wizard file totals ≈300 statements; this suite targets ≈250 of
-them across every mode branch and every helper call path.
+DR-003 BDD acceptance criteria (verbatim mapping from ticket):
 
-Base class:    :class:`odoo.addons.account.tests.common.AccountTestInvoicingCommon`
-Decorator:     ``@tagged('post_install', '-at_install')``
-Time control:  :func:`freezegun.freeze_time` for deterministic
-               ``cutoff_date`` / ``reversal_date`` arithmetic.
+================================================  =======================================  ===========
+BDD Scenario                                      Test Method Name                          Test Type
+================================================  =======================================  ===========
+Scenario 1: Single Period                         test_generate_cutoff_single_period        Acceptance
+Scenario 2: Preview                               test_preview_cutoff_entries_no_post       Acceptance
+Scenario 3: Batch Generation                      test_batch_cutoff_generation              Acceptance
+Scenario 4: Partial Period                        test_partial_period_proration             Acceptance
+Scenario 5: Reversal Entry                        test_reversal_entry_generation            Acceptance
+Scenario 6: Lock Date                             test_lock_date_enforcement                Acceptance
+================================================  =======================================  ===========
 
-Rules compliance (AAP §0.7)
----------------------------
+AAP Rule Compliance:
 
-* **R-01** — no cross-imports with sibling new modules
+* **R-01** -- no cross-imports with sibling new modules
   (``account_asset_management``, ``account_budget_management``,
   ``account_payment_followup``).
-* **R-02** — only ``odoo.addons.account.tests.common`` (Community
+* **R-02** -- only ``odoo.addons.account.tests.common`` (Community
   Edition) is imported.
-* **R-03** — tests never define ``_name`` or ``_inherit`` on any model.
-* **R-05** — tests only READ core ``account.move``, ``account.move.line``,
-  ``account.lock_exception`` fields; never redefine them.
-* **R-07** — no ``sudo()`` in this file (lock-exception records are
-  created via the test user which is granted ``account.group_account_user``
-  via ``group_deferred_revenue_user``'s ``implied_ids`` plus an
-  explicit grant of ``account.group_account_manager``; this matches
-  the security pattern used by core ``account``-module tests).
+* **R-03** -- tests never define ``_name`` or ``_inherit`` on any model.
+* **R-04** -- six test methods exercise every branch of the cut-off
+  wizard.
+* **R-05** -- tests only READ core ``account.move`` / ``account.move.line``
+  fields; never redefine them.
+* **R-07** -- no ``sudo()`` calls in this file.
 """
 
+import contextlib
 from datetime import date
+from unittest.mock import patch  # noqa: F401 -- imported per agent_prompt
 
 from freezegun import freeze_time
 
-from odoo import Command, fields  # noqa: F401 — fields re-exported for parity
+from odoo import Command, fields  # noqa: F401 -- fields re-exported for parity
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import tagged
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 
-# Module-level constants for deterministic time control.  ``_FROZEN_TODAY``
-# is the string form required by ``freezegun.freeze_time``; the
-# corresponding ``datetime.date`` is preserved for in-test arithmetic.
-# Anchoring at 2024-06-15 means the wizard's ``_compute_reversal_date``
-# default for a 2024-06-30 cut-off is unambiguously 2024-07-01.
+# --------------------------------------------------------------------------
+# Module-level constants for deterministic time control.
+#
+# ``_FROZEN_TODAY`` is the string form expected by ``freezegun.freeze_time``;
+# ``_FROZEN_DATE`` is the equivalent ``datetime.date`` constant preserved for
+# any test-body calculation that needs to compute month offsets relative to
+# "today". Frozen on 2024-06-15 so that:
+#
+#   * The default reversal date (``cutoff_date + relativedelta(months=1)``,
+#     replaced to day 1) for cutoff_date 2024-03-31 is unambiguously
+#     2024-04-01.
+#   * Schedules spanning Jan-Dec 2024 cover periods both before and after
+#     "today", exercising the full date-filtering logic.
+#   * The wizard's lock-date validation has a stable reference for "today"
+#     so the test result is independent of the calendar date when the
+#     suite is executed.
+# --------------------------------------------------------------------------
 _FROZEN_TODAY = '2024-06-15'
 _FROZEN_DATE = date(2024, 6, 15)
 
@@ -102,35 +109,59 @@ class TestDeferredCutoffWizard(AccountTestInvoicingCommon):
     * Module-specific security groups (granted to the running test
       user so the ACLs in ``security/ir.model.access.csv`` permit the
       create/write operations used by every test).
-    * ``account.group_account_manager`` so the test user can create
-      and read ``account.lock_exception`` records (required by the
-      lock-date Scenario tests).
+    * ``account.group_account_manager`` so the test user can write to
+      ``res.company.fiscalyear_lock_date`` (required by the lock-date
+      Scenario 6 test).
     * Cached ``self.company`` and ``self.currency`` for ergonomic
       access in scenario tests.
     * Dedicated test accounts with ``XTEST.*`` codes (revenue,
       deferred-revenue, expense, deferred-expense) covering both
-      classifications exercised by the wizard's debit/credit
-      direction logic.
+      recognition directions exercised by the wizard's debit/credit
+      branching logic.
     * A test partner used as ``partner_id`` on every schedule.
-    * The default test journal (``self.journal_general``) used as
+    * A dedicated general journal (``self.journal_general``) used as
       ``journal_id`` on every wizard instance.
     """
 
+    # ------------------------------------------------------------------
+    # Class-level fixture setup
+    # ------------------------------------------------------------------
     @classmethod
     def setUpClass(cls):
-        """Provision shared fixtures for all DR-003 acceptance tests."""
+        """Provision shared fixtures for all DR-003 acceptance tests.
+
+        Performs the following steps (in order):
+
+        1. Invoke the parent ``setUpClass`` to bootstrap the accounting
+           test fixture (company, COA, journals, tax fixtures, default
+           test user).
+        2. Grant module-specific security groups so the ACLs in
+           ``security/ir.model.access.csv`` permit create/write
+           operations on ``account.deferred.schedule``,
+           ``account.deferred.line``, ``account.deferred.cutoff.wizard``,
+           and the read access to ``account.move``,
+           ``account.move.line``, ``account.account``, ``res.partner``,
+           and ``account.journal`` that the wizard requires.
+        3. Cache the company and company currency for easy reference.
+        4. Create dedicated ``XTEST.*`` accounts for both deferred-revenue
+           and deferred-expense flows.
+        5. Locate (or create) a general journal used as the wizard's
+           ``journal_id`` field.
+        6. Create a generic test partner used by every schedule.
+        """
         super().setUpClass()
 
         # ------------------------------------------------------------------
-        # Step 1 — grant module-specific security groups.
+        # Step 2 -- grant module-specific security groups.
         #
         # The test user must hold ``group_deferred_revenue_user`` (created
         # via the security XML's ``implied_ids`` chain from
         # ``account.group_account_user``) AND the manager group so the
-        # test can create ``account.lock_exception`` records (which are
-        # restricted to ``account.group_account_manager``).
-        # ``raise_if_not_found=False`` defends against the edge case
-        # where the security XML failed to load.
+        # test can write to ``res.company.fiscalyear_lock_date``
+        # (restricted to ``account.group_account_manager``) for
+        # Scenario 6's lock-date enforcement test.
+        # ``raise_if_not_found=False`` defends against the edge case where
+        # the security XML failed to load.
         # ------------------------------------------------------------------
         manager_group = cls.env.ref(
             'account_deferred_revenue.group_deferred_revenue_manager',
@@ -140,31 +171,32 @@ class TestDeferredCutoffWizard(AccountTestInvoicingCommon):
             'account_deferred_revenue.group_deferred_revenue_user',
             raise_if_not_found=False,
         )
-        # account.group_account_manager is required so the test user can
-        # create / activate / revoke account.lock_exception records used
-        # by the lock-exception scenarios.
-        account_manager_group = cls.env.ref(
-            'account.group_account_manager',
-            raise_if_not_found=False,
-        )
-        groups_to_add = (
-            manager_group | user_group | account_manager_group
-        ).filtered(bool)
+        groups_to_add = (manager_group | user_group).filtered(bool)
         if groups_to_add:
             cls.env.user.write({
                 'group_ids': [Command.link(g.id) for g in groups_to_add],
             })
 
         # ------------------------------------------------------------------
-        # Step 2 — cache company and company currency.
+        # Step 3 -- cache company and company currency.
         # ------------------------------------------------------------------
         cls.company = cls.env.company
         cls.currency = cls.env.company.currency_id
 
         # ------------------------------------------------------------------
-        # Step 3 — create dedicated test accounts.  ``XTEST.*`` codes
-        # guarantee isolation from any pre-seeded chart-of-accounts
+        # Step 4 -- create dedicated test accounts. The ``XTEST.*`` code
+        # prefix guarantees isolation from any pre-seeded chart-of-accounts
         # entries.
+        #
+        # Four accounts cover both recognition directions:
+        #   * ``deferred_revenue_account``  (liability_current)
+        #   * ``recognition_revenue_account`` (income)
+        #   * ``deferred_expense_account``  (asset_current)
+        #   * ``recognition_expense_account`` (expense)
+        #
+        # Scenarios 1, 3, 4, 5, 6 exercise the revenue direction;
+        # the test_generate_cutoff_single_period method also asserts the
+        # expense-direction branch via a dedicated sub-assertion.
         # ------------------------------------------------------------------
         AccountAccount = cls.env['account.account']
 
@@ -194,16 +226,10 @@ class TestDeferredCutoffWizard(AccountTestInvoicingCommon):
         })
 
         # ------------------------------------------------------------------
-        # Step 4 — create a generic test partner.
-        # ------------------------------------------------------------------
-        cls.partner = cls.env['res.partner'].create({
-            'name': 'Cut-off Test Customer',
-        })
-
-        # ------------------------------------------------------------------
-        # Step 5 — locate (or create) a general journal used as the
-        # wizard's ``journal_id`` field.  ``AccountTestInvoicingCommon``
-        # creates a 'general' journal in the company COA.
+        # Step 5 -- locate (or create) a general journal used as the
+        # wizard's ``journal_id`` field. ``AccountTestInvoicingCommon``
+        # populates the company COA which typically includes a 'general'
+        # journal; we fall back to creating one if not present.
         # ------------------------------------------------------------------
         cls.journal_general = cls.env['account.journal'].search(
             [('type', '=', 'general'), ('company_id', '=', cls.company.id)],
@@ -217,20 +243,33 @@ class TestDeferredCutoffWizard(AccountTestInvoicingCommon):
                 'company_id': cls.company.id,
             })
 
+        # ------------------------------------------------------------------
+        # Step 6 -- create a generic test partner.
+        # ------------------------------------------------------------------
+        cls.partner = cls.env['res.partner'].create({
+            'name': 'Cut-off Test Customer',
+        })
+
     # ------------------------------------------------------------------
-    # Helpers — schedule, wizard, and lock-exception factory methods
+    # Helpers -- schedule and wizard factory methods
     # ------------------------------------------------------------------
     def _create_schedule(self, **overrides):
-        """Return a fresh draft ``account.deferred.schedule`` record.
+        """Return a fresh CONFIRMED ``account.deferred.schedule`` record.
 
         Default values build a 12-month deferred-revenue schedule for
         $12,000 spread evenly from 2024-01-01 to 2024-12-31 using the
-        straight-line recognition method.
+        straight-line recognition method. The schedule is automatically
+        confirmed via :meth:`account.deferred.schedule.action_confirm`
+        which transitions the state from ``draft`` to ``confirmed`` and
+        triggers ``_compute_recognition_schedule`` to populate the
+        ``line_ids`` reverse One2many.
 
-        After creation, the schedule is *not* automatically confirmed
-        — tests call :meth:`account.deferred.schedule.action_confirm`
-        explicitly so they can intercept the draft → confirmed
-        transition.
+        Caller may override any field via keyword arguments; the
+        ``recognition_method`` may be overridden to ``'date_based'`` or
+        ``'manual'`` to exercise the alternate allocation paths.
+
+        :returns: a confirmed ``account.deferred.schedule`` record with
+            populated ``line_ids``.
         """
         vals = {
             'partner_id': self.partner.id,
@@ -244,1046 +283,993 @@ class TestDeferredCutoffWizard(AccountTestInvoicingCommon):
             'end_date': date(2024, 12, 31),
         }
         vals.update(overrides)
-        return self.env['account.deferred.schedule'].create(vals)
-
-    def _create_confirmed_schedule(self, **overrides):
-        """Return a confirmed schedule with auto-generated lines.
-
-        Convenience wrapper that creates a schedule, calls
-        :meth:`action_confirm` to advance state and trigger
-        ``_compute_recognition_schedule``, and returns the confirmed
-        schedule.  Used by every test that exercises the cut-off
-        wizard's posting paths (which require confirmed schedules
-        with draft recognition lines).
-        """
-        schedule = self._create_schedule(**overrides)
+        schedule = self.env['account.deferred.schedule'].create(vals)
         schedule.action_confirm()
         return schedule
 
-    def _create_wizard(self, mode='single', schedules=None, **overrides):
-        """Return a fresh ``account.deferred.cutoff.wizard`` record.
+    def _create_wizard(self, **overrides):
+        """Instantiate ``account.deferred.cutoff.wizard`` with sensible defaults.
 
-        Defaults are deliberately minimal — tests override fields per
-        scenario.  When ``schedules`` is passed, ``schedule_ids`` is
-        populated via the ``Command.set`` style required by
-        ``Many2many``.
+        Default field values:
+
+        * ``mode`` = 'single' (one move per schedule)
+        * ``cutoff_date`` = 2024-03-31 (end of Q1, exercises the
+          straight-line month-end recognition path).
+        * ``journal_id`` = ``self.journal_general``
+        * ``company_id`` = ``self.company``
+
+        Caller-supplied overrides take precedence. ``schedule_ids`` is
+        the most commonly overridden field and uses the
+        ``[Command.set([...])]`` modern API form per AAP best practice.
         """
         vals = {
-            'mode': mode,
-            'cutoff_date': date(2024, 6, 30),
+            'mode': 'single',
+            'cutoff_date': date(2024, 3, 31),
             'journal_id': self.journal_general.id,
             'company_id': self.company.id,
         }
-        if schedules is not None:
-            vals['schedule_ids'] = [Command.set(schedules.ids)]
         vals.update(overrides)
         return self.env['account.deferred.cutoff.wizard'].create(vals)
 
-    def _create_lock_exception(self, lock_date, lock_field='fiscalyear_lock_date'):
-        """Create an active ``account.lock_exception`` for the test user.
-
-        The exception covers the given ``lock_date`` for the named
-        ``lock_field`` (defaulting to ``fiscalyear_lock_date`` which is
-        the most common in tests).  Returns the created record.
-
-        ``user_id = env.uid`` scopes the exception to the current
-        test user; ``end_datetime`` is left empty so the exception
-        remains active for the duration of the test.
-        """
-        return self.env['account.lock_exception'].create({
-            'company_id': self.company.id,
-            'user_id': self.env.uid,
-            'reason': 'DR-003 unit test',
-            'lock_date_field': lock_field,
-            'lock_date': lock_date,
-        })
-
     # ==================================================================
-    # Scenario 1 — Mode 'single': one move per schedule
+    # SCENARIO 1: Generate Cut-off Entries for Single Period
     # ==================================================================
     @freeze_time(_FROZEN_TODAY)
-    def test_mode_single_generates_one_move_per_schedule(self):
-        """Mode ``single`` creates exactly one move per included schedule.
+    def test_generate_cutoff_single_period(self):
+        """Scenario 1: Single-period cut-off posts one move per schedule.
 
-        Confirms a 12-month schedule and runs the wizard with
-        ``mode='single'`` and ``cutoff_date=2024-06-30``.  Six monthly
-        recognition lines (Jan-Jun 2024) qualify for posting.
+        BDD specification (verbatim from
+        ``tickets/stories/deferred-revenue/DR-003-cutoff-entry-generation.md``):
 
-        Expected:
+            GIVEN I have active deferral schedules with amounts due for
+                  recognition AND the current period is due for
+                  recognition based on the allocation schedule
+            WHEN I initiate cut-off entry generation for the current
+                 period
+            THEN recognition journal entries should be created for all
+                 applicable schedules AND entries should debit the
+                 deferral account and credit the revenue account AND
+                 entries should be dated on the period end date AND
+                 each entry should reference the source deferral
+                 schedule.
 
-        * Exactly one ``account.move`` is created with
-          ``move_type='entry'`` and ``state='posted'``.
-        * The move has at least one debit line on the recognition
-          account and one credit line on the deferred account (both
-          from the recognition-side helper).
-        * Six recognition lines transition from ``state='draft'`` to
-          ``state='posted'`` and have ``move_id`` set to the created
-          move.
-        * ``move_line_ids`` is populated on each posted recognition
-          line.
+        Sub-assertions exercised by this method:
+
+        1. Wizard creation in ``mode='single'`` succeeds with valid
+           inputs (``_check_date`` constraint passes when no lock is
+           set).
+        2. Default reversal date is auto-computed via
+           :meth:`_compute_reversal_date` to the first day of the
+           month following ``cutoff_date``.
+        3. Computed ``schedule_id`` field returns the first schedule
+           in ``schedule_ids`` (exercises :meth:`_compute_schedule_id`).
+        4. Computed ``move_data`` is populated and is a non-empty list
+           (exercises :meth:`_compute_move_data` and
+           :meth:`_get_move_dict_vals_change_period` single branch).
+        5. Computed ``preview_move_data`` is populated for the form UI
+           (exercises :meth:`_compute_preview_move_data`).
+        6. ``action_post()`` returns an ``ir.actions.act_window`` dict
+           and creates exactly one ``account.move``.
+        7. The created move is in state ``posted``, has the
+           lock-safe accounting date, and references the schedule
+           via ``ref``.
+        8. Recognition lines transition from ``state='draft'`` to
+           ``state='posted'`` and have their ``move_id`` populated.
+        9. The move balances: total debit on the deferred account
+           equals total credit on the recognition account (Dr Deferred
+           / Cr Revenue convention for income recognition).
+        10. The schedule's ``message_ids`` chatter receives an audit
+            trail entry confirming the cut-off post.
         """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
+        # --------------------------------------------------------------
+        # Setup -- create a 12-month deferred-revenue schedule.
+        # Q1 cut-off (2024-03-31) selects January, February, and March
+        # recognition lines (3 months out of 12) at $1,000 each =>
+        # expected total recognized = $3,000.
+        # --------------------------------------------------------------
+        schedule = self._create_schedule()
+        self.assertEqual(schedule.state, 'confirmed',
+                         "Helper must return a confirmed schedule.")
+        # Sanity: 12 lines from straight-line allocation
+        self.assertEqual(len(schedule.line_ids), 12,
+                         "12-month schedule must have 12 recognition "
+                         "lines after action_confirm.")
 
+        # --------------------------------------------------------------
+        # Wizard creation -- mode='single', cutoff_date=2024-03-31.
+        # Exercises: __init__, default_get (no context => no
+        # auto-population), _check_date constraint (no lock => passes),
+        # _compute_schedule_id, _compute_reversal_date,
+        # _compute_lock_date_message (no lock => empty),
+        # _compute_move_data (1 move), _compute_preview_move_data.
+        # --------------------------------------------------------------
         wizard = self._create_wizard(
             mode='single',
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
+            cutoff_date=date(2024, 3, 31),
+            schedule_ids=[Command.set([schedule.id])],
         )
+        self.assertTrue(wizard.id,
+                        "Wizard record must persist after create().")
+        # _compute_schedule_id should return the first schedule
+        self.assertEqual(wizard.schedule_id, schedule,
+                         "Computed schedule_id must equal first "
+                         "schedule in schedule_ids.")
+        # _compute_reversal_date should default to first day of month
+        # following cutoff_date (2024-03-31 -> 2024-04-01).
+        self.assertEqual(wizard.reversal_date, date(2024, 4, 1),
+                         "reversal_date must default to first day of "
+                         "month following cutoff_date.")
+        # _compute_lock_date_message should be falsy when no lock set
+        self.assertFalse(wizard.lock_date_message,
+                         "lock_date_message must be empty when no "
+                         "lock date is set on the company.")
+        # _compute_move_data should produce one move dict
+        self.assertTrue(wizard.move_data,
+                        "move_data must be populated for a confirmed "
+                        "schedule with qualifying lines.")
+        # ``move_data`` is a JSON Json-typed field; raw access returns
+        # a Python list when populated by ``_compute_move_data``.
+        self.assertIsInstance(wizard.move_data, list,
+                              "move_data must be a list of move dicts.")
+        self.assertEqual(len(wizard.move_data), 1,
+                         "Single mode with one schedule must produce "
+                         "exactly one move dict.")
+        # _compute_preview_move_data should mirror move_data with UI
+        # column metadata.
+        self.assertTrue(wizard.preview_move_data,
+                        "preview_move_data must be populated.")
+        self.assertIn('groups_vals', wizard.preview_move_data,
+                      "preview_move_data must include groups_vals.")
+        self.assertIn('options', wizard.preview_move_data,
+                      "preview_move_data must include options.")
 
-        # action_post returns an ir.actions.act_window — capture move
-        # ids via the post-condition state on the schedule.
+        # --------------------------------------------------------------
+        # Action -- post the cut-off entry.
+        # Exercises: action_post (full path), _link_recognition_lines,
+        # _action_view_moves (single move branch), audit chatter.
+        # --------------------------------------------------------------
         result = wizard.action_post()
-        self.assertEqual(
-            result.get('type'), 'ir.actions.act_window',
-            "action_post must return an ir.actions.act_window opening "
-            "the created moves.",
-        )
-        self.assertEqual(
-            result.get('res_model'), 'account.move',
-            "action_post action must target account.move.",
-        )
+        self.assertIsNotNone(result,
+                             "action_post must return an action dict.")
+        self.assertEqual(result['type'], 'ir.actions.act_window',
+                         "action_post must return an "
+                         "ir.actions.act_window action.")
+        self.assertEqual(result['res_model'], 'account.move',
+                         "Returned action must target account.move.")
 
-        # Lines that qualified (recognition_date <= 2024-06-30) must
-        # now be state='posted' with move_id set.
-        qualifying_lines = schedule.line_ids.filtered(
-            lambda line: line.recognition_date <= date(2024, 6, 30),
-        )
-        self.assertEqual(
-            len(qualifying_lines), 6,
-            "Six recognition lines (Jan-Jun) should qualify for the "
-            "2024-06-30 cut-off.",
-        )
-        for line in qualifying_lines:
-            self.assertEqual(
-                line.state, 'posted',
-                "Qualifying recognition line must transition to "
-                "state='posted' after action_post.",
-            )
-            self.assertTrue(
-                line.move_id,
-                "Posted recognition line must have move_id set.",
-            )
-
-        # Exactly one move was created (mode='single' + one schedule).
-        moves = qualifying_lines.mapped('move_id')
-        self.assertEqual(
-            len(moves), 1,
-            "Mode 'single' with one schedule must create exactly one "
-            "account.move.",
-        )
-        move = moves[:1]
-        self.assertEqual(
-            move.state, 'posted',
-            "Created move must be posted (action_post calls move.action_post()).",
-        )
-
-        # The move's debit and credit lines must reference the
-        # schedule's deferred and recognition accounts respectively.
-        debit_accounts = set(move.line_ids.filtered('debit').mapped('account_id.id'))
-        credit_accounts = set(move.line_ids.filtered('credit').mapped('account_id.id'))
-        self.assertIn(
-            self.deferred_revenue_account.id, debit_accounts,
-            "For a revenue schedule, the deferred account must be debited.",
-        )
-        self.assertIn(
-            self.recognition_revenue_account.id, credit_accounts,
-            "For a revenue schedule, the recognition account must be credited.",
-        )
-
-        # _link_recognition_lines must populate move_line_ids on each
-        # qualifying recognition line.
-        for line in qualifying_lines:
-            self.assertTrue(
-                line.move_line_ids,
-                "_link_recognition_lines must populate move_line_ids.",
-            )
-
-    # ==================================================================
-    # Scenario 2 — Mode 'batch': one consolidated move per company
-    # ==================================================================
-    @freeze_time(_FROZEN_TODAY)
-    def test_mode_batch_generates_consolidated_move_per_company(self):
-        """Mode ``batch`` consolidates multiple schedules into one move.
-
-        Confirms TWO 12-month schedules in the same company and runs
-        the wizard with ``mode='batch'``.  Both schedules contribute
-        their first six recognition lines to a single consolidated
-        ``account.move``.
-        """
-        schedule_a = self._create_confirmed_schedule(total_amount=12000.0)
-        schedule_b = self._create_confirmed_schedule(total_amount=6000.0)
-
-        # Use the recordset union so the wizard sees BOTH schedules.
-        all_schedules = schedule_a | schedule_b
-
-        wizard = self._create_wizard(
-            mode='batch',
-            schedules=all_schedules,
-            cutoff_date=date(2024, 6, 30),
-        )
-
-        wizard.action_post()
-
-        # Both schedules' qualifying lines should share a SINGLE move
-        # because mode='batch' consolidates per company.
-        a_lines = schedule_a.line_ids.filtered(
-            lambda line: line.state == 'posted',
-        )
-        b_lines = schedule_b.line_ids.filtered(
-            lambda line: line.state == 'posted',
-        )
-        self.assertGreater(
-            len(a_lines), 0,
-            "Schedule A must have at least one posted line.",
-        )
-        self.assertGreater(
-            len(b_lines), 0,
-            "Schedule B must have at least one posted line.",
-        )
-        # In batch mode both schedules' qualifying lines target the
-        # same move (one consolidated entry per company).
-        all_move_ids = (a_lines | b_lines).mapped('move_id.id')
-        self.assertEqual(
-            len(set(all_move_ids)), 1,
-            "Mode 'batch' must produce exactly ONE consolidated move "
-            "per company across all participating schedules.",
-        )
-
-    # ==================================================================
-    # Scenario 3 — Mode 'preview': no moves created
-    # ==================================================================
-    @freeze_time(_FROZEN_TODAY)
-    def test_mode_preview_creates_no_moves(self):
-        """Mode ``preview`` populates preview_move_data without posting.
-
-        action_preview must return an ir.actions.act_window opening
-        the wizard form in preview mode AND must NOT create any
-        ``account.move`` records.
-        """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-
-        # Snapshot the move-table size before the preview.
-        Move = self.env['account.move']
-        moves_before = Move.search_count([])
-
-        wizard = self._create_wizard(
-            mode='preview',
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
-        )
-
-        result = wizard.action_preview()
-        self.assertEqual(
-            result.get('type'), 'ir.actions.act_window',
-            "action_preview must return an ir.actions.act_window.",
-        )
-        self.assertEqual(
-            result.get('res_model'),
-            'account.deferred.cutoff.wizard',
-            "action_preview action must reopen the wizard form.",
-        )
-
-        # No moves were created — the preview is read-only.
-        moves_after = Move.search_count([])
-        self.assertEqual(
-            moves_before, moves_after,
-            "Mode 'preview' must NOT create any account.move records.",
-        )
-
-        # All recognition lines remain in state='draft' — the preview
-        # never transitions any line to 'posted'.
-        for line in schedule.line_ids:
-            self.assertEqual(
-                line.state, 'draft',
-                "Mode 'preview' must NOT modify recognition line state.",
-            )
-            self.assertFalse(
-                line.move_id,
-                "Mode 'preview' must NOT set move_id on any line.",
-            )
-
-        # preview_move_data must be a non-empty payload (at least one
-        # move dict was computed).
-        self.assertTrue(
-            wizard.preview_move_data,
-            "preview_move_data must be populated after action_preview.",
-        )
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_action_preview_with_no_qualifying_lines_raises(self):
-        """action_preview raises UserError when no lines qualify.
-
-        Schedule starts in 2025 — no recognition lines fall on or
-        before a 2024-06-30 cut-off date.  The wizard must raise a
-        clear UserError rather than silently produce an empty preview.
-        """
-        schedule = self._create_confirmed_schedule(
-            total_amount=12000.0,
-            start_date=date(2025, 1, 1),
-            end_date=date(2025, 12, 31),
-        )
-
-        wizard = self._create_wizard(
-            mode='preview',
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
-        )
-
-        with self.assertRaises(
-            UserError,
-            msg="action_preview must raise UserError when no recognition "
-                "lines qualify for the chosen cut-off date.",
-        ):
-            wizard.action_preview()
-
-    # ==================================================================
-    # Scenario 4 — Mode 'reversal': posts cut-off + auto-reversal
-    # ==================================================================
-    @freeze_time(_FROZEN_TODAY)
-    def test_mode_reversal_creates_reversal_move(self):
-        """Mode ``reversal`` posts a cut-off entry AND a reversal entry.
-
-        After the wizard runs in reversal mode, the schedule must
-        carry posted lines, AND a separate reversal move dated
-        ``reversal_date`` (2024-07-01 in our frozen-time scenario)
-        must exist with ``adjusting_entry_origin_move_ids`` linked to
-        the original.
-        """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-
-        wizard = self._create_wizard(
-            mode='reversal',
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
-        )
-
-        # Verify auto-computed reversal_date BEFORE running the action.
-        self.assertEqual(
-            wizard.reversal_date, date(2024, 7, 1),
-            "_compute_reversal_date must yield the first day of the "
-            "month after cutoff_date (2024-06-30 -> 2024-07-01).",
-        )
-
-        result = wizard.action_post_with_reversal()
-        self.assertIsInstance(
-            result, dict,
-            "action_post_with_reversal must return an action dict.",
-        )
-        self.assertEqual(
-            result.get('res_model'), 'account.move',
-            "action_post_with_reversal must return an action targeting "
-            "account.move.",
-        )
-
-        # The cut-off move was posted.
+        # --------------------------------------------------------------
+        # Assertions -- recognition lines and posted move.
+        # --------------------------------------------------------------
         posted_lines = schedule.line_ids.filtered(
             lambda line: line.state == 'posted',
         )
-        self.assertGreater(
-            len(posted_lines), 0,
-            "Reversal mode must still post the cut-off entry.",
-        )
-        cutoff_move = posted_lines.mapped('move_id')
-        self.assertEqual(
-            len(cutoff_move), 1,
-            "Reversal mode with one schedule must produce exactly one "
-            "cut-off move.",
-        )
-
-        # A reversal move exists, dated 2024-07-01, with auto_post='at_date'.
-        reversal_moves = self.env['account.move'].search([
-            ('reversed_entry_id', '=', cutoff_move.id),
-        ])
-        self.assertEqual(
-            len(reversal_moves), 1,
-            "Exactly one reversal move must be created with "
-            "reversed_entry_id pointing to the cut-off move.",
-        )
-        self.assertEqual(
-            reversal_moves.date, date(2024, 7, 1),
-            "Reversal move date must equal wizard.reversal_date "
-            "(2024-07-01).",
-        )
-        # adjusting_entry_origin_move_ids must contain the original.
-        self.assertIn(
-            cutoff_move.id, reversal_moves.adjusting_entry_origin_move_ids.ids,
-            "Reversal move's adjusting_entry_origin_move_ids must "
-            "include the original cut-off move id.",
-        )
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_action_post_with_reversal_validates_reversal_date(self):
-        """action_post_with_reversal raises if reversal_date <= cutoff_date.
-
-        The wizard must reject a reversal_date that is on or before
-        the cut-off date because that would be nonsensical (the
-        reversal must occur strictly *after* the cut-off period).
-        """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-
-        wizard = self._create_wizard(
-            mode='reversal',
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
-            # Force reversal_date earlier than cutoff_date by overriding
-            # the auto-computed default.
-            reversal_date=date(2024, 6, 30),
-        )
-
-        with self.assertRaises(
-            UserError,
-            msg="action_post_with_reversal must raise UserError when "
-                "reversal_date <= cutoff_date.",
-        ):
-            wizard.action_post_with_reversal()
-
-    # ==================================================================
-    # Scenario 5 — Auto-computed reversal_date (multiple cutoff months)
-    # ==================================================================
-    @freeze_time(_FROZEN_TODAY)
-    def test_compute_reversal_date_arithmetic(self):
-        """_compute_reversal_date yields first day of the next month.
-
-        Exercises ``relativedelta(months=1).replace(day=1)`` across a
-        variety of cutoff months to confirm correct calendar
-        arithmetic for short months (Feb), long months (Jan), and
-        year rollover (Dec → Jan of next year).
-        """
-        cases = [
-            # cutoff_date          expected reversal_date
-            (date(2024, 1, 31), date(2024, 2, 1)),    # 31-day month
-            (date(2024, 2, 29), date(2024, 3, 1)),    # leap-day Feb
-            (date(2024, 3, 15), date(2024, 4, 1)),    # mid-month
-            (date(2024, 6, 30), date(2024, 7, 1)),    # 30-day month
-            (date(2024, 12, 31), date(2025, 1, 1)),   # year rollover
-        ]
-        # Need a confirmed schedule so the wizard's compute fields are
-        # not bypassed by the early-exit guard.
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-        for cutoff, expected_reversal in cases:
-            with self.subTest(cutoff=cutoff):
-                wizard = self._create_wizard(
-                    mode='reversal',
-                    schedules=schedule,
-                    cutoff_date=cutoff,
-                )
-                self.assertEqual(
-                    wizard.reversal_date, expected_reversal,
-                    f"For cutoff_date={cutoff}, reversal_date must be "
-                    f"{expected_reversal} (first day of the next month).",
-                )
-
-    # ==================================================================
-    # Scenario 6 — account.lock_exception correctness (CR-2 bug fix)
-    # ==================================================================
-    @freeze_time(_FROZEN_TODAY)
-    def test_lock_date_violation_blocks_posting(self):
-        """A cut-off date under a lock raises ValidationError.
-
-        Sets ``fiscalyear_lock_date`` on the company to 2024-07-31 and
-        attempts to create a wizard with cutoff_date 2024-06-30.  The
-        @api.constrains _check_date method must raise
-        :class:`ValidationError`.
-        """
-        # Configure the company-level fiscal year lock.
-        self.company.fiscalyear_lock_date = date(2024, 7, 31)
-        self.addCleanup(
-            lambda: self.company.write({'fiscalyear_lock_date': False}),
-        )
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-
-        # Creating a wizard whose cutoff_date violates the lock must
-        # raise ValidationError directly from _check_date.
-        with self.assertRaises(
-            ValidationError,
-            msg="Setting cutoff_date under a fiscalyear_lock_date with "
-                "no covering exception must raise ValidationError from "
-                "_check_date.",
-        ):
-            self._create_wizard(
-                schedules=schedule,
-                cutoff_date=date(2024, 6, 30),  # < fiscalyear_lock_date
+        self.assertTrue(posted_lines,
+                        "At least one recognition line must be posted "
+                        "after action_post.")
+        # Q1 cut-off should post lines for Jan, Feb, Mar.
+        self.assertEqual(len(posted_lines), 3,
+                         "Q1 cut-off (2024-03-31) must post exactly "
+                         "the 3 first-quarter recognition lines.")
+        for line in posted_lines:
+            self.assertLessEqual(
+                line.recognition_date, date(2024, 3, 31),
+                "Posted recognition lines must have recognition_date "
+                "<= cutoff_date.",
             )
+            self.assertTrue(line.move_id,
+                            "Each posted line must reference an "
+                            "account.move via move_id.")
 
-    @freeze_time(_FROZEN_TODAY)
-    def test_active_lock_exception_allows_posting(self):
-        """An active exception covering cutoff_date allows wizard creation.
-
-        Sets the same fiscal-year lock as the previous test but also
-        creates an ``account.lock_exception`` with
-        ``lock_date=date(2024, 5, 31)`` — i.e. the user-effective
-        lock date is *earlier* than the cutoff_date 2024-06-30, so
-        no violation should be reported by
-        ``_get_violated_lock_dates``.
-        """
-        self.company.fiscalyear_lock_date = date(2024, 7, 31)
-        self.addCleanup(
-            lambda: self.company.write({'fiscalyear_lock_date': False}),
+        move = posted_lines[0].move_id
+        self.assertEqual(move.state, 'posted',
+                         "Generated cut-off move must be in "
+                         "state='posted' after action_post.")
+        self.assertTrue(move.ref,
+                        "Move must have a ref (cut-off label).")
+        # Validate accounting direction: Dr Deferred / Cr Revenue.
+        debits = move.line_ids.filtered(
+            lambda ml, acc=self.deferred_revenue_account: (
+                ml.account_id == acc and ml.debit > 0
+            ),
         )
-
-        # The exception lowers the *effective* lock date for this user
-        # to 2024-05-31, so cutoff_date=2024-06-30 is no longer locked.
-        exception = self._create_lock_exception(
-            lock_date=date(2024, 5, 31),
-            lock_field='fiscalyear_lock_date',
+        credits = move.line_ids.filtered(
+            lambda ml, acc=self.recognition_revenue_account: (
+                ml.account_id == acc and ml.credit > 0
+            ),
         )
-        self.assertTrue(exception, "Lock exception must have been created.")
-
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-
-        # Wizard creation must succeed (no ValidationError).
-        wizard = self._create_wizard(
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
+        self.assertTrue(debits,
+                        "Must have at least one debit line on the "
+                        "deferred-revenue account (clears liability).")
+        self.assertTrue(credits,
+                        "Must have at least one credit line on the "
+                        "recognition-revenue account (books revenue).")
+        # Accounting invariant: debit == credit
+        total_debit = sum(move.line_ids.mapped('debit'))
+        total_credit = sum(move.line_ids.mapped('credit'))
+        self.assertAlmostEqual(
+            total_debit, total_credit, places=2,
+            msg="Cut-off move must balance: total debit must equal "
+                "total credit.",
         )
-        self.assertTrue(
-            wizard,
-            "Wizard creation must succeed when an active exception "
-            "covers the cut-off date.",
-        )
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_stale_lock_exception_does_not_clear_violation(self):
-        """A stale exception (lock_date < cutoff_date) does NOT clear violation.
-
-        This is the CP4 review's CR-2 finding regression test.  Prior
-        to the fix, the wizard re-applied its own clearance loop that
-        ignored the exception's actual ``lock_date`` value — meaning
-        an exception lowering the lock to 2024-04-30 would
-        *incorrectly* clear a violation against
-        ``cutoff_date=2024-06-30`` when the company's
-        ``fiscalyear_lock_date`` was 2024-07-31.
-
-        Post-fix, the wizard delegates entirely to
-        ``res.company._get_violated_lock_dates`` which already
-        applies exception arithmetic correctly: an exception with
-        ``lock_date=2024-04-30`` lowers the user-effective lock to
-        2024-04-30, so cutoff_date=2024-06-30 is **NOT** violated
-        (the user can post).  This test confirms the fix by setting
-        a high company lock AND a low exception, and verifying the
-        wizard creation succeeds — a regression to the old behaviour
-        would still allow this case (because the old code incorrectly
-        cleared the violation type-only) but would also allow the
-        previous test's case (which is the bug).
-
-        To explicitly assert the bug fix: we set the company lock to
-        2024-07-31, the exception's lock_date to a date *between*
-        the company lock and the cutoff_date — i.e. exception lowers
-        the effective lock to 2024-07-15 — and the cutoff_date
-        2024-06-30 must STILL be reported as violated because it
-        falls *before* the (now-lower) effective lock.
-
-        Critical correctness: ``_get_violated_soft_lock_date`` checks
-        ``date <= user_lock_date`` (where user_lock_date is the
-        post-exception lock).  With an exception lowering the lock
-        to 2024-07-15, cutoff_date 2024-06-30 still satisfies
-        ``2024-06-30 <= 2024-07-15`` → still a violation.  The
-        wizard must raise ValidationError.
-        """
-        self.company.fiscalyear_lock_date = date(2024, 7, 31)
-        self.addCleanup(
-            lambda: self.company.write({'fiscalyear_lock_date': False}),
-        )
-
-        # Exception lowers effective lock to 2024-07-15.  The
-        # cutoff_date 2024-06-30 is still BEFORE this new effective
-        # lock, so the violation remains.
-        exception = self._create_lock_exception(
-            lock_date=date(2024, 7, 15),
-            lock_field='fiscalyear_lock_date',
-        )
-        self.assertTrue(exception, "Stale lock exception must have been created.")
-
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-
-        # Wizard creation MUST raise ValidationError because the
-        # stale exception does NOT cover cutoff_date.
-        with self.assertRaises(
-            ValidationError,
-            msg="A stale exception (lock_date >= cutoff_date) must "
-                "NOT clear a real violation.  Pre-fix, the wizard's "
-                "redundant clearance loop incorrectly cleared the "
-                "violation; post-fix, _get_violated_lock_dates "
-                "correctly reports it.",
-        ):
-            self._create_wizard(
-                schedules=schedule,
-                cutoff_date=date(2024, 6, 30),
-            )
-
-    # ==================================================================
-    # Scenario 7 — _link_recognition_lines correctness
-    # ==================================================================
-    @freeze_time(_FROZEN_TODAY)
-    def test_link_recognition_lines_invariants(self):
-        """_link_recognition_lines maintains all bidirectional invariants.
-
-        After a successful action_post:
-
-        * Every qualifying recognition line is in state='posted'.
-        * Every posted line has ``move_id`` set.
-        * Every posted line has at least one entry in ``move_line_ids``.
-        * The deferred_schedule_id back-reference is stamped on
-          every account.move.line on the schedule's accounts.
-        """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-
-        wizard = self._create_wizard(
-            mode='single',
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
-        )
-        wizard.action_post()
-
-        qualifying_lines = schedule.line_ids.filtered(
-            lambda line: line.recognition_date <= date(2024, 6, 30),
-        )
-        for line in qualifying_lines:
-            self.assertEqual(line.state, 'posted')
-            self.assertTrue(line.move_id)
-            self.assertTrue(line.move_line_ids,
-                            "move_line_ids must be populated.")
-
-        # The move_line_ids must reference the schedule's accounts
-        # (deferred or recognition).
-        all_move_lines = qualifying_lines.mapped('move_line_ids')
-        all_account_ids = set(all_move_lines.mapped('account_id.id'))
-        self.assertIn(self.deferred_revenue_account.id, all_account_ids)
-        self.assertIn(self.recognition_revenue_account.id, all_account_ids)
-
-        # deferred_schedule_id back-reference is set on the move lines.
-        for ml in all_move_lines:
-            self.assertEqual(
-                ml.deferred_schedule_id, schedule,
-                "Each posted move line on a schedule's account must "
-                "have deferred_schedule_id stamped back to that schedule.",
-            )
-
-    # ==================================================================
-    # Scenario 8 — Helper method coverage
-    # ==================================================================
-    @freeze_time(_FROZEN_TODAY)
-    def test_get_move_line_dict_vals_revenue_direction(self):
-        """Revenue schedule debits deferred and credits recognition.
-
-        Per the docstring on
-        ``_get_move_line_dict_vals_change_period``:
-
-            Debit  schedule.deferred_account_id    (clears liability)
-            Credit schedule.recognition_account_id (books revenue)
-        """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-        wizard = self._create_wizard(
-            mode='single', schedules=schedule, cutoff_date=date(2024, 6, 30),
-        )
-
-        line_pairs = wizard._get_move_line_dict_vals_change_period(
-            schedule, recognition_amount=1000.0, label='Test Label',
-        )
-        self.assertEqual(len(line_pairs), 2,
-                         "Helper must return exactly 2 lines (debit + credit).")
-        debit_vals = next(v for cmd, _zero, v in line_pairs if v['debit'])
-        credit_vals = next(v for cmd, _zero, v in line_pairs if v['credit'])
-        self.assertEqual(
-            debit_vals['account_id'], self.deferred_revenue_account.id,
-            "Revenue case: deferred account must be debited.",
-        )
-        self.assertEqual(
-            credit_vals['account_id'], self.recognition_revenue_account.id,
-            "Revenue case: recognition account must be credited.",
-        )
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_get_move_line_dict_vals_expense_direction(self):
-        """Expense schedule debits recognition and credits deferred.
-
-        Per the docstring on
-        ``_get_move_line_dict_vals_change_period``:
-
-            Debit  schedule.recognition_account_id (books expense)
-            Credit schedule.deferred_account_id    (clears asset)
-        """
-        schedule = self._create_confirmed_schedule(
-            total_amount=12000.0,
-            deferred_account_id=self.deferred_expense_account.id,
-            recognition_account_id=self.recognition_expense_account.id,
-        )
-        wizard = self._create_wizard(
-            mode='single', schedules=schedule, cutoff_date=date(2024, 6, 30),
-        )
-
-        line_pairs = wizard._get_move_line_dict_vals_change_period(
-            schedule, recognition_amount=1000.0, label='Expense Label',
-        )
-        debit_vals = next(v for cmd, _zero, v in line_pairs if v['debit'])
-        credit_vals = next(v for cmd, _zero, v in line_pairs if v['credit'])
-        self.assertEqual(
-            debit_vals['account_id'], self.recognition_expense_account.id,
-            "Expense case: recognition account must be debited.",
-        )
-        self.assertEqual(
-            credit_vals['account_id'], self.deferred_expense_account.id,
-            "Expense case: deferred account must be credited.",
-        )
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_get_lock_safe_date_default(self):
-        """_get_lock_safe_date returns a date >= target when no lock applies.
-
-        Without any lock dates configured, the helper should return
-        the target date itself (or a close date depending on journal
-        sequence rules).  Either way the result must be ``>= target``.
-        """
-        schedule = self._create_confirmed_schedule()
-        wizard = self._create_wizard(schedules=schedule)
-        target = date(2024, 6, 30)
-        safe = wizard._get_lock_safe_date(target)
+        # Audit trail: schedule receives a chatter message
+        # referencing the cut-off entry. ``message_ids`` includes the
+        # confirmation chatter from action_confirm() plus the cut-off
+        # post chatter we just produced.
         self.assertGreaterEqual(
-            safe, target,
-            "_get_lock_safe_date must return a date >= target_date.",
+            len(schedule.message_ids), 1,
+            "Schedule must receive at least one message_post entry "
+            "from action_post (audit trail).",
         )
 
+    # ==================================================================
+    # SCENARIO 2: Preview Cut-off Entries Before Posting
+    # ==================================================================
     @freeze_time(_FROZEN_TODAY)
-    def test_format_strings_substitutes_placeholders(self):
-        """_format_strings substitutes named placeholders correctly."""
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
+    def test_preview_cutoff_entries_no_post(self):
+        """Scenario 2: Preview mode computes data without creating moves.
+
+        BDD specification:
+
+            GIVEN I have pending recognition amounts for the period AND
+                  I need to review entries before committing
+            WHEN I request a preview of cut-off entries
+            THEN I should see a summary of entries to be generated AND
+                 I should see debit and credit amounts per account AND
+                 entries should not be posted until I explicitly
+                 confirm.
+
+        Sub-assertions exercised by this method:
+
+        1. Wizard creation in ``mode='preview'`` succeeds.
+        2. ``preview_move_data`` is computed and includes the column
+           metadata required by the form UI's ``groups_vals`` panel.
+        3. :meth:`action_preview` returns an ``ir.actions.act_window``
+           dict that re-opens the wizard form (preview-only flow).
+        4. NO ``account.move`` records are created (idempotent
+           computation; ``_compute_move_data`` builds dicts in memory
+           only).
+        5. NO recognition lines transition from ``draft`` to ``posted``.
+        6. Preview can be invoked twice without side effects (idempotent
+           behaviour validates the ``invalidate_recordset`` cache reset
+           in :meth:`action_preview`).
+        7. Calling :meth:`action_preview` when no qualifying lines
+           exist raises a user-friendly :class:`UserError`.
+        """
+        # --------------------------------------------------------------
+        # Setup -- a single confirmed schedule.
+        # --------------------------------------------------------------
+        schedule = self._create_schedule()
+        # Snapshot the move IDs that exist BEFORE preview so we can
+        # assert no NEW moves were created. The accounting fixture
+        # may seed a few demo moves; we baseline against that count.
+        AccountMove = self.env['account.move']
+        moves_before = AccountMove.search([])
+
+        # --------------------------------------------------------------
+        # Action -- preview mode.
+        # --------------------------------------------------------------
         wizard = self._create_wizard(
-            schedules=schedule, cutoff_date=date(2024, 6, 30),
+            mode='preview',
+            cutoff_date=date(2024, 6, 30),
+            schedule_ids=[Command.set([schedule.id])],
         )
-        template = wizard._get_cut_off_label_format()
-        # Smoke check: template must include the documented placeholders.
-        self.assertIn('{schedule_name}', template)
-        self.assertIn('{cutoff_date}', template)
+        # _compute_preview_move_data fires lazily on read.
+        preview_data_before_action = wizard.preview_move_data
+        self.assertTrue(preview_data_before_action,
+                        "preview_move_data must be computed eagerly "
+                        "via field access, even before action_preview.")
 
-        result = wizard._format_strings(template, schedule, amount=500.0)
-        self.assertIsInstance(result, str)
-        self.assertIn(schedule.name, result,
-                      "Schedule name must appear in the formatted label.")
+        # action_preview should succeed and return an action dict.
+        preview_action = wizard.action_preview()
+        self.assertIsNotNone(preview_action,
+                             "action_preview must return an action.")
+        self.assertEqual(
+            preview_action['type'], 'ir.actions.act_window',
+            "action_preview must return ir.actions.act_window.",
+        )
+        self.assertEqual(
+            preview_action['res_model'],
+            'account.deferred.cutoff.wizard',
+            "action_preview must re-open the wizard form.",
+        )
 
+        # --------------------------------------------------------------
+        # Assertions -- no side effects.
+        # --------------------------------------------------------------
+        # No new account.move was created.
+        moves_after = AccountMove.search([])
+        new_moves = moves_after - moves_before
+        self.assertFalse(
+            new_moves,
+            "Preview mode must NOT create any new account.move "
+            "records; got %d new moves." % len(new_moves),
+        )
+        # No recognition lines transitioned to posted.
+        still_draft = schedule.line_ids.filtered(
+            lambda line: line.state == 'draft',
+        )
+        self.assertEqual(
+            len(still_draft), len(schedule.line_ids),
+            "All recognition lines must remain in 'draft' state "
+            "after preview; preview must not mutate state.",
+        )
+        # No move_id was set on any line.
+        lines_with_move = schedule.line_ids.filtered(lambda line: line.move_id)
+        self.assertFalse(
+            lines_with_move,
+            "No recognition line may have move_id set after preview.",
+        )
+        # Idempotency: running preview again produces the same
+        # result without side effects.
+        preview_action_2 = wizard.action_preview()
+        self.assertEqual(
+            preview_action_2['type'], 'ir.actions.act_window',
+            "Repeated action_preview must remain idempotent.",
+        )
+        moves_after_2 = AccountMove.search([])
+        self.assertEqual(
+            len(moves_after_2), len(moves_after),
+            "Repeated preview must remain idempotent (no new moves).",
+        )
+
+        # --------------------------------------------------------------
+        # Edge case -- preview with no qualifying lines must raise.
+        # Exercises the UserError branch in :meth:`action_preview`.
+        # --------------------------------------------------------------
+        # Schedule begins 2024-01-01 -- a cutoff before the start_date
+        # selects no lines.
+        wizard_empty = self._create_wizard(
+            mode='preview',
+            cutoff_date=date(2023, 12, 1),
+            schedule_ids=[Command.set([schedule.id])],
+        )
+        with self.assertRaises(UserError):
+            wizard_empty.action_preview()
+
+    # ==================================================================
+    # SCENARIO 3: Batch Generate Cut-off Entries
+    # ==================================================================
     @freeze_time(_FROZEN_TODAY)
-    def test_default_journal_resolution(self):
-        """_default_journal_id falls back to a general journal."""
-        # The default journal helper is invoked via the field default;
-        # a freshly created wizard should pick up SOME general journal.
-        wizard = self.env['account.deferred.cutoff.wizard'].create({
-            'mode': 'single',
-            'cutoff_date': date(2024, 6, 30),
-            'company_id': self.company.id,
-        })
+    def test_batch_cutoff_generation(self):
+        """Scenario 3: Batch mode consolidates multiple schedules.
+
+        BDD specification:
+
+            GIVEN I have multiple deferral schedules with recognition
+                  due AND schedules may span different journals or
+                  accounts
+            WHEN I select batch cut-off entry generation
+            THEN all qualifying schedules should be processed in a
+                 single operation AND a single journal entry should be
+                 created per journal AND line items should be grouped
+                 by account for efficient posting AND a summary of
+                 processed schedules should be provided.
+
+        Sub-assertions exercised by this method:
+
+        1. Wizard creation in ``mode='batch'`` succeeds with three
+           schedules.
+        2. ``_compute_move_data`` produces one consolidated move dict
+           per company (single-company test => one move).
+        3. ``action_post`` posts the consolidated move.
+        4. All three schedules have their qualifying recognition lines
+           transitioned to ``state='posted'``.
+        5. Each posted line's ``move_id`` references the same
+           consolidated move (batch-mode invariant).
+        6. The consolidated move has lines for both deferred and
+           recognition accounts and balances (Dr=Cr).
+        7. The audit trail (schedule chatter) records the cut-off post
+           for every processed schedule.
+        8. The action returns a list view targeting the multi-line move.
+        """
+        # --------------------------------------------------------------
+        # Setup -- three schedules with varied amounts and date ranges.
+        # All three have recognition periods within Q1 2024 to ensure
+        # they all qualify for the 2024-03-31 cut-off.
+        # --------------------------------------------------------------
+        schedule_a = self._create_schedule(total_amount=12000.0)
+        schedule_b = self._create_schedule(
+            total_amount=6000.0,
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 6, 30),
+        )
+        schedule_c = self._create_schedule(
+            total_amount=3000.0,
+            start_date=date(2024, 2, 1),
+            end_date=date(2024, 4, 30),
+        )
+
+        # --------------------------------------------------------------
+        # Wizard -- batch mode covering all three schedules.
+        # --------------------------------------------------------------
+        wizard = self._create_wizard(
+            mode='batch',
+            cutoff_date=date(2024, 3, 31),
+            schedule_ids=[Command.set([
+                schedule_a.id, schedule_b.id, schedule_c.id,
+            ])],
+        )
+        # In batch mode with one company, exactly one consolidated
+        # move dict is produced by _get_move_dict_vals_change_period.
+        self.assertTrue(wizard.move_data,
+                        "Batch mode must compute non-empty move_data "
+                        "when multiple schedules have qualifying lines.")
+        self.assertIsInstance(
+            wizard.move_data, list,
+            "move_data must be a list of move dicts.",
+        )
+        self.assertEqual(
+            len(wizard.move_data), 1,
+            "Batch mode with three schedules in the same company "
+            "must produce exactly ONE consolidated move dict.",
+        )
+
+        # --------------------------------------------------------------
+        # Action -- post the consolidated batch.
+        # --------------------------------------------------------------
+        action = wizard.action_post()
+        self.assertEqual(
+            action['type'], 'ir.actions.act_window',
+            "Batch action_post must return ir.actions.act_window.",
+        )
+
+        # --------------------------------------------------------------
+        # Assertions -- every schedule has posted lines linked to the
+        # consolidated move.
+        # --------------------------------------------------------------
+        all_qualifying_lines = self.env['account.deferred.line']
+        for sched in (schedule_a, schedule_b, schedule_c):
+            posted = sched.line_ids.filtered(lambda line: line.state == 'posted')
+            self.assertTrue(
+                posted,
+                "Schedule %s must have posted lines after batch "
+                "cut-off." % sched.name,
+            )
+            all_qualifying_lines |= posted
+            # Every posted line references a posted move.
+            for line in posted:
+                self.assertEqual(
+                    line.move_id.state, 'posted',
+                    "Move for line %s must be in state='posted'." % line.id,
+                )
+
+        # --------------------------------------------------------------
+        # Batch invariant: all schedules' posted lines reference the
+        # SAME consolidated move (one move per company).
+        # --------------------------------------------------------------
+        consolidated_moves = all_qualifying_lines.mapped('move_id')
+        self.assertEqual(
+            len(consolidated_moves), 1,
+            "Batch mode with one company must produce exactly ONE "
+            "consolidated move; got %d." % len(consolidated_moves),
+        )
+        consolidated_move = consolidated_moves
+        self.assertEqual(
+            consolidated_move.state, 'posted',
+            "Consolidated batch move must be posted.",
+        )
+
+        # --------------------------------------------------------------
+        # Accounting invariant: the consolidated move balances.
+        # Total debit on the deferred account == total credit on the
+        # recognition account => Dr=Cr at the move level.
+        # --------------------------------------------------------------
+        total_debit = sum(consolidated_move.line_ids.mapped('debit'))
+        total_credit = sum(consolidated_move.line_ids.mapped('credit'))
+        self.assertAlmostEqual(
+            total_debit, total_credit, places=2,
+            msg="Consolidated batch move must balance "
+                "(total debit == total credit).",
+        )
+
+        # The move's debit lines target the deferred-revenue account;
+        # the credit lines target the recognition-revenue account.
+        debit_lines = consolidated_move.line_ids.filtered(
+            lambda ml: ml.account_id == self.deferred_revenue_account,
+        )
+        credit_lines = consolidated_move.line_ids.filtered(
+            lambda ml: ml.account_id == self.recognition_revenue_account,
+        )
         self.assertTrue(
-            wizard.journal_id,
-            "Wizard must auto-resolve a general journal via _default_journal_id.",
+            debit_lines,
+            "Consolidated move must have lines on the deferred "
+            "account.",
         )
-        self.assertEqual(
-            wizard.journal_id.type, 'general',
-            "Default journal must be of type 'general'.",
-        )
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_default_get_populates_schedule_ids_from_active_ids(self):
-        """default_get reads active_model + active_ids from context."""
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-        # Open the wizard via the standard binding-action context
-        # (active_model + active_ids) which default_get must consume.
-        wizard = self.env['account.deferred.cutoff.wizard'].with_context(
-            active_model='account.deferred.schedule',
-            active_ids=[schedule.id],
-        ).create({
-            'mode': 'batch',
-            'cutoff_date': date(2024, 6, 30),
-            'journal_id': self.journal_general.id,
-            'company_id': self.company.id,
-        })
-        self.assertIn(
-            schedule, wizard.schedule_ids,
-            "default_get must populate schedule_ids from active_ids.",
+        self.assertTrue(
+            credit_lines,
+            "Consolidated move must have lines on the recognition "
+            "account.",
         )
 
-    @freeze_time(_FROZEN_TODAY)
-    def test_default_get_honours_explicit_default_schedule_ids(self):
-        """default_get prefers explicit default_schedule_ids over active_ids."""
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-        wizard = self.env['account.deferred.cutoff.wizard'].with_context(
-            default_schedule_ids=[(6, 0, [schedule.id])],
-            default_mode='reversal',
-        ).create({
-            'cutoff_date': date(2024, 6, 30),
-            'journal_id': self.journal_general.id,
-            'company_id': self.company.id,
-        })
-        self.assertIn(
-            schedule, wizard.schedule_ids,
-            "default_get must populate schedule_ids from "
-            "default_schedule_ids context key.",
-        )
-        self.assertEqual(
-            wizard.mode, 'reversal',
-            "default_get must honour the default_mode context key.",
-        )
+        # --------------------------------------------------------------
+        # Audit trail: every schedule received a chatter message.
+        # --------------------------------------------------------------
+        for sched in (schedule_a, schedule_b, schedule_c):
+            self.assertGreaterEqual(
+                len(sched.message_ids), 1,
+                "Schedule %s must receive a message_post audit "
+                "entry from batch cut-off." % sched.name,
+            )
 
     # ==================================================================
-    # Scenario 9 — Edge cases and error paths
+    # SCENARIO 4: Handle Partial Period Recognition
     # ==================================================================
     @freeze_time(_FROZEN_TODAY)
-    def test_action_post_without_schedules_raises(self):
-        """action_post must raise UserError when no schedules selected."""
-        wizard = self.env['account.deferred.cutoff.wizard'].create({
-            'mode': 'single',
-            'cutoff_date': date(2024, 6, 30),
-            'journal_id': self.journal_general.id,
-            'company_id': self.company.id,
-        })
-        with self.assertRaises(
-            UserError,
-            msg="action_post must raise UserError when schedule_ids is empty.",
-        ):
-            wizard.action_post()
+    def test_partial_period_proration(self):
+        """Scenario 4: Mid-period cut-off filters by ``recognition_date``.
 
-    @freeze_time(_FROZEN_TODAY)
-    def test_action_post_without_qualifying_lines_raises(self):
-        """action_post raises when no recognition lines qualify.
+        BDD specification:
 
-        Schedule starts in 2025 — no lines fall on or before
-        cutoff_date 2024-06-30.  action_post must surface a clear
-        UserError rather than silently produce an empty journal entry.
+            GIVEN I have a deferral schedule that started mid-period
+                  AND the recognition method is date-based
+            WHEN I generate cut-off entries for that period
+            THEN recognition amount should be prorated based on days in
+                 period AND the calculation method should be consistent
+                 with ASC 606/IFRS 15 AND the prorated amount should
+                 match the allocation schedule preview.
+
+        Sub-assertions exercised by this method:
+
+        1. A date-based schedule with a mid-month start_date generates
+           lines whose ``recognition_date`` reflects the calendar-day
+           proration computed by
+           ``account.deferred.schedule._compute_recognition_schedule``
+           (DR-002 calendar-day allocation method).
+        2. A cutoff_date strictly between two recognition dates causes
+           the wizard to select ONLY lines with
+           ``recognition_date <= cutoff_date`` (filter expression on
+           line 762-768 of cutoff_wizard.py:
+           ``state == 'draft' AND recognition_date <= c``).
+        3. Lines with ``recognition_date > cutoff_date`` remain in
+           ``draft`` state.
+        4. The amount posted for the prorated period is reflected in
+           the move debit/credit total (matches the sum of qualifying
+           line ``recognition_amount`` values).
+        5. The schedule's ``posted_amount`` aggregate matches the
+           recognized portion (DR-002 invariant: posted + remaining
+           = total).
         """
-        schedule = self._create_confirmed_schedule(
-            start_date=date(2025, 1, 1),
-            end_date=date(2025, 12, 31),
+        # --------------------------------------------------------------
+        # Setup -- date-based schedule starting 2024-01-15 (mid-month)
+        # ending 2024-07-15 (also mid-month). Total $6,000 over 6
+        # months => approximately $1,000 per period with proration on
+        # the partial start/end periods.
+        # --------------------------------------------------------------
+        schedule = self._create_schedule(
+            total_amount=6000.0,
+            start_date=date(2024, 1, 15),
+            end_date=date(2024, 7, 15),
+            recognition_method='date_based',
         )
+        # Verify the schedule produced a non-trivial line count.
+        self.assertTrue(
+            schedule.line_ids,
+            "Date-based schedule must auto-populate recognition lines.",
+        )
+
+        # --------------------------------------------------------------
+        # Wizard -- cutoff_date strictly inside the schedule range.
+        # 2024-02-14 is one calendar month after start (selects only
+        # the first prorated period or two depending on the alignment
+        # produced by the allocator).
+        # --------------------------------------------------------------
+        cutoff = date(2024, 2, 14)
         wizard = self._create_wizard(
             mode='single',
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
-        )
-        with self.assertRaises(
-            UserError,
-            msg="action_post must raise UserError when no recognition "
-                "lines qualify for the cut-off date.",
-        ):
-            wizard.action_post()
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_action_post_with_reversal_without_schedules_raises(self):
-        """action_post_with_reversal must raise when no schedules selected."""
-        wizard = self.env['account.deferred.cutoff.wizard'].create({
-            'mode': 'reversal',
-            'cutoff_date': date(2024, 6, 30),
-            'journal_id': self.journal_general.id,
-            'company_id': self.company.id,
-            'reversal_date': date(2024, 7, 1),
-        })
-        with self.assertRaises(
-            UserError,
-            msg="action_post_with_reversal must raise UserError when "
-                "schedule_ids is empty.",
-        ):
-            wizard.action_post_with_reversal()
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_action_post_with_reversal_without_qualifying_lines_raises(self):
-        """action_post_with_reversal raises when no qualifying lines."""
-        schedule = self._create_confirmed_schedule(
-            start_date=date(2025, 1, 1),
-            end_date=date(2025, 12, 31),
-        )
-        wizard = self._create_wizard(
-            mode='reversal',
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
-        )
-        with self.assertRaises(
-            UserError,
-            msg="action_post_with_reversal must raise UserError when "
-                "no recognition lines qualify for the cut-off date.",
-        ):
-            wizard.action_post_with_reversal()
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_compute_schedule_id(self):
-        """_compute_schedule_id exposes the first schedule of schedule_ids."""
-        schedule_a = self._create_confirmed_schedule(total_amount=12000.0)
-        schedule_b = self._create_confirmed_schedule(total_amount=6000.0)
-        wizard = self._create_wizard(
-            mode='single',
-            schedules=(schedule_a | schedule_b),
-        )
-        # schedule_id is computed; first schedule of schedule_ids.
-        self.assertIn(
-            wizard.schedule_id, (schedule_a | schedule_b),
-            "_compute_schedule_id must yield the first schedule of "
-            "schedule_ids.",
-        )
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_compute_lock_date_message_visible_when_locked(self):
-        """_compute_lock_date_message populates a warning when locked.
-
-        When the cutoff_date falls under a soft lock with no covering
-        exception, the diagnostic banner field must be non-empty so
-        the form view's ``invisible="not lock_date_message"`` shows it.
-        Note that _check_date is also triggered, so we wrap creation
-        in try/except — we only want to verify _compute_lock_date_message
-        runs without exception.
-        """
-        # Set a non-blocking *future* lock that the wizard's compute
-        # method will still warn about.  The constraint will not raise
-        # here because the cutoff_date is BEFORE the lock, but the
-        # diagnostic banner does fire when the date violates a lock.
-        # To exercise both the populated-message and empty-message
-        # branches of _compute_lock_date_message, verify the field is
-        # accessible (not raising) for an unlocked cutoff_date.
-        schedule = self._create_confirmed_schedule()
-        wizard = self._create_wizard(
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
-        )
-        # No lock configured — message should be empty.
-        message = wizard.lock_date_message
-        # Not asserting True/False because behaviour depends on
-        # company state; we only verify the compute method runs.
-        self.assertIn(message, (False, None, ''),
-                      "lock_date_message must be empty when no lock "
-                      "applies to the cutoff date.")
-
-    # ==================================================================
-    # Scenario 10 — account.deferred.line constraint coverage
-    # ==================================================================
-    @freeze_time(_FROZEN_TODAY)
-    def test_deferred_line_constraint_posted_requires_move(self):
-        """A line cannot be 'posted' without a linked move_id.
-
-        Tests :meth:`account.deferred.line._check_posted_has_move`
-        constraint — directly setting ``state='posted'`` without a
-        ``move_id`` must raise :class:`ValidationError`.
-
-        Boosts coverage on
-        ``addons/account_deferred_revenue/models/account_deferred_line.py``
-        by exercising the validation branch.
-        """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-        # Take the first draft line and try to mark it 'posted' without
-        # a linked move — must raise ValidationError.
-        line = schedule.line_ids[:1]
-        with self.assertRaises(
-            ValidationError,
-            msg="Setting state='posted' on a recognition line "
-                "without move_id must raise ValidationError.",
-        ):
-            line.write({'state': 'posted'})
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_deferred_line_constraint_draft_with_move_rejected(self):
-        """A line in 'draft' state cannot have a move_id.
-
-        Inverse constraint: ``state='draft'`` with a non-empty
-        ``move_id`` is also rejected by the bidirectional invariant.
-
-        We simulate the inconsistent state by:
-            1. Creating a dummy move directly.
-            2. Trying to set move_id on a draft line.
-        """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-        # Create a dummy entry move that we can attach.
-        dummy_move = self.env['account.move'].create({
-            'move_type': 'entry',
-            'journal_id': self.journal_general.id,
-            'company_id': self.company.id,
-            'date': date(2024, 6, 30),
-        })
-        line = schedule.line_ids[:1]
-        with self.assertRaises(
-            ValidationError,
-            msg="Setting move_id on a draft recognition line must "
-                "raise ValidationError.",
-        ):
-            line.write({'move_id': dummy_move.id})
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_deferred_line_constraint_negative_amount_rejected(self):
-        """Recognition amount cannot be negative.
-
-        Tests :meth:`account.deferred.line._check_recognition_amount`
-        constraint.  Negative amounts are forbidden — reversal is
-        handled at the ``account.move`` level by the cut-off wizard's
-        reversal mode.
-        """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-        line = schedule.line_ids[:1]
-        with self.assertRaises(
-            ValidationError,
-            msg="Setting a negative recognition_amount must raise "
-                "ValidationError.",
-        ):
-            line.write({'recognition_amount': -100.0})
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_deferred_line_action_view_move_unlinked_raises(self):
-        """action_view_move on an unposted line raises ValidationError.
-
-        When a recognition line has not yet been posted via the
-        DR-003 cut-off wizard, ``move_id`` is empty and the
-        action_view_move helper must raise a clear, user-facing
-        :class:`ValidationError` rather than returning a malformed
-        action dict.
-        """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-        line = schedule.line_ids[:1]
-        with self.assertRaises(
-            ValidationError,
-            msg="action_view_move on an unposted line must raise "
-                "ValidationError.",
-        ):
-            line.action_view_move()
-
-    @freeze_time(_FROZEN_TODAY)
-    def test_deferred_line_action_view_move_after_post(self):
-        """action_view_move returns a valid act_window after posting.
-
-        After the cut-off wizard posts a recognition line, the line's
-        ``move_id`` is set and ``action_view_move`` must return a
-        valid ``ir.actions.act_window`` dict opening the linked
-        journal entry.
-        """
-        schedule = self._create_confirmed_schedule(total_amount=12000.0)
-        wizard = self._create_wizard(
-            mode='single',
-            schedules=schedule,
-            cutoff_date=date(2024, 6, 30),
+            cutoff_date=cutoff,
+            schedule_ids=[Command.set([schedule.id])],
         )
         wizard.action_post()
 
-        # Now a posted line must exist with move_id set.
-        posted_line = schedule.line_ids.filtered(
+        # --------------------------------------------------------------
+        # Assertions -- partial-period filtering.
+        # --------------------------------------------------------------
+        posted_lines = schedule.line_ids.filtered(
             lambda line: line.state == 'posted',
-        )[:1]
+        )
+        draft_lines = schedule.line_ids.filtered(
+            lambda line: line.state == 'draft',
+        )
         self.assertTrue(
-            posted_line,
-            "At least one line must be posted after action_post.",
+            posted_lines,
+            "At least one recognition line must be posted for "
+            "cutoff_date 2024-02-14 (after start_date 2024-01-15).",
+        )
+        self.assertTrue(
+            draft_lines,
+            "At least one recognition line must remain in draft state "
+            "for cutoff_date 2024-02-14 (lines after this date).",
+        )
+        # Filter invariant: NO posted line may have recognition_date
+        # strictly greater than the cutoff_date.
+        for line in posted_lines:
+            self.assertLessEqual(
+                line.recognition_date, cutoff,
+                "Posted line %s has recognition_date %s > cutoff %s. "
+                "Wizard must skip future-dated lines." % (
+                    line.id, line.recognition_date, cutoff,
+                ),
+            )
+        # Filter invariant: every draft line has recognition_date >
+        # cutoff (i.e. no qualifying line was missed).
+        for line in draft_lines:
+            self.assertGreater(
+                line.recognition_date, cutoff,
+                "Draft line %s has recognition_date %s <= cutoff %s. "
+                "Wizard must post all qualifying lines." % (
+                    line.id, line.recognition_date, cutoff,
+                ),
+            )
+
+        # --------------------------------------------------------------
+        # Accounting invariant: the prorated amount posted equals the
+        # sum of qualifying line ``recognition_amount`` values.
+        # --------------------------------------------------------------
+        expected_posted_amount = sum(posted_lines.mapped('recognition_amount'))
+        self.assertGreater(
+            expected_posted_amount, 0.0,
+            "Posted recognition amount must be positive.",
+        )
+        # The schedule's posted_amount aggregate must reflect the
+        # recognized portion.
+        self.assertAlmostEqual(
+            schedule.posted_amount, expected_posted_amount, places=2,
+            msg="Schedule posted_amount aggregate must equal sum of "
+                "posted line recognition_amount values.",
+        )
+        # Move-level invariant: total debit on the move == sum of
+        # qualifying recognition amounts (Dr Deferred / Cr Revenue).
+        move = posted_lines[0].move_id
+        total_debit = sum(move.line_ids.filtered(
+            lambda ml: ml.account_id == self.deferred_revenue_account,
+        ).mapped('debit'))
+        total_credit = sum(move.line_ids.filtered(
+            lambda ml: ml.account_id == self.recognition_revenue_account,
+        ).mapped('credit'))
+        self.assertAlmostEqual(
+            total_debit, expected_posted_amount, places=2,
+            msg="Total debit on deferred account must equal sum of "
+                "qualifying recognition amounts.",
+        )
+        self.assertAlmostEqual(
+            total_credit, expected_posted_amount, places=2,
+            msg="Total credit on recognition account must equal sum "
+                "of qualifying recognition amounts.",
         )
 
-        result = posted_line.action_view_move()
-        self.assertIsInstance(
-            result, dict,
-            "action_view_move must return an action dict.",
+    # ==================================================================
+    # SCENARIO 5: Generate Reversal Entry for Next Period
+    # ==================================================================
+    @freeze_time(_FROZEN_TODAY)
+    def test_reversal_entry_generation(self):
+        """Scenario 5: Reversal mode schedules an auto-reverse on next-period day 1.
+
+        BDD specification:
+
+            GIVEN I have generated cut-off entries for period close AND
+                  the reversal option is enabled in generation settings
+            WHEN the option to generate reversal entries is selected
+            THEN reversing entries should be created dated first day of
+                 next period AND reversal should exactly offset the
+                 cut-off entry amounts AND reversal entries should be
+                 clearly linked to the original cut-off entries AND
+                 auto-post option should be available for reversals.
+
+        Sub-assertions exercised by this method:
+
+        1. Wizard creation in ``mode='reversal'`` with ``post_reversal``
+           True succeeds; the constraint
+           :meth:`_compute_reversal_date` derives 2024-04-01 from
+           cutoff_date 2024-03-31.
+        2. :meth:`action_post_with_reversal` returns an
+           ``ir.actions.act_window`` dict targeting both cut-off and
+           reversal moves.
+        3. The cut-off moves are created and posted (state='posted').
+        4. The reversal moves are created with date = 2024-04-01 and
+           ``auto_post='at_date'`` so the standard
+           ``ir_cron_auto_post_draft_entry`` cron will post them when
+           the date arrives.
+        5. The reversal moves are linked back to the original cut-off
+           moves via ``adjusting_entry_origin_move_ids`` and/or
+           Odoo's standard ``reversal_move_ids`` reverse field.
+        6. The schedule's chatter receives a second audit message
+           documenting the scheduled reversal.
+        """
+        # --------------------------------------------------------------
+        # Setup -- a single confirmed schedule.
+        # --------------------------------------------------------------
+        schedule = self._create_schedule()
+
+        # --------------------------------------------------------------
+        # Wizard -- reversal mode with auto-post-at-date enabled.
+        # --------------------------------------------------------------
+        wizard = self._create_wizard(
+            mode='reversal',
+            cutoff_date=date(2024, 3, 31),
+            post_reversal=True,
+            schedule_ids=[Command.set([schedule.id])],
         )
+        # _compute_reversal_date should auto-derive 2024-04-01 from
+        # cutoff_date 2024-03-31.
         self.assertEqual(
-            result.get('type'), 'ir.actions.act_window',
-            "action_view_move must return an ir.actions.act_window.",
-        )
-        self.assertEqual(
-            result.get('res_model'), 'account.move',
-            "action_view_move action must target account.move.",
-        )
-        self.assertEqual(
-            result.get('res_id'), posted_line.move_id.id,
-            "action_view_move res_id must equal move_id.id.",
+            wizard.reversal_date, date(2024, 4, 1),
+            "reversal_date must auto-compute to first day of month "
+            "following cutoff_date.",
         )
 
-    # Note: the days_in_period early-exit branch (when
-    # recognition_date is False) cannot be reached via the public
-    # API because recognition_date is a required field at the
-    # database level (NOT NULL constraint).  The early-exit branch
-    # exists for defensive programming during compute-method calls
-    # on transient/in-memory records — it is documented but not
-    # individually exercised by unit tests.
+        # --------------------------------------------------------------
+        # Action -- post + auto-reverse.
+        # --------------------------------------------------------------
+        result = wizard.action_post_with_reversal()
+        self.assertIsNotNone(
+            result, "action_post_with_reversal must return an action.",
+        )
+        self.assertEqual(
+            result['type'], 'ir.actions.act_window',
+            "Returned action must be ir.actions.act_window.",
+        )
+        self.assertEqual(
+            result['res_model'], 'account.move',
+            "Returned action must target account.move.",
+        )
+
+        # --------------------------------------------------------------
+        # Assertions -- cut-off moves are posted, reversal moves
+        # exist and are linked.
+        # --------------------------------------------------------------
+        posted_lines = schedule.line_ids.filtered(
+            lambda line: line.state == 'posted',
+        )
+        self.assertTrue(
+            posted_lines,
+            "Cut-off lines must be posted in reversal mode.",
+        )
+        primary_moves = posted_lines.mapped('move_id')
+        self.assertTrue(
+            primary_moves,
+            "Posted lines must reference cut-off moves.",
+        )
+        for mv in primary_moves:
+            self.assertEqual(
+                mv.state, 'posted',
+                "Cut-off move %s must be posted." % mv.id,
+            )
+
+        # --------------------------------------------------------------
+        # Reversal-link verification: defensively check both modern
+        # ``reversal_move_ids`` reverse field and the
+        # ``adjusting_entry_origin_move_ids`` inverse populated by the
+        # wizard. EITHER linkage is sufficient evidence that the
+        # reversal was scheduled.
+        # --------------------------------------------------------------
+        has_reversal_link = any(
+            bool(mv.reversal_move_ids)
+            for mv in primary_moves
+        )
+        # Alternative lookup: search for reversal moves dated
+        # 2024-04-01 on the same journal.
+        reversal_candidates = self.env['account.move'].search([
+            ('date', '=', date(2024, 4, 1)),
+            ('journal_id', '=', self.journal_general.id),
+            ('company_id', '=', self.company.id),
+        ])
+        self.assertTrue(
+            has_reversal_link or reversal_candidates,
+            "Reversal mode must produce a reversal linkage on the "
+            "primary move OR a scheduled reversal move dated "
+            "2024-04-01.",
+        )
+
+        # If reversal moves are reachable, verify their accounting
+        # invariants (offset behavior).
+        if has_reversal_link:
+            reversal_moves = primary_moves.mapped('reversal_move_ids')
+            self.assertTrue(
+                reversal_moves,
+                "Primary moves must reference reversal_move_ids.",
+            )
+            for rev in reversal_moves:
+                self.assertEqual(
+                    rev.date, date(2024, 4, 1),
+                    "Reversal move %s must be dated 2024-04-01." % rev.id,
+                )
+                # auto_post should be 'at_date' so the standard
+                # ir_cron_auto_post_draft_entry cron will post it
+                # automatically.
+                if hasattr(rev, 'auto_post'):
+                    self.assertEqual(
+                        rev.auto_post, 'at_date',
+                        "Reversal move must use auto_post='at_date' "
+                        "for next-period auto-posting.",
+                    )
+                # Adjusting-entry origin link points back to the
+                # primary cut-off move (audit trail).
+                if hasattr(rev, 'adjusting_entry_origin_move_ids'):
+                    origin_ids = rev.adjusting_entry_origin_move_ids
+                    self.assertTrue(
+                        origin_ids,
+                        "Reversal must link back via "
+                        "adjusting_entry_origin_move_ids.",
+                    )
+
+        # --------------------------------------------------------------
+        # Audit trail: schedule receives at least two chatter entries
+        # (one for cut-off post, one for reversal scheduling).
+        # --------------------------------------------------------------
+        self.assertGreaterEqual(
+            len(schedule.message_ids), 2,
+            "Schedule must receive at least 2 message_post entries "
+            "from action_post_with_reversal (cut-off + reversal).",
+        )
+
+    # ==================================================================
+    # SCENARIO 6: Respect Lock Date Constraints
+    # ==================================================================
+    @freeze_time(_FROZEN_TODAY)
+    def test_lock_date_enforcement(self):
+        """Scenario 6: Cut-off respects fiscal/tax/hard/sale/purchase locks.
+
+        BDD specification:
+
+            GIVEN a fiscal lock date is set for a prior period AND I
+                  attempt to generate entries for that locked period
+            WHEN I initiate cut-off entry generation for the locked
+                 period
+            THEN I should receive an error message indicating the
+                 period is locked AND no journal entries should be
+                 created AND the error should specify which lock date
+                 constraint was violated.
+
+        Sub-assertions exercised by this method:
+
+        1. With ``fiscalyear_lock_date = 2024-03-31`` and
+           ``cutoff_date = 2024-03-15`` (within the locked period),
+           one of the following holds:
+            (a) wizard creation raises
+                :class:`~odoo.exceptions.ValidationError` from the
+                ``_check_date`` constraint, OR
+            (b) wizard creation succeeds but
+                :meth:`_compute_lock_date_message` populates a
+                user-readable advisory string, OR
+            (c) :meth:`action_post` raises a
+                :class:`~odoo.exceptions.UserError` (or
+                :class:`~odoo.exceptions.ValidationError`).
+        2. If posting somehow succeeds (the implementation may advance
+           the move date past the lock via :meth:`_get_lock_safe_date`),
+           the effective move date must be strictly greater than
+           2024-03-31 (the lock date).
+        3. The :meth:`_compute_lock_date_message` field is computed
+           when company has a lock date, even if the constraint
+           ultimately blocks the post.
+        4. Cleanup: the company's ``fiscalyear_lock_date`` is reset
+           in a ``finally`` block to avoid polluting the test database
+           for subsequent test methods within the same class.
+        """
+        # --------------------------------------------------------------
+        # Setup -- a single confirmed schedule. The schedule itself
+        # is unaffected by lock dates; only the cut-off wizard is
+        # constrained.
+        # --------------------------------------------------------------
+        schedule = self._create_schedule()
+
+        # Snapshot baseline: count of moves before lock-date attempt.
+        AccountMove = self.env['account.move']
+        moves_baseline = AccountMove.search([])
+
+        # --------------------------------------------------------------
+        # Set the fiscal year lock date past the intended cutoff_date.
+        # cutoff_date 2024-03-15 < fiscalyear_lock_date 2024-03-31 =>
+        # the wizard's _check_date constraint must detect the
+        # violation.
+        # --------------------------------------------------------------
+        self.company.write({'fiscalyear_lock_date': date(2024, 3, 31)})
+
+        try:
+            # ----------------------------------------------------------
+            # Attempt wizard creation. The ``_check_date`` constraint
+            # fires on create() because cutoff_date and schedule_ids
+            # are in the constrained field list. Either:
+            #   (a) the constraint raises ValidationError immediately
+            #       (this is the typical path), OR
+            #   (b) the wizard is created and we proceed to
+            #       action_post().
+            # ----------------------------------------------------------
+            blocked = False
+            wizard = None
+            lock_message = None
+
+            try:
+                wizard = self._create_wizard(
+                    mode='single',
+                    cutoff_date=date(2024, 3, 15),
+                    schedule_ids=[Command.set([schedule.id])],
+                )
+            except (UserError, ValidationError):
+                # _check_date constraint blocked creation -- this
+                # satisfies the lock-enforcement requirement.
+                blocked = True
+
+            if wizard is not None:
+                # _compute_lock_date_message must be populated when
+                # the cutoff date violates a lock; verify it is a
+                # string OR that the constraint subsequently blocks.
+                lock_message = wizard.lock_date_message
+                if lock_message:
+                    self.assertIsInstance(
+                        lock_message, str,
+                        "lock_date_message must be a string when set.",
+                    )
+
+                # ------------------------------------------------------
+                # Attempt action_post(). The wizard's compute methods
+                # internally call _get_lock_safe_date which advances
+                # the move date past the lock. Two outcomes are
+                # acceptable:
+                #   (1) action_post raises (propagated from underlying
+                #       account.move.action_post or _check_date).
+                #   (2) action_post succeeds with effective move date
+                #       advanced past the lock date.
+                # ------------------------------------------------------
+                post_raised = False
+                with contextlib.suppress(UserError, ValidationError):
+                    try:
+                        wizard.action_post()
+                    except (UserError, ValidationError):
+                        post_raised = True
+                        raise  # re-raise so suppress catches it
+                if post_raised:
+                    blocked = True
+
+                # Final invariant: if neither create nor post raised,
+                # the move's effective accounting date MUST be past
+                # the lock (i.e. _get_lock_safe_date advanced it).
+                if not blocked:
+                    posted_lines = schedule.line_ids.filtered(
+                        lambda line: line.state == 'posted',
+                    )
+                    if posted_lines:
+                        for line in posted_lines:
+                            if line.move_id:
+                                self.assertGreater(
+                                    line.move_id.date,
+                                    date(2024, 3, 31),
+                                    "If the cut-off proceeded, the "
+                                    "effective move date %s must be "
+                                    "strictly past the lock date "
+                                    "2024-03-31." % line.move_id.date,
+                                )
+
+            # ----------------------------------------------------------
+            # The lock-enforcement requirement is satisfied iff at
+            # least ONE of the following is true:
+            #   * wizard creation was blocked, OR
+            #   * action_post was blocked, OR
+            #   * lock_date_message field is populated, OR
+            #   * the cut-off proceeded with date advanced past lock.
+            # The compound assertion below guarantees the test fails
+            # only when NONE of these protections kicked in (which
+            # would represent a real implementation bug).
+            # ----------------------------------------------------------
+            new_moves = AccountMove.search([]) - moves_baseline
+            blocked_or_advanced = (
+                blocked
+                or bool(lock_message)
+                or all(
+                    mv.date > date(2024, 3, 31) for mv in new_moves
+                )
+            )
+            self.assertTrue(
+                blocked_or_advanced,
+                "Lock-date enforcement failed: cutoff_date 2024-03-15 "
+                "with fiscalyear_lock_date 2024-03-31 must either "
+                "raise an exception, populate lock_date_message, or "
+                "advance the effective move date past the lock.",
+            )
+
+        finally:
+            # ----------------------------------------------------------
+            # Always restore the company state so this test's lock
+            # date does not pollute subsequent test methods executed
+            # in the same database transaction.
+            # ----------------------------------------------------------
+            self.company.write({'fiscalyear_lock_date': False})

@@ -51,6 +51,7 @@ Rules Compliance (AAP §0.7)
 - R-09: Filename is ``test_pf_005.py`` exactly (story ID lowercase).
 """
 
+import os
 import time
 from datetime import date, timedelta
 
@@ -1332,24 +1333,36 @@ class TestOverdueCalculation(AccountPaymentFollowupTestCommon):
     def test_performance_10k_invoices_under_5s(self):
         """Performance: large-dataset aging compute completes promptly.
 
-        Builds a partner with ``N`` posted overdue invoices (default 200,
-        scaled down from the spec's 10,000 to keep the per-test wall
-        time inside CI thresholds), invalidates the cache, then
-        re-reads the aging totals. The compute method uses a single
-        ``_read_group`` aggregation so it should complete in well
-        under 5 seconds for 200 invoices on standard CI hardware.
+        Builds a partner with ``N`` posted overdue invoices, invalidates
+        the cache, then re-reads the aging totals. The compute method
+        uses a single ``_read_group`` aggregation so it should complete
+        in well under 5 seconds.
+
+        The dataset size is gated by the ``PYTEST_FULL_PERF`` environment
+        variable:
+
+          * ``PYTEST_FULL_PERF=1`` — runs the full PF-005 SLA scenario
+            with 10,000 invoices (matches the spec's <5s budget for the
+            real-world load).
+          * Unset / any other value — runs a CI-friendly 200-invoice
+            scaled-down version (under 2s on standard CI hardware).
+
+        Both modes assert that the elapsed wall time is under the 5s
+        SLA, and that the aggregate residual matches the seeded total.
+        Using an env-var gate keeps the daily CI loop fast while
+        permitting on-demand verification of the full-scale SLA.
         """
+        n_invoices = 10000 if os.environ.get('PYTEST_FULL_PERF') == '1' else 200
         partner = self.env['res.partner'].create({
-            'name': 'Partner — Performance Test (200 invoices)',
+            'name': f'Partner — Performance Test ({n_invoices} invoices)',
             'customer_rank': 1,
             'property_payment_term_id': self.pay_terms_a.id,
             'email': 'pf005_perf@test.com',
             'company_id': False,
         })
-        # Build 200 posted invoices in batch via create().
+        # Build N posted invoices in batch via create().
         # Amount and due-date offsets vary deterministically so the
         # aggregate sums are predictable.
-        n_invoices = 200
         invoice_vals = []
         for i in range(n_invoices):
             offset_days = 1 + (i % 90)
@@ -1384,9 +1397,10 @@ class TestOverdueCalculation(AccountPaymentFollowupTestCommon):
             total, 10.0 * n_invoices, places=2,
             msg=f"Aggregate total must equal {10.0 * n_invoices}.",
         )
-        # SLA: well under 5 seconds for 200 invoices. The 5-second budget
-        # in PF-005 was sized for 10,000 invoices; 200 should complete in
-        # under 2 seconds on any CI worker.
+        # SLA: under 5 seconds. For the scaled-down 200-invoice CI run
+        # we expect well under 2 seconds; for the full 10,000-invoice
+        # scenario gated by ``PYTEST_FULL_PERF=1`` we honour the literal
+        # spec budget of 5 seconds.
         self.assertLess(
             elapsed, 5.0,
             f"Aging compute for {n_invoices} invoices took {elapsed:.2f}s "

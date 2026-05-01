@@ -166,7 +166,7 @@ class AccountFollowupHistory(models.Model):
 
     user_id = fields.Many2one(
         comodel_name='res.users',
-        string='Responsible User',
+        string='Action User',
         required=True,
         default=lambda self: self.env.user,
         tracking=True,
@@ -174,7 +174,11 @@ class AccountFollowupHistory(models.Model):
         help='The user who triggered or logged this follow-up action. '
              'For cron-generated email entries, this is typically the '
              'system user (uid of the cron owner). For manual entries, '
-             'defaults to the current user.',
+             'defaults to the current user. The label "Action User" '
+             'disambiguates this field from the ``activity_user_id`` '
+             'inherited from ``mail.activity.mixin`` (whose label is '
+             '"Responsible User"), avoiding the install-time warning '
+             'about duplicate labels.',
     )
 
     followup_level_id = fields.Many2one(

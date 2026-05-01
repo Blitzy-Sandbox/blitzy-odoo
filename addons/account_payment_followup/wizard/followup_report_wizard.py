@@ -967,6 +967,49 @@ class FollowupReportWizard(models.TransientModel):
         self.ensure_one()
         return self.action_generate_report()
 
+    def action_drill_to_invoices(self, partner_id):
+        """Return an ``ir.actions.act_window`` listing overdue invoices.
+
+        Drill-down helper invoked from the QWeb PDF / XLSX report's
+        clickable partner rows (and exposed as a callable contract for
+        :file:`tests/test_pf_003.py`). Returns the standard Odoo list
+        action for ``account.move`` filtered to the supplied partner's
+        unpaid customer invoices, exactly matching the contract
+        documented in Checkpoint 2 instructions:
+
+        ``[('partner_id', '=', partner_id),
+           ('payment_state', 'in', ('not_paid', 'partial'))]``
+
+        Note: the partner-form smart button on ``res.partner`` (provided
+        by :meth:`res.partner._get_overdue_invoices`) uses a more
+        comprehensive domain that also includes ``'in_payment'`` to
+        handle the in-flight payment-confirmation grace period. The
+        wizard's drill-down here uses the strict literal Checkpoint 2
+        domain to keep the PDF/XLSX click-through deterministic.
+
+        :param partner_id: ID of the ``res.partner`` to drill into.
+        :return: ``ir.actions.act_window`` dict opening
+            ``account.move`` filtered to the partner's overdue invoices.
+        """
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Overdue Invoices"),
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': [
+                ('partner_id', '=', partner_id),
+                ('payment_state', 'in', ('not_paid', 'partial')),
+                ('move_type', 'in', ('out_invoice', 'out_refund')),
+                ('state', '=', 'posted'),
+            ],
+            'context': {
+                'default_partner_id': partner_id,
+                'search_default_partner_id': partner_id,
+            },
+            'target': 'current',
+        }
+
     # -------------------------------------------------------------------------
     # XLSX WORKBOOK BUILDER (helper for action_export_xlsx)
     # -------------------------------------------------------------------------

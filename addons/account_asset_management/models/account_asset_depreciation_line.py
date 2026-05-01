@@ -247,20 +247,14 @@ class AccountAssetDepreciationLine(models.Model):
         'Depreciation amount must be non-negative.',
     )
 
-    # Backwards-compatibility declaration kept for schema/spec alignment
-    # with the AAP exports list (``members_exposed`` includes
-    # ``_sql_constraints``). Odoo 19 emits a deprecation warning for this
-    # attribute via ``odoo/orm/model_classes.py`` but the actual CHECK is
-    # enforced by the ``_positive_amount`` Constraint above; both entries
-    # describe the SAME logical constraint and produce the SAME database
-    # guarantee.
-    _sql_constraints = [
-        (
-            'positive_amount',
-            'CHECK(depreciation_amount >= 0)',
-            'Depreciation amount must be non-negative.',
-        ),
-    ]
+    # NOTE: The legacy ``_sql_constraints`` attribute has been removed in
+    # favor of the Odoo 19 canonical ``models.Constraint`` declaration
+    # above (``_positive_amount``). Keeping both produced a deprecation
+    # warning at module load time; the canonical ``Constraint`` already
+    # creates the same PostgreSQL CHECK so removing the legacy attribute
+    # is safe and eliminates the warning. See
+    # addons/account_asset_management code review feedback (Checkpoint
+    # 8) for the rationale.
 
     # ------------------------------------------------------------------
     # Computed methods

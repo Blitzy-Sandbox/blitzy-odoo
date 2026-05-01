@@ -406,19 +406,14 @@ class AccountAssetCategory(models.Model):
         'Asset category code must be unique per company.',
     )
 
-    # Backwards-compatibility declaration kept for schema/spec alignment with
-    # the AAP exports list (members_exposed includes ``_sql_constraints``).
-    # Odoo 19 emits a deprecation warning for this attribute via
-    # ``odoo/orm/model_classes.py`` but the actual uniqueness is enforced by
-    # the ``_unique_code_per_company`` UniqueIndex above; both entries describe
-    # the SAME logical constraint and produce the SAME database guarantee.
-    _sql_constraints = [
-        (
-            'unique_code_per_company',
-            'UNIQUE(code, company_id)',
-            'Asset category code must be unique per company.',
-        ),
-    ]
+    # NOTE: The legacy ``_sql_constraints`` attribute has been removed in
+    # favor of the Odoo 19 canonical ``models.UniqueIndex`` declaration
+    # above (``_unique_code_per_company``). Keeping both produced a
+    # deprecation warning at module load time; the canonical
+    # ``UniqueIndex`` already creates the same PostgreSQL UNIQUE index
+    # so removing the legacy attribute is safe and eliminates the
+    # warning. See addons/account_asset_management code review feedback
+    # (Checkpoint 8) for the rationale.
 
     # -------------------------------------------------------------------------
     # COMPUTE METHODS

@@ -85,7 +85,8 @@ Helpers: _validate_accounts, _validate_depreciation_config,
     _compute_depreciation_schedule, _schedule_straight_line,
     _schedule_declining_balance, _schedule_units_of_production.
 Cron: _cron_post_depreciation_entries.
-SQL constraints: _sql_constraints (unique reference per company).
+SQL constraints: _unique_reference_per_company (Odoo 19 UniqueIndex enforcing
+    unique reference per company).
 """
 
 import logging
@@ -610,20 +611,14 @@ class AccountAsset(models.Model):
         'Asset reference must be unique per company.',
     )
 
-    # Backwards-compatibility declaration kept for schema/spec alignment
-    # with the AAP exports list (``members_exposed`` includes
-    # ``_sql_constraints``). Odoo 19 emits a deprecation warning for this
-    # attribute via ``odoo/orm/model_classes.py`` but the actual uniqueness
-    # is enforced by the ``_unique_reference_per_company`` UniqueIndex
-    # above; both entries describe the SAME logical constraint and produce
-    # the SAME database guarantee.
-    _sql_constraints = [
-        (
-            'unique_reference_per_company',
-            'UNIQUE(reference, company_id)',
-            'Asset reference must be unique per company.',
-        ),
-    ]
+    # NOTE: The legacy ``_sql_constraints`` attribute has been removed in
+    # favor of the Odoo 19 canonical ``models.UniqueIndex`` declaration
+    # above (``_unique_reference_per_company``). Keeping both produced a
+    # deprecation warning at module load time; the canonical
+    # ``UniqueIndex`` already creates the same PostgreSQL UNIQUE index
+    # so removing the legacy attribute is safe and eliminates the
+    # warning. See addons/account_asset_management code review feedback
+    # (Checkpoint 8) for the rationale.
 
     # =========================================================================
     # DEFAULT VALUE METHODS

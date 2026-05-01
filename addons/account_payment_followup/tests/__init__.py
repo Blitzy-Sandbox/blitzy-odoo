@@ -23,6 +23,15 @@ Per-story test modules cover the five PF stories defined in the AAP:
 Plus thematic per-feature acceptance suites that target the wizard,
 parser, and email-generation modules with file-name-aligned identifiers:
 
+  * ``test_action_history`` — PF-004 behavioral verification suite
+    (21 methods covering all 8 BDD scenarios, BR-001 / BR-003 / BR-004
+    / BR-006, immutability tests, sudo-bypass tests, activity-
+    scheduling integration, and mail.thread/mail.activity.mixin
+    feature checks). Mirrors the per-component file naming
+    convention used by FEATURE-001's
+    ``account_financial_report_ce/tests/test_balance_sheet.py``,
+    providing a complementary coverage layer alongside the
+    per-story ``test_pf_004.py`` module.
   * ``test_email_generation`` — PF-002 acceptance & integration tests
     (27 methods covering all 8 BDD scenarios, all 7 BRs, fault
     tolerance, and trigger actions). Mirrors the per-component file
@@ -54,6 +63,7 @@ class is available to subclasses; the per-story modules then extend it.
 
 from . import (
     common,
+    test_action_history,
     test_email_generation,
     test_followup_report,
     test_overdue_calculation,

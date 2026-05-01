@@ -1719,7 +1719,18 @@ class AccountAsset(models.Model):
           (missing config, locked period, etc.) is caught and logged
           as a warning; per-asset ``Exception`` is caught and logged
           via ``_logger.exception`` so one asset\'s failure cannot
-          abort the rest of the batch.
+          abort the rest of the batch. **Per-asset processing is
+          additionally wrapped in a PostgreSQL ``SAVEPOINT`` via
+          ``self.env.cr.savepoint()`` so DB-level errors (constraint
+          violations, NOT NULL failures, ``IntegrityError``,
+          ``OperationalError``, etc.) are properly isolated -- the
+          savepoint rolls back any partial writes for the failing
+          asset, restoring the transaction to a clean state so
+          subsequent assets in the batch can proceed without hitting
+          PostgreSQL ``current transaction is aborted, commands
+          ignored until end of transaction block`` errors. This
+          delivers true per-asset fault-tolerance for ALL exception
+          classes, not just ``UserError``.**
         * **Logged** (AM-004 AC5) -- emits structured INFO log records
           for cron start, cron completion, and counts of success /
           skipped / errored lines. WARNING for each skipped line.
@@ -1755,57 +1766,105 @@ class AccountAsset(models.Model):
         error_count = 0
         for asset in assets:
             try:
-                # Filter to the lines whose date is on or before
-                # ``today`` and whose state is still ``draft``.
-                # Sort by ``sequence`` so periods are posted in
-                # chronological order (cumulative_depreciation and
-                # net_book_value computations remain coherent).
-                due_lines = asset.depreciation_line_ids.filtered(
-                    lambda line: (
-                        line.state == 'draft'
-                        and line.depreciation_date
-                        and line.depreciation_date <= today
-                    ),
-                ).sorted(key=lambda line: line.sequence)
-                for line in due_lines:
-                    try:
-                        line.action_post()
-                        success_count += 1
-                    except UserError as exc:
-                        # Recoverable per-line failure (missing
-                        # config, locked period). Log at warning,
-                        # increment skip counter, and continue with
-                        # the next line in the same asset.
-                        _logger.warning(
-                            'AM-004: skipping depreciation line %s '
-                            'for asset %s: %s',
-                            line.id,
-                            asset.display_name,
-                            exc,
-                        )
-                        skip_count += 1
-                # Auto-close fully depreciated assets (AM-004 AC6).
-                # Use ``invalidate_recordset`` to force a fresh read
-                # of the recently-recomputed NBV; otherwise the
-                # in-memory cache may return the pre-post value.
-                asset.invalidate_recordset(
-                    fnames=[
-                        'accumulated_depreciation',
-                        'net_book_value',
-                    ],
-                )
-                if asset.net_book_value <= asset.salvage_value:
-                    asset.message_post(body=_(
-                        'Asset fully depreciated; closing.',
-                    ))
-                    asset.action_close()
+                # Per-asset PostgreSQL SAVEPOINT for true fault
+                # isolation per AM-004 AC6. The Odoo cursor's
+                # ``savepoint()`` method (see ``odoo/sql_db.py::
+                # BaseCursor.savepoint``) emits a ``SAVEPOINT`` SQL
+                # statement on enter and either ``RELEASE SAVEPOINT``
+                # (success) or ``ROLLBACK TO SAVEPOINT`` followed by
+                # ``RELEASE SAVEPOINT`` (failure) on exit. By default
+                # ``flush=True`` flushes any pending ORM operations
+                # to the DB before the savepoint is created, so the
+                # savepoint accurately captures all subsequent
+                # writes for this asset.
+                #
+                # Why this is necessary: when the inner
+                # ``line.action_post()`` triggers a DB-level error
+                # (e.g., ``psycopg2.IntegrityError`` from a CHECK
+                # constraint, NOT NULL violation, foreign-key
+                # violation, or ``OperationalError`` from a deadlock
+                # / serialization failure), the outer except UserError
+                # does NOT catch it -- the exception propagates up
+                # and the PostgreSQL transaction enters an "aborted"
+                # state. Without a savepoint, ALL subsequent asset
+                # writes in this batch fail with PostgreSQL error
+                # ``current transaction is aborted, commands ignored
+                # until end of transaction block``, producing
+                # cascading failures and rendering the per-asset
+                # error_count meaningless.
+                #
+                # With the savepoint, any exception escaping the
+                # ``with`` block triggers ``ROLLBACK TO SAVEPOINT``,
+                # cleanly reverting all writes attributable to the
+                # failing asset and restoring the transaction to a
+                # usable state. The outer ``except Exception``
+                # below then logs the failure and the loop proceeds
+                # to the NEXT asset against a healthy transaction.
+                # See ``addons/stock/models/stock_orderpoint.py``
+                # and ``addons/auth_signup/models/res_users.py`` for
+                # the canonical Odoo precedent of this pattern.
+                with self.env.cr.savepoint():
+                    # Filter to the lines whose date is on or before
+                    # ``today`` and whose state is still ``draft``.
+                    # Sort by ``sequence`` so periods are posted in
+                    # chronological order (cumulative_depreciation
+                    # and net_book_value computations remain
+                    # coherent).
+                    due_lines = asset.depreciation_line_ids.filtered(
+                        lambda line: (
+                            line.state == 'draft'
+                            and line.depreciation_date
+                            and line.depreciation_date <= today
+                        ),
+                    ).sorted(key=lambda line: line.sequence)
+                    for line in due_lines:
+                        try:
+                            line.action_post()
+                            success_count += 1
+                        except UserError as exc:
+                            # Recoverable per-line failure (missing
+                            # config, locked period). Log at
+                            # warning, increment skip counter, and
+                            # continue with the next line in the
+                            # same asset. UserError does NOT
+                            # corrupt the PostgreSQL transaction so
+                            # the savepoint remains valid; we do
+                            # NOT need to rollback here.
+                            _logger.warning(
+                                'AM-004: skipping depreciation '
+                                'line %s for asset %s: %s',
+                                line.id,
+                                asset.display_name,
+                                exc,
+                            )
+                            skip_count += 1
+                    # Auto-close fully depreciated assets (AM-004
+                    # AC6). Use ``invalidate_recordset`` to force a
+                    # fresh read of the recently-recomputed NBV;
+                    # otherwise the in-memory cache may return the
+                    # pre-post value.
+                    asset.invalidate_recordset(
+                        fnames=[
+                            'accumulated_depreciation',
+                            'net_book_value',
+                        ],
+                    )
+                    if asset.net_book_value <= asset.salvage_value:
+                        asset.message_post(body=_(
+                            'Asset fully depreciated; closing.',
+                        ))
+                        asset.action_close()
             except Exception:  # noqa: BLE001
                 # Catch-all per-asset fault-tolerance per AM-004 AC6.
-                # ``_logger.exception`` automatically captures the active
-                # exception's type, message, and traceback, so we do NOT
-                # pass the exception object as a positional argument
-                # (ruff TRY401). Increment the error counter and
-                # continue with the next asset.
+                # The savepoint context manager has already rolled
+                # back any partial writes for this asset, so the
+                # transaction is in a clean state and the next
+                # iteration of the loop can proceed safely.
+                # ``_logger.exception`` automatically captures the
+                # active exception's type, message, and traceback,
+                # so we do NOT pass the exception object as a
+                # positional argument (ruff TRY401). Increment the
+                # error counter and continue with the next asset.
                 _logger.exception(
                     'AM-004: error processing asset %s.',
                     asset.display_name,

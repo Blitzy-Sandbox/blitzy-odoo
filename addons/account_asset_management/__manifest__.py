@@ -3,15 +3,28 @@
 
 {
     "name": "Asset Management",
-    "summary": """
-        Fixed-asset lifecycle management for Odoo Community Edition.
-        Supports asset registration with vendor/invoice linkage, multiple
-        depreciation methods (straight-line, declining balance, units of
-        production), depreciation board visualization, scheduled automatic
-        depreciation entry posting, asset revaluation and impairment per
-        GAAP/IFRS (IAS 16, IAS 36, ASC 360), and asset disposal by sale,
-        scrapping, or write-off with automatic gain/loss calculation.
-    """,
+    # ``summary`` is parsed by Odoo's module loader as reStructuredText
+    # (rST) for display in the Apps tile. Triple-quoted multi-line
+    # strings with leading whitespace are interpreted by docutils as
+    # an implicit block quote, which historically emitted two
+    # cosmetic warnings during install ("Unexpected indentation."
+    # and "Block quote ends without a blank line; unexpected
+    # unindent.") with no functional impact. To eliminate these
+    # warnings, the summary is expressed using Python's implicit
+    # string concatenation (parenthesized adjacent literals) which
+    # produces a SINGLE logical line of rST -- no leading whitespace,
+    # no embedded newlines, and therefore no block-quote semantics
+    # for docutils to flag.
+    "summary": (
+        "Fixed-asset lifecycle management for Odoo Community Edition. "
+        "Supports asset registration with vendor/invoice linkage, "
+        "multiple depreciation methods (straight-line, declining "
+        "balance, units of production), depreciation board "
+        "visualization, scheduled automatic depreciation entry "
+        "posting, asset revaluation and impairment per GAAP/IFRS "
+        "(IAS 16, IAS 36, ASC 360), and asset disposal by sale, "
+        "scrapping, or write-off with automatic gain/loss calculation."
+    ),
     "version": "19.0.1.0.0",
     "category": "Accounting/Assets",
     "website": "https://github.com/odoo/odoo",

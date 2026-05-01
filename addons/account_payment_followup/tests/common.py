@@ -155,6 +155,22 @@ class AccountPaymentFollowupTestCommon(AccountTestInvoicingCommon):
         all_companies = cls.env['res.company'].search([])
         cls.env.user.company_ids = [Command.set(all_companies.ids)]
 
+        # Realign seed ``account.followup.level`` records to the test
+        # company.
+        # ``AccountTestInvoicingCommon.setup_independent_company`` creates
+        # a fresh ``company_1_data`` company for post-install tests, so
+        # ``cls.env.company`` is NOT ``base.main_company``. The seed
+        # follow-up levels in ``data/followup_data.xml`` are loaded
+        # against whichever company is active at install time (typically
+        # ``base.main_company``), and ``_compute_followup_level`` on
+        # ``res.partner`` filters levels by ``company_id``. Without this
+        # realignment, every level lookup in tests returns an empty
+        # recordset because the levels live in main_company while the
+        # partners resolve to ``cls.env.company`` (the test company).
+        # Writing the four seed levels onto the test company makes them
+        # discoverable by the per-partner level compute method.
+        cls._align_followup_levels_to_test_company()
+
         # Marker attribute used by introspection in tests verifying that
         # the freeze-time-protected fixture build executed successfully.
         cls._freeze_time_setup_started = True
@@ -169,6 +185,42 @@ class AccountPaymentFollowupTestCommon(AccountTestInvoicingCommon):
         with freeze_time(cls.FROZEN_DATE):
             cls._setup_overdue_partners()
             cls._setup_overdue_invoices()
+
+    @classmethod
+    def _align_followup_levels_to_test_company(cls):
+        """Reassign the four seed follow-up levels to the test company.
+
+        Resolves the seeded levels by external ID and writes
+        ``cls.env.company`` to each. ``raise_if_not_found=False`` makes
+        the method tolerant of partial-install scenarios (e.g., when a
+        downstream extension module overrides the seed XML).
+
+        Skips silently when no levels resolve, so tests that don't rely
+        on level assignment (e.g., pure aging-bucket tests) can still
+        run on installations where the seed XML was customised away.
+        """
+        Level = cls.env['account.followup.level']
+        target_company = cls.env.company
+        # The four default level XIDs from data/followup_data.xml.
+        level_xids = (
+            'account_payment_followup.followup_level_first_reminder',
+            'account_payment_followup.followup_level_second_reminder',
+            'account_payment_followup.followup_level_warning',
+            'account_payment_followup.followup_level_final_notice',
+        )
+        levels = Level
+        for xid in level_xids:
+            level = cls.env.ref(xid, raise_if_not_found=False)
+            if level:
+                levels |= level
+        # Only update if we actually need to (avoids triggering a
+        # ``UNIQUE(sequence, company_id)`` constraint violation when the
+        # level is already in the target company from a prior test).
+        levels_to_update = levels.filtered(
+            lambda lvl: lvl.company_id != target_company,
+        )
+        if levels_to_update:
+            levels_to_update.write({'company_id': target_company.id})
 
     # -------------------------------------------------------------------------
     # FIXTURE BUILDERS — PARTNERS

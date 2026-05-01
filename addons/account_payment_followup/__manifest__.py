@@ -59,11 +59,27 @@
     #   view wiring, and menu items are implemented. Including non-existent
     #   files here would cause module install to fail with "File not found".
     "data": [
+        # Security MUST load first — ir.rule records reference models
+        # registered in models/__init__.py, and ir.model.access.csv
+        # entries gate the followup wizard's record creation in tests
+        # and runtime.
         "security/followup_security.xml",
         "security/ir.model.access.csv",
+        # Default mail templates must precede follow-up-level seed data
+        # because followup_data.xml references the templates by XID.
         "data/mail_template_data.xml",
         "data/followup_data.xml",
         "data/followup_cron.xml",
+        # PF-003 report — the ir.actions.report record in
+        # report/followup_report.xml references the wizard model's
+        # auto-derived External ID (model_account_followup_report_wizard)
+        # and MUST load AFTER the wizard model has been registered by
+        # the module loader (which happens when wizard/__init__.py is
+        # imported via the parent __init__.py — guaranteed before any
+        # data XML is parsed by Odoo's module install workflow).
+        "report/followup_report.xml",
+        # PF-003 wizard view + window action.
+        "views/followup_report_views.xml",
     ],
     # Constraints (per EPIC-001 - Enterprise Accounting Parity):
     #   - AGPL-3.0 license required (satisfied)

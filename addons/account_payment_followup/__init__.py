@@ -3,18 +3,24 @@
 
 """Payment Follow-ups — Odoo 19.0 Community Edition.
 
-Registers the :mod:`models` sub-package with Odoo's module loader so that
-every model class (``account.followup.level``, ``account.followup.line``,
-``account.followup.history``, and the ``_inherit`` extensions of
-``account.move``, ``account.move.line``, and ``res.partner``) is imported
-and registered with the ORM when the module is installed or upgraded.
+Registers the :mod:`models`, :mod:`report`, and :mod:`wizard` sub-packages
+with Odoo's module loader so that every model class
+(``account.followup.level``, ``account.followup.line``,
+``account.followup.history``, the ``_inherit`` extensions of
+``account.move``, ``account.move.line``, and ``res.partner``,
+the report parser AbstractModel
+``report.account_payment_followup.followup_aged_receivables``, and the
+PF-003 wizard TransientModel ``account.followup.report.wizard``) is
+imported and registered with the ORM when the module is installed or
+upgraded.
 
-Downstream sub-packages (``report`` for PF-003 and ``wizard`` for
-PF-003 follow-up report wizard) will be appended to the import list in
-subsequent checkpoints once those folders are populated. At the current
-foundation checkpoint, only the ``models`` package exists on disk, so
-importing non-existent sub-packages would raise ImportError at module
-installation time.
+Subpackage Inventory:
+    - ``models``: Net-new model classes plus core-model ``_inherit``
+      extensions for follow-up workflows.
+    - ``report``: AbstractModel parser for the PF-003 Aged Receivables
+      Follow-up Report.
+    - ``wizard``: TransientModel-based wizard for PF-003 — collects
+      filter parameters and dispatches PDF / XLSX exports.
 """
 
-from . import models, report
+from . import models, report, wizard

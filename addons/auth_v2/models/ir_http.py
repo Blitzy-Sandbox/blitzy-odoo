@@ -403,6 +403,25 @@ class IrHttp(models.AbstractModel):
         # the base class's ``_auth_method_bearer``.
         request.update_env(user=user_record.id)
 
+        # Step 6b: Mark the session as stateless to match Odoo's standard
+        # bearer-auth convention (``odoo/addons/base/models/ir_http.py``
+        # ``_auth_method_bearer`` line 247: ``request.session.can_save =
+        # False  # stateless``). Bearer authentication is REQUEST-scoped:
+        # the access token is presented on every API call and validated
+        # by the sidecar each time. Setting ``can_save = False`` prevents
+        # Odoo from writing the per-request authentication state into a
+        # persistent session cookie -- which would defeat the stateless
+        # contract and create a stale-credential attack surface (a
+        # blacklisted token would still grant access until the session
+        # cookie itself expired).
+        #
+        # Refine PR Directive D1: The browser PKCE callback path
+        # (``controllers/main.py::AuthV2Controller.callback``) handles
+        # session establishment with full field population
+        # (db, login, uid, context, session_token). The bearer flow here
+        # is API-only and must NOT establish a session.
+        request.session.can_save = False
+
         # Step 7: CRITICAL -- return WITHOUT calling ``super()._authenticate()``.
         # Per Rule R13 (fail-closed) and Rule R4 (mutual exclusion), once
         # the V2 branch is engaged, the legacy authentication MUST NOT

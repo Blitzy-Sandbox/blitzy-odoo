@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from . import test_feature_flags
+from . import test_controllers_helpers, test_feature_flags

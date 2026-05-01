@@ -461,7 +461,17 @@ class AccountAssetModificationWizard(models.TransientModel):
                 name=asset.reference or asset.name or '',
             ),
             'asset_id': asset.id,
-            'asset_entry_type': mtype,
+            # Per AAP R-05 + the asset_entry_type Selection on
+            # account.move (defined in models/account_move.py), the
+            # asset_entry_type field is coarse-grained with exactly four
+            # lifecycle buckets: acquisition (AM-001), depreciation
+            # (AM-004), modification (AM-005), disposal (AM-006).
+            # All AM-005 modification sub-types -- revaluation,
+            # impairment, and impairment_reversal -- map to the single
+            # 'modification' bucket. The granular sub-type is preserved
+            # in the move's ref above (Asset <mtype>: <reference>) and
+            # on this wizard's modification_type field for audit trail.
+            'asset_entry_type': 'modification',
             'line_ids': [
                 Command.create({
                     'name': _(

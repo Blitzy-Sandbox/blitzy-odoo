@@ -20,9 +20,16 @@ Per-story test modules cover the five PF stories defined in the AAP:
   * ``test_pf_005`` — Overdue Calculation (PF-005, complete coverage of
     the four model files PF-005 owns)
 
-Plus a thematic per-feature acceptance suite that targets the wizard
-and parser modules with file-name-aligned identifiers:
+Plus thematic per-feature acceptance suites that target the wizard,
+parser, and email-generation modules with file-name-aligned identifiers:
 
+  * ``test_email_generation`` — PF-002 acceptance & integration tests
+    (27 methods covering all 8 BDD scenarios, all 7 BRs, fault
+    tolerance, and trigger actions). Mirrors the per-component file
+    naming convention used by FEATURE-001's
+    ``account_financial_report_ce/tests/test_balance_sheet.py``,
+    ``test_aged_partner.py`` etc., providing a high-resolution
+    coverage layer on top of the per-story ``test_pf_002.py`` module.
   * ``test_followup_report`` — PF-003 acceptance & integration tests
     (30 methods covering wizard CRUD, all 8 BDD scenarios, all 7 BRs,
     and the SLA performance gate). Mirrors the per-component file
@@ -37,6 +44,7 @@ class is available to subclasses; the per-story modules then extend it.
 
 from . import (
     common,
+    test_email_generation,
     test_followup_report,
     test_pf_001,
     test_pf_002,

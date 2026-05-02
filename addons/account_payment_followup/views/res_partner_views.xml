@@ -139,26 +139,55 @@
                             </group>
                         </group>
                         <!-- Row 2: Aging Buckets (two columns) -->
+                        <!--
+                            QA Issue #1 fix (Checkpoint 5): per-bucket
+                            decoration provides progressive visual
+                            severity as receivables age — a glance-only
+                            signal that does not require the user to read
+                            numeric values. The escalation maps to
+                            Bootstrap text classes Odoo emits for the
+                            ``decoration-*`` shorthand:
+
+                              Current  → ``decoration-success``  (green)
+                              1-30     → ``decoration-info``     (cyan / blue)
+                              31-60    → ``decoration-warning``  (yellow / amber)
+                              61-90    → ``decoration-danger``   (red)
+                              90+      → ``decoration-danger`` + ``decoration-bf``
+                                         (bold red — strongest emphasis)
+
+                            Each conditional fires only when the bucket
+                            is positive, so a partner with no balance in
+                            a bucket renders default text colour rather
+                            than misleading green / yellow / red on
+                            zero values. The 90+ bucket retains its
+                            ``decoration-danger`` rule and gains the
+                            ``decoration-bf`` (bold) modifier so it
+                            visually outranks 61-90.
+                        -->
                         <group string="Aging Buckets"
                                name="followup_aging_group">
                             <group>
                                 <field name="aging_bucket_current"
                                        widget="monetary"
-                                       options="{'currency_field': 'currency_id'}"/>
+                                       options="{'currency_field': 'currency_id'}"
+                                       decoration-success="aging_bucket_current &gt; 0"/>
                                 <field name="aging_bucket_1_30"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
-                                       string="1-30 Days Overdue"/>
+                                       string="1-30 Days Overdue"
+                                       decoration-info="aging_bucket_1_30 &gt; 0"/>
                                 <field name="aging_bucket_31_60"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
-                                       string="31-60 Days Overdue"/>
+                                       string="31-60 Days Overdue"
+                                       decoration-warning="aging_bucket_31_60 &gt; 0"/>
                             </group>
                             <group>
                                 <field name="aging_bucket_61_90"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
-                                       string="61-90 Days Overdue"/>
+                                       string="61-90 Days Overdue"
+                                       decoration-danger="aging_bucket_61_90 &gt; 0"/>
                                 <!--
                                     Issues #23, #24, #25 fix:
                                       * ``string="90+ Days Overdue"``
@@ -178,12 +207,21 @@
                                         positive — the universal
                                         collections-industry signal
                                         for severe aging.
+
+                                    QA Issue #1 fix (Checkpoint 5):
+                                    ``decoration-bf`` adds bold weight
+                                    on top of the danger colouring so
+                                    90+ visually outranks 61-90 and
+                                    delivers the "dark red" emphasis
+                                    called for by the per-bucket
+                                    escalation spec.
                                 -->
                                 <field name="aging_bucket_90_plus"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
                                        string="90+ Days Overdue"
-                                       decoration-danger="aging_bucket_90_plus &gt; 0"/>
+                                       decoration-danger="aging_bucket_90_plus &gt; 0"
+                                       decoration-bf="aging_bucket_90_plus &gt; 0"/>
                             </group>
                         </group>
                         <!-- Row 3: Action button "Send Follow-up Now"

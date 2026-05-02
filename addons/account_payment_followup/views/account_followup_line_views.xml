@@ -64,11 +64,6 @@
             <field name="arch" type="xml">
                 <list string="Overdue Customers"
                       default_order="max_days_overdue desc, total_overdue desc"
-                      decoration-danger="max_days_overdue &gt; 90"
-                      decoration-warning="max_days_overdue &gt; 30 and max_days_overdue &lt;= 90"
-                      decoration-info="followup_status == 'in_progress'"
-                      decoration-success="followup_status == 'promised'"
-                      decoration-muted="followup_status == 'no_action'"
                       create="false"
                       delete="false">
                     <!--
@@ -80,6 +75,61 @@
                         applies the red ``text-danger`` class when the
                         90+ bucket is positive — collections-industry
                         convention for severe aging.
+
+                        QA Issue #1 fix (Checkpoint 5): per-bucket
+                        cell-level decoration provides progressive
+                        visual severity that escalates left-to-right
+                        in the bucket columns. Each conditional fires
+                        only when the bucket is positive, so $0 cells
+                        keep the default text colour rather than
+                        misleadingly turning green / yellow / red.
+
+                          aging_bucket_current  → success (green)
+                          aging_bucket_1_30     → info    (cyan)
+                          aging_bucket_31_60    → warning (amber)
+                          aging_bucket_61_90    → danger  (red)
+                          aging_bucket_90_plus  → danger + bf (bold red)
+
+                        Mirrors the partner-form aging-buckets group
+                        in res_partner_views.xml so the same data
+                        receives identical visual treatment in both
+                        views.
+
+                        QA Issue #1 fix (Checkpoint 5, follow-up
+                        resolution):  the previous row-level
+                        ``decoration-*`` attributes on the ``<list>``
+                        element (``decoration-danger`` /
+                        ``decoration-warning`` keyed off
+                        ``max_days_overdue`` and
+                        ``decoration-info`` / ``decoration-success`` /
+                        ``decoration-muted`` keyed off
+                        ``followup_status``) painted **every** cell in
+                        a row with the same colour, masking the
+                        per-bucket distinction the QA report
+                        explicitly requested ("Each bucket should be
+                        visually distinct").  Specifically, when the
+                        row's severity colour happened to coincide
+                        with a cell's bucket colour (e.g. a row in the
+                        31-60 day band rendered ``text-warning`` and
+                        also had its 31-60 bucket cell decorated
+                        ``text-warning``), the bucket distinction
+                        became invisible.
+
+                        The row-level severity decorations are
+                        removed here so the per-cell bucket colours
+                        on each ``<field>`` (lines 109-144) are the
+                        primary visual mechanism in this list, in
+                        line with the QA acceptance criterion.
+                        Severity context remains available through:
+
+                          • the ``followup_status`` badge column
+                            (own decoration-* attributes on the
+                            ``<field name="followup_status">`` below)
+                          • the ``max_days_overdue`` numeric column
+                          • the default ordering
+                            (``max_days_overdue desc``)
+                          • the ``aging_bucket_90_plus`` cell which
+                            renders bold red when populated
                     -->
                     <field name="partner_id" string="Customer"/>
                     <field name="total_overdue"
@@ -92,30 +142,35 @@
                            options="{'currency_field': 'currency_id'}"
                            string="Current"
                            sum="Current"
+                           decoration-success="aging_bucket_current &gt; 0"
                            optional="show"/>
                     <field name="aging_bucket_1_30"
                            widget="monetary"
                            options="{'currency_field': 'currency_id'}"
                            string="1-30 Days"
                            sum="1-30 Days"
+                           decoration-info="aging_bucket_1_30 &gt; 0"
                            optional="show"/>
                     <field name="aging_bucket_31_60"
                            widget="monetary"
                            options="{'currency_field': 'currency_id'}"
                            string="31-60 Days"
                            sum="31-60 Days"
+                           decoration-warning="aging_bucket_31_60 &gt; 0"
                            optional="show"/>
                     <field name="aging_bucket_61_90"
                            widget="monetary"
                            options="{'currency_field': 'currency_id'}"
                            string="61-90 Days"
                            sum="61-90 Days"
+                           decoration-danger="aging_bucket_61_90 &gt; 0"
                            optional="show"/>
                     <field name="aging_bucket_90_plus"
                            widget="monetary"
                            options="{'currency_field': 'currency_id'}"
                            string="90+ Days"
                            decoration-danger="aging_bucket_90_plus &gt; 0"
+                           decoration-bf="aging_bucket_90_plus &gt; 0"
                            sum="90+ Days"
                            optional="show"/>
                     <field name="max_days_overdue"
@@ -215,6 +270,17 @@
                                     severe aging. (Form widgets respect
                                     ``decoration-*`` attributes the same
                                     way list cells do.)
+
+                                    QA Issue #1 fix (Checkpoint 5):
+                                    progressive per-bucket decoration
+                                    matches the partner-form aging
+                                    group and the overdue list view —
+                                    success → info → warning → danger
+                                    → bold danger across the five
+                                    bucket rows. Conditional firing
+                                    (``> 0``) keeps zero balances at
+                                    default colour to avoid misleading
+                                    visual cues.
                                 -->
                                 <field name="total_overdue"
                                        widget="monetary"
@@ -223,24 +289,29 @@
                                 <field name="aging_bucket_current"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
-                                       string="Current (Not Due)"/>
+                                       string="Current (Not Due)"
+                                       decoration-success="aging_bucket_current &gt; 0"/>
                                 <field name="aging_bucket_1_30"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
-                                       string="1-30 Days Overdue"/>
+                                       string="1-30 Days Overdue"
+                                       decoration-info="aging_bucket_1_30 &gt; 0"/>
                                 <field name="aging_bucket_31_60"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
-                                       string="31-60 Days Overdue"/>
+                                       string="31-60 Days Overdue"
+                                       decoration-warning="aging_bucket_31_60 &gt; 0"/>
                                 <field name="aging_bucket_61_90"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
-                                       string="61-90 Days Overdue"/>
+                                       string="61-90 Days Overdue"
+                                       decoration-danger="aging_bucket_61_90 &gt; 0"/>
                                 <field name="aging_bucket_90_plus"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
                                        string="90+ Days Overdue"
-                                       decoration-danger="aging_bucket_90_plus &gt; 0"/>
+                                       decoration-danger="aging_bucket_90_plus &gt; 0"
+                                       decoration-bf="aging_bucket_90_plus &gt; 0"/>
                                 <field name="max_days_overdue"/>
                                 <field name="currency_id" invisible="1"/>
                             </group>

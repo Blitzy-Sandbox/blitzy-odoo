@@ -252,6 +252,22 @@
         ],
     },
     # -------------------------------------------------------------------------
+    # Backend Assets (SCSS only, no JavaScript per AAP §0.5.3)
+    # -------------------------------------------------------------------------
+    # Loaded into ``web.assets_backend`` so every backend page rendered after
+    # this module installs picks up the QA Issue #3 (Checkpoint 5) focus-
+    # visibility fix for primary buttons. The SCSS file is intentionally
+    # minimal — only the ``.btn-primary:focus-visible`` rule needed to
+    # satisfy WCAG 2.1 AA Success Criterion 2.4.7 "Focus Visible". Mirrors
+    # the SCSS-only frontend-contribution precedent of FEATURE-001's
+    # ``addons/account_financial_report_ce/`` and FEATURE-002's
+    # ``addons/account_bank_reconciliation_ce/`` modules.
+    "assets": {
+        "web.assets_backend": [
+            "account_payment_followup/static/src/scss/payment_followup.scss",
+        ],
+    },
+    # -------------------------------------------------------------------------
     # Constraints (per EPIC-001 — Enterprise Accounting Parity)
     # -------------------------------------------------------------------------
     #   - AGPL-3.0 license required (satisfied — see ``license`` above).
@@ -279,7 +295,10 @@
     #     is intentionally absent).
     #   - No demo data file declared (the AAP does not require demo data;
     #     omitting the ``demo`` key is equivalent to ``"demo": []``).
-    #   - No ``assets`` block (no net-new JavaScript or OWL components per
-    #     AAP §0.5.3; SCSS is also absent because no custom styling is
-    #     required for the standard Odoo views used by this module).
+    #   - The ``assets`` block above is the ONLY frontend contribution.
+    #     It loads exactly one SCSS file via ``web.assets_backend`` to
+    #     restore primary-button focus visibility (QA Issue #3, Checkpoint 5).
+    #     No net-new JavaScript or OWL components are introduced — per
+    #     AAP §0.5.3, frontend contribution is restricted to SCSS added
+    #     under ``static/src/scss/``.
 }

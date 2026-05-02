@@ -117,6 +117,22 @@
                        # (lxml, Jinja2, Babel, python-dateutil) are already
                        # pinned by Odoo core and requirements.txt.
     },
+    # -------------------------------------------------------------------------
+    # Backend Assets (SCSS only, no JavaScript per AAP §0.5.3)
+    # -------------------------------------------------------------------------
+    # Loaded into ``web.assets_backend`` so every backend page rendered after
+    # this module installs picks up the QA Issue #3 (Checkpoint 5) focus-
+    # visibility fix for primary buttons. The SCSS file is intentionally
+    # minimal — only the ``.btn-primary:focus-visible`` rule needed to
+    # satisfy WCAG 2.1 AA Success Criterion 2.4.7 "Focus Visible". Mirrors
+    # the SCSS-only frontend-contribution precedent of FEATURE-001's
+    # ``addons/account_financial_report_ce/`` and FEATURE-002's
+    # ``addons/account_bank_reconciliation_ce/`` modules.
+    "assets": {
+        "web.assets_backend": [
+            "account_asset_management/static/src/scss/asset_management.scss",
+        ],
+    },
     # FEATURE-004: Asset Management - Production Implementation
     #
     # User stories implemented (GAAP/IFRS-compliant per IAS 16 / IAS 36 /

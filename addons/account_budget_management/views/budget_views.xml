@@ -194,9 +194,29 @@
                                     <field name="variance_actual"
                                            sum="Total Actual"
                                            optional="show"/>
+                                    <!--
+                                        QA Issue #2 fix (Checkpoint 5):
+                                        The prior decoration ``variance_absolute &lt; 0`` painted the
+                                        cell red whenever the raw arithmetic difference was negative.
+                                        For an expense account where actual &lt; planned (under-spent)
+                                        the difference is negative AND favorable — the prior rule
+                                        therefore rendered favorable variance in red, contradicting
+                                        the green ``variance_threshold_status == 'normal'`` badge on
+                                        the same row and confusing controllers.
+
+                                        Replaced with the semantically-aware ``variance_classification``
+                                        already computed on ``budget.budget.line`` (favorable /
+                                        unfavorable / neutral). This matches the standalone variance
+                                        list view (``view_budget_variance_list``) cell-decoration
+                                        pattern — see budget_variance_views.xml lines 394-396 — so the
+                                        embedded list and the standalone list now show consistent
+                                        color signals for the same data.
+                                    -->
                                     <field name="variance_absolute"
                                            sum="Total Variance"
-                                           decoration-danger="variance_absolute &lt; 0"
+                                           decoration-success="variance_classification == 'favorable'"
+                                           decoration-danger="variance_classification == 'unfavorable'"
+                                           decoration-muted="variance_classification == 'neutral'"
                                            optional="show"/>
                                     <!--
                                         ``variance_percent`` is computed

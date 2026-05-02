@@ -267,23 +267,38 @@
                   decoration-muted="state == 'closed'"
                   default_order="start_date desc, name"
                   sample="1">
+                <!--
+                    Issue #19 fix: shortened column labels (Method,
+                    Start, End, Status) so the list view fits at
+                    1280px without truncation.
+                -->
                 <field name="name"/>
                 <field name="partner_id"/>
-                <field name="recognition_method" optional="show"/>
-                <field name="start_date"/>
-                <field name="end_date"/>
+                <field name="recognition_method"
+                       string="Method"
+                       optional="show"/>
+                <field name="start_date" string="Start"/>
+                <field name="end_date" string="End"/>
                 <field name="total_amount" widget="monetary" sum="Total"/>
-                <field name="posted_amount" widget="monetary" optional="hide"/>
-                <field name="remaining_amount" widget="monetary" optional="hide"/>
+                <field name="posted_amount"
+                       widget="monetary"
+                       string="Posted"
+                       optional="hide"/>
+                <field name="remaining_amount"
+                       widget="monetary"
+                       string="Remaining"
+                       optional="hide"/>
                 <field name="currency_id" column_invisible="True"/>
                 <field name="completion_status"
                        widget="badge"
+                       string="Progress"
                        decoration-info="completion_status == 'active'"
                        decoration-success="completion_status == 'completed'"
                        decoration-warning="completion_status == 'on_hold'"
                        optional="show"/>
                 <field name="state"
                        widget="badge"
+                       string="Status"
                        decoration-info="state == 'draft'"
                        decoration-success="state == 'confirmed'"
                        decoration-muted="state == 'closed'"/>

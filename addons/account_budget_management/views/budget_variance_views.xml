@@ -155,21 +155,39 @@
                   decoration-success="variance_threshold_status == 'normal'"
                   decoration-warning="variance_threshold_status in ('warning', 'alert')"
                   decoration-danger="variance_threshold_status == 'over_budget'">
+                <!--
+                    Issue #14 fix: shortened column labels and added
+                    decoration-danger for negative variance so the
+                    list view fits in 1280px without truncation.
+                -->
                 <field name="budget_id" options="{'no_create': True}"/>
                 <field name="account_id" options="{'no_create': True}"/>
-                <field name="account_type" optional="show"/>
+                <field name="account_type" string="Type" optional="show"/>
                 <field name="analytic_distribution" widget="analytic_distribution"
                        groups="analytic.group_analytic_accounting"
                        optional="show"/>
-                <field name="planned_amount" widget="monetary" sum="Total Planned"/>
-                <field name="variance_actual" widget="monetary" sum="Total Actual"/>
-                <field name="variance_absolute" widget="monetary" sum="Total Variance"/>
+                <field name="planned_amount"
+                       widget="monetary"
+                       string="Planned"
+                       sum="Total Planned"/>
+                <field name="variance_actual"
+                       widget="monetary"
+                       string="Actual"
+                       sum="Total Actual"/>
+                <field name="variance_absolute"
+                       widget="monetary"
+                       string="Variance"
+                       decoration-danger="variance_absolute &lt; 0"
+                       sum="Total Variance"/>
                 <!-- ``variance_consumption_percent`` stored in 0-100
                      form (see budget_budget_line.py); plain Float
                      display avoids the ``widget="percentage"`` 100×
                      multiplication. -->
-                <field name="variance_consumption_percent"/>
-                <field name="variance_threshold_status" widget="badge"
+                <field name="variance_consumption_percent"
+                       string="Cons. %"/>
+                <field name="variance_threshold_status"
+                       widget="badge"
+                       string="Status"
                        decoration-success="variance_threshold_status == 'normal'"
                        decoration-warning="variance_threshold_status == 'warning'"
                        decoration-info="variance_threshold_status == 'alert'"
@@ -324,31 +342,69 @@
                   decoration-success="variance_classification == 'favorable'"
                   decoration-danger="variance_classification == 'unfavorable'"
                   decoration-muted="variance_classification == 'neutral'">
+                <!--
+                    Issue #11 fix: shortened column labels (Planned,
+                    Actual, Variance, Var %, Cons. %, Class, Status)
+                    so the list view fits at 1280px standard laptop
+                    width without truncation. Negative variance values
+                    are still highlighted via the row-level
+                    decoration-danger above (variance_classification ==
+                    'unfavorable'); a per-cell decoration is added on
+                    variance_absolute so the column is also red-coloured
+                    for negative actual-minus-planned regardless of
+                    classification.
+                -->
                 <field name="budget_id" options="{'no_create': True}" readonly="1"/>
                 <field name="account_id" options="{'no_create': True}" readonly="1"/>
-                <field name="account_type" readonly="1" optional="show"/>
-                <field name="planned_amount" widget="monetary" sum="Total Planned" readonly="1"/>
-                <field name="variance_actual" widget="monetary" sum="Total Actual" readonly="1"/>
-                <field name="variance_absolute" widget="monetary" sum="Total Variance" readonly="1"/>
+                <field name="account_type"
+                       readonly="1"
+                       optional="show"
+                       string="Type"/>
+                <field name="planned_amount"
+                       widget="monetary"
+                       string="Planned"
+                       sum="Total Planned"
+                       readonly="1"/>
+                <field name="variance_actual"
+                       widget="monetary"
+                       string="Actual"
+                       sum="Total Actual"
+                       readonly="1"/>
+                <field name="variance_absolute"
+                       widget="monetary"
+                       string="Variance"
+                       decoration-danger="variance_absolute &lt; 0"
+                       sum="Total Variance"
+                       readonly="1"/>
                 <!-- ``variance_percent`` and
                      ``variance_consumption_percent`` are both stored
                      in 0-100 form (see budget_budget_line.py); plain
                      Float display avoids the ``widget="percentage"``
                      100× multiplication. -->
-                <field name="variance_percent" readonly="1"/>
-                <field name="variance_consumption_percent" readonly="1" optional="show"/>
-                <field name="variance_classification" widget="badge"
+                <field name="variance_percent"
+                       string="Var %"
+                       readonly="1"/>
+                <field name="variance_consumption_percent"
+                       string="Cons. %"
+                       readonly="1"
+                       optional="show"/>
+                <field name="variance_classification"
+                       widget="badge"
+                       string="Class"
                        decoration-success="variance_classification == 'favorable'"
                        decoration-danger="variance_classification == 'unfavorable'"
                        decoration-muted="variance_classification == 'neutral'"
                        readonly="1"/>
-                <field name="variance_threshold_status" widget="badge"
+                <field name="variance_threshold_status"
+                       widget="badge"
+                       string="Status"
                        decoration-success="variance_threshold_status == 'normal'"
                        decoration-warning="variance_threshold_status == 'warning'"
                        decoration-info="variance_threshold_status == 'alert'"
                        decoration-danger="variance_threshold_status == 'over_budget'"
                        readonly="1"/>
                 <field name="variance_explanation_note"
+                       string="Note"
                        optional="show"
                        placeholder="Add variance explanation..."/>
                 <field name="state" optional="hide" readonly="1"/>

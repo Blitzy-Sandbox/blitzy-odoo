@@ -100,12 +100,18 @@
                 <list string="Follow-up Levels"
                       default_order="sequence, delay"
                       decoration-muted="not active">
+                    <!--
+                        Issue #21 fix: shortened "Days After Due" to
+                        "Delay (days)" so the list column header fits
+                        at 1280px without truncation.
+                    -->
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
                     <field name="delay"
-                           string="Days After Due"/>
-                    <field name="action_type"/>
+                           string="Delay (days)"/>
+                    <field name="action_type" string="Action"/>
                     <field name="email_template_id"
+                           string="Email Template"
                            optional="show"/>
                     <field name="min_amount"
                            widget="monetary"
@@ -264,10 +270,9 @@
                                 <p class="text-muted">
                                     When this level fires, the following
                                     additional actions are executed on
-                                    the partner (PF-001 Scenario 5).
-                                    Each option is independent and may
-                                    be combined with any
-                                    <em>Action Type</em>.
+                                    the partner. Each option is
+                                    independent and may be combined with
+                                    any <em>Action Type</em>.
                                 </p>
                                 <group>
                                     <group>

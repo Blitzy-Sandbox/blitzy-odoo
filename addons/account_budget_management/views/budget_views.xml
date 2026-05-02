@@ -196,6 +196,7 @@
                                            optional="show"/>
                                     <field name="variance_absolute"
                                            sum="Total Variance"
+                                           decoration-danger="variance_absolute &lt; 0"
                                            optional="show"/>
                                     <!--
                                         ``variance_percent`` is computed
@@ -289,9 +290,12 @@
                     ``consumption_percent`` stored in 0-100 form (see
                     budget_budget.py ``_compute_dynamic_totals``); plain
                     Float display avoids the ``widget="percentage"`` 100×
-                    multiplication. Field ``string`` ends in "(%)".
+                    multiplication. Issue #13 fix: shortened column
+                    label so the header fits at 1280px width without
+                    truncation.
                 -->
                 <field name="consumption_percent"
+                       string="Cons. %"
                        optional="show"/>
                 <field name="line_count" optional="hide"/>
                 <field name="alert_count" optional="show"/>

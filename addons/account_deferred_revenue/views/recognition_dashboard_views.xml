@@ -121,19 +121,22 @@
                     <!-- =====================================================
                          Summary Cards (KPI Row)
 
-                         Four clickable KPI cards laid out in a 4-column
-                         group.  Each card uses the standard Odoo
-                         oe_stat_button pattern: a <button> wraps a
-                         <field widget="statinfo"> to render the number
-                         and its label together.  Clicking a card invokes
-                         the corresponding drill-down action on the wizard
-                         and navigates to a filtered list view of the
-                         underlying schedules or recognition lines.
+                         Four clickable KPI cards rendered inside the
+                         standard Odoo ``<div class="oe_button_box"
+                         name="button_box">`` container so the
+                         ``.o-form-buttonbox .oe_stat_button`` SCSS
+                         (addons/web/static/src/views/form/button_box/
+                         button_box.scss) stacks the value above the
+                         label correctly — Issue #17 fix (the previous
+                         ``<group col="4">`` wrapper produced fused
+                         "60,000.00Deferred Revenue" output because the
+                         button-box flex/column layout was never
+                         applied).
                          ===================================================== -->
                     <div class="oe_title">
                         <h2>Portfolio Summary</h2>
                     </div>
-                    <group col="4">
+                    <div class="oe_button_box" name="button_box">
                         <!-- Card 1: Total Deferred Revenue
                              Drills into account.deferred.schedule records
                              whose recognition account is of type income*. -->
@@ -186,54 +189,61 @@
                                    widget="statinfo"
                                    string="Next Period"/>
                         </button>
-                    </group>
+                    </div>
 
                     <!-- =====================================================
                          Status Distribution
 
-                         Read-only JSON payload showing the count of
-                         schedules in each completion status (active,
-                         completed, on_hold).  The native `json` widget
-                         renders the structured data as a formatted
-                         key/value readout without requiring custom JS.
+                         Bootstrap-styled HTML table projected from
+                         ``status_distribution_json`` by
+                         ``_compute_breakdown_html`` — Issue #18 fix.
+                         The previous ``widget="json"`` pattern dumped
+                         the raw payload (e.g. ``{"active":5}``) into
+                         the page; the HTML projection renders a tidy,
+                         labelled table instead.
                          ===================================================== -->
                     <group string="Status Distribution">
-                        <field name="status_distribution_json"
-                               widget="json"
-                               string="By Status"
+                        <field name="status_distribution_html"
+                               widget="html"
                                readonly="1"
-                               nolabel="1"/>
+                               nolabel="1"
+                               sanitize="0"
+                               options="{'safe': true}"/>
                     </group>
 
                     <!-- =====================================================
                          Recognition Method Breakdown
 
-                         Read-only JSON listing schedules grouped by
+                         HTML table projected from
+                         ``schedule_breakdown_json`` showing schedule
+                         counts and total amounts grouped by
                          recognition method (straight_line, date_based,
-                         manual) with count and total amount per group.
+                         manual) — Issue #18 fix.
                          ===================================================== -->
                     <group string="By Recognition Method">
-                        <field name="schedule_breakdown_json"
-                               widget="json"
-                               string="Breakdown"
+                        <field name="schedule_breakdown_html"
+                               widget="html"
                                readonly="1"
-                               nolabel="1"/>
+                               nolabel="1"
+                               sanitize="0"
+                               options="{'safe': true}"/>
                     </group>
 
                     <!-- =====================================================
                          Upcoming Recognitions
 
-                         Read-only JSON payload with one entry per upcoming
-                         month for the next 12 months, each containing the
-                         month label, total amount scheduled for
-                         recognition, and line count.
+                         HTML table projected from
+                         ``period_breakdown_json`` showing one entry per
+                         upcoming month for the next 12 months — Issue
+                         #18 fix.
                          ===================================================== -->
                     <group string="Upcoming Recognitions (next 12 months)">
-                        <field name="period_breakdown_json"
-                               widget="json"
-                               string="Period Breakdown"
+                        <field name="period_breakdown_html"
+                               widget="html"
                                readonly="1"
-                               nolabel="1"/>
+                               nolabel="1"
+                               sanitize="0"
+                               options="{'safe': true}"/>
                     </group>
                 </sheet>
             </form>

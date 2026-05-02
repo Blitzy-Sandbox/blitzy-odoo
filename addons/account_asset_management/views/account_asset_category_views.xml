@@ -27,16 +27,22 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="code" optional="show"/>
-                <field name="depreciation_method"/>
-                <field name="useful_life_unit" optional="hide"/>
-                <field name="useful_life_years" optional="show"/>
-                <field name="useful_life_months" optional="hide"/>
+                <field name="depreciation_method" string="Method"/>
+                <field name="useful_life_unit" optional="hide" string="Unit"/>
+                <field name="useful_life_years"
+                       optional="show"
+                       string="Useful Life (yr)"/>
+                <field name="useful_life_months"
+                       optional="hide"
+                       string="Useful Life (mo)"/>
                 <field name="salvage_percent"
                        widget="percentage"
-                       optional="hide"/>
+                       optional="hide"
+                       string="Salvage %"/>
                 <field name="auto_post_depreciation"
                        widget="boolean_toggle"
-                       optional="show"/>
+                       optional="show"
+                       string="Auto-Post"/>
                 <field name="asset_count" string="# Assets"/>
                 <field name="company_id"
                        groups="base.group_multi_company"

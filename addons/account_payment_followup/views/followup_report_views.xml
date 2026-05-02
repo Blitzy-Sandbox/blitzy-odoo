@@ -143,17 +143,81 @@
                              used by the report template and is intentionally
                              hidden from the wizard UI. -->
                         <group>
+                            <!--
+                                Issue #27 fix: Shorten long Python-level
+                                ``string=`` values via XML override so
+                                each label fits on one line at the
+                                standard 1280 viewport.  Using XML-level
+                                overrides keeps the canonical Python
+                                labels intact for search-view, group-by,
+                                and audit-log surfaces while only
+                                tightening the wizard form's
+                                presentation.
+
+                                Issue #28 fix: The ``group_by`` field is
+                                computed-without-inverse, which Odoo
+                                renders as readonly and applies the
+                                ``o_form_label_readonly`` class on any
+                                ``<label>`` (including those declared
+                                explicitly in XML) — that class forces
+                                ``opacity: 0.66`` via the SCSS rule in
+                                ``addons/web/static/src/views/form/form_controller.scss``,
+                                making the label appear noticeably
+                                muted relative to its sibling editable
+                                labels.
+
+                                Because the ``notMuttedLabel`` prop on
+                                the ``FormLabel`` component is not
+                                exposed through the XML form compiler
+                                (it is only used internally by the
+                                Settings view), the only way to render
+                                a non-muted label here is to bypass the
+                                FormLabel component entirely — so we
+                                render the section caption as a static
+                                ``<div class="o_form_label fw-bold">``
+                                with explicit classes that mirror the
+                                visual styling of an editable label
+                                without inheriting any readonly
+                                modifier.
+
+                                The field value is rendered inline
+                                with ``widget="badge"`` to give it a
+                                visually distinct chip presentation
+                                that does not look "disabled".
+                            -->
                             <group string="Aging Filter" name="aging_filter_group">
                                 <field name="aging_bucket_filter"/>
                                 <field name="minimum_amount"
                                        widget="monetary"
-                                       options="{'currency_field': 'currency_id'}"/>
-                                <field name="include_disputed"/>
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="Min. Overdue"/>
+                                <field name="include_disputed"
+                                       string="Disputed Invoices"/>
                             </group>
                             <group string="Grouping" name="grouping_group">
-                                <field name="group_by_salesperson"/>
-                                <field name="group_by_country"/>
-                                <field name="group_by" readonly="1"/>
+                                <field name="group_by_salesperson"
+                                       string="By Salesperson"/>
+                                <field name="group_by_country"
+                                       string="By Country/Region"/>
+                                <!--
+                                    Render section caption + field on a
+                                    single grid row using the
+                                    ``<div class="o_wrap_label"/>`` and
+                                    ``<div class="o_cell"/>`` two-cell
+                                    pattern so the caption sits in the
+                                    label column (matching the visual
+                                    rhythm of the sibling rows above)
+                                    while bypassing FormLabel
+                                    compilation entirely.
+                                -->
+                                <div class="o_wrap_label">
+                                    <div class="o_form_label fw-bold">Primary Grouping</div>
+                                </div>
+                                <div class="o_cell">
+                                    <field name="group_by"
+                                           nolabel="1"
+                                           widget="badge"/>
+                                </div>
                                 <field name="group_by_label" invisible="1"/>
                             </group>
                         </group>
@@ -171,14 +235,29 @@
                                  report size before producing a potentially
                                  expensive PDF. -->
                         <group string="Report Options" name="report_options_group">
+                            <!--
+                                Issue #27 fix (continued): Shorten the
+                                three remaining wrapped labels via XML
+                                ``string=`` override so they all fit on
+                                a single line at the standard 1280
+                                viewport.  Like the labels above, the
+                                Python-level field labels remain
+                                unchanged so search-view filters and
+                                audit logs continue to use the longer,
+                                fully-qualified names.
+                            -->
                             <group>
-                                <field name="include_effectiveness"/>
+                                <field name="include_effectiveness"
+                                       string="Effectiveness KPIs"/>
                             </group>
                             <group>
                                 <field name="followup_level_names"
                                        readonly="1"
-                                       invisible="not followup_level_names"/>
-                                <field name="partner_count" readonly="1"/>
+                                       invisible="not followup_level_names"
+                                       string="Selected Levels"/>
+                                <field name="partner_count"
+                                       readonly="1"
+                                       string="Partners"/>
                             </group>
                         </group>
                     </sheet>

@@ -77,20 +77,26 @@
                   decoration-muted="state == 'posted'"
                   default_order="recognition_date asc, sequence asc, id asc"
                   sample="1">
+                <!--
+                    Issue #19 fix: shortened column labels (Schedule,
+                    Date, Amount, Status, Days) so the list view fits
+                    at 1280px without truncation.
+                -->
                 <!-- Parent schedule reference — always shown, leftmost
                      column for primary identification. -->
-                <field name="schedule_id"/>
+                <field name="schedule_id" string="Schedule"/>
                 <!-- Partner from the parent schedule (related, stored).
                      Shown by default; can be toggled off via the column
                      picker when not relevant to the user's view. -->
                 <field name="partner_id" optional="show"/>
                 <!-- The recognition date is the primary chronological key
                      and always visible. -->
-                <field name="recognition_date"/>
+                <field name="recognition_date" string="Date"/>
                 <!-- Monetary amount with a footer ``sum`` aggregation so
                      users see the total recognition across visible lines. -->
                 <field name="recognition_amount"
                        widget="monetary"
+                       string="Amount"
                        sum="Total"/>
                 <!-- Currency must be in the view for the monetary widget
                      to resolve; ``column_invisible`` hides the column
@@ -100,6 +106,7 @@
                      posted (recognized in the ledger). -->
                 <field name="state"
                        widget="badge"
+                       string="Status"
                        decoration-info="state == 'draft'"
                        decoration-success="state == 'posted'"/>
                 <!-- Journal entry reference — hidden by default because

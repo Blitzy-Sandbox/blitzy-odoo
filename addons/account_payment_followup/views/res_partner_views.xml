@@ -124,9 +124,17 @@
                             </group>
                             <group string="Total Overdue"
                                    name="followup_total_group">
+                                <!--
+                                    Issue #23 fix: ``decoration-danger``
+                                    flips the total to red whenever the
+                                    partner carries any 90+ aging
+                                    balance — collections-industry
+                                    convention for severe aging.
+                                -->
                                 <field name="total_overdue"
                                        widget="monetary"
-                                       options="{'currency_field': 'currency_id'}"/>
+                                       options="{'currency_field': 'currency_id'}"
+                                       decoration-danger="aging_bucket_90_plus &gt; 0"/>
                                 <field name="currency_id" invisible="1"/>
                             </group>
                         </group>
@@ -151,10 +159,31 @@
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
                                        string="61-90 Days Overdue"/>
+                                <!--
+                                    Issues #23, #24, #25 fix:
+                                      * ``string="90+ Days Overdue"``
+                                        replaces the prior label
+                                        ``"Over 90 Days Overdue"`` so
+                                        the label fits on a single line
+                                        (visual rhythm match with the
+                                        sibling labels above) AND
+                                        matches the form-level label on
+                                        ``account.followup.line``
+                                        (terminology consistency across
+                                        views — see also list column
+                                        header ``"90+ Days"`` on the
+                                        followup line list).
+                                      * ``decoration-danger`` paints the
+                                        90+ bucket red whenever it is
+                                        positive — the universal
+                                        collections-industry signal
+                                        for severe aging.
+                                -->
                                 <field name="aging_bucket_90_plus"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
-                                       string="Over 90 Days Overdue"/>
+                                       string="90+ Days Overdue"
+                                       decoration-danger="aging_bucket_90_plus &gt; 0"/>
                             </group>
                         </group>
                         <!-- Row 3: Action button "Send Follow-up Now"

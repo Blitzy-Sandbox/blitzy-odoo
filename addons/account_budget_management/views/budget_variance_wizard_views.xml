@@ -48,13 +48,12 @@
                             <span>Variance Analysis</span>
                         </h1>
                         <p>
-                            Configure the parameters below and press
-                            <strong>Generate Report</strong> to launch
-                            the BM-004 variance drill-down on
-                            ``account.move.line``. Use
-                            <strong>View Lines</strong> to open the
-                            ``budget.budget.line`` list with the same
-                            filters; press <strong>Preview</strong>
+                            Configure the parameters below and click
+                            <strong>Generate Report</strong> to view
+                            detailed variance analysis. Use
+                            <strong>View Lines</strong> to drill into
+                            the supporting transactions with the same
+                            filters; click <strong>Preview</strong>
                             to refresh the variance summary in place.
                         </p>
                     </div>

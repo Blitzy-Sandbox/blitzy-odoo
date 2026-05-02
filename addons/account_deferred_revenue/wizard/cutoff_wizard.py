@@ -233,14 +233,20 @@ class AccountDeferredCutoffWizard(models.TransientModel):
         ),
     )
 
-    preview_move_data = fields.Json(
+    preview_move_data = fields.Text(
         string='Preview Move Data',
         compute='_compute_preview_move_data',
         store=False,
         help=(
-            "JSON payload formatted for the preview panel UI. Capped to "
-            "the first 4 moves to avoid UI overload; remaining moves are "
-            "summarized via the ``discarded_number`` option."
+            "JSON-stringified payload formatted for the preview panel "
+            "UI. Capped to the first 4 moves to avoid UI overload; "
+            "remaining moves are summarized via the "
+            "``discarded_number`` option. The view renders this field "
+            "via the ``grouped_view_widget`` (defined in the core "
+            "``account`` module's web.assets_backend) which parses the "
+            "JSON string and renders a structured table — see "
+            "addons/account/static/src/components/grouped_view_widget/"
+            "grouped_view_widget.js."
         ),
     )
 
@@ -444,6 +450,12 @@ class AccountDeferredCutoffWizard(models.TransientModel):
         :meth:`account.move._move_dict_to_preview_vals` and wraps the
         result with column metadata and a discarded-count summary for
         any extra moves.
+
+        Issue #15 fix: emits a JSON-stringified payload so that the
+        ``grouped_view_widget`` registered by the core ``account`` module
+        can parse it and render a structured table. The widget's
+        ``getValue()`` uses ``JSON.parse(value)`` and therefore requires
+        a string, not a deserialised dict.
         """
         for wizard in self:
             if not wizard.move_data:
@@ -470,7 +482,7 @@ class AccountDeferredCutoffWizard(models.TransientModel):
                     self.env['account.move']._move_dict_to_preview_vals(move, currency),
                 )
             preview_discarded = max(0, len(move_vals) - len(preview_vals))
-            wizard.preview_move_data = {
+            wizard.preview_move_data = json.dumps({
                 'groups_vals': preview_vals,
                 'options': {
                     'discarded_number': (
@@ -479,7 +491,7 @@ class AccountDeferredCutoffWizard(models.TransientModel):
                     ),
                     'columns': preview_columns,
                 },
-            }
+            })
 
     # =====================================================================
     # SECTION 8 — Validation constraints

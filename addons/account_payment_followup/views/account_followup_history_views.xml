@@ -173,18 +173,35 @@
                         <notebook>
                             <page name="invoices" string="Related Invoices">
                                 <field name="invoice_ids" nolabel="1" readonly="1">
+                                    <!--
+                                        Issue #26 fix: The auto-generated
+                                        labels for the inherited
+                                        ``account.move`` fields
+                                        (``"Invoice/Bill Date"``,
+                                        ``"Invoice/Bill Date Due"``)
+                                        are too long for the available
+                                        column width inside this nested
+                                        list and rendered as
+                                        ``"Invoice/Bill ..."`` truncated.
+                                        Override with explicit short
+                                        ``string=`` labels so the
+                                        headers fit on one line at
+                                        the standard 1280 viewport.
+                                    -->
                                     <list create="false" delete="false" edit="false">
-                                        <field name="name"/>
-                                        <field name="invoice_date"/>
-                                        <field name="invoice_date_due"/>
+                                        <field name="name" string="Number"/>
+                                        <field name="invoice_date" string="Inv. Date"/>
+                                        <field name="invoice_date_due" string="Due Date"/>
                                         <field name="amount_total"
                                                widget="monetary"
-                                               options="{'currency_field': 'currency_id'}"/>
+                                               options="{'currency_field': 'currency_id'}"
+                                               string="Total"/>
                                         <field name="amount_residual"
                                                widget="monetary"
-                                               options="{'currency_field': 'currency_id'}"/>
-                                        <field name="state"/>
-                                        <field name="payment_state"/>
+                                               options="{'currency_field': 'currency_id'}"
+                                               string="Residual"/>
+                                        <field name="state" string="Status"/>
+                                        <field name="payment_state" string="Payment"/>
                                         <field name="currency_id" column_invisible="True"/>
                                     </list>
                                 </field>

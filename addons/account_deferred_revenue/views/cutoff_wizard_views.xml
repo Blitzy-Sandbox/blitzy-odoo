@@ -174,17 +174,25 @@
                          Visible when the user is explicitly in
                          preview mode OR when action_preview has
                          populated preview_move_data regardless of
-                         mode.  The ``json`` widget renders the
-                         computed move dicts read-only so the user
+                         mode.  Uses the ``grouped_view_widget``
+                         (registered by the core ``account`` module)
+                         which parses the JSON-stringified payload and
+                         renders a structured table with the columns
+                         declared in ``options.columns`` so the user
                          can verify accounts, amounts, and partners
-                         before committing to a post.
+                         before committing to a post — Issue #15 fix
+                         (the previous ``widget="json"`` displayed the
+                         raw JSON literally and was unreadable).
                          ========================================= -->
                     <notebook invisible="mode != 'preview' and not preview_move_data">
                         <page name="preview" string="Preview">
+                            <label for="preview_move_data"
+                                   string="The following Journal Entries will be generated:"/>
                             <field name="preview_move_data"
-                                   widget="json"
+                                   widget="grouped_view_widget"
                                    readonly="1"
-                                   nolabel="1"/>
+                                   nolabel="1"
+                                   class="d-block"/>
                         </page>
                     </notebook>
 

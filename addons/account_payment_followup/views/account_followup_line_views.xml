@@ -71,10 +71,21 @@
                       decoration-muted="followup_status == 'no_action'"
                       create="false"
                       delete="false">
-                    <field name="partner_id"/>
+                    <!--
+                        Issue #22 fix: shortened column labels (Max
+                        Days, Level, Status, Next Action) so the list
+                        view fits at 1280px without truncation.
+                        Issue #23 fix: ``decoration-danger`` on
+                        ``aging_bucket_90_plus`` and ``total_overdue``
+                        applies the red ``text-danger`` class when the
+                        90+ bucket is positive — collections-industry
+                        convention for severe aging.
+                    -->
+                    <field name="partner_id" string="Customer"/>
                     <field name="total_overdue"
                            widget="monetary"
                            options="{'currency_field': 'currency_id'}"
+                           decoration-danger="aging_bucket_90_plus &gt; 0"
                            sum="Total Overdue"/>
                     <field name="aging_bucket_current"
                            widget="monetary"
@@ -104,23 +115,28 @@
                            widget="monetary"
                            options="{'currency_field': 'currency_id'}"
                            string="90+ Days"
+                           decoration-danger="aging_bucket_90_plus &gt; 0"
                            sum="90+ Days"
                            optional="show"/>
                     <field name="max_days_overdue"
-                           string="Max Days Overdue"
+                           string="Max Days"
                            optional="show"/>
                     <field name="followup_level_id"
+                           string="Level"
                            optional="show"/>
                     <field name="followup_status"
                            widget="badge"
+                           string="Status"
                            decoration-muted="followup_status == 'no_action'"
                            decoration-warning="followup_status == 'in_need'"
                            decoration-info="followup_status == 'in_progress'"
                            decoration-success="followup_status == 'promised'"
                            optional="show"/>
                     <field name="next_action_date"
+                           string="Next Action"
                            optional="show"/>
                     <field name="last_followup_date"
+                           string="Last Action"
                            optional="hidden"/>
                     <field name="company_id"
                            groups="base.group_multi_company"
@@ -189,9 +205,21 @@
                         <group>
                             <group string="Aging Summary"
                                    name="aging_summary_group">
+                                <!--
+                                    Issue #23 fix: ``decoration-danger``
+                                    applies the red ``text-danger`` CSS
+                                    class to the ``total_overdue`` and
+                                    ``aging_bucket_90_plus`` cells when
+                                    the 90+ bucket is positive —
+                                    collections-industry convention for
+                                    severe aging. (Form widgets respect
+                                    ``decoration-*`` attributes the same
+                                    way list cells do.)
+                                -->
                                 <field name="total_overdue"
                                        widget="monetary"
-                                       options="{'currency_field': 'currency_id'}"/>
+                                       options="{'currency_field': 'currency_id'}"
+                                       decoration-danger="aging_bucket_90_plus &gt; 0"/>
                                 <field name="aging_bucket_current"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
@@ -211,7 +239,8 @@
                                 <field name="aging_bucket_90_plus"
                                        widget="monetary"
                                        options="{'currency_field': 'currency_id'}"
-                                       string="90+ Days Overdue"/>
+                                       string="90+ Days Overdue"
+                                       decoration-danger="aging_bucket_90_plus &gt; 0"/>
                                 <field name="max_days_overdue"/>
                                 <field name="currency_id" invisible="1"/>
                             </group>

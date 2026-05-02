@@ -268,11 +268,14 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
     # -----------------------------------------------------------------
     # SECTION 3 — Breakdown JSON fields (computed in ``_compute_breakdown``).
     #
-    # Stored as ``fields.Json`` (PostgreSQL ``jsonb``) so the native
-    # ``json`` widget in the dashboard form view can render them
-    # directly.  Each compute assignment replaces the entire JSON
-    # payload — in-place mutation of these fields is unsafe because
-    # ``fields.Json.convert_to_record`` returns a deepcopy.
+    # Stored as ``fields.Json`` (PostgreSQL ``jsonb``) so the back-end
+    # representation remains structured for any downstream consumers
+    # (export-to-XLSX, scheduled reports, etc.).  The form view does
+    # NOT render these JSON payloads directly — Issue #18 fix: the
+    # JSON payloads are projected into HTML tables via
+    # ``status_distribution_html`` / ``schedule_breakdown_html`` /
+    # ``period_breakdown_html`` (defined below) so end-users see a
+    # readable visualization rather than raw JSON literals.
     # -----------------------------------------------------------------
 
     schedule_breakdown_json = fields.Json(
@@ -305,6 +308,64 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
              '``account.deferred.schedule`` with '
              '``groupby=["completion_status"]``.  Missing keys '
              '(no schedules in that status) are intentionally absent.',
+    )
+
+    # -----------------------------------------------------------------
+    # SECTION 3.5 — HTML projections of the breakdown payloads (Issue #18 fix).
+    #
+    # The dashboard renders ``widget="html"`` over these computed
+    # fields so end users see a readable table instead of raw JSON.
+    # Each is derived in ``_compute_breakdown_html`` from the matching
+    # ``*_breakdown_json`` field — keeping the HTML rendering logic
+    # close to the source data while leaving the JSON payloads
+    # untouched for any downstream consumer (export, scheduled report).
+    # -----------------------------------------------------------------
+
+    status_distribution_html = fields.Html(
+        string='Status Distribution (Rendered)',
+        compute='_compute_breakdown_html',
+        sanitize=False,
+        readonly=True,
+        help='HTML table projection of ``status_distribution_json`` '
+             'rendered by the dashboard form view (Issue #18 fix).',
+    )
+
+    schedule_breakdown_html = fields.Html(
+        string='Schedule Breakdown (Rendered)',
+        compute='_compute_breakdown_html',
+        sanitize=False,
+        readonly=True,
+        help='HTML table projection of ``schedule_breakdown_json`` '
+             'rendered by the dashboard form view (Issue #18 fix).',
+    )
+
+    period_breakdown_html = fields.Html(
+        string='Period Breakdown (Rendered)',
+        compute='_compute_breakdown_html',
+        sanitize=False,
+        readonly=True,
+        help='HTML table projection of ``period_breakdown_json`` '
+             'rendered by the dashboard form view (Issue #18 fix).',
+    )
+
+    # -----------------------------------------------------------------
+    # SECTION 3.6 — display_name override (Issue #16 fix).
+    #
+    # Without a ``display_name`` computed field the standard Odoo
+    # breadcrumb rendering falls back to the model technical name +
+    # transient NewId, e.g.
+    # ``account.deferred.recognition.dashboard.wizard,NewId_0x...``.
+    # Overriding the field with a human-readable computation produces
+    # a clean breadcrumb such as
+    # ``Recognition Dashboard — As of 2026-05-02``.
+    # -----------------------------------------------------------------
+
+    display_name = fields.Char(
+        string='Display Name',
+        compute='_compute_display_name',
+        store=False,
+        help='Human-readable label rendered in the breadcrumb and '
+             'window title (Issue #16 fix).',
     )
 
     # -----------------------------------------------------------------
@@ -688,6 +749,179 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
                 }
                 for month_date, count, total in period_groups
             ]
+
+    # -----------------------------------------------------------------
+    # SECTION 7.5 — HTML projections of the breakdown payloads.
+    #
+    # Issue #18 fix: render the JSON payloads as readable HTML tables
+    # so end-users see structured data rather than raw JSON literals
+    # like ``{"active":5}`` or ``[{"recognition_method":"straight_line",
+    # "count":5,"total_amount":60000}]``.
+    # -----------------------------------------------------------------
+
+    @api.depends(
+        'status_distribution_json',
+        'schedule_breakdown_json',
+        'period_breakdown_json',
+        'currency_id',
+    )
+    def _compute_breakdown_html(self):
+        """Project the breakdown JSON payloads into HTML tables.
+
+        For each computed JSON field this method emits a corresponding
+        HTML field with a Bootstrap-styled, accessible table the
+        dashboard form view can render via ``widget="html"``. When the
+        underlying JSON is empty the HTML field carries a friendly
+        empty-state message rather than an empty/null value, so the
+        view never collapses unexpectedly.
+        """
+        # Friendly labels for the recognition_method enum.
+        method_labels = {
+            'straight_line': _('Straight Line'),
+            'date_based': _('Date Based'),
+            'manual': _('Manual'),
+            '': _('Unspecified'),
+        }
+        # Friendly labels for the completion_status enum.
+        status_labels = {
+            'active': _('Active'),
+            'completed': _('Completed'),
+            'on_hold': _('On Hold'),
+            'unknown': _('Unknown'),
+        }
+        # Bootstrap utility classes shared across all three tables.
+        # Using Odoo's existing utility classes keeps the rendering
+        # consistent with every other Odoo list/form surface.
+        table_open = (
+            '<table class="table table-sm table-borderless mb-0">'
+        )
+        for wizard in self:
+            currency = wizard.currency_id
+
+            # 1) status_distribution_html — single-row dict.
+            status_data = wizard.status_distribution_json or {}
+            if status_data:
+                rows = ''.join(
+                    f'<tr><td>{status_labels.get(key, key)}</td>'
+                    f'<td class="text-end fw-bold">{value}</td></tr>'
+                    for key, value in sorted(status_data.items())
+                )
+                wizard.status_distribution_html = (
+                    f'{table_open}'
+                    '<thead><tr>'
+                    f'<th>{_("Status")}</th>'
+                    f'<th class="text-end">{_("Count")}</th>'
+                    '</tr></thead>'
+                    f'<tbody>{rows}</tbody>'
+                    '</table>'
+                )
+            else:
+                wizard.status_distribution_html = (
+                    f'<p class="text-muted mb-0">'
+                    f'{_("No schedules in the current filter range.")}'
+                    '</p>'
+                )
+
+            # 2) schedule_breakdown_html — list of dicts per method.
+            schedule_data = wizard.schedule_breakdown_json or []
+            if schedule_data:
+                rows = ''.join(
+                    f'<tr>'
+                    f'<td>{method_labels.get(item.get("recognition_method", ""), item.get("recognition_method", ""))}</td>'
+                    f'<td class="text-end">{item.get("count", 0)}</td>'
+                    f'<td class="text-end fw-bold">'
+                    f'{wizard._format_monetary(item.get("total_amount", 0.0), currency)}'
+                    f'</td>'
+                    f'</tr>'
+                    for item in schedule_data
+                )
+                wizard.schedule_breakdown_html = (
+                    f'{table_open}'
+                    '<thead><tr>'
+                    f'<th>{_("Recognition Method")}</th>'
+                    f'<th class="text-end">{_("Count")}</th>'
+                    f'<th class="text-end">{_("Total Amount")}</th>'
+                    '</tr></thead>'
+                    f'<tbody>{rows}</tbody>'
+                    '</table>'
+                )
+            else:
+                wizard.schedule_breakdown_html = (
+                    f'<p class="text-muted mb-0">'
+                    f'{_("No schedule breakdown available for the selected filters.")}'
+                    '</p>'
+                )
+
+            # 3) period_breakdown_html — list of dicts per month.
+            period_data = wizard.period_breakdown_json or []
+            if period_data:
+                rows = ''.join(
+                    f'<tr>'
+                    f'<td>{item.get("month", "")}</td>'
+                    f'<td class="text-end">{item.get("count", 0)}</td>'
+                    f'<td class="text-end fw-bold">'
+                    f'{wizard._format_monetary(item.get("total", 0.0), currency)}'
+                    f'</td>'
+                    f'</tr>'
+                    for item in period_data
+                )
+                wizard.period_breakdown_html = (
+                    f'{table_open}'
+                    '<thead><tr>'
+                    f'<th>{_("Month")}</th>'
+                    f'<th class="text-end">{_("Lines")}</th>'
+                    f'<th class="text-end">{_("Total Amount")}</th>'
+                    '</tr></thead>'
+                    f'<tbody>{rows}</tbody>'
+                    '</table>'
+                )
+            else:
+                wizard.period_breakdown_html = (
+                    f'<p class="text-muted mb-0">'
+                    f'{_("No upcoming recognitions in the next 12 months.")}'
+                    '</p>'
+                )
+
+    @staticmethod
+    def _format_monetary(amount, currency):
+        """Format a monetary amount using the wizard's currency.
+
+        Falls back to ``"%.2f"`` formatting when no currency is set
+        (the dashboard always carries a currency_id but the helper is
+        defensive against test contexts).
+        """
+        try:
+            amount = float(amount or 0.0)
+        except (TypeError, ValueError):
+            amount = 0.0
+        if currency and hasattr(currency, 'symbol'):
+            try:
+                return f'{currency.symbol} {amount:,.2f}'
+            except (TypeError, ValueError):
+                return f'{amount:,.2f}'
+        return f'{amount:,.2f}'
+
+    # -----------------------------------------------------------------
+    # SECTION 7.6 — display_name override (Issue #16 fix).
+    # -----------------------------------------------------------------
+
+    @api.depends('date_to', 'date_from')
+    def _compute_display_name(self):
+        """Render a friendly breadcrumb / window title.
+
+        Without this override the breadcrumb falls back to
+        ``account.deferred.recognition.dashboard.wizard,NewId_0x...``,
+        which exposes the Python class name and the transient record's
+        in-memory id to end users.
+        """
+        for wizard in self:
+            if wizard.date_to:
+                wizard.display_name = _(
+                    'Recognition Dashboard — As of %(date)s',
+                    date=fields.Date.to_string(wizard.date_to),
+                )
+            else:
+                wizard.display_name = _('Recognition Dashboard')
 
     # -----------------------------------------------------------------
     # SECTION 8 — Drill-down action methods.

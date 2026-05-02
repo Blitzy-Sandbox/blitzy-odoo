@@ -283,16 +283,35 @@ class BudgetBudgetLine(models.Model):
     #
     # All variance fields are computed via a SINGLE shared compute
     # method ``_compute_variance`` which executes ONE aggregated
-    # database query per recordset. Fields are ``store=False`` to keep
-    # the hot path purely in-memory and to avoid invalidation storms
-    # when journal entries are posted / unposted outside the budget
-    # lifecycle.
+    # database query per recordset.
+    #
+    # ``store=True`` is REQUIRED on the numeric variance fields
+    # (variance_actual, variance_absolute, variance_percent,
+    # variance_consumption_percent) so that the BM-003/BM-004 pivot
+    # and graph views can aggregate them via SQL ``_read_group``.
+    # Without ``store=True`` the Odoo 19 webclient throws
+    # "No aggregate function has been provided for the measure ..."
+    # when those fields are referenced as ``type="measure"``.
+    #
+    # Freshness is preserved by:
+    #   * The ``@api.depends`` declaration on ``_compute_variance``
+    #     (recomputes when planned_amount, account_id, analytic
+    #     distribution, or the parent budget's window/state changes).
+    #   * The BM-005 alert cron (``budget.alert._cron_evaluate_thresholds``)
+    #     calls ``active_lines._compute_variance()`` on every run,
+    #     refreshing stored values to reflect the latest posted
+    #     account.move.line activity.
+    #   * The BM-004 wizard's "Generate Report" / "Preview" actions
+    #     invalidate the recordset before reading, forcing a fresh
+    #     compute on demand.
     # ------------------------------------------------------------------
     variance_actual = fields.Monetary(
         string='Actual Amount',
         compute='_compute_variance',
         currency_field='currency_id',
-        store=False,
+        store=True,
+        readonly=True,
+        aggregator='sum',
         help="Sum of posted account.move.line balances on this "
              "account within the budget window, filtered by "
              "analytic_distribution when set. Computed via a batched "
@@ -303,7 +322,9 @@ class BudgetBudgetLine(models.Model):
         string='Absolute Variance',
         compute='_compute_variance',
         currency_field='currency_id',
-        store=False,
+        store=True,
+        readonly=True,
+        aggregator='sum',
         help="variance_actual minus planned_amount. Sign is interpreted "
              "by _classify_variance according to account_type: for "
              "income accounts a positive absolute variance (actual > "
@@ -314,7 +335,9 @@ class BudgetBudgetLine(models.Model):
         string='Variance (%)',
         compute='_compute_variance',
         digits=(7, 2),
-        store=False,
+        store=True,
+        readonly=True,
+        aggregator='avg',
         help="(variance_absolute / planned_amount) * 100 when "
              "planned_amount is non-zero; zero otherwise. Allows up to "
              "five digits before the decimal point (e.g. 99999.99 %) "
@@ -330,7 +353,8 @@ class BudgetBudgetLine(models.Model):
         ],
         string='Variance Classification',
         compute='_compute_variance',
-        store=False,
+        store=True,
+        readonly=True,
         help="For income accounts: actual > planned is favorable, "
              "actual < planned is unfavorable. For expense accounts: "
              "actual < planned is favorable, actual > planned is "
@@ -347,7 +371,8 @@ class BudgetBudgetLine(models.Model):
         ],
         string='Threshold Status',
         compute='_compute_variance',
-        store=False,
+        store=True,
+        readonly=True,
         help="Four-tier status derived from variance_consumption_"
              "percent: <90%% normal; >=90%% warning; >=100%% alert; "
              ">=110%% over_budget. Mirrors BM-005 threshold tiers so "
@@ -371,7 +396,9 @@ class BudgetBudgetLine(models.Model):
         string='Consumption (%)',
         compute='_compute_variance',
         digits=(5, 2),
-        store=False,
+        store=True,
+        readonly=True,
+        aggregator='avg',
         help="(variance_actual / planned_amount) * 100 when "
              "planned_amount is non-zero; zero otherwise. Read by the "
              "BM-005 alert cron to evaluate threshold crossings "

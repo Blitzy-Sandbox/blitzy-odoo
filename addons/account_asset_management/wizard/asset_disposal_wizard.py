@@ -499,10 +499,10 @@ class AccountAssetDisposalWizard(models.TransientModel):
 
         ``gain_loss_amount = proceeds_amount - net_book_value``
 
-        Positive => gain (credit gain account on the disposal entry).
-        Negative => loss (debit loss account on the disposal entry).
-        Zero     => breakeven (no gain/loss line; entry still
-                    balances because debits and credits net out).
+        * Positive => gain (credit gain account on the disposal entry).
+        * Negative => loss (debit loss account on the disposal entry).
+        * Zero => breakeven (no gain/loss line; entry still balances
+          because debits and credits net out).
         """
         for wizard in self:
             wizard.gain_loss_amount = (

@@ -3,13 +3,50 @@
 
 {
     "name": "Deferred Revenue",
-    "summary": """
-        ASC 606 / IFRS 15 compliant deferred revenue and deferred expense
-        recognition for Odoo Community Edition. Features invoice-driven
-        deferral schedule creation, straight-line/date-based/manual allocation
-        methods, cut-off entry generation with lock-date enforcement, and a
-        recognition dashboard with period-based drill-down.
-    """,
+    "summary": (
+        "ASC 606 / IFRS 15 compliant deferred revenue and deferred expense "
+        "recognition for Odoo Community Edition. Features invoice-driven "
+        "deferral schedule creation, straight-line/date-based/manual "
+        "allocation methods, cut-off entry generation with lock-date "
+        "enforcement, and a recognition dashboard with period-based "
+        "drill-down."
+    ),
+    # Long-form description shown on the Apps tile and module detail page.
+    # Mirrors the Features section of README.rst so that the Apps catalogue
+    # carries the same authoritative module summary as the documentation
+    # file. Plain text (no rST directives) keeps the rendered tile concise
+    # and avoids docutils block-quote warnings during install.
+    "description": (
+        "Deferred Revenue for Odoo 19.0 Community Edition\n"
+        "================================================\n"
+        "\n"
+        "AGPL-3 licensed addon delivering ASC 606 / IFRS 15 compliant\n"
+        "deferred revenue and deferred expense recognition for Odoo\n"
+        "Community Edition users without any Odoo Enterprise dependency.\n"
+        "Covers the full deferral lifecycle:\n"
+        "\n"
+        "* DR-001 Deferral Schedule Definition with invoice-driven\n"
+        "  schedule creation, automatic revenue / expense account\n"
+        "  substitution, manual schedule creation, source-document\n"
+        "  linkage, and analytic-distribution preservation.\n"
+        "* DR-002 Automatic Period Allocation supporting straight-line,\n"
+        "  date-based, and manual recognition strategies; preview\n"
+        "  before activation; multi-currency awareness; fiscal-year\n"
+        "  boundary handling.\n"
+        "* DR-003 Cut-off Entry Generation through a wizard with\n"
+        "  Single, Batch, Preview, and Reversal modes; optional\n"
+        "  reversing entries auto-posted via ``auto_post='at_date'``;\n"
+        "  ``account.lock_exception`` lock-date enforcement.\n"
+        "* DR-004 Recognition Dashboard with summary cards, period-\n"
+        "  based view, status distribution, date-range filters, and\n"
+        "  drill-down to schedules / invoices / journal entries.\n"
+        "\n"
+        "Depends only on the core ``account`` module. Multi-company\n"
+        "isolation, additive ``_inherit``-only extension of\n"
+        "``account.move`` and ``account.move.line``, and per-schedule\n"
+        "deferral-account selection (no company-level defaults) are\n"
+        "enforced by construction."
+    ),
     "version": "19.0.1.0.0",
     "category": "Accounting/Accounting",
     "website": "https://github.com/odoo/odoo",

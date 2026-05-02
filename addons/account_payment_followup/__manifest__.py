@@ -65,6 +65,47 @@
         "PDF/XLSX export (PF-003), immutable action history (PF-004), and "
         "per-partner overdue classification with aging buckets (PF-005)."
     ),
+    # Long-form description shown on the Apps tile and module detail page.
+    # Mirrors the Features section of README.rst so that the Apps catalogue
+    # carries the same authoritative module summary as the documentation
+    # file. Plain text (no rST directives) keeps the rendered tile concise
+    # and avoids docutils block-quote warnings during install.
+    "description": (
+        "Payment Follow-ups for Odoo 19.0 Community Edition\n"
+        "==================================================\n"
+        "\n"
+        "AGPL-3 licensed addon delivering automated accounts-receivable\n"
+        "collection workflows for Odoo Community Edition users without\n"
+        "any Odoo Enterprise dependency. Covers the full follow-up\n"
+        "lifecycle:\n"
+        "\n"
+        "* PF-001 Configurable Follow-up Levels with multi-level\n"
+        "  escalation, four seeded defaults (First Reminder / Second\n"
+        "  Reminder / Warning / Final Notice), per-level email templates,\n"
+        "  action types, minimum amount thresholds, and company scope.\n"
+        "* PF-002 Automated Email Generation via a declarative ir.cron\n"
+        "  scheduled action ('Payment Follow-up: Send Reminders');\n"
+        "  batched processing of up to 500 partners per run within the\n"
+        "  default cron timeout.\n"
+        "* PF-003 Follow-up Report Generation with filters by level,\n"
+        "  partner, aging bucket, and date range; PDF and XLSX export;\n"
+        "  drill-down to invoice-level detail.\n"
+        "* PF-004 Action History Tracking with an immutable audit trail,\n"
+        "  eight action types, promised-payment-date tracking,\n"
+        "  attachment support, and chatter / activity integration.\n"
+        "* PF-005 Overdue Calculation and Aging Buckets with automatic\n"
+        "  days-overdue computation, aging classification (Current /\n"
+        "  1-30 / 31-60 / 61-90 / 90+), highest-applicable-level\n"
+        "  assignment, disputed-invoice exclusion, and residual-amount\n"
+        "  awareness for partial payments.\n"
+        "\n"
+        "Depends only on the core 'account' and 'mail' modules. Multi-\n"
+        "company isolation, additive _inherit-only extension of\n"
+        "account.move, account.move.line, and res.partner, and standard\n"
+        "Odoo ir.cron registration (visible at Settings -> Technical ->\n"
+        "Automation -> Scheduled Actions) are all enforced by\n"
+        "construction."
+    ),
     "version": "19.0.1.0.0",
     "category": "Accounting/Accounting",
     "website": "https://github.com/odoo/odoo",

@@ -85,6 +85,9 @@ class BudgetBudget(models.Model):
         required=True,
         translate=True,
         tracking=True,
+        help="Display name of the budget — typically a fiscal period or "
+             "departmental label (for example 'FY2025 Marketing Budget'). "
+             "Translated; tracked in the chatter.",
     )
     reference = fields.Char(
         string='Reference',
@@ -99,8 +102,17 @@ class BudgetBudget(models.Model):
     description = fields.Text(
         string='Notes',
         translate=True,
+        help="Free-form internal notes about the budget — for example "
+             "planning assumptions, baseline references, or approval "
+             "context. Not surfaced in any report.",
     )
-    active = fields.Boolean(string='Active', default=True)
+    active = fields.Boolean(
+        string='Active',
+        default=True,
+        help="Uncheck to archive the budget without deleting it. "
+             "Archived budgets are hidden from default search views but "
+             "remain accessible via the 'Inactive' filter.",
+    )
 
     # ------------------------------------------------------------------
     # Section 3.2 — Ownership
@@ -131,6 +143,10 @@ class BudgetBudget(models.Model):
         default=lambda self: self.env.user,
         required=True,
         tracking=True,
+        help="User responsible for this budget — typically the controller "
+             "or department head accountable for monitoring consumption "
+             "and reviewing variances. Receives default activity "
+             "notifications and ownership signals for alerts.",
     )
     company_id = fields.Many2one(
         comodel_name='res.company',
@@ -138,12 +154,18 @@ class BudgetBudget(models.Model):
         required=True,
         default=lambda self: self.env.company,
         index=True,
+        help="Company that owns this budget. Drives multi-company "
+             "isolation through ir.rule and determines the currency via "
+             "the related 'currency_id' field.",
     )
     currency_id = fields.Many2one(
         comodel_name='res.currency',
         related='company_id.currency_id',
         store=True,
         string='Currency',
+        help="Currency in which planned and actual amounts are expressed. "
+             "Resolved automatically from the budget's company; not "
+             "directly editable.",
     )
 
     # ------------------------------------------------------------------
@@ -153,11 +175,17 @@ class BudgetBudget(models.Model):
         string='Start Date',
         required=True,
         tracking=True,
+        help="First day of the fiscal window covered by this budget. "
+             "Used to filter posted journal entries when computing "
+             "actuals and to drive period-allocation cadence (BM-002).",
     )
     date_to = fields.Date(
         string='End Date',
         required=True,
         tracking=True,
+        help="Last day of the fiscal window covered by this budget. "
+             "Must be on or after 'Start Date'. Used to filter posted "
+             "journal entries when computing actuals and variance.",
     )
     period_type = fields.Selection(
         selection=[
@@ -191,6 +219,11 @@ class BudgetBudget(models.Model):
         copy=False,
         tracking=True,
         index=True,
+        help="Lifecycle state of the budget. Draft -> Confirmed -> "
+             "Closed is the normal flow; Cancelled is an alternate "
+             "terminal state reachable from Draft or Confirmed. Only "
+             "Confirmed budgets contribute to alert evaluation and "
+             "variance reporting.",
     )
 
     # ------------------------------------------------------------------
@@ -201,10 +234,16 @@ class BudgetBudget(models.Model):
         inverse_name='budget_id',
         string='Budget Lines',
         copy=True,
+        help="Budget lines that compose this budget. Each line links a "
+             "planned amount to a general ledger account and an optional "
+             "analytic distribution. At least one line is required to "
+             "transition the budget from Draft to Confirmed.",
     )
     line_count = fields.Integer(
         string='Line Count',
         compute='_compute_line_count',
+        help="Number of budget lines under this budget. Surfaced on "
+             "kanban tiles and search filters.",
     )
     total_planned = fields.Monetary(
         string='Total Planned',
@@ -212,6 +251,10 @@ class BudgetBudget(models.Model):
         store=True,
         currency_field='currency_id',
         tracking=True,
+        help="Sum of 'planned_amount' across every budget line, "
+             "expressed in the budget's company currency. Stored so "
+             "that searches and aggregations on this field are "
+             "indexable.",
     )
     total_actual = fields.Monetary(
         string='Total Actual',
@@ -224,11 +267,20 @@ class BudgetBudget(models.Model):
         string='Total Variance',
         compute='_compute_dynamic_totals',
         currency_field='currency_id',
+        help="Total variance across all budget lines, computed as "
+             "'total_actual - total_planned'. Sign and magnitude depend "
+             "on each line's underlying account type (revenue versus "
+             "expense). Drill down via the variance wizard for "
+             "favourable / unfavourable classification.",
     )
     consumption_percent = fields.Float(
         string='Overall Consumption (%)',
         compute='_compute_dynamic_totals',
         digits=(5, 2),
+        help="Total actual divided by total planned, expressed as a "
+             "percentage. Used by kanban tiles to render budget-level "
+             "progress bars and by alert thresholds (75 / 90 / 100 / "
+             "110 percent) defined per BM-005.",
     )
 
     # ------------------------------------------------------------------
@@ -239,10 +291,17 @@ class BudgetBudget(models.Model):
         inverse_name='budget_id',
         string='Alert History',
         readonly=True,
+        help="Immutable history of threshold-evaluation alerts generated "
+             "for this budget by the BM-005 'ir.cron' (Budget Alert "
+             "Threshold Evaluation). Read-only; alerts are produced by "
+             "the cron rather than created manually.",
     )
     alert_count = fields.Integer(
         string='Alert Count',
         compute='_compute_alert_count',
+        help="Total number of alerts raised against this budget across "
+             "all severity levels. Drives the smart-button counter on "
+             "the budget form.",
     )
     alert_active = fields.Boolean(
         string='Has Active Alerts',

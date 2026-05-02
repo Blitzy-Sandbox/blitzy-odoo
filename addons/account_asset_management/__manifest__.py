@@ -25,6 +25,47 @@
         "(IAS 16, IAS 36, ASC 360), and asset disposal by sale, "
         "scrapping, or write-off with automatic gain/loss calculation."
     ),
+    # Long-form description shown on the Apps tile and module detail page.
+    # Mirrors the Overview / Features sections of README.rst so that the
+    # Apps catalogue carries the same authoritative module summary as the
+    # documentation file. Plain text (no rST directives) keeps the rendered
+    # tile concise and avoids docutils block-quote warnings during install.
+    "description": (
+        "Asset Management for Odoo 19.0 Community Edition\n"
+        "================================================\n"
+        "\n"
+        "AGPL-3 licensed addon delivering fixed-asset lifecycle management "
+        "for Odoo Community Edition users without any Odoo Enterprise\n"
+        "dependency. Covers the full asset lifecycle:\n"
+        "\n"
+        "* AM-001 Asset Registration with vendor and invoice linkage,\n"
+        "  unique asset references via ir.sequence, asset categories with\n"
+        "  default account assignments, and a Draft -> Running -> Closed\n"
+        "  state machine with chatter / activity tracking.\n"
+        "* AM-002 Depreciation Configuration supporting straight-line,\n"
+        "  declining-balance (with optional switch to straight-line), and\n"
+        "  units-of-production methods; salvage value, mid-period\n"
+        "  proration, and configurable start dates.\n"
+        "* AM-003 Depreciation Board with read-only schedule views\n"
+        "  (list / kanban / graph) plus CSV / XLSX export. Renders under\n"
+        "  two seconds for assets with up to 480 periods.\n"
+        "* AM-004 Automatic Depreciation Entries via a declarative\n"
+        "  ir.cron scheduled action ('Assets: Post Depreciation Entries')\n"
+        "  with idempotent batched posting and per-asset fault tolerance.\n"
+        "* AM-005 Asset Modification supporting IAS 16 revaluation,\n"
+        "  IAS 36 / ASC 360 impairment, impairment reversal, useful-life\n"
+        "  changes, and salvage-value changes through a dedicated wizard.\n"
+        "* AM-006 Asset Disposal by sale, scrap, or write-off with\n"
+        "  automatic gain / loss calculation against net book value,\n"
+        "  catch-up depreciation through the disposal date, partial\n"
+        "  disposal support, and state transition to Closed.\n"
+        "\n"
+        "Depends only on the core 'account' module. Multi-company\n"
+        "isolation, additive _inherit-only extension of account.move and\n"
+        "account.move.line, and standard Odoo ir.cron registration\n"
+        "(visible at Settings -> Technical -> Automation -> Scheduled\n"
+        "Actions) are all enforced by construction."
+    ),
     "version": "19.0.1.0.0",
     "category": "Accounting/Assets",
     "website": "https://github.com/odoo/odoo",

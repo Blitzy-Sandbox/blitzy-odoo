@@ -22,6 +22,9 @@ Asset Management
 
 Fixed-asset lifecycle management for Odoo 19.0 Community Edition — AGPL-3 licensed.
 
+.. contents::
+   :local:
+
 
 Overview
 ========
@@ -57,7 +60,8 @@ The module provides the following capabilities out of the box:
   source vendor bill, asset category, useful life, and asset / depreciation /
   accumulated-depreciation account assignments — with auto-generated unique
   asset references produced by a dedicated ``ir.sequence`` record. Assets
-  follow a draft → open → close state machine with chatter and activity
+  follow a Draft → Running → Closed state machine (internal selection
+  values ``draft`` → ``open`` → ``close``) with chatter and activity
   tracking.
 
 * **Multiple depreciation methods (AM-002).** Configure any of the following
@@ -100,10 +104,10 @@ The module provides the following capabilities out of the box:
 * **Asset disposal by sale, scrap, or write-off (AM-006).** A disposal
   wizard calculates the gain or loss on disposal against the current net
   book value, posts catch-up depreciation through the disposal date,
-  supports partial disposals, and transitions the asset to the close state
-  after posting the disposal journal entry. Sale proceeds, scrap value, and
-  full write-off are each handled with the appropriate debit / credit
-  treatment.
+  supports partial disposals, and transitions the asset to the Closed
+  state after posting the disposal journal entry. Sale proceeds, scrap
+  value, and full write-off are each handled with the appropriate debit /
+  credit treatment.
 
 * **Multi-company isolation.** Every new model is scoped by ``company_id``
   through ``ir.rule`` record rules, so databases running multiple companies
@@ -135,27 +139,34 @@ Configuration
 
 After installation, perform the following one-time setup steps:
 
-1. **Create asset categories.** Navigate to **Accounting → Configuration →
-   Asset Categories** and create at least one category per type of asset you
-   will register (for example, *Buildings*, *IT Equipment*, *Vehicles*).
-   Each category stores the default depreciation method, useful life,
-   salvage value, and the asset / depreciation-expense / accumulated-
-   depreciation accounts that will be proposed when assets of that category
-   are created.
+1. **Create asset categories.** Navigate to **Accounting → Assets →
+   Configuration → Asset Categories** and create at least one category per
+   type of asset you will register (for example, *Buildings*, *IT
+   Equipment*, *Vehicles*). Each category stores the default depreciation
+   method, useful life, salvage value, and the asset / depreciation-expense /
+   accumulated-depreciation accounts that will be proposed when assets of
+   that category are created.
 
 2. **Review the depreciation scheduled action.** Navigate to **Settings →
-   Technical → Automation → Scheduled Actions** and locate the
-   *Asset Management: Post Depreciation Entries* job. The cron is enabled by
-   default and runs daily. Administrators can adjust the interval, next
-   execution date, or temporarily disable the job from this screen.
+   Technical → Automation → Scheduled Actions** and locate the *Assets:
+   Post Depreciation Entries* job. The cron is enabled by default and runs
+   daily. Administrators can adjust the interval, next execution date, or
+   temporarily disable the job from this screen.
 
-3. **Assign access to users.** Two security groups are provided and can be
-   assigned from **Settings → Users & Companies → Users**:
+3. **Assign access to users.** Access rights are controlled through the
+   existing core accounting groups configured under **Settings → Users &
+   Companies → Users**:
 
-   * **Asset User** — read, write, and create assets and depreciation
-     schedules; run the modification and disposal wizards.
-   * **Asset Manager** — full access, including unlink, plus permission to
-     run the scheduled depreciation job manually.
+   * **Accounting User** (``account.group_account_user``) — read, write,
+     and create assets, asset categories, and depreciation lines; run the
+     modification and disposal wizards.
+   * **Accounting Manager** (``account.group_account_manager``) — full
+     access including the right to unlink draft assets and to invoke the
+     scheduled depreciation job manually.
+
+   No custom security groups are introduced by this module; access is
+   governed exclusively by the standard accounting groups inherited from
+   the core ``account`` module.
 
 4. **(Optional) Review multi-company record rules.** Navigate to **Settings
    → Technical → Security → Record Rules** to verify that the supplied
@@ -170,17 +181,18 @@ Typical end-to-end workflow, from acquisition to disposal:
 
 1. **Navigate** to **Accounting → Assets**.
 2. **Select or create a category** under
-   **Accounting → Configuration → Asset Categories** with default
+   **Accounting → Assets → Configuration → Asset Categories** with default
    depreciation method, useful life, salvage value, and account
    assignments.
-3. **Create an asset** from **Accounting → Assets → Assets** (or directly
-   from a posted vendor bill via the *Create Asset* smart action when the
-   vendor bill line references an asset-type account). Fill in the
-   acquisition date, acquisition cost, category, and any vendor reference.
+3. **Create an asset** from **Accounting → Assets → Assets** by clicking
+   *New* and selecting the source vendor bill via the *Source Invoice*
+   field on the asset form when the vendor bill line references an
+   asset-type account. Fill in the acquisition date, acquisition cost,
+   category, and any vendor reference.
 4. **Configure depreciation** on the asset form — method, useful life (or
    declining factor / total expected units for non-straight-line methods),
    salvage value, and depreciation start date — then **Confirm** the asset
-   to transition it from draft to open and post the acquisition journal
+   to transition it from Draft to Running and post the acquisition journal
    entry.
 5. **Review the depreciation board** from the *Depreciation Board* tab or
    the **Accounting → Assets → Depreciation Board** menu to visualise the
@@ -197,7 +209,7 @@ Typical end-to-end workflow, from acquisition to disposal:
 8. **Dispose of the asset** at end of life using the **Dispose Asset**
    action to launch the disposal wizard: choose sale (with proceeds),
    scrapping, or write-off; the wizard posts catch-up depreciation, records
-   the gain or loss, and transitions the asset to the close state.
+   the gain or loss, and transitions the asset to the Closed state.
 
 All asset transactions generate standard journal entries in the general
 ledger and appear in the Balance Sheet and Profit & Loss reports without
@@ -209,6 +221,46 @@ Known Issues / Roadmap
 
 None at time of release. Please report issues via the OCA project tracker
 (see the *Bug Tracker* section below).
+
+
+Changelog
+=========
+
+19.0.1.0.0 (2024-12-01)
+-----------------------
+
+Initial release. Delivers the six AM stories that constitute FEATURE-004
+(Asset Management) under EPIC-001 (Enterprise Accounting Capabilities).
+
+* **AM-001 Asset Registration** — fixed-asset registration with vendor and
+  source-bill linkage, ``ir.sequence``-driven unique reference generation,
+  asset categories with default account assignments, and the full
+  Draft → Running → Closed state machine with chatter / activity tracking.
+* **AM-002 Depreciation Configuration** — straight-line, declining-balance
+  (with optional switch-to-straight-line), and units-of-production
+  depreciation methods; salvage value, mid-period proration, and
+  configurable depreciation start dates.
+* **AM-003 Depreciation Board** — read-only depreciation schedule view in
+  list, kanban, and graph layouts; CSV / XLSX export; renders under two
+  seconds for assets with up to 480 periods.
+* **AM-004 Automatic Depreciation Entries** — declarative ``ir.cron``
+  scheduled action *Assets: Post Depreciation Entries* in
+  ``data/depreciation_cron.xml``; idempotent batched posting with
+  per-asset fault tolerance, draft-vs-auto-post modes, and mid-period
+  proration.
+* **AM-005 Asset Modification** — IAS 16 revaluation, IAS 36 / ASC 360
+  impairment, impairment reversal, useful-life changes, and salvage-value
+  changes through a dedicated modification wizard; full audit trail via
+  chatter.
+* **AM-006 Asset Disposal** — disposal-by-sale, scrap, and write-off
+  workflows with automatic gain / loss calculation against the current
+  net book value, catch-up depreciation through the disposal date, and
+  state transition to Closed.
+* AGPL-3.0 licensing; no Odoo Enterprise dependencies (R-02); no
+  cross-imports to other new Community Edition modules (R-01); additive
+  ``_inherit`` extension of ``account.move`` and ``account.move.line``
+  with computed / relational fields only (R-05); ``ir.cron`` declared via
+  XML data record (R-06).
 
 
 Bug Tracker

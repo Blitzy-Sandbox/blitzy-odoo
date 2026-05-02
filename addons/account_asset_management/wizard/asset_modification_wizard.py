@@ -928,40 +928,37 @@ class AccountAssetModificationWizard(models.TransientModel):
         partial failure rolls back cleanly. Steps inside the
         savepoint:
 
-            1. Create and post the adjustment ``account.move`` for
-               value-adjusting types (revaluation, impairment,
-               impairment reversal). Useful-life and salvage-change
-               types skip this step.
-            2. Apply asset-side changes (acquisition_cost,
-               useful_life_months, salvage_value) per
-               ``_apply_asset_changes``.
-            3. Recompute the depreciation schedule via
-               ``asset._compute_depreciation_schedule()`` -- the
-               method preserves posted lines and only regenerates
-               draft / future lines per IAS 8 prospective accounting.
-            4. Post the immutable audit trail message to the asset's
-               chatter via ``asset.message_post(body=...)``.
-            5. Persist ``move_id`` and transition state to
-               ``posted``.
+        1. Create and post the adjustment ``account.move`` for
+           value-adjusting types (revaluation, impairment,
+           impairment reversal). Useful-life and salvage-change
+           types skip this step.
+        2. Apply asset-side changes (acquisition_cost,
+           useful_life_months, salvage_value) per
+           ``_apply_asset_changes``.
+        3. Recompute the depreciation schedule via
+           ``asset._compute_depreciation_schedule()`` -- the
+           method preserves posted lines and only regenerates
+           draft / future lines per IAS 8 prospective accounting.
+        4. Post the immutable audit trail message to the asset's
+           chatter via ``asset.message_post(body=...)``.
+        5. Persist ``move_id`` and transition state to ``posted``.
 
-        Journal entry structure per ``modification_type``:
+        Journal entry structure per ``modification_type``::
 
-            * Revaluation (DR asset, CR revaluation surplus):
-                  DR  asset.asset_account_id            |amount|
-                  CR  revaluation_surplus_account_id    |amount|
+            Revaluation (DR asset, CR revaluation surplus):
+                DR  asset.asset_account_id            <amount>
+                CR  revaluation_surplus_account_id    <amount>
 
-            * Impairment (DR impairment loss, CR accumulated depr):
-                  DR  impairment_loss_account_id              |amount|
-                  CR  asset.accumulated_depreciation_account_id
-                                                             |amount|
+            Impairment (DR impairment loss, CR accumulated depr):
+                DR  impairment_loss_account_id                <amount>
+                CR  asset.accumulated_depreciation_account_id <amount>
 
-            * Impairment Reversal (DR accum depr, CR reversal income):
-                  DR  asset.accumulated_depreciation_account_id
-                                                             |amount|
-                  CR  impairment_reversal_account_id          |amount|
+            Impairment Reversal (DR accum depr, CR reversal income):
+                DR  asset.accumulated_depreciation_account_id <amount>
+                CR  impairment_reversal_account_id            <amount>
 
-            * Useful Life Change / Salvage Change: no journal entry
-              (prospective IAS 8 accounting estimate change).
+            Useful Life Change / Salvage Change: no journal entry
+            (prospective IAS 8 accounting estimate change).
 
         :return: an ``ir.actions.act_window`` dict that re-opens the
             wizard form in ``posted`` state.

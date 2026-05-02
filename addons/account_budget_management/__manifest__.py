@@ -44,7 +44,7 @@ only Odoo Community Edition dependencies — specifically ``account`` and
     'version': '19.0.1.0.0',
     'category': 'Accounting/Accounting',
     'website': 'https://github.com/odoo/odoo',
-    'author': 'OCA, [contributor]',
+    'author': 'Enterprise Accounting Team, Odoo Community Association (OCA)',
     'license': 'AGPL-3',
     'application': False,
     'installable': True,

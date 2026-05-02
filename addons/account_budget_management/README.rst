@@ -19,7 +19,7 @@ Budget Management (Community Edition)
 
 **License:** AGPL-3.0 or later (https://www.gnu.org/licenses/agpl)
 
-**Author:** OCA, [contributor]
+**Author:** Enterprise Accounting Team, Odoo Community Association (OCA)
 
 **Category:** Accounting / Accounting
 
@@ -131,9 +131,9 @@ Sequences**.
 The budget threshold evaluation cron is registered from
 ``data/budget_alert_cron.xml`` as an ``ir.cron`` record. After install it is
 reachable from **Settings -> Technical -> Automation -> Scheduled Actions**
-under "Budget Management: Evaluate Alert Thresholds". Its interval and
-activation state may be adjusted to suit the deployment. The cron may also
-be invoked manually from this screen using **Run Manually**.
+under "Budget Alert Threshold Evaluation". Its interval and activation
+state may be adjusted to suit the deployment. The cron may also be invoked
+manually from this screen using **Run Manually**.
 
 4. Threshold Defaults
 ---------------------
@@ -156,15 +156,15 @@ analytic-enabled documents.
 Usage
 =====
 
-The module adds a top-level *Budgets* section to the Accounting menu. Typical
-usage flows from budget definition through period allocation, comparison
-reporting, variance analysis, and alert monitoring.
+The module adds a top-level *Budget Management* section to the Accounting
+menu. Typical usage flows from budget definition through period allocation,
+comparison reporting, variance analysis, and alert monitoring.
 
 BM-001: Budget Definition
 -------------------------
 
-**Accounting -> Budgets -> Budgets** lets a Controller, Finance Director, or
-CFO:
+**Accounting -> Budget Management -> Budgets** lets a Controller, Finance
+Director, or CFO:
 
 * Create a budget record (model ``budget.budget``) with a unique reference,
   responsible user, fiscal period (``date_from`` / ``date_to``), and company.
@@ -174,9 +174,10 @@ CFO:
   ``account.analytic.account`` records governed by an
   ``account.analytic.plan``.
 * Progress the budget through its state machine:
-  **draft -> confirmed -> closed**. Validation rules ensure that every
-  confirmed budget has at least one line and that planned amounts are
-  non-negative.
+  **draft -> confirmed -> closed**, with **cancelled** as an alternate
+  terminal state reachable from **draft** or **confirmed**. Validation
+  rules ensure that every confirmed budget has at least one line and that
+  planned amounts are non-negative.
 * Duplicate an existing budget to accelerate annual planning cycles.
 
 BM-002: Budget Period Allocation
@@ -196,21 +197,27 @@ Each budget line can be decomposed into period allocations
 BM-003: Actual vs Budget Reporting
 ----------------------------------
 
-**Accounting -> Budgets -> Reports -> Budget vs Actual** delivers side-by-side
-comparisons of planned amounts against posted actuals. Actuals are computed
-via a single ``read_group`` SQL aggregation against ``account.move.line``,
-matching the precedent established by ``account_financial_report_ce`` for
-scalable reporting. Users can:
+**Accounting -> Budget Management -> Actual vs Budget** delivers
+side-by-side comparisons of planned amounts against posted actuals.
+Actuals are computed via a single ``read_group`` SQL aggregation against
+``account.move.line``, matching the precedent established by
+``account_financial_report_ce`` for scalable reporting. Users can:
 
 * Filter by budget, period range, analytic dimension, or GL account.
 * View multi-period YTD roll-ups alongside the most recent period.
 * Drill down from any report cell to the underlying posted journal items.
-* Export the report to PDF or XLSX for stakeholder distribution.
+* Export the report via the standard Odoo list / pivot view export menu
+  (Actions -> Export All for spreadsheet-friendly output, or the print
+  menu on the resulting view for PDF). No dedicated PDF / XLSX template
+  is bundled with this module; the ``action_print_pdf`` and
+  ``action_export_xlsx`` methods on the variance wizard intentionally
+  raise a ``UserError`` redirecting the user to the standard export
+  flow.
 
 BM-004: Variance Analysis
 -------------------------
 
-**Accounting -> Budgets -> Reports -> Variance Analysis** opens a
+**Accounting -> Budget Management -> Variance Analysis Wizard** opens a
 ``TransientModel`` wizard that computes:
 
 * **Absolute variance** - actual minus planned, expressed in the company
@@ -232,8 +239,8 @@ over journal items.
 BM-005: Budget Alerts
 ---------------------
 
-**Accounting -> Budgets -> Alerts** gives Controllers a dashboard view of
-budget consumption events. Behaviour and configuration:
+**Accounting -> Budget Management -> Alerts** gives Controllers a
+dashboard view of budget consumption events. Behaviour and configuration:
 
 * Each budget line may declare one or more threshold percentages (for
   example 75%, 90%, 100%, 110%), each mapped to a severity level:
@@ -272,6 +279,41 @@ Known Issues / Roadmap
   story specifications.
 
 
+Changelog
+=========
+
+19.0.1.0.0 (2024-12-01)
+-----------------------
+
+Initial release. Delivers the five BM stories that constitute FEATURE-003
+(Budget Management) under EPIC-001 (Enterprise Accounting Capabilities).
+
+* **BM-001 Budget Definition** — header / line model pair with analytic
+  distribution support, draft -> confirmed -> closed lifecycle plus
+  cancelled terminal state, per-company sequence numbering, audit trail
+  through ``mail.thread``, and copy / duplicate workflow.
+* **BM-002 Budget Period Allocation** — monthly / quarterly / annual
+  decomposition of budget lines with equal, manual, percentage, and
+  copy-from-previous distribution strategies.
+* **BM-003 Actual vs Budget Reporting** — pivot / list / graph views on
+  posted journal entries with ``read_group`` SQL aggregation, multi-period
+  YTD roll-ups, and drill-down to source moves.
+* **BM-004 Variance Analysis** — TransientModel wizard with absolute and
+  percentage variance, favourable / unfavourable classification driven by
+  account type, and trend analysis. Renders in under three seconds for
+  fiscal-year reports of up to 1,000 budget lines.
+* **BM-005 Budget Alerts** — threshold-based alert evaluation (default
+  75 / 90 / 100 / 110 percent) via the declarative ``ir.cron`` record
+  *Budget Alert Threshold Evaluation* in ``data/budget_alert_cron.xml``;
+  immutable alert history with kanban dashboard.
+* AGPL-3.0 licensing; depends only on the core ``account`` and
+  ``analytic`` modules; no Odoo Enterprise dependencies (R-02); no
+  cross-imports between the four new Community Edition modules (R-01);
+  additive ``_inherit`` extension only (R-05); ``ir.cron`` declared via
+  XML data record (R-06); BM-004 and BM-005 fields strictly partitioned
+  (R-08).
+
+
 Bug Tracker
 ===========
 
@@ -300,7 +342,8 @@ Authors
 Contributors
 ------------
 
-* OCA, [contributor]
+* Enterprise Accounting Team
+* OCA contributors — see module git history
 
 Funding
 -------

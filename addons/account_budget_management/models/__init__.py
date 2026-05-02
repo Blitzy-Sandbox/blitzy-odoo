@@ -40,3 +40,10 @@ from . import budget_budget_line
 from . import budget_period
 from . import budget_alert
 from . import account_analytic_account
+# FB-04 (QA Checkpoint 6): _inherit = 'account.move' override that
+# triggers _compute_variance on related budget.budget.line records when
+# moves transition to/from posted. Loaded LAST so all budget models
+# referenced by the override (``budget.budget.line``) are already in
+# the ORM registry. R-05 compliant: method overrides only, NO new
+# fields on account.move.
+from . import account_move

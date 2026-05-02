@@ -157,7 +157,7 @@ class AccountAsset(models.Model):
         copy=False,
         readonly=True,
         tracking=True,
-        default=lambda self: self._default_reference(),
+        default='/',
         help=(
             'Unique asset reference number, auto-generated from the '
             '``ir.sequence`` with code ``account.asset`` declared in '
@@ -625,7 +625,7 @@ class AccountAsset(models.Model):
     # =========================================================================
 
     @api.model
-    def _default_reference(self):
+    def _default_reference(self, sequence_date=None):
         """Generate a unique asset reference via ``ir.sequence``.
 
         Uses the ``account.asset`` sequence code declared in
@@ -636,13 +636,128 @@ class AccountAsset(models.Model):
         loaded). Odoo recomputes the placeholder on the next write
         once the sequence becomes available.
 
+        FB-01 (QA Checkpoint 6): The optional ``sequence_date``
+        argument controls BOTH:
+
+            * Which ``ir.sequence.date_range`` subsequence supplies
+              the next counter (passed through to
+              ``next_by_code(sequence_date=...)``).
+            * The ``%(year)s`` substitution in the sequence prefix
+              ``FA/%(year)s/`` (set via the ``ir_sequence_date``
+              context key, because ``ir.sequence._get_prefix_suffix``
+              interpolates ``%(year)s`` from the ``effective_date``
+              -- which by default is ``datetime.now()`` and is only
+              overridden by the explicit ``date`` argument or this
+              context key).
+
+        Without the context override, an asset whose
+        ``acquisition_date == 2025-12-15`` saved on system date
+        ``2026-05-02`` would receive ``FA/2026/0001`` (today's year)
+        even though the counter was correctly drawn from the 2025
+        date-range subsequence -- because the prefix interpolation
+        is performed against today, not against the date-range
+        boundaries. Setting ``ir_sequence_date`` aligns both year
+        sources so the rendered reference is exactly
+        ``FA/2025/0001``.
+
+        :param sequence_date: optional date used as the boundary for
+            ``ir.sequence.date_range`` resolution AND as the source
+            of the ``%(year)s`` prefix interpolation. When ``None``,
+            ``ir.sequence._next`` falls back to today's date in the
+            user's timezone (the historical behaviour).
+        :type sequence_date: datetime.date or None
         :return: a string asset reference, e.g., ``'FA/2025/0001'`` or
                  ``'/'`` on fallback.
         :rtype: str
         """
-        return self.env['ir.sequence'].with_company(
-            self.env.company,
-        ).next_by_code('account.asset') or '/'
+        sequence = self.env['ir.sequence'].with_company(self.env.company)
+        if sequence_date:
+            # FB-01: align the prefix-interpolation date with the
+            # date-range-resolution date. ``ir_sequence_date`` is the
+            # standard Odoo context key consumed by
+            # ``_get_prefix_suffix`` -- see
+            # ``odoo/addons/base/models/ir_sequence.py::_get_prefix_suffix``
+            # lines 213-217 for the read site.
+            sequence = sequence.with_context(
+                ir_sequence_date=sequence_date,
+            )
+        return sequence.next_by_code(
+            'account.asset',
+            sequence_date=sequence_date,
+        ) or '/'
+
+    # =========================================================================
+    # CRUD OVERRIDES (AM-001 reference-resolution fix per FB-01)
+    # =========================================================================
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Create assets with acquisition-date-aware reference numbering.
+
+        FB-01 (QA Checkpoint 6): Accountants expect the asset
+        reference's year segment to match the acquisition (fiscal)
+        year of the asset rather than the system date when the asset
+        record is saved. The ``reference`` field's static default of
+        ``'/'`` is the standard Odoo "deferred sequence" placeholder
+        (mirroring ``account.move.name`` in the upstream
+        ``account`` module): the real sequence number is allocated
+        here in ``create()`` so we have access to ``acquisition_date``
+        and can issue the reference under the matching
+        ``ir.sequence.date_range`` subsequence.
+
+        Behaviour (per QA finding FB-01):
+
+            * Vals whose ``reference`` is the ``'/'`` placeholder (the
+              field default), missing, ``None``, ``False``, or empty
+              string are PLACEHOLDER values. For these, this override
+              calls ``_default_reference(sequence_date=acq_date)`` so
+              the rendered prefix uses the acquisition year (e.g.
+              ``FA/2025/0001`` for an asset acquired ``2025-12-15``
+              even when the current system date is in ``2026``).
+            * Vals whose ``reference`` is any non-placeholder string
+              (i.e. an EXPLICITLY supplied reference from API /
+              migration code / test fixtures) are passed through
+              UNCHANGED so the SQL ``UniqueIndex`` on ``(reference,
+              company_id)`` may fire on duplicates -- this preserves
+              the AM-001 unique-reference contract validated by
+              ``test_am_001_04_unique_reference_via_sequence``.
+            * When ``acquisition_date`` is omitted from vals, the
+              placeholder is resolved with ``sequence_date=None`` so
+              the today-year prefix is used (preserving the historical
+              behaviour for non-fiscal-aware callers).
+
+        :param vals_list: standard Odoo ``@api.model_create_multi``
+            list of values dicts.
+        :type vals_list: list[dict]
+        :return: the recordset of created assets, as returned by
+            ``super().create``.
+        :rtype: account.asset
+        """
+        # Sentinel values that mark "no real reference issued yet".
+        # ``'/'`` is the standard Odoo deferred-sequence placeholder
+        # (matches ``account.move.name``); the others guard against
+        # callers that omit the field.
+        placeholders = (False, None, '', '/')
+        for vals in vals_list:
+            existing_ref = vals.get('reference')
+            if existing_ref not in placeholders:
+                # User-supplied / migration-code reference. Pass
+                # through verbatim so the unique-constraint can
+                # fire if it is a duplicate.
+                continue
+            acquisition_date = vals.get('acquisition_date')
+            acq_date = None
+            if acquisition_date:
+                # Normalize to a Python date object; both Odoo's API
+                # and JSON-RPC may pass it as a string.
+                if isinstance(acquisition_date, str):
+                    acq_date = fields.Date.from_string(acquisition_date)
+                else:
+                    acq_date = acquisition_date
+            vals['reference'] = self._default_reference(
+                sequence_date=acq_date,
+            )
+        return super().create(vals_list)
 
     # =========================================================================
     # COMPUTE METHODS
@@ -1474,6 +1589,35 @@ class AccountAsset(models.Model):
                 * ``straight_line``       -> ``_schedule_straight_line``
                 * ``declining_balance``   -> ``_schedule_declining_balance``
                 * ``units_of_production`` -> ``_schedule_units_of_production``
+            3. **FB-03 prospective preservation guard** -- When posted
+               lines exist (the AM-005 modification flow runs this
+               method *after* some periods have already been posted to
+               the GL), the per-method generator emits a *full* schedule
+               from ``depreciation_start_date`` onward; this would
+               re-create draft lines for the same dates as the already
+               posted lines, double-counting depreciation in the GL on
+               the next cron run. After the per-method generator
+               completes we therefore:
+
+                 * **Drop** any newly-generated draft line whose
+                   ``depreciation_date`` matches an existing posted
+                   line's date (these would duplicate what is already
+                   in the GL).
+                 * **Re-distribute** the remaining draft amount so
+                   ``sum(posted_lines) + sum(remaining_draft_lines)``
+                   equals exactly ``acquisition_cost - salvage_value``
+                   (this is the IAS 8 "prospective" recomputation: the
+                   asset's new gross / salvage values apply forward
+                   only and the historical accumulation is preserved
+                   in the GL).
+                 * **Renumber** the surviving draft lines' ``sequence``
+                   so the schedule presents a contiguous ordering on
+                   the AM-003 board.
+
+               The guard is a no-op when the asset has no posted lines
+               (AM-001 confirmation flow), which is the typical case
+               outside of revaluation / impairment / useful-life
+               changes.
 
         :raises UserError: when the depreciation method is unknown
             (defensive guard against schema drift or test fixtures).
@@ -1487,6 +1631,21 @@ class AccountAsset(models.Model):
         )
         if draft_lines:
             draft_lines.unlink()
+
+        # FB-03: Capture the SET of posted depreciation dates BEFORE
+        # the per-method generator runs. The generator is intentionally
+        # ignorant of posted history -- it always emits a full
+        # acquisition_date-onward schedule -- so the duplicate-period
+        # filter below is the single point of truth that prevents
+        # over-depreciation after AM-005 modifications.
+        posted_lines = self.depreciation_line_ids.filtered(
+            lambda line: line.state == 'posted',
+        )
+        # ``depreciation_date`` is a Date field; a set of Date objects
+        # gives O(1) membership checks for the duplicate filter below.
+        posted_dates = set(posted_lines.mapped('depreciation_date'))
+        posted_amount = sum(posted_lines.mapped('depreciation_amount'))
+
         method = self.depreciation_method
         if method == 'straight_line':
             self._schedule_straight_line()
@@ -1500,6 +1659,78 @@ class AccountAsset(models.Model):
                 method,
                 self.name or '',
             ))
+
+        # FB-03: Prospective preservation -- only applicable when
+        # posted lines exist. When the schedule generator emitted at
+        # least one draft line whose date duplicates a posted date, we
+        # drop it; the resulting draft tail is then re-balanced so the
+        # schedule's grand total reconciles to the new acquisition
+        # cost minus salvage value.
+        if posted_dates:
+            currency = self.currency_id or self.company_id.currency_id
+            duplicate_drafts = self.depreciation_line_ids.filtered(
+                lambda line: (
+                    line.state == 'draft'
+                    and line.depreciation_date in posted_dates
+                ),
+            )
+            if duplicate_drafts:
+                duplicate_drafts.unlink()
+
+            # Re-balance the surviving draft tail to absorb any
+            # acquisition_cost / salvage_value adjustments applied by
+            # AM-005. After the per-method generator has run with the
+            # NEW depreciable base (cost - salvage), the surviving
+            # drafts already carry per-period amounts derived from the
+            # FULL period count. Because some periods (the duplicates)
+            # were just removed, the tail is now SHORT by ``len(
+            # duplicate_drafts) * per_period`` -- which is exactly the
+            # amount that the GL has already absorbed via the posted
+            # lines. We therefore distribute ``new_depreciable -
+            # posted_amount`` evenly across the surviving drafts; the
+            # final draft absorbs any cumulative rounding error.
+            remaining_drafts = self.depreciation_line_ids.filtered(
+                lambda line: line.state == 'draft',
+            ).sorted('depreciation_date')
+            if remaining_drafts and currency:
+                depreciable = (
+                    (self.acquisition_cost or 0.0)
+                    - (self.salvage_value or 0.0)
+                )
+                remaining_depreciable = depreciable - posted_amount
+                count = len(remaining_drafts)
+                # Defensive guard: when the new depreciable value is
+                # already <= what the GL has already absorbed (e.g.,
+                # an aggressive impairment), the prospective amount is
+                # zero or negative; cancel the surviving drafts rather
+                # than emit negative depreciation entries.
+                if remaining_depreciable <= 0:
+                    remaining_drafts.unlink()
+                else:
+                    per_period = currency.round(
+                        remaining_depreciable / count,
+                    ) if count else 0.0
+                    cumulative = 0.0
+                    base_seq = (
+                        max(posted_lines.mapped('sequence'))
+                        if posted_lines else 0
+                    )
+                    for idx, line in enumerate(
+                        remaining_drafts, start=1,
+                    ):
+                        if idx == count:
+                            # Final period absorbs cumulative rounding
+                            # error so sum reconciles exactly.
+                            amount = currency.round(
+                                remaining_depreciable - cumulative,
+                            )
+                        else:
+                            amount = per_period
+                        cumulative += amount
+                        line.write({
+                            'depreciation_amount': amount,
+                            'sequence': base_seq + idx,
+                        })
 
     def _schedule_straight_line(self):
         """Generate a straight-line depreciation schedule (AM-002 Sc1/2).

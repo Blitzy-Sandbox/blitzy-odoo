@@ -82,6 +82,8 @@ AAP Rule Compliance
 
 import logging
 
+from markupsafe import Markup
+
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
@@ -1459,9 +1461,15 @@ class AccountAssetDisposalWizard(models.TransientModel):
             * partial disposal quantity (if applicable)
             * disposal and catch-up entry references
 
+        FB-02 (QA Checkpoint 6): The body is returned as a
+        ``markupsafe.Markup`` instance so ``mail.thread.message_post``
+        treats it as pre-sanitized HTML; passing a plain ``str``
+        causes the mail framework's ``escape()`` to render the
+        ``<b>`` / ``<br/>`` tags as literal text in the chatter.
+
         Returns:
-            str: HTML-formatted audit-trail message ready for
-            ``asset.message_post(body=...)``.
+            markupsafe.Markup: HTML-formatted audit-trail message
+            ready for ``asset.message_post(body=...)``.
         """
         self.ensure_one()
         method_label = dict(
@@ -1472,53 +1480,56 @@ class AccountAssetDisposalWizard(models.TransientModel):
             or (self.asset_id and self.asset_id.currency_id)
             or self.env.company.currency_id
         )
+        # FB-02: Build via ``Markup`` + ``%`` formatting so static
+        # HTML tags remain safe markup while every interpolated value
+        # is auto-escaped. ``Markup('').join`` preserves the Markup
+        # type across concatenation -- a plain ``''.join`` would
+        # coerce to ``str`` and re-trigger the escape in
+        # ``mail.thread.message_post``.
         body_parts = [
-            _('<b>Asset Disposal Posted</b>'),
-            '<br/>',
-            _('Method: %s', method_label),
-            '<br/>',
-            _('Disposal Date: %s', self.disposal_date),
-            '<br/>',
-            _(
-                'Proceeds: %s',
+            Markup('<b>%s</b>') % _('Asset Disposal Posted'),
+            Markup('<br/>%s: %s') % (_('Method'), method_label),
+            Markup('<br/>%s: %s') % (
+                _('Disposal Date'), self.disposal_date or '',
+            ),
+            Markup('<br/>%s: %s') % (
+                _('Proceeds'),
                 currency.round(self.proceeds_amount or 0.0),
             ),
-            '<br/>',
-            _(
-                'Net Book Value: %s',
+            Markup('<br/>%s: %s') % (
+                _('Net Book Value'),
                 currency.round(self.net_book_value or 0.0),
             ),
-            '<br/>',
-            _(
-                'Gain/Loss: %s',
+            Markup('<br/>%s: %s') % (
+                _('Gain/Loss'),
                 currency.round(self.gain_loss_amount or 0.0),
             ),
-            '<br/>',
-            _('Reason: %s', self.disposal_reason or ''),
+            Markup('<br/>%s: %s') % (
+                _('Reason'), self.disposal_reason or '',
+            ),
         ]
         if self.documentation_ref:
-            body_parts.append('<br/>')
-            body_parts.append(_(
-                'Documentation Ref: %s',
+            body_parts.append(Markup('<br/>%s: %s') % (
+                _('Documentation Ref'),
                 self.documentation_ref,
             ))
         if self.is_partial:
-            body_parts.append('<br/>')
-            body_parts.append(_(
-                'Partial Disposal: %(disp).4f of %(tot).4f units',
-                disp=self.disposed_quantity or 0.0,
-                tot=self.total_quantity or 0.0,
+            body_parts.append(Markup('<br/>%s: %s') % (
+                _('Partial Disposal'),
+                _(
+                    '%(disp).4f of %(tot).4f units',
+                    disp=self.disposed_quantity or 0.0,
+                    tot=self.total_quantity or 0.0,
+                ),
             ))
         if disposal_move:
-            body_parts.append('<br/>')
-            body_parts.append(_(
-                'Disposal Entry: %s',
+            body_parts.append(Markup('<br/>%s: %s') % (
+                _('Disposal Entry'),
                 disposal_move.name or '',
             ))
         if catchup_move:
-            body_parts.append('<br/>')
-            body_parts.append(_(
-                'Catch-up Depreciation Entry: %s',
+            body_parts.append(Markup('<br/>%s: %s') % (
+                _('Catch-up Depreciation Entry'),
                 catchup_move.name or '',
             ))
-        return ''.join(body_parts)
+        return Markup('').join(body_parts)

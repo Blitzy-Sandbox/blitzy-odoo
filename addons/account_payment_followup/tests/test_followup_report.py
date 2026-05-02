@@ -219,8 +219,8 @@ class TestFollowupReport(AccountPaymentFollowupTestCommon):
         Asserts:
           * The wizard record exists after ``create({})`` and exposes the
             documented technical name ``account.followup.report.wizard``.
-          * ``date_from`` defaults to the first day of the current month
-            (matches ``_default_date_from``).
+          * ``date_from`` defaults to today minus one year (matches
+            ``_default_date_from`` after the FB-07 broadening fix).
           * ``date_to`` defaults to today (matches ``_default_date_to``).
           * ``report_date`` defaults to today (matches
             ``_default_report_date``).
@@ -238,12 +238,13 @@ class TestFollowupReport(AccountPaymentFollowupTestCommon):
 
         # Date defaults — ``_default_date_from`` / ``_default_date_to`` /
         # ``_default_report_date`` are all defined as @api.model methods
-        # that return today (or first-of-month for date_from). Under
-        # ``freeze_time(_FROZEN_DATE)`` today is 2024-06-30, so the
-        # expected default for date_from is 2024-06-01.
+        # that return today (or today-minus-1-year for date_from per
+        # FB-07). Under ``freeze_time(_FROZEN_DATE)`` today is
+        # 2024-06-30, so the expected default for date_from is
+        # 2023-06-30 (one year prior).
         self.assertEqual(
-            wizard.date_from, date(2024, 6, 1),
-            'date_from must default to first day of current month.',
+            wizard.date_from, date(2023, 6, 30),
+            'date_from must default to today minus one year (FB-07).',
         )
         self.assertEqual(
             wizard.date_to, _FROZEN_DATE,

@@ -230,14 +230,23 @@
                     </group>
 
                     <!-- =====================================================
-                         Upcoming Recognitions
+                         Recognition Schedule by Period
 
                          HTML table projected from
                          ``period_breakdown_json`` showing one entry per
-                         upcoming month for the next 12 months — Issue
-                         #18 fix.
+                         calendar month within the dashboard's date
+                         range filter.  FB-06 (QA Checkpoint 6): the
+                         legacy label "Upcoming Recognitions (next 12
+                         months)" was misleading because the table
+                         shows ALL recognition lines in the date range
+                         (including already-posted ones), not only
+                         future / pending recognitions.  The neutral
+                         label "Recognition Schedule by Period"
+                         describes what the data actually is and
+                         remains correct for both historical and
+                         forward-looking date ranges.
                          ===================================================== -->
-                    <group string="Upcoming Recognitions (next 12 months)">
+                    <group string="Recognition Schedule by Period">
                         <field name="period_breakdown_html"
                                widget="html"
                                readonly="1"
@@ -265,7 +274,7 @@
         <field name="name">account.deferred.line.dashboard.graph</field>
         <field name="model">account.deferred.line</field>
         <field name="arch" type="xml">
-            <graph string="Upcoming Recognitions by Period"
+            <graph string="Recognition Schedule by Period"
                    type="bar"
                    stacked="1"
                    sample="1">

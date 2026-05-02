@@ -60,6 +60,7 @@ import base64
 import io
 import logging
 
+from dateutil.relativedelta import relativedelta
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -124,25 +125,42 @@ class FollowupReportWizard(models.TransientModel):
 
     @api.model
     def _default_date_from(self):
-        """Return the first day of the current month in the user's timezone.
+        """Return today minus one year in the user's timezone.
 
-        Used as the default for the ``date_from`` field. The 90-day fiscal
-        window pattern is intentionally narrower (a single calendar month)
-        because the PF-003 Scenario 7 rule states the default range is
-        configurable but should default to recent activity that fits in
-        a single PDF page comfortably.
+        Used as the default for the ``date_from`` field.
+
+        FB-07 (QA Checkpoint 6): The previous default (first day of
+        the *current month*) produced a single-month window that, on
+        the first day of any month, collapsed to a single day.
+        Operators opening the wizard would see the header report
+        "Total Customers: N" (computed from a date-independent
+        partner-overdue domain) but the body of the rendered report
+        would say "No customers found" because the parser's
+        date-bounded SQL filter excluded every overdue invoice
+        whose due date predated the narrow window.
+
+        A one-year retrospective default matches the typical aged-
+        receivables review cadence: invoices on the books for up to
+        365 days are surfaced for follow-up action; older balances
+        (which most jurisdictions write off) require an explicit
+        broader filter. This default keeps the partner-count header
+        and the report body aligned for the common operator
+        workflow without overloading the PDF with multi-year
+        history.
         """
         today = fields.Date.context_today(self)
-        return today.replace(day=1)
+        return today - relativedelta(years=1)
 
     @api.model
     def _default_date_to(self):
         """Return today's date in the user's timezone.
 
         Used as the default for the ``date_to`` field. Together with
-        ``_default_date_from``, this produces an effective default window
-        of "first of this month → today" — a useful out-of-box range for
-        month-to-date follow-up reports.
+        ``_default_date_from``, this produces an effective default
+        window of "today minus one year → today" -- a useful
+        out-of-box range that aligns the partner count shown in the
+        report header with the invoice rows shown in the body
+        (FB-07).
         """
         return fields.Date.context_today(self)
 
@@ -191,7 +209,9 @@ class FollowupReportWizard(models.TransientModel):
         default=_default_date_from,
         help="Start of the effectiveness-metrics evaluation window. Also "
              "used as a lower bound for payment-promise and action history "
-             "filters. Defaults to the first day of the current month.",
+             "filters. Defaults to today minus one year so the report body "
+             "captures typical aged-receivables history without manual "
+             "range adjustment (FB-07).",
     )
 
     date_to = fields.Date(

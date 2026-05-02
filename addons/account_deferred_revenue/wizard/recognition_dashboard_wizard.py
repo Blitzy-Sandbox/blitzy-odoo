@@ -157,28 +157,49 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
     # SECTION 1 — Filter fields (drive the @api.depends recomputation).
     # -----------------------------------------------------------------
 
+    # FB-05 (QA Checkpoint 6): The previous default range -- January 1
+    # to December 31 of the *current* calendar year -- hides every
+    # schedule whose recognition window is entirely in a prior fiscal
+    # year. In practice many real-world deferred-revenue schedules
+    # span the previous fiscal year (e.g. an annual subscription
+    # invoiced in 2025 with monthly recognition through Dec 2025), so
+    # opening the dashboard on May 2 2026 with the prior default
+    # would yield empty KPIs and an empty period breakdown until the
+    # user manually widened the range. The widened default
+    # (``today - 2 years`` to ``today + 1 year``) captures both
+    # already-recognized historical schedules (for audit / drill-down)
+    # and forward-looking schedules (for cash-flow forecasting),
+    # matching the typical fiscal close + budgeting workflow.
     date_from = fields.Date(
         string='From',
-        default=lambda self: fields.Date.context_today(self).replace(month=1, day=1),
+        default=lambda self: (
+            fields.Date.context_today(self) - relativedelta(years=2)
+        ).replace(month=1, day=1),
         required=True,
         help='Start of the dashboard date range.  Recognition lines '
              'whose ``recognition_date`` is greater than or equal to '
              'this date are included in the period breakdown.  '
              'Schedules whose ``end_date`` is on or after this date '
              '(or is empty) are included in the summary cards.  '
-             'Defaults to January 1 of the current calendar year.',
+             'Defaults to January 1 of the year two calendar years '
+             'before today, so prior-year fiscal schedules remain '
+             'visible without manual range adjustment (FB-05).',
     )
 
     date_to = fields.Date(
         string='To',
-        default=lambda self: fields.Date.context_today(self).replace(month=12, day=31),
+        default=lambda self: (
+            fields.Date.context_today(self) + relativedelta(years=1)
+        ).replace(month=12, day=31),
         required=True,
         help='End of the dashboard date range.  Recognition lines '
              'whose ``recognition_date`` is less than or equal to '
              'this date are included in the period breakdown.  '
              'Schedules whose ``start_date`` is on or before this '
              'date are included in the summary cards.  '
-             'Defaults to December 31 of the current calendar year.',
+             'Defaults to December 31 of the year one calendar year '
+             'after today, so forward-looking recognition forecasts '
+             'remain visible without manual range adjustment (FB-05).',
     )
 
     company_id = fields.Many2one(
@@ -876,9 +897,16 @@ class AccountDeferredRecognitionDashboardWizard(models.TransientModel):
                     '</table>'
                 )
             else:
+                # FB-06 (QA Checkpoint 6): the empty-state copy was
+                # phrased around "next 12 months" which contradicted
+                # the configurable date-range filter that drives this
+                # breakdown. The neutral phrasing references the
+                # active date range so users immediately understand
+                # the empty result is a function of their filter, not
+                # of the system clock.
                 wizard.period_breakdown_html = (
                     f'<p class="text-muted mb-0">'
-                    f'{_("No upcoming recognitions in the next 12 months.")}'
+                    f'{_("No recognition lines found in the selected date range.")}'
                     '</p>'
                 )
 

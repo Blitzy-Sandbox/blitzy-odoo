@@ -114,6 +114,8 @@ AAP Rule Compliance
 
 import logging
 
+from markupsafe import Markup
+
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
@@ -1422,6 +1424,19 @@ class AccountAssetModificationWizard(models.TransientModel):
         is used so the chatter renders structured fields rather than
         a single text blob.
 
+        Returns a ``markupsafe.Markup`` instance so
+        ``mail.thread.message_post`` treats the body as pre-sanitized
+        HTML; passing a plain ``str`` causes the mail framework's
+        ``escape()`` to render the ``<b>`` / ``<br/>`` tags as
+        literal text in the chatter (FB-02 fix).
+
+        Variable substitutions are escaped through the ``_(...)``
+        translation helper combined with the ``%`` operator on the
+        Markup-safe template -- the values themselves are wrapped in
+        ``Markup.escape`` so a partner / reason string containing a
+        ``<script>`` tag cannot inject markup into the chatter
+        message.
+
         Override parameters:
             ``action_post`` captures ``previous_value`` and
             ``modification_amount`` BEFORE applying the asset
@@ -1445,8 +1460,9 @@ class AccountAssetModificationWizard(models.TransientModel):
             "adjustment amount" line; falls back to
             ``self.modification_amount`` when ``None``.
         :type modification_amount_override: float or None
-        :return: HTML body string for ``message_post``.
-        :rtype: str
+        :return: HTML body for ``message_post`` as a ``markupsafe.Markup``
+            instance (safe HTML, no further escape).
+        :rtype: markupsafe.Markup
         """
         self.ensure_one()
         type_label = dict(
@@ -1465,44 +1481,54 @@ class AccountAssetModificationWizard(models.TransientModel):
             if modification_amount_override is not None
             else (self.modification_amount or 0.0)
         )
-        # Build the message as a list of HTML fragments and join at
-        # the end. This avoids repeated string concatenation overhead
-        # and keeps the per-line construction obvious.
+        # FB-02: Build the message via ``Markup`` + ``%`` formatting so
+        # the static HTML tags (``<b>``, ``<br/>``) remain safe HTML
+        # while every interpolated value is auto-escaped.
+        # ``Markup('...') % (...)`` escapes each substituted value
+        # exactly once and joins it back into a Markup instance --
+        # exactly the contract that ``mail.thread.message_post``'s
+        # ``escape(body)`` short-circuit looks for on Markup inputs.
         body_parts = [
-            _('<b>Asset Modification Posted</b>'),
-            _('<br/>Type: %s', type_label),
-            _('<br/>Effective Date: %s', self.effective_date),
-            _(
-                '<br/>Previous Value: %s',
-                currency.round(prev_val),
+            Markup('<b>%s</b>') % _('Asset Modification Posted'),
+            Markup('<br/>%s: %s') % (_('Type'), type_label),
+            Markup('<br/>%s: %s') % (
+                _('Effective Date'), self.effective_date or '',
+            ),
+            Markup('<br/>%s: %s') % (
+                _('Previous Value'), currency.round(prev_val),
             ),
         ]
         if self.modification_type in (
             'revaluation', 'impairment', 'impairment_reversal',
         ):
-            body_parts.append(_(
-                '<br/>New Value: %s',
+            body_parts.append(Markup('<br/>%s: %s') % (
+                _('New Value'),
                 currency.round(self.new_value or 0.0),
             ))
-            body_parts.append(_(
-                '<br/>Adjustment Amount: %s',
+            body_parts.append(Markup('<br/>%s: %s') % (
+                _('Adjustment Amount'),
                 currency.round(mod_amount),
             ))
         if self.modification_type == 'useful_life_change':
-            body_parts.append(_(
-                '<br/>New Remaining Useful Life: %d months',
+            body_parts.append(Markup('<br/>%s: %d %s') % (
+                _('New Remaining Useful Life'),
                 self.new_useful_life_months,
+                _('months'),
             ))
         if self.modification_type == 'salvage_change':
-            body_parts.append(_(
-                '<br/>New Salvage Value: %s',
+            body_parts.append(Markup('<br/>%s: %s') % (
+                _('New Salvage Value'),
                 currency.round(self.new_salvage_value or 0.0),
             ))
-        body_parts.append(_(
-            '<br/>Reason: %s', self.reason or '',
+        body_parts.append(Markup('<br/>%s: %s') % (
+            _('Reason'), self.reason or '',
         ))
         if move:
-            body_parts.append(_(
-                '<br/>Journal Entry: %s', move.name or '',
+            body_parts.append(Markup('<br/>%s: %s') % (
+                _('Journal Entry'), move.name or '',
             ))
-        return ''.join(body_parts)
+        # Concatenate Markup fragments via ``Markup.join`` so the
+        # final body is itself a Markup instance (regular ``str.join``
+        # would coerce to plain ``str`` and re-trigger the FB-02
+        # escape behaviour).
+        return Markup('').join(body_parts)

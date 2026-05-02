@@ -150,8 +150,25 @@
                             <field name="total_planned" widget="monetary"/>
                             <field name="total_actual" widget="monetary"/>
                             <field name="total_variance" widget="monetary"/>
-                            <field name="consumption_percent"
-                                   widget="percentage"/>
+                            <!--
+                                ``consumption_percent`` is computed as
+                                ``actual / planned * 100`` (a 0-100 ranged
+                                Float, see budget_budget.py
+                                ``_compute_dynamic_totals``). Standard
+                                Odoo ``widget="percentage"`` MULTIPLIES
+                                the underlying value by 100 for display
+                                (see addons/web/static/src/views/fields/
+                                formatters.js ``formatPercentage``), so
+                                applying the widget to a field already
+                                stored in 0-100 form would produce a 100×
+                                visual error (e.g. 41.36 displayed as
+                                "4136%"). The field's ``string`` already
+                                ends in "(%)" so plain Float rendering
+                                with ``digits=(5,2)`` produces a clean
+                                "41.36" presentation that the column
+                                header annotates as a percentage.
+                            -->
+                            <field name="consumption_percent"/>
                             <field name="alert_active" invisible="1"/>
                         </group>
                     </group>
@@ -180,8 +197,17 @@
                                     <field name="variance_absolute"
                                            sum="Total Variance"
                                            optional="show"/>
+                                    <!--
+                                        ``variance_percent`` is computed
+                                        as ``(actual - planned) / planned
+                                        * 100`` (0-100 ranged Float).
+                                        ``widget="percentage"`` would
+                                        multiply by 100 again at display
+                                        time → omit it. Field ``string``
+                                        ends in "(%)" so plain Float
+                                        display is unambiguous.
+                                    -->
                                     <field name="variance_percent"
-                                           widget="percentage"
                                            optional="hide"/>
                                     <field name="variance_classification"
                                            optional="hide"/>
@@ -259,8 +285,13 @@
                        widget="monetary"
                        sum="Total Actual"
                        optional="show"/>
+                <!--
+                    ``consumption_percent`` stored in 0-100 form (see
+                    budget_budget.py ``_compute_dynamic_totals``); plain
+                    Float display avoids the ``widget="percentage"`` 100×
+                    multiplication. Field ``string`` ends in "(%)".
+                -->
                 <field name="consumption_percent"
-                       widget="percentage"
                        optional="show"/>
                 <field name="line_count" optional="hide"/>
                 <field name="alert_count" optional="show"/>
@@ -535,11 +566,16 @@
                        widget="monetary"
                        sum="Total Variance"
                        optional="show"/>
+                <!--
+                    ``variance_percent`` and ``variance_consumption_percent``
+                    are both stored in 0-100 form (see budget_budget_line.py
+                    ``_compute_variance``). Plain Float display avoids
+                    the ``widget="percentage"`` 100× multiplication.
+                    Field ``string`` values end in "(%)".
+                -->
                 <field name="variance_percent"
-                       widget="percentage"
                        optional="hide"/>
                 <field name="variance_consumption_percent"
-                       widget="percentage"
                        optional="show"/>
                 <field name="variance_classification" optional="hide"/>
                 <field name="variance_threshold_status"
@@ -607,11 +643,17 @@
                             <field name="variance_absolute"
                                    widget="monetary"
                                    readonly="1"/>
+                            <!--
+                                ``variance_percent`` /
+                                ``variance_consumption_percent`` stored
+                                in 0-100 form; plain Float display
+                                avoids the ``widget="percentage"``
+                                duplicate ×100 (see related comment on
+                                the line tree view above).
+                            -->
                             <field name="variance_percent"
-                                   widget="percentage"
                                    readonly="1"/>
                             <field name="variance_consumption_percent"
-                                   widget="percentage"
                                    readonly="1"/>
                             <field name="variance_classification"
                                    readonly="1"/>
@@ -642,8 +684,17 @@
                                     <field name="allocated_amount"
                                            widget="monetary"
                                            sum="Total Allocated"/>
+                                    <!--
+                                        ``allocation_percentage`` is
+                                        stored in 0-100 form (CHECK
+                                        constraint enforces 0..100 in
+                                        budget_period.py); plain Float
+                                        display avoids the
+                                        ``widget="percentage"`` 100×
+                                        multiplication. Field
+                                        ``string`` ends in "(%)".
+                                    -->
                                     <field name="allocation_percentage"
-                                           widget="percentage"
                                            optional="show"/>
                                     <field name="audit_note" optional="hide"/>
                                     <field name="currency_id"
@@ -812,8 +863,14 @@
                     <field name="budget_amount_actual"
                            widget="monetary"
                            readonly="1"/>
+                    <!--
+                        ``budget_consumption_percent`` stored in 0-100
+                        form (see account_analytic_account.py
+                        ``_compute_budget_amounts``); plain Float
+                        display avoids the ``widget="percentage"`` 100×
+                        multiplication. Field ``string`` ends in "(%)".
+                    -->
                     <field name="budget_consumption_percent"
-                           widget="percentage"
                            readonly="1"/>
                 </group>
             </xpath>

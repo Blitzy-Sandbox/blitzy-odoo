@@ -14,12 +14,52 @@
       Level 2 (Second Reminder): sequence=20, delay=14 days, automatic,
                                  firmer tone, notifies sales rep.
       Level 3 (Warning):         sequence=30, delay=21 days, automatic,
-                                 urgent tone, attaches PDF invoices,
-                                 adds partner to collection list.
+                                 urgent tone, adds partner to collection
+                                 list. PDF attachments OPT-IN (see note
+                                 below).
       Level 4 (Final Notice):    sequence=40, delay=30 days, automatic,
-                                 final/formal tone, attaches invoices,
-                                 blocks new sales, adds partner to
-                                 collection list, notifies sales rep.
+                                 final/formal tone, blocks new sales,
+                                 adds partner to collection list,
+                                 notifies sales rep. PDF attachments
+                                 OPT-IN (see note below).
+
+    PF-002 SLA / wkhtmltopdf NOTE — invoice PDF attachments default OFF
+    ==================================================================
+    Background: Odoo 19's default cron real-time limit (configured via
+    the `limit-time-real-cron` config option) falls back to
+    `limit-time-real=120` (120 seconds). The PF-002 cron MUST process
+    up to ``batch_size=500`` partners within that budget per AAP
+    section 0.1.2. Synchronous wkhtmltopdf rendering of one invoice
+    PDF per partner with the unpatched-QT wkhtmltopdf binary commonly
+    shipped on Linux distributions costs ~1.0 to 1.1 seconds per
+    invoice; the QA report measured a 500-partner run with
+    attach_invoices=True on Levels 3 and 4 at 556.78 seconds, which is
+    4.6x over the default cron timeout. The unpatched-QT binary
+    cannot render multiple documents per invocation (it raises
+    UserError "Tried to convert multiple documents in wkhtmltopdf
+    using unpatched QT"), so the batched render path in
+    account_followup_level._batch_render_invoice_attachments cannot
+    recover this cost.
+
+    Resolution: ship attach_invoices=False on every default level.
+    Operators who want PDF copies attached to follow-up emails can
+    opt in per level (the noupdate="1" wrapper preserves their
+    customisation across upgrades) after sizing their cron timeout
+    accordingly:
+
+      * Patched-QT wkhtmltopdf builds (Odoo's odoofin/wkhtmltox PPA,
+        wkhtmltopdf 0.12.5 with the Odoo patches): the batched render
+        path engages and 500 partners can fit within the 120 s default.
+      * Unpatched wkhtmltopdf (e.g. Ubuntu's ``wkhtmltopdf`` 0.12.6):
+        raise the cron real-time limit to ~600 s OR reduce the cron's
+        batch size OR keep attach_invoices=False.
+
+    The email body's QWeb t-foreach iteration over the partner's
+    overdue invoices already lists every invoice with its number,
+    issue date, due date and amount; recipients have all the
+    information needed to identify which invoices are overdue without
+    PDF attachments. See README.rst section "Performance & SLA"
+    for the full operator guide.
 
     Each level references a mail.template provided by
     data/mail_template_data.xml (external IDs email_template_followup_level_1
@@ -116,10 +156,20 @@
             Level 3 of 4 - Warning (sequence=30, delay=21 days)
             ================================================================
             Tone: Urgent. Emphasises the seriousness of the overdue status
-            and outlines potential consequences. PDF copies of the overdue
-            invoices are attached to increase weight. Partner is added to
-            the collection list, sales rep is notified. Sales orders are
+            and outlines potential consequences. Partner is added to the
+            collection list and sales rep is notified. Sales orders are
             NOT yet blocked - collections pressure only.
+
+            attach_invoices defaults to False so that the PF-002 cron
+            stays within Odoo 19's default cron real-time limit (120s)
+            on the unpatched-QT wkhtmltopdf binary commonly shipped on
+            Linux distributions; see the file header for the full
+            rationale. Operators who want PDF copies attached can flip
+            this flag in Settings > Technical > Followup Levels after
+            sizing their cron timeout accordingly. The email body's
+            QWeb t-foreach already lists every overdue invoice's number,
+            date, due date and amount — recipients have full identifying
+            information without the PDF.
         -->
         <record id="followup_level_warning" model="account.followup.level">
             <field name="name">Warning</field>
@@ -127,9 +177,9 @@
             <field name="delay">21</field>
             <field name="action_type">automatic</field>
             <field name="email_template_id" ref="email_template_followup_level_3"/>
-            <field name="description">Formal payment warning sent 21 days past due date. Urgent tone emphasising the seriousness of the overdue status. Attaches PDF invoices, adds the partner to the collection list, and notifies the assigned salesperson. Sales are not yet blocked at this level.</field>
+            <field name="description">Formal payment warning sent 21 days past due date. Urgent tone emphasising the seriousness of the overdue status. Adds the partner to the collection list and notifies the assigned salesperson. Sales are not yet blocked at this level. PDF invoice attachments are opt-in per level for SLA reasons (see README.rst Performance section).</field>
             <field name="active" eval="True"/>
-            <field name="attach_invoices" eval="True"/>
+            <field name="attach_invoices" eval="False"/>
             <field name="trigger_block_sales" eval="False"/>
             <field name="trigger_collection_list" eval="True"/>
             <field name="trigger_notify_sales_rep" eval="True"/>
@@ -141,12 +191,23 @@
             Level 4 of 4 - Final Notice (sequence=40, delay=30 days)
             ================================================================
             Tone: Formal / legal. Last automated step before escalation to
-            collections or legal action. Attaches PDF invoices. ALL
-            side-effect actions triggered: blocks new sales, adds partner
-            to collection list, notifies sales rep. Administrators who
-            prefer human review for final notices can switch action_type
-            to 'manual' post-install; the noupdate="1" wrapper will preserve
-            the customisation across upgrades.
+            collections or legal action. ALL side-effect actions
+            triggered: blocks new sales, adds partner to collection list,
+            notifies sales rep. Administrators who prefer human review
+            for final notices can switch action_type to 'manual'
+            post-install; the noupdate="1" wrapper will preserve the
+            customisation across upgrades.
+
+            attach_invoices defaults to False so that the PF-002 cron
+            stays within Odoo 19's default cron real-time limit (120s)
+            on the unpatched-QT wkhtmltopdf binary commonly shipped on
+            Linux distributions; see the file header for the full
+            rationale. Operators who want PDF copies attached can flip
+            this flag in Settings > Technical > Followup Levels after
+            sizing their cron timeout accordingly. The email body's
+            QWeb t-foreach already lists every overdue invoice's number,
+            date, due date and amount — recipients have full identifying
+            information without the PDF.
         -->
         <record id="followup_level_final_notice" model="account.followup.level">
             <field name="name">Final Notice</field>
@@ -154,9 +215,9 @@
             <field name="delay">30</field>
             <field name="action_type">automatic</field>
             <field name="email_template_id" ref="email_template_followup_level_4"/>
-            <field name="description">Final notice sent 30 days past due date before escalation to collections or legal action. Formal tone with clear consequences outlined. Attaches PDF invoices, blocks new sales, adds partner to collection list, and notifies the assigned salesperson.</field>
+            <field name="description">Final notice sent 30 days past due date before escalation to collections or legal action. Formal tone with clear consequences outlined. Blocks new sales, adds partner to collection list, and notifies the assigned salesperson. PDF invoice attachments are opt-in per level for SLA reasons (see README.rst Performance section).</field>
             <field name="active" eval="True"/>
-            <field name="attach_invoices" eval="True"/>
+            <field name="attach_invoices" eval="False"/>
             <field name="trigger_block_sales" eval="True"/>
             <field name="trigger_collection_list" eval="True"/>
             <field name="trigger_notify_sales_rep" eval="True"/>

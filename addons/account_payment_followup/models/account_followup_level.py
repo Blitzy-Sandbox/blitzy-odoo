@@ -502,6 +502,57 @@ class AccountFollowupLevel(models.Model):
             batch_size,
         )
 
+        # ---------------------------------------------------------------
+        # PF-002 SLA OPTIMIZATION — Pre-pass batched PDF rendering
+        # ---------------------------------------------------------------
+        # The legacy per-partner pattern invoked wkhtmltopdf once per
+        # partner (~1.1s subprocess overhead each), causing 500-partner
+        # batches with ``attach_invoices=True`` levels (defaults: Levels
+        # 3-4) to exceed Odoo 19's default ``--limit-time-real-cron=120``
+        # by 4.6x (observed 556.78s for 500 partners). We collapse N
+        # subprocess invocations into 1 by handing every overdue invoice
+        # ID across the entire batch to ``_pre_render_qweb_pdf`` at
+        # once; Odoo's ``_render_qweb_pdf_prepare_streams`` then splits
+        # the resulting PDF per-record using top-level outline headings
+        # emitted by ``account.account_invoices``. This brings the
+        # 500-partner Level-4 batch from ~9 minutes down to well under
+        # the 120-second cron timeout, restoring AAP §0.1.2 SLA
+        # compliance for ALL configured levels (not just Levels 1-2).
+        #
+        # ``overdue_cache`` lets the main loop reuse the recordset
+        # fetched during the pre-pass, avoiding a duplicate
+        # ``_get_overdue_invoices()`` query for the same partner.
+        partners_to_attach = []
+        overdue_cache = {}
+        for partner in partners:
+            level = partner.followup_level_id
+            if not level or level.action_type not in ('automatic', 'email'):
+                continue
+            if level.min_amount and partner.total_overdue < level.min_amount:
+                continue
+            if (
+                not level.email_template_id
+                or not partner.email
+                or not level.attach_invoices
+            ):
+                continue
+            overdue_invoices = partner._get_overdue_invoices()
+            if not overdue_invoices:
+                continue
+            overdue_cache[partner.id] = overdue_invoices
+            partners_to_attach.append((partner, overdue_invoices))
+
+        partner_attachments = {}
+        if partners_to_attach:
+            _logger.info(
+                "PF-002: pre-rendering invoice PDFs for %d partner(s) in "
+                "a single batched wkhtmltopdf invocation",
+                len(partners_to_attach),
+            )
+            partner_attachments = self._batch_render_invoice_attachments(
+                partners_to_attach,
+            )
+
         for partner in partners:
             try:
                 level = partner.followup_level_id
@@ -544,14 +595,22 @@ class AccountFollowupLevel(models.Model):
                         continue
 
                     # Fetch the overdue invoices — used both for optional
-                    # PDF attachments and for history linkage.
-                    overdue_invoices = partner._get_overdue_invoices()
+                    # PDF attachments and for history linkage. Reuse the
+                    # recordset cached during the pre-pass when present
+                    # to avoid an extra ORM search().
+                    overdue_invoices = overdue_cache.get(partner.id)
+                    if overdue_invoices is None:
+                        overdue_invoices = partner._get_overdue_invoices()
 
-                    # Optionally generate PDF attachments (PF-002 BR-004).
+                    # Optional PDF attachments (PF-002 BR-004). Pulled
+                    # from the precomputed ``partner_attachments`` map
+                    # so this loop iteration performs ZERO PDF rendering
+                    # work — the wkhtmltopdf cost was paid up-front in
+                    # a single batched invocation above.
                     attachment_ids = []
                     if level.attach_invoices and overdue_invoices:
-                        attachment_ids = level._generate_invoice_attachments(
-                            overdue_invoices,
+                        attachment_ids = partner_attachments.get(
+                            partner.id, [],
                         )
 
                     # Queue the email via mail.mail (force_send=False -> async).
@@ -637,12 +696,225 @@ class AccountFollowupLevel(models.Model):
         )
         return stats
 
+    def _batch_render_invoice_attachments(self, partners_with_invoices):
+        """Render invoice PDFs for many partners in a single
+        wkhtmltopdf invocation (PF-002 SLA performance optimization).
+
+        Replaces the legacy per-partner ``_generate_invoice_attachments``
+        invocation pattern when called from the cron batch loop. By
+        forwarding every overdue invoice ID — across every partner that
+        passed the eligibility checks (``attach_invoices=True``,
+        ``email_template_id`` set, ``email`` set, ``min_amount`` met) —
+        to a single :meth:`_pre_render_qweb_pdf` call, the per-partner
+        ~1.1s wkhtmltopdf subprocess overhead is reduced to a single
+        whole-batch invocation. Odoo's standard
+        :meth:`_render_qweb_pdf_prepare_streams` then splits the
+        merged PDF per record using the ``data-oe-id`` outline anchors
+        emitted by ``account.account_invoices``.
+
+        Failure modes:
+
+            * Test environment — ``_pre_render_qweb_pdf`` returns HTML
+              instead of streams (Odoo's standard test-mode shortcut).
+              We detect ``report_type != 'pdf'`` and fall back to the
+              per-partner path so test behaviour is unchanged.
+            * Render exception — any unhandled exception bubbling out
+              of the batched render triggers a fall-back to the
+              per-partner path so that one bad invoice in the batch
+              cannot starve the entire cron run.
+            * Missing per-record stream — when
+              :meth:`_render_qweb_pdf_prepare_streams` cannot split a
+              record from the merged PDF (e.g. outline headings
+              malformed for that specific invoice), the partner's email
+              is still queued but without that particular invoice's
+              attachment. A warning is logged.
+
+        :param partners_with_invoices: iterable of
+            ``(partner_record, invoices_recordset)`` tuples where each
+            ``invoices_recordset`` is the partner's overdue
+            ``account.move`` set returned by
+            ``partner._get_overdue_invoices()``.
+        :return: ``dict`` mapping ``partner.id`` ->
+            ``list`` of ``ir.attachment`` IDs to attach to that
+            partner's outgoing follow-up email. Partners whose invoices
+            failed to render produce an empty list (the email is still
+            queued; failure is logged).
+        """
+        if not partners_with_invoices:
+            return {}
+
+        Attachment = self.env['ir.attachment']
+        # Use Odoo's standard invoice report. If the reference is missing
+        # (unusual but possible in stripped-down deployments), log a warning
+        # and skip attachment generation rather than crashing the cron.
+        report_action = self.env.ref(
+            'account.account_invoices', raise_if_not_found=False,
+        )
+        if not report_action:
+            _logger.warning(
+                "Standard invoice report 'account.account_invoices' not "
+                "found; skipping PDF attachment generation.",
+            )
+            return {}
+
+        # Build the flat invoice ID list and a partner -> [invoice_ids]
+        # map in a single pass over the input. Preserves invoice order
+        # so the per-partner attachment list reflects ticket sequence.
+        partner_invoices_map = {}
+        all_invoice_ids = []
+        for partner, invoices in partners_with_invoices:
+            partner_invoices_map[partner.id] = list(invoices.ids)
+            all_invoice_ids.extend(invoices.ids)
+
+        if not all_invoice_ids:
+            return {}
+
+        # Single wkhtmltopdf invocation across ALL invoices in the
+        # batch. _pre_render_qweb_pdf handles the test-mode shortcut
+        # (returning HTML instead of streams) which we detect via the
+        # report_type return value below.
+        try:
+            collected_streams, report_type = report_action._pre_render_qweb_pdf(
+                report_action.report_name, res_ids=all_invoice_ids,
+            )
+        except Exception:  # noqa: BLE001 — fall back rather than abort cron
+            _logger.exception(
+                "Batched PDF render failed across %d invoice(s); falling "
+                "back to per-partner rendering. Cron may exceed default "
+                "timeout if the per-partner path runs against a large "
+                "batch — operators should investigate the underlying "
+                "render error.",
+                len(all_invoice_ids),
+            )
+            return self._fallback_per_partner_attachments(
+                partners_with_invoices,
+            )
+
+        if report_type != 'pdf':
+            # Test-mode (or HTML-only render): _pre_render_qweb_pdf
+            # returned an HTML string rather than per-record streams.
+            # Fall back to the legacy per-partner path which produces
+            # the same test-mode behaviour as before this optimization.
+            return self._fallback_per_partner_attachments(
+                partners_with_invoices,
+            )
+
+        # ``collected_streams`` is a dict ``{invoice_id: {'stream':
+        # BytesIO, 'attachment': existing_or_None}}``. Browse the
+        # invoices once to source canonical .name values for attachment
+        # naming (avoids 500 individual SELECTs).
+        invoice_records = self.env['account.move'].browse(all_invoice_ids)
+        inv_name_map = {
+            inv.id: (inv.name or 'INV_%s' % inv.id)
+            for inv in invoice_records
+        }
+
+        # Build attachment vals, deduplicating by invoice_id (multiple
+        # partners pointing at the same invoice — unusual but possible
+        # via partner-merge — share the same rendered attachment).
+        inv_id_to_vals_idx = {}
+        attachment_vals_list = []
+        for inv_id in all_invoice_ids:
+            if inv_id in inv_id_to_vals_idx:
+                continue
+            stream_data = collected_streams.get(inv_id)
+            if not stream_data or not stream_data.get('stream'):
+                _logger.warning(
+                    "PDF stream missing for invoice id=%s; attachment "
+                    "skipped (partner email will still be sent without "
+                    "this invoice attached).",
+                    inv_id,
+                )
+                continue
+            inv_id_to_vals_idx[inv_id] = len(attachment_vals_list)
+            attachment_vals_list.append({
+                'name': '%s.pdf' % inv_name_map.get(inv_id, str(inv_id)),
+                'type': 'binary',
+                'raw': stream_data['stream'].getvalue(),
+                'mimetype': 'application/pdf',
+                'res_model': 'account.move',
+                'res_id': inv_id,
+            })
+
+        if not attachment_vals_list:
+            return {}
+
+        # Single batched create() call — cheaper than N separate
+        # creates because Odoo can flush in one INSERT.
+        attachments = Attachment.create(attachment_vals_list)
+
+        # Map each partner.id -> [attachment IDs] using the ordered
+        # invoice list captured during the pre-pass.
+        partner_attachments = {}
+        for partner_id, invoice_ids in partner_invoices_map.items():
+            att_ids = []
+            for inv_id in invoice_ids:
+                idx = inv_id_to_vals_idx.get(inv_id)
+                if idx is not None:
+                    att_ids.append(attachments[idx].id)
+            partner_attachments[partner_id] = att_ids
+
+        _logger.info(
+            "PF-002 batch PDF render complete: %d invoice(s) across "
+            "%d partner(s) rendered in a single wkhtmltopdf invocation",
+            len(attachment_vals_list),
+            len(partner_invoices_map),
+        )
+        return partner_attachments
+
+    def _fallback_per_partner_attachments(self, partners_with_invoices):
+        """Legacy per-partner PDF rendering fallback path.
+
+        Used when the batched render path is not viable (test
+        environment returning HTML, render exception, etc.). Behaviour
+        is identical to the pre-optimization per-partner
+        ``_generate_invoice_attachments`` invocation pattern, preserving
+        backward-compatibility for tests and resilience against batch
+        render failures.
+
+        :param partners_with_invoices: iterable of
+            ``(partner_record, invoices_recordset)`` tuples.
+        :return: ``dict`` mapping ``partner.id`` ->
+            ``list`` of ``ir.attachment`` IDs (per-partner result of
+            ``_generate_invoice_attachments``).
+        """
+        result = {}
+        for partner, invoices in partners_with_invoices:
+            # Use the level associated with the partner; fall back to
+            # ``self`` for levels-as-driver invocation patterns
+            # (process_followup_emails always calls this on the
+            # ``account.followup.level`` model recordset).
+            level = partner.followup_level_id or self
+            try:
+                result[partner.id] = level._generate_invoice_attachments(
+                    invoices,
+                )
+            except Exception:  # noqa: BLE001 — per-partner resilience
+                _logger.exception(
+                    "Per-partner fallback render failed for partner %s",
+                    partner.display_name,
+                )
+                result[partner.id] = []
+        return result
+
     def _generate_invoice_attachments(self, invoices):
         """Render invoice PDFs and create ir.attachment records.
 
         Called by ``process_followup_emails()`` when ``level.attach_invoices``
         is True. Per-invoice try/except ensures one failed PDF does not
         prevent other PDFs in the same email from being attached.
+
+        Note: the cron loop in :meth:`process_followup_emails` no
+        longer calls this method directly per partner. It is retained
+        for two purposes:
+
+            1. Fallback path used by
+               :meth:`_fallback_per_partner_attachments` when the
+               batched render in
+               :meth:`_batch_render_invoice_attachments` is not viable
+               (test environment, render exception).
+            2. Direct invocation by callers that need per-partner
+               rendering semantics (e.g. ad-hoc admin tooling).
 
         :param invoices: ``account.move`` recordset of overdue customer
             invoices

@@ -446,7 +446,10 @@ class TestAutomatedEmailGeneration(AccountPaymentFollowupTestCommon):
     def test_scenario_3_attach_invoices_when_flag_set(self):
         """Scenario 3: Attach Overdue Invoice Documents (BR-004).
 
-        Given the Warning level's attach_invoices=True (per seed data)
+        Given the Warning level toggled to attach_invoices=True
+        (the seed default ships False for SLA reasons; see
+        data/followup_data.xml header — operators opt in per level
+        after sizing their cron timeout for unpatched-QT wkhtmltopdf)
         When a partner at that level is processed
         Then ``ir.attachment`` records are created for each overdue
         invoice and linked to the outgoing mail.mail.
@@ -463,11 +466,16 @@ class TestAutomatedEmailGeneration(AccountPaymentFollowupTestCommon):
             partner.followup_level_id, self.warning_level,
             'Partner overdue 21d must be at Warning level.',
         )
-        # Seed level has attach_invoices=True for Warning per
-        # data/followup_data.xml.
+        # Seed default is attach_invoices=False for SLA compliance with
+        # Odoo 19's default --limit-time-real-cron=120s on unpatched-QT
+        # wkhtmltopdf (see data/followup_data.xml header). Operators
+        # opt in per level. Toggle on for this test to verify BR-004
+        # behaviour; the noupdate="1" data wrapper preserves
+        # operator-side toggles across upgrades.
+        self.warning_level.attach_invoices = True
         self.assertTrue(
             self.warning_level.attach_invoices,
-            'Warning level must have attach_invoices=True per seed data.',
+            'Warning level attach_invoices=True must persist after toggle.',
         )
 
         # Call the helper directly — this is more deterministic than
@@ -973,22 +981,49 @@ class TestAutomatedEmailGeneration(AccountPaymentFollowupTestCommon):
         """BR-004: PDF attachments configurable per follow-up level.
 
         Compares the seed data:
-          * First Reminder: attach_invoices=False
-          * Warning: attach_invoices=True
-        and verifies the configuration drives downstream behavior.
+          * All four levels: attach_invoices=False (SLA-safe default)
+
+        and verifies (a) the configuration drives downstream behavior
+        and (b) the toggle is persistable per level for operators who
+        opt in to PDF attachments after sizing their cron timeout.
+
+        The seed change from True (Levels 3-4) to False (all levels)
+        was driven by the PF-002 SLA: synchronous wkhtmltopdf 0.12.6
+        (unpatched QT) on Linux distributions cannot render 500
+        invoice PDFs within Odoo 19's default
+        ``--limit-time-real-cron=120s``. See
+        ``data/followup_data.xml`` header for the full rationale.
         """
-        # Seed-data assertions confirm BR-004 is upheld at the config level.
+        # Seed-data assertions confirm BR-004's SLA-safe default at
+        # the config level for all four levels.
         self.assertFalse(
             self.first_reminder_level.attach_invoices,
             'First Reminder must have attach_invoices=False per seed.',
         )
+        self.assertFalse(
+            self.warning_level.attach_invoices,
+            'Warning must have attach_invoices=False per seed (SLA-safe '
+            'default; see data/followup_data.xml header).',
+        )
+        self.assertFalse(
+            self.final_notice_level.attach_invoices,
+            'Final Notice must have attach_invoices=False per seed (SLA-safe '
+            'default; see data/followup_data.xml header).',
+        )
+
+        # Behavior verification: per-level toggle works (BR-004
+        # promises configurability, not a specific default value).
+        # Operators opt in per level for PDF attachments.
+        self.warning_level.attach_invoices = True
         self.assertTrue(
             self.warning_level.attach_invoices,
-            'Warning must have attach_invoices=True per seed.',
+            'attach_invoices=True must persist after toggle (BR-004 '
+            'configurability).',
         )
-        self.assertTrue(
-            self.final_notice_level.attach_invoices,
-            'Final Notice must have attach_invoices=True per seed.',
+        self.warning_level.attach_invoices = False
+        self.assertFalse(
+            self.warning_level.attach_invoices,
+            'attach_invoices=False must persist after toggle.',
         )
 
         # Behavior verification: with attach_invoices=False, the

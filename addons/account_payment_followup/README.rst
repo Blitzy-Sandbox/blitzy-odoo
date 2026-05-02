@@ -269,6 +269,106 @@ every partner with at least one open customer invoice.
 * Partners with no overdue invoices are not assigned to any level and do
   not appear in the follow-up report.
 
+Performance & SLA
+=================
+
+PF-002 cron timeout budget
+--------------------------
+
+The PF-002 scheduled action processes up to ``batch_size`` partners per
+run and is sized to fit within Odoo 19's default cron real-time limit
+(120 seconds, controlled by the ``limit-time-real-cron`` config option,
+which falls back to ``limit-time-real`` when unset). Per AAP section
+0.1.2, the design target is **≤ 500 partners per cron run within the
+default cron timeout**.
+
+This budget is comfortably met when invoice PDF attachments are
+disabled (the seed default for all four follow-up levels):
+
+* **All levels with attach_invoices=False** — ~10 seconds for 500
+  partners (well under 120 s; observed 9.86 s in QA Checkpoint 3).
+
+When invoice PDF attachments are enabled per level, the budget depends
+on which ``wkhtmltopdf`` build is installed:
+
+* **Patched-QT wkhtmltopdf** (Odoo's official ``odoofin``/``wkhtmltox``
+  binaries, version 0.12.5 with the Odoo patches): a single
+  ``wkhtmltopdf`` subprocess can render every batched invoice PDF in
+  one invocation. The
+  ``account.followup.level._batch_render_invoice_attachments`` helper
+  engages this fast path and 500 partners with one PDF each fit
+  inside the 120 s default.
+* **Unpatched wkhtmltopdf** (Linux distribution package, version
+  0.12.6 in particular): each invoice PDF requires its own
+  ``wkhtmltopdf`` invocation (~1.0 to 1.1 seconds each). 500 partners
+  with PDF attachments take roughly 9 minutes which is 4 to 5 times
+  the default cron budget. The QA Checkpoint 3 report observed
+  556.78 s for this configuration on Ubuntu's stock
+  ``wkhtmltopdf 0.12.6`` package.
+
+Defaults and operator opt-in
+----------------------------
+
+Because the unpatched-QT wkhtmltopdf binary is the most common Linux
+deployment scenario, **all four default follow-up levels ship with
+``attach_invoices=False``**. Operators who wish to attach invoice PDFs
+to follow-up emails can enable the flag per level under
+``Accounting → Configuration → Follow-up Levels`` after sizing their
+cron timeout accordingly. The seed-data ``noupdate="1"`` wrapper
+preserves operator customisations across module upgrades.
+
+Recommended operator playbook for enabling ``attach_invoices=True``:
+
+1. Confirm whether the wkhtmltopdf binary on the Odoo server is
+   patched-QT (Odoo's official build) or unpatched (distribution
+   build). Inspect with ``wkhtmltopdf --version`` and
+   ``wkhtmltopdf --readme | head`` (Odoo's patches appear in the
+   output).
+2. **If patched-QT**: enable ``attach_invoices=True`` on the desired
+   levels. The batched render path engages and SLA holds.
+3. **If unpatched**: estimate the worst-case per-cron load (number of
+   partners at the level multiplied by 1.1 s) and choose one of:
+
+   * Raise ``limit-time-real-cron`` in the Odoo configuration to a
+     value greater than the worst-case load (e.g. 600 seconds for
+     500 partners).
+   * Reduce the cron's ``batch_size`` (use the cron action's
+     ``code`` field — for example
+     ``model.process_followup_emails(batch_size=100)``) so each run
+     fits within the existing timeout. The remaining partners are
+     processed on subsequent cron runs.
+   * Keep ``attach_invoices=False`` and rely on the email body's
+     QWeb t-foreach iteration which already lists every overdue
+     invoice's number, issue date, due date and amount.
+
+Forward compatibility
+---------------------
+
+The ``_batch_render_invoice_attachments`` helper retained from the
+PF-002 SLA fix collapses N per-partner ``wkhtmltopdf`` subprocess
+calls into a single batch invocation when the binary supports it.
+This means that as soon as a deployment upgrades to a patched-QT
+build, enabling ``attach_invoices=True`` on Levels 3-4 will
+immediately fit within the 120 s default cron timeout — no further
+code changes are required.
+
+Other module SLAs
+-----------------
+
+* **AM-003 depreciation board**: full schedule render under 2
+  seconds for assets with up to 480 periods (QA: 5 ms cold ORM read,
+  400× under).
+* **BM-004 variance report**: fiscal year render under 3 seconds
+  for up to 1,000 budget lines (QA: 2,721 ms cold compute).
+* **DR-004 recognition dashboard**: render under 2 seconds for up
+  to 1,000 active schedules (QA: 218 ms cold).
+* **PF-005 overdue calculation**: under 5 seconds for up to 10,000
+  receivable lines (QA: 67.7 ms total).
+* **PF-003 report generation**: PDF + XLSX export under 10 seconds
+  for 500 partners (QA: 1,341 ms total — note that PF-003 uses
+  one ``wkhtmltopdf`` invocation for the entire aggregated report,
+  unlike PF-002's per-partner attachment rendering).
+
 Known Issues / Roadmap
 ======================
 

@@ -113,8 +113,18 @@
                                    widget="monetary" readonly="1"/>
                         </group>
                         <group>
+                            <!--
+                                ``alert_consumption_percent`` is stored
+                                in 0-100 form (see budget_alert.py
+                                ``_check_alert_thresholds`` line storing
+                                ``consumption = (actual / planned) *
+                                100``). Plain Float display avoids the
+                                ``widget="percentage"`` 100×
+                                multiplication that would render e.g.
+                                100.00 as "10000%".
+                            -->
                             <field name="alert_consumption_percent"
-                                   widget="percentage" readonly="1"/>
+                                   readonly="1"/>
                         </group>
                     </group>
                     <group string="Notification">
@@ -185,7 +195,10 @@
                        decoration-warning="alert_threshold_percent == '90'"
                        decoration-info="alert_threshold_percent == '100'"
                        decoration-danger="alert_threshold_percent == '110'"/>
-                <field name="alert_consumption_percent" widget="percentage"/>
+                <!-- ``alert_consumption_percent`` stored in 0-100 form;
+                     plain Float display avoids ``widget="percentage"``
+                     100× multiplication. -->
+                <field name="alert_consumption_percent"/>
                 <field name="alert_planned_amount" widget="monetary"
                        sum="Total Planned" optional="show"/>
                 <field name="alert_actual_amount" widget="monetary"
@@ -288,8 +301,17 @@
                             <div class="o_kanban_record_body">
                                 <div>
                                     <strong>Consumption: </strong>
-                                    <field name="alert_consumption_percent"
-                                           widget="percentage"/>
+                                    <!--
+                                        ``alert_consumption_percent``
+                                        stored in 0-100 form; plain
+                                        Float display avoids
+                                        ``widget="percentage"`` 100×
+                                        multiplication. The trailing
+                                        "%" suffix is supplied by the
+                                        explicit text below for kanban
+                                        cosmetic consistency.
+                                    -->
+                                    <field name="alert_consumption_percent"/>%
                                 </div>
                                 <div>
                                     <strong>Actual: </strong>

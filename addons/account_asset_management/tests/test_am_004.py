@@ -1475,3 +1475,54 @@ class TestAutomaticDepreciationEntries(AssetManagementTestCommon):
             '(budget: 300.0s).',
             elapsed,
         )
+
+    def test_am_004_16_action_confirm_raises_on_non_draft_asset(self):
+        """QA Checkpoint 10 Issue 9 (negative-path coverage): the
+        ``account.asset.action_confirm`` method must raise
+        ``UserError`` when called on an asset that is already in
+        ``open`` (or any non-``draft``) state.
+
+        The AM-004 cron only operates on ``state='open'`` assets, so
+        the upstream confirmation invariant ("draft -> open
+        transition is one-way; calling action_confirm on already-open
+        assets is a programming error") is the prerequisite for the
+        cron's correctness contract. Together with the existing
+        positive paths in ``test_am_004_01_cron_posts_scheduled_entries``
+        these tests document the contract:
+
+          1. Only ``draft`` assets can transition to ``open``
+             (this test, ``assertRaises``).
+          2. The cron only posts depreciation lines on ``open``
+             assets and treats lines that fail to post as ``skipped``
+             via per-line UserError handling (covered by
+             ``test_am_004_07_locked_period_skipped``).
+        """
+        asset = self._build_open_asset()
+        # Pre-condition: asset must be 'open' (the canonical fixture
+        # state from _build_open_asset).
+        self.assertEqual(
+            asset.state, 'open',
+            'Fixture sanity: _build_open_asset returns an open asset.',
+        )
+
+        # Calling action_confirm on an already-open asset must raise
+        # UserError with the asset name and current state quoted in
+        # the message so the operator can identify the offending
+        # record at a glance.
+        with self.assertRaises(UserError) as ctx:
+            asset.action_confirm()
+        msg = str(ctx.exception)
+        self.assertIn(
+            'draft',
+            msg.lower(),
+            'UserError message must reference the required draft '
+            'state; got: %r' % msg,
+        )
+        # The asset name (or at least a portion) must appear in the
+        # message so the error is actionable for batch operations.
+        self.assertIn(
+            'open', msg.lower(),
+            'UserError message must mention the current state '
+            '(open) so the operator knows why the transition was '
+            'blocked; got: %r' % msg,
+        )

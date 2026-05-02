@@ -2040,3 +2040,30 @@ class TestFollowupReport(AccountPaymentFollowupTestCommon):
                 f"total_overdue={row['total_overdue']} in company_b — "
                 f"this indicates a multi-company isolation leak.",
             )
+
+    def test_inverted_date_range_rejected_with_assertraises(self):
+        """QA Checkpoint 10 Issue 9 (negative-path coverage):
+        ``account.followup.report.wizard`` must reject an inverted
+        date range (``date_from > date_to``).
+
+        This invariant is enforced by the wizard's ``@api.constrains``
+        on ``date_from`` / ``date_to`` so an operator who flips the
+        boundaries gets immediate feedback (``ValidationError``)
+        rather than a confusing empty report.
+
+        Together with ``test_filter_by_date_range_excludes_outside_entries``
+        (positive path) this completes the date-range contract for
+        the followup report wizard. Surfaces the
+        ``assertRaises``-style negative-path coverage requested by
+        QA Checkpoint 10 Issue 9 for test_followup_report.py
+        (which previously had only docstring references to
+        assertRaises but no actual usages).
+        """
+        # Use a single-class assertRaises -- Odoo's BaseCase rejects
+        # tuple arguments via issubclass().
+        with self.assertRaises(ValidationError):
+            self.Wizard.create({
+                'date_from': _FROZEN_DATE,
+                # date_to BEFORE date_from -- inverted range.
+                'date_to': _FROZEN_DATE - timedelta(days=30),
+            })

@@ -1589,3 +1589,42 @@ class TestEmailGeneration(AccountPaymentFollowupTestCommon):
             'must remain True so downstream sales-order validation sees '
             'the authoritative state.',
         )
+
+    def test_manual_action_send_raises_when_partner_has_no_level(self):
+        """QA Checkpoint 10 Issue 9 (negative-path coverage): the
+        ``res.partner.action_send_followup_now`` action must raise
+        ``UserError`` when invoked on a partner that is not at any
+        follow-up level (typically because the partner is not
+        currently overdue).
+
+        Per the production code contract, manual sends are only valid
+        for partners eligible for the cron's automatic dispatch path
+        — partners with no overdue invoices have no level assignment
+        and therefore no email template to render. Surfacing this as
+        a UserError lets the operator know their action was a no-op
+        rather than silently dropping the request.
+
+        Together with ``test_scenario_5_manual_trigger_via_partner_action``
+        (which verifies the happy path AND the no-level negative path
+        via try/except for the dual UserError/ValidationError contract)
+        this test documents the contract using ``assertRaises``
+        explicitly (Issue 9).
+        """
+        partner = self.partner_current
+        # Pre-condition: partner must have NO level assigned (the
+        # current-paying partner fixture has no overdue invoices).
+        self._force_partner_recompute(partner)
+        self.assertFalse(
+            partner.followup_level_id,
+            'Fixture sanity: partner_current must have no follow-up '
+            'level assigned (no overdue invoices).',
+        )
+
+        # Odoo's ``BaseCase._assertRaises`` calls ``issubclass(exception,
+        # AccessError)`` which requires ``exception`` to be a single
+        # class -- a tuple would raise TypeError. We assert UserError
+        # as the canonical raise; the production code's
+        # ``test_scenario_5_manual_trigger_via_partner_action`` covers
+        # the wider UserError/ValidationError contract via try/except.
+        with self.assertRaises(UserError):
+            partner.action_send_followup_now()

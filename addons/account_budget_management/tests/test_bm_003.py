@@ -462,3 +462,33 @@ class TestBudgetVsActualReport(AccountTestInvoicingCommon):
             result.get(self.test_expense_marketing.id, 0.0),
             5000.0, places=2,
         )
+
+    def test_bm003_inverted_date_range_raises_user_error(self):
+        """QA Checkpoint 10 Issue 9 (negative-path coverage):
+        ``_build_actuals_domain`` must raise ``UserError`` when the
+        caller passes a ``date_from`` later than ``date_to``.
+
+        This guards against an operator inverting the report window,
+        which would otherwise silently produce zero rows (the
+        ``account.move.line`` domain would be unsatisfiable).
+        Surfacing the inversion as a ``UserError`` with both dates
+        in the message lets the operator immediately correct the
+        wizard input.
+        """
+        ReportModel = self.env['budget.vs.actual.report']
+        budget_lines = self.env['budget.budget.line']  # empty is fine for domain
+        options = {
+            'date_from': date(2024, 12, 31),
+            'date_to': date(2024, 1, 1),  # inverted on purpose
+        }
+        with self.assertRaises(UserError) as ctx:
+            ReportModel._build_actuals_domain(budget_lines, options)
+        msg = str(ctx.exception)
+        self.assertIn(
+            'Invalid date range', msg,
+            'UserError must explain that the date range is invalid.',
+        )
+        # The dates must appear in the error message so the operator
+        # can immediately see which boundary they got wrong.
+        self.assertIn('2024-12-31', msg)
+        self.assertIn('2024-01-01', msg)

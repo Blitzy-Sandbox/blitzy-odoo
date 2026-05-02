@@ -57,6 +57,7 @@ Rules Compliance (AAP §0.7)
 """
 
 import inspect
+import io
 from datetime import date, timedelta
 from unittest.mock import patch
 
@@ -1403,3 +1404,341 @@ class TestAutomatedEmailGeneration(AccountPaymentFollowupTestCommon):
                 f'Cron run with trigger_block_sales=True must not raise: '
                 f'{exc!r}',
             )
+
+    def test_batch_pdf_rendering_optimization_happy_path(self):
+        """QA Checkpoint 10 Issue 8: cover ``_batch_render_invoice_attachments``
+        happy-path lines 806-863 of ``account_followup_level.py``.
+
+        These lines (the post-render loop that builds ``attachment_vals_list``,
+        the batched ``Attachment.create()``, and the per-partner attachment
+        ID mapping) implement the PF-002 batch-PDF optimization described
+        in the comment block at lines 803-805 ("Single batched create()
+        call -- cheaper than N separate creates"). Without wkhtmltopdf
+        (the headless test environment), the production code path takes
+        the fallback branch and never exercises 806-863, so this test
+        injects a deterministic stub for ``_pre_render_qweb_pdf`` that
+        returns the production-shape ``(collected_streams_dict, "pdf")``
+        tuple to drive coverage of the optimized path end-to-end.
+
+        Asserts:
+          * The method returns a ``dict`` mapping partner.id -> [att_ids].
+          * Exactly one ``ir.attachment`` is created per unique invoice
+            (not N per-partner duplicates).
+          * Multiple partners pointing at the same invoice receive the
+            same shared attachment id (deduplication branch lines 814-816).
+          * ``Attachment.create()`` is invoked exactly once for the
+            entire batch (the "single INSERT" claim of the optimization).
+          * Each attachment has the expected ``mimetype='application/pdf'``,
+            ``res_model='account.move'``, and a ``Invoice_<name>.pdf``-shape
+            ``name`` derived from ``inv.name``.
+        """
+        # Force partner aging recompute so the fixture invoices are
+        # observable through ``_get_overdue_invoices()``.
+        self._force_partner_recompute(
+            self.partner_overdue_30d
+            | self.partner_overdue_45d
+            | self.partner_overdue_95d,
+        )
+
+        Level = self.env['account.followup.level']
+        # Build (partner, invoices) tuples from three partners, each
+        # at the Final Notice level, each with exactly one overdue
+        # invoice in the standard fixture set.
+        tuples = []
+        for partner in (
+            self.partner_overdue_30d,
+            self.partner_overdue_45d,
+            self.partner_overdue_95d,
+        ):
+            invs = partner._get_overdue_invoices()
+            self.assertTrue(
+                invs,
+                f'Fixture {partner.display_name} must have at least 1 '
+                f'overdue invoice for this test to be meaningful.',
+            )
+            tuples.append((partner, invs))
+
+        # Build the unique invoice ID set up front for assertions.
+        all_inv_ids = []
+        for _p, invs in tuples:
+            all_inv_ids.extend(invs.ids)
+        unique_inv_ids = list(dict.fromkeys(all_inv_ids))
+        self.assertGreaterEqual(
+            len(unique_inv_ids), 3,
+            'Need at least 3 distinct invoices to verify deduplication '
+            'and the batched-create path.',
+        )
+
+        # Stub ``_pre_render_qweb_pdf`` to return a deterministic fake
+        # PDF stream per invoice, mimicking wkhtmltopdf's production
+        # contract. The two-tuple shape ``(streams_dict, 'pdf')`` is
+        # required so the production code stays on the optimized
+        # branch (not the test-mode HTML fallback at line 794).
+
+        def fake_pre_render(
+            _self_report, _report_name, res_ids=None, **_kwargs,
+        ):
+            ids = list(res_ids or [])
+            return (
+                {
+                    rid: {
+                        'stream': io.BytesIO(b'%PDF-1.4 fake content'),
+                        'attachment': None,
+                    }
+                    for rid in ids
+                },
+                'pdf',
+            )
+
+        Attachment = self.env['ir.attachment']
+        baseline_count = Attachment.search_count(
+            [('mimetype', '=', 'application/pdf')],
+        )
+
+        with patch.object(
+            type(self.env.ref('account.account_invoices')),
+            '_pre_render_qweb_pdf',
+            fake_pre_render,
+        ), patch.object(
+            type(Attachment),
+            'create',
+            wraps=Attachment.create,
+        ) as create_spy:
+            partner_attachments = Level._batch_render_invoice_attachments(
+                tuples,
+            )
+
+        # 1. Return shape: dict {partner.id: [att_id, ...]}.
+        self.assertIsInstance(
+            partner_attachments, dict,
+            'Batch render must return a dict mapping partner.id -> '
+            '[attachment IDs].',
+        )
+        for partner, _invs in tuples:
+            self.assertIn(
+                partner.id, partner_attachments,
+                f'Partner {partner.display_name} (id={partner.id}) must '
+                f'appear in the result map.',
+            )
+
+        # 2. Attachment count matches the unique-invoice count
+        #    (deduplication branch was exercised: lines 814-816).
+        new_count = Attachment.search_count(
+            [('mimetype', '=', 'application/pdf')],
+        )
+        created = new_count - baseline_count
+        self.assertEqual(
+            created, len(unique_inv_ids),
+            'Exactly one ir.attachment per unique invoice must be '
+            'created (the dedup branch must skip already-seen invoice IDs).',
+        )
+
+        # 3. ``Attachment.create()`` was invoked exactly once for the
+        #    whole batch (the "single INSERT" claim).
+        self.assertEqual(
+            create_spy.call_count, 1,
+            'Batched create() optimization must invoke '
+            'ir.attachment.create() exactly once for the whole batch '
+            '(not per-partner or per-invoice).',
+        )
+
+        # 4. Each created attachment is an account.move PDF with the
+        #    expected name pattern.
+        all_att_ids = []
+        for ids in partner_attachments.values():
+            all_att_ids.extend(ids)
+        self.assertEqual(
+            len(set(all_att_ids)), len(unique_inv_ids),
+            'Distinct attachments across all partner result lists must '
+            'equal the unique invoice count (dedup verification).',
+        )
+        attachments = Attachment.browse(set(all_att_ids))
+        for att in attachments:
+            self.assertEqual(att.mimetype, 'application/pdf')
+            self.assertEqual(att.res_model, 'account.move')
+            self.assertTrue(att.res_id)
+            self.assertTrue(
+                att.name and att.name.endswith('.pdf'),
+                f'Attachment name {att.name!r} must end with ".pdf".',
+            )
+
+    def test_batch_pdf_rendering_falls_back_when_render_raises(self):
+        """QA Checkpoint 10 Issue 8 (negative path):
+        ``_batch_render_invoice_attachments`` must fall back to
+        ``_fallback_per_partner_attachments`` when the bulk render raises.
+
+        Covers lines 780-789 (the ``except Exception`` branch) and
+        verifies the production resilience contract: a single failing
+        render must not abort the cron — it falls back to per-partner
+        rendering instead.
+        """
+        self._force_partner_recompute(
+            self.partner_overdue_30d | self.partner_overdue_45d,
+        )
+        Level = self.env['account.followup.level']
+        tuples = [
+            (p, p._get_overdue_invoices())
+            for p in (self.partner_overdue_30d, self.partner_overdue_45d)
+        ]
+
+        # EM101 (assign exception message to variable first) is satisfied
+        # by the constant below; the simulated failure mirrors the
+        # production exception class wkhtmltopdf raises during render
+        # failures (RuntimeError / OSError class spectrum).
+        simulated_render_failure_msg = 'simulated wkhtmltopdf failure'
+
+        def raising_pre_render(*_args, **_kwargs):
+            raise RuntimeError(simulated_render_failure_msg)
+
+        # Spy on the fallback method to confirm it gets called.
+        original_fallback = Level._fallback_per_partner_attachments
+        fallback_spy_called = {'count': 0}
+
+        def fallback_spy(self_, partners_with_invoices):
+            fallback_spy_called['count'] += 1
+            return original_fallback(partners_with_invoices)
+
+        with patch.object(
+            type(self.env.ref('account.account_invoices')),
+            '_pre_render_qweb_pdf',
+            raising_pre_render,
+        ), patch.object(
+            type(Level),
+            '_fallback_per_partner_attachments',
+            fallback_spy,
+        ), mute_logger(
+            'odoo.addons.account_payment_followup.models.account_followup_level',
+        ):
+            result = Level._batch_render_invoice_attachments(tuples)
+
+        # Fallback must have been invoked exactly once.
+        self.assertEqual(
+            fallback_spy_called['count'], 1,
+            'When the batched render raises, the cron must invoke '
+            '_fallback_per_partner_attachments() exactly once.',
+        )
+        # And the result is still a dict (per-partner path returns
+        # the same shape, possibly with empty lists if PDF rendering
+        # also fails inside the fallback).
+        self.assertIsInstance(result, dict)
+
+    def test_batch_pdf_rendering_falls_back_on_html_test_mode(self):
+        """QA Checkpoint 10 Issue 8 (HTML branch):
+        ``_batch_render_invoice_attachments`` must fall back to
+        ``_fallback_per_partner_attachments`` when the bulk renderer
+        returns HTML (test-mode shortcut) rather than streams.
+
+        Covers lines 794-800 (``if report_type != 'pdf':``) — the
+        backwards-compatibility path used by Odoo's headless test
+        environment which short-circuits the wkhtmltopdf invocation.
+        """
+        self._force_partner_recompute(self.partner_overdue_30d)
+        Level = self.env['account.followup.level']
+        tuples = [(self.partner_overdue_30d, self.partner_overdue_30d._get_overdue_invoices())]
+
+        def html_pre_render(*_args, **_kwargs):
+            # Production contract: ('html_str', 'html')
+            return ('<html><body>Fake</body></html>', 'html')
+
+        original_fallback = Level._fallback_per_partner_attachments
+        fallback_spy_called = {'count': 0}
+
+        def fallback_spy(self_, partners_with_invoices):
+            fallback_spy_called['count'] += 1
+            return original_fallback(partners_with_invoices)
+
+        with patch.object(
+            type(self.env.ref('account.account_invoices')),
+            '_pre_render_qweb_pdf',
+            html_pre_render,
+        ), patch.object(
+            type(Level),
+            '_fallback_per_partner_attachments',
+            fallback_spy,
+        ):
+            result = Level._batch_render_invoice_attachments(tuples)
+
+        self.assertEqual(
+            fallback_spy_called['count'], 1,
+            'When the renderer returns HTML, the cron must fall back '
+            'to per-partner rendering exactly once.',
+        )
+        self.assertIsInstance(result, dict)
+
+    def test_batch_pdf_rendering_returns_empty_when_no_partners(self):
+        """QA Checkpoint 10 Issue 8 (early-return paths):
+        ``_batch_render_invoice_attachments`` returns ``{}`` when given
+        an empty list of partners.
+
+        Covers line 744 (``if not partners_with_invoices: return {}``)
+        — the no-op input guard.
+        """
+        Level = self.env['account.followup.level']
+        result = Level._batch_render_invoice_attachments([])
+        self.assertEqual(result, {})
+
+    def test_action_view_email_template_smart_button(self):
+        """QA Checkpoint 10 Issue 7: cover ``action_view_email_template``
+        on ``account.followup.level`` (lines 970-985 of
+        ``account_followup_level.py``).
+
+        Asserts the happy-path action dict and the no-template branch
+        (``return False`` so the UI gracefully disables the button).
+        """
+        # Happy path: First Reminder has a configured template per seed.
+        first = self.first_reminder_level
+        self.assertTrue(
+            first.email_template_id,
+            'First Reminder seed must have email_template_id set.',
+        )
+        action = first.action_view_email_template()
+        self.assertIsInstance(action, dict)
+        self.assertEqual(action['type'], 'ir.actions.act_window')
+        self.assertEqual(action['res_model'], 'mail.template')
+        self.assertEqual(action['res_id'], first.email_template_id.id)
+        self.assertEqual(action['view_mode'], 'form')
+
+        # No-template branch: clear the template and verify False return.
+        first.email_template_id = False
+        result = first.action_view_email_template()
+        self.assertFalse(
+            result,
+            'action_view_email_template must return False when no '
+            'email_template_id is set so the UI can disable the button.',
+        )
+
+    def test_negative_delay_rejected_assertraises(self):
+        """QA Checkpoint 10 Issue 9 (negative-path coverage):
+        ``account.followup.level``'s SQL ``CHECK(delay >= 0)``
+        constraint (PF-001 BR-002) must reject negative ``delay``
+        values.
+
+        The negative-delay invariant is enforced at the SQL layer
+        (``_sql_constraints``), so the raised exception is wrapped
+        from ``psycopg2.errors.CheckViolation``. We catch the broad
+        ``Exception`` class to match the BR-002 pattern in
+        ``test_pf_001.py`` and silence the SQL error log via
+        ``mute_logger`` so the test output stays clean.
+
+        Together with
+        ``test_scenario_5_manual_trigger_raises_when_no_level``
+        (try/except for UserError/ValidationError) and the existing
+        BR-001..BR-007 negative-path coverage in test_pf_001.py /
+        test_pf_004.py, this test documents the
+        ``assertRaises``-style negative-path coverage requested by
+        QA Checkpoint 10 Issue 9 for test_pf_002.py.
+        """
+        Level = self.env['account.followup.level']
+        # delay=-5 must be rejected by the SQL CHECK constraint.
+        # Wrap in a savepoint so the rollback does not invalidate
+        # the rest of the test transaction.
+        with mute_logger('odoo.sql_db'):
+            with self.assertRaises(Exception):  # noqa: BLE001 — SQL error wrapping
+                with self.env.cr.savepoint():
+                    Level.create({
+                        'name': 'PF-002 Issue 9 Negative Delay Test',
+                        'sequence': 9999,
+                        'delay': -5,
+                        'action_type': 'automatic',
+                        'company_id': self.env.company.id,
+                    })

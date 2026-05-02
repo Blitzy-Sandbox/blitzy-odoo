@@ -51,6 +51,7 @@ import signal
 import time
 from datetime import date, timedelta
 
+from dateutil.relativedelta import relativedelta
 from freezegun import freeze_time
 from openpyxl import load_workbook
 
@@ -159,8 +160,10 @@ class TestFollowupReportGeneration(AccountPaymentFollowupTestCommon):
             ``aging_bucket_filter`` rather than a top-level ``report_type``
             selector; the parser branches on the wizard's filter state).
           * Default company is ``self.env.company``.
-          * Default ``date_from`` is first-of-month, ``date_to`` is today
-            (so the effective default window is "month-to-date").
+          * Default ``date_from`` is today minus one year, ``date_to``
+            is today (FB-07: aligns the report header partner count
+            with the body content for the typical 365-day aged
+            receivables review window).
           * Effectiveness section is enabled by default.
           * Disputed invoices are excluded by default.
           * Grouping booleans are unset by default.
@@ -176,9 +179,16 @@ class TestFollowupReportGeneration(AccountPaymentFollowupTestCommon):
             wizard.report_date, FROZEN_DATE,
             'report_date defaults to today (frozen to FROZEN_DATE).',
         )
+        # FB-07 (QA Checkpoint 6): wizard's ``_default_date_from`` was
+        # changed from "first of the current month" to "today minus one
+        # year" to keep the partner-count header aligned with the
+        # report body for the typical aged-receivables review cadence
+        # (the original first-of-month default collapsed to a single
+        # day on the first of any month). The expected default below
+        # mirrors the current ``_default_date_from`` implementation.
         self.assertEqual(
-            wizard.date_from, date(2024, 6, 1),
-            'date_from defaults to first day of current month.',
+            wizard.date_from, FROZEN_DATE - relativedelta(years=1),
+            'date_from defaults to today minus one year (FB-07).',
         )
         self.assertEqual(
             wizard.date_to, FROZEN_DATE,
@@ -1000,10 +1010,12 @@ class TestFollowupReportGeneration(AccountPaymentFollowupTestCommon):
         self.partner_overdue_7d.user_id = accountman
         self.partner_overdue_30d.user_id = salesperson_b
 
-        # Set the grouping flag — use a wide date range so the 30-day
-        # overdue partner's invoice falls inside the window. Default
-        # date_from = first-of-current-month silently excludes invoices
-        # whose date_maturity < 2024-06-01 (the 30/45/95-day fixtures).
+        # Set the grouping flag — use an explicit wide date range so
+        # the 30/45/95-day overdue fixtures fall inside the window.
+        # The wizard's current default ``date_from`` is "today minus
+        # one year" (FB-07), which would already include them, but
+        # we set the bounds explicitly to make the test's date
+        # window independent of any future tweaks to the default.
         wizard = self.Wizard.create({
             'group_by_salesperson': True,
             'date_from': FROZEN_DATE - timedelta(days=365),
@@ -1105,12 +1117,12 @@ class TestFollowupReportGeneration(AccountPaymentFollowupTestCommon):
           * Grand totals equal the sum across partners.
 
         Uses a wide ``date_from`` (1 year before FROZEN_DATE) so that
-        invoices with ``date_maturity`` older than the default
-        first-of-current-month boundary still appear in the report —
-        the PF-005 fixtures span 7 to 95 days overdue, requiring at
-        least 95 days of look-back. The default wizard window is
-        month-to-date which would silently exclude
-        ``partner_overdue_30d``, ``_45d``, ``_95d``.
+        invoices with ``date_maturity`` for the entire fixture set
+        (7 to 95 days overdue) appear in the report. The wizard's
+        current default ``date_from`` is "today minus one year"
+        (FB-07), so the fixtures would already be covered by
+        defaults, but the explicit window keeps this test
+        deterministic regardless of future default tweaks.
         """
         # Force recompute of partner aging fields
         self.all_test_partners.invalidate_recordset()

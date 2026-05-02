@@ -794,3 +794,40 @@ class TestDeferredPeriodAllocation(AccountTestInvoicingCommon):
                 f"boundary: expected 12000.00, got {total}."
             ),
         )
+
+    def test_negative_recognition_amount_rejected(self):
+        """QA Checkpoint 10 Issue 9 (negative-path coverage): the
+        ``account.deferred.line._check_recognition_amount`` constraint
+        must reject negative recognition amounts with
+        ``ValidationError``.
+
+        Per the production code contract (DR-002 line model docstring):
+            "Negative recognitions are never allowed -- reversal is
+            handled at the ``account.move`` level via the DR-003
+            cut-off wizard's reversal mode, not by negative amounts
+            on recognition lines."
+
+        This invariant guards against operator typos and against
+        upstream allocation bugs that would otherwise produce
+        invalid schedules.
+        """
+        schedule = self._create_schedule()
+        # The schedule's allocation runs lazily on action_confirm; we
+        # invoke it here so line_ids is populated before we attempt
+        # the constraint violation.
+        schedule.action_confirm()
+        self.assertTrue(
+            schedule.line_ids,
+            'Fixture schedule must contain at least one recognition '
+            'line after action_confirm for this constraint test to '
+            'be meaningful.',
+        )
+        line = schedule.line_ids[:1]
+        with self.assertRaises(ValidationError) as ctx:
+            line.recognition_amount = -50.0
+        self.assertIn(
+            'non-negative',
+            str(ctx.exception),
+            'ValidationError message must explain that recognition '
+            'amounts must be non-negative; got: %r' % str(ctx.exception),
+        )

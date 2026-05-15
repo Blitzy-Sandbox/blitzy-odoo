@@ -1,335 +1,627 @@
 #!/usr/bin/env bash
-#
-# Config B orchestration script. Performs:
-#   1. Bootstrap: create .venv and pip install semgrep==1.163.0
-#   2. Rule cache materialization (one-time network access)
-#   3. Directive 1 offline dry-run gate
-#   4. Directive 2 SARIF scan with metadata capture
-#   5. Directive 3 normalization to findings-config-b.json
-#   6. Pass/fail gate verification
-#
-# Design rationale lives in decision-log.md — not in code comments.
+# Config B — Semgrep CE static-analysis orchestrator.
+# Design rationale for every non-trivial choice lives in
+# security-scan/config-b/decision-log.md (Explainability rule).
 
 set -euo pipefail
-export LC_ALL=C.UTF-8
-export LANG=C.UTF-8
+LC_ALL=C.UTF-8
+LANG=C.UTF-8
+export LC_ALL LANG
 
-# Anchor the script to its own directory regardless of cwd.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+# ----------------------------------------------------------------------
+# Constants
+# ----------------------------------------------------------------------
 
-# Resolve the repository root via git; fall back to two-level parent.
-if REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
-    :
-else
-    REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+DEFAULT_TARGET_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
+DEFAULT_RULE_CACHE="${SCRIPT_DIR}/rule-cache"
+SEMGREP_VERSION_PIN="1.163.0"
 
-# Defaults
-TARGET_ROOT="$REPO_ROOT"
-RULE_CACHE="$SCRIPT_DIR/rule-cache"
+# Requested rule packs (verbatim from the user prompt Directive 1). The "used"
+# set is populated at runtime; see decision-log.md DEV-1 for the p/owasp -> 
+# p/owasp-top-ten fallback that activates only when the registry returns 404.
+RULE_PACKS_REQUESTED=("p/security-audit" "p/secrets" "p/owasp")
+RULE_PACKS_FILE=("security-audit.yml" "secrets.yml" "owasp.yml")
+RULE_PACKS_USED=()
+
+SARIF_OUTPUT="${SCRIPT_DIR}/results-semgrep.sarif"
+FINDINGS_OUTPUT="${SCRIPT_DIR}/findings-config-b.json"
+METADATA_OUTPUT="${SCRIPT_DIR}/scan-metadata.json"
+NORMALIZER="${SCRIPT_DIR}/normalize-findings.py"
+VENV_DIR="${SCRIPT_DIR}/.venv"
+REQUIREMENTS_FILE="${SCRIPT_DIR}/requirements.txt"
+
+# Runtime state populated as phases execute.
+TARGET_ROOT=""
+RULE_CACHE="${DEFAULT_RULE_CACHE}"
 USE_SYSTEM_SEMGREP=0
 SKIP_BOOTSTRAP=0
+SEMGREP_BIN=""
+PYTHON_BIN=""
+SEMGREP_VERSION=""
+DRY_RUN_EXIT=0
+DRY_RUN_DURATION_MS=0
+DRY_RUN_CMD=""
+VERBATIM_CMD=""
+SCAN_EXIT_CODE=0
+SCAN_DURATION_SECONDS=0
+SCAN_START_ISO=""
+SCAN_END_ISO=""
+FILES_SCANNED=0
+NORMALIZE_SHA=""
+SECOND_NORMALIZE_SHA=""
+BYTE_IDENTICAL="false"
+FINDINGS_COUNT=0
 
-usage() {
-    cat <<'USAGE'
+# ----------------------------------------------------------------------
+# Logging helpers (stderr; stdout is reserved for computed values).
+# ----------------------------------------------------------------------
+
+log() {
+    printf '[%s] %s\n' "$(date -u +%FT%TZ)" "$*" >&2
+}
+
+die() {
+    log "FATAL: $*"
+    exit 1
+}
+
+# Remove transient working files on any exit path (clean run, error, signal).
+cleanup_transients() {
+    rm -f "${SCRIPT_DIR}/.scan-stdout.log" "${SCRIPT_DIR}/.scan-stderr.log"
+}
+trap cleanup_transients EXIT INT TERM
+
+print_usage() {
+    cat <<'USAGE' >&2
 Usage: run-scan.sh [options]
 
-  --target-root <path>      Override the scanned repository root (default: $(git rev-parse --show-toplevel))
-  --rule-cache <path>       Override the local rule cache directory (default: rule-cache/)
-  --use-system-semgrep      Use semgrep already on $PATH instead of installing into .venv
-  --skip-bootstrap          Skip the network-dependent venv install and rule cache download
-  -h, --help                Show this help
+  --target-root <path>      Override the scanned repository root.
+                            Default: $(git rev-parse --show-toplevel) with
+                            two-level-parent fallback.
+  --rule-cache <path>       Override the local rule-cache directory.
+                            Default: <script-dir>/rule-cache
+  --use-system-semgrep      Use the semgrep binary on PATH instead of
+                            installing into the harness-local .venv.
+  --skip-bootstrap          Skip the network-dependent venv install and
+                            rule-pack download (offline rerun).
+  -h, --help                Show this help and exit.
 USAGE
 }
 
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --target-root)         TARGET_ROOT="$2"; shift 2;;
-        --rule-cache)          RULE_CACHE="$2"; shift 2;;
-        --use-system-semgrep)  USE_SYSTEM_SEMGREP=1; shift;;
-        --skip-bootstrap)      SKIP_BOOTSTRAP=1; shift;;
-        -h|--help)             usage; exit 0;;
-        *)                     echo "Unknown argument: $1" >&2; usage >&2; exit 64;;
-    esac
-done
-
-TARGET_ROOT="$(cd "$TARGET_ROOT" && pwd)"
-RULE_CACHE="$(cd "$(dirname "$RULE_CACHE")" 2>/dev/null && pwd)/$(basename "$RULE_CACHE")" || RULE_CACHE="$SCRIPT_DIR/rule-cache"
-mkdir -p "$RULE_CACHE"
-
-SARIF_PATH="$SCRIPT_DIR/results-semgrep.sarif"
-META_PATH="$SCRIPT_DIR/scan-metadata.json"
-FINDINGS_PATH="$SCRIPT_DIR/findings-config-b.json"
-NORMALIZER="$SCRIPT_DIR/normalize-findings.py"
-
-log() { printf '[%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*" >&2; }
-
 # ----------------------------------------------------------------------
-# Phase 1: bootstrap toolchain
+# Argument parsing + path resolution.
 # ----------------------------------------------------------------------
 
-if [[ "$USE_SYSTEM_SEMGREP" -eq 1 ]]; then
-    if ! command -v semgrep >/dev/null 2>&1; then
-        log "FATAL: --use-system-semgrep set but 'semgrep' not on PATH"
-        exit 2
-    fi
-    SEMGREP_BIN="$(command -v semgrep)"
-    PYTHON_BIN="$(command -v python3 || command -v python)"
-else
-    VENV_DIR="$SCRIPT_DIR/.venv"
-    if [[ "$SKIP_BOOTSTRAP" -ne 1 ]]; then
-        log "creating virtual environment at $VENV_DIR"
-        python3 -m venv --without-pip "$VENV_DIR"
-        # Bootstrap pip using get-pip.py because the host's ensurepip bundled wheel
-        # may be removed (Ubuntu 25.10 / externally-managed pip stack).
-        if ! "$VENV_DIR/bin/python" -m pip --version >/dev/null 2>&1; then
-            log "bootstrapping pip via get-pip.py"
-            GETPIP="$(mktemp /tmp/get-pip-XXXXXX.py)"
-            curl -sSfL -o "$GETPIP" https://bootstrap.pypa.io/get-pip.py
-            "$VENV_DIR/bin/python" "$GETPIP" --quiet
-            rm -f "$GETPIP"
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --target-root)
+                [[ $# -ge 2 ]] || die "--target-root requires a value"
+                TARGET_ROOT="$2"
+                shift 2
+                ;;
+            --rule-cache)
+                [[ $# -ge 2 ]] || die "--rule-cache requires a value"
+                RULE_CACHE="$2"
+                shift 2
+                ;;
+            --use-system-semgrep)
+                USE_SYSTEM_SEMGREP=1
+                shift
+                ;;
+            --skip-bootstrap)
+                SKIP_BOOTSTRAP=1
+                shift
+                ;;
+            -h|--help)
+                print_usage
+                exit 0
+                ;;
+            *)
+                printf 'Unknown argument: %s\n' "$1" >&2
+                print_usage
+                exit 64
+                ;;
+        esac
+    done
+
+    if [[ -z "${TARGET_ROOT}" ]]; then
+        if command -v git >/dev/null 2>&1; then
+            local discovered
+            if discovered="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null)"; then
+                TARGET_ROOT="${discovered}"
+            fi
         fi
-        log "installing pinned semgrep from requirements.txt"
-        "$VENV_DIR/bin/pip" install --upgrade pip --quiet
-        "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt" --progress-bar=off --quiet
+        if [[ -z "${TARGET_ROOT}" ]]; then
+            TARGET_ROOT="${DEFAULT_TARGET_ROOT}"
+        fi
     fi
-    SEMGREP_BIN="$VENV_DIR/bin/semgrep"
-    PYTHON_BIN="$VENV_DIR/bin/python"
-    if [[ ! -x "$SEMGREP_BIN" ]]; then
-        log "FATAL: $SEMGREP_BIN does not exist (rerun without --skip-bootstrap)"
-        exit 2
+
+    [[ -d "${TARGET_ROOT}" ]] || die "--target-root path is not a directory: ${TARGET_ROOT}"
+    TARGET_ROOT="$(cd "${TARGET_ROOT}" && pwd -P)"
+
+    # Resolve RULE_CACHE to absolute form, tolerating a not-yet-existent dir.
+    local rc_dir rc_base
+    rc_dir="$(dirname "${RULE_CACHE}")"
+    rc_base="$(basename "${RULE_CACHE}")"
+    if [[ -d "${rc_dir}" ]]; then
+        RULE_CACHE="$(cd "${rc_dir}" && pwd -P)/${rc_base}"
     fi
-fi
-SEMGREP_VERSION="$("$SEMGREP_BIN" --version 2>/dev/null | tail -1)"
-log "semgrep version: $SEMGREP_VERSION"
+}
 
 # ----------------------------------------------------------------------
-# Phase 2: rule cache materialization
+# Phase 1 — bootstrap toolchain (.venv + semgrep install).
 # ----------------------------------------------------------------------
 
-# Maps logical pack identifier (used in scan-metadata.json) to local filename.
-# The literal user-specified identifier `p/owasp` is attempted first; if the
-# Semgrep Registry returns 404 (it does, as of 2026), we fall back to
-# `p/owasp-top-ten`, documented as the canonical deviation in decision-log.md.
-RULE_PACKS_LOGICAL=("p/security-audit" "p/secrets" "p/owasp")
-RULE_PACKS_FILE=("security-audit.yml" "secrets.yml" "owasp.yml")
-RULE_PACKS_USED=("p/security-audit" "p/secrets" "p/owasp-top-ten")
+bootstrap_pip_in_venv() {
+    if "${VENV_DIR}/bin/python" -m pip --version >/dev/null 2>&1; then
+        return 0
+    fi
+    log "Bootstrapping pip via get-pip.py (ensurepip wheel unavailable on host)"
+    local getpip
+    getpip="$(mktemp /tmp/get-pip-XXXXXX.py)"
+    curl -sSfL -o "${getpip}" https://bootstrap.pypa.io/get-pip.py \
+        || { rm -f "${getpip}"; die "failed to download get-pip.py"; }
+    "${VENV_DIR}/bin/python" "${getpip}" --quiet \
+        || { rm -f "${getpip}"; die "get-pip.py bootstrap failed"; }
+    rm -f "${getpip}"
+}
 
-download_pack() {
-    local pack="$1"
-    local out="$2"
-    local url="https://semgrep.dev/c/p/$pack"
+bootstrap_python_env() {
+    if [[ "${USE_SYSTEM_SEMGREP}" -eq 1 ]]; then
+        log "Using system-installed semgrep on PATH"
+        command -v semgrep >/dev/null 2>&1 \
+            || die "--use-system-semgrep set but semgrep not on PATH"
+        SEMGREP_BIN="$(command -v semgrep)"
+        PYTHON_BIN="$(command -v python3 || command -v python || true)"
+        [[ -n "${PYTHON_BIN}" ]] || die "python3/python not found on PATH"
+        return 0
+    fi
+
+    if [[ "${SKIP_BOOTSTRAP}" -eq 1 ]]; then
+        log "Skipping bootstrap (--skip-bootstrap); expecting existing venv at ${VENV_DIR}"
+    else
+        if [[ ! -d "${VENV_DIR}" ]]; then
+            log "Creating Python venv at ${VENV_DIR}"
+            python3 -m venv --without-pip "${VENV_DIR}" \
+                || die "python3 -m venv failed"
+        fi
+        bootstrap_pip_in_venv
+        log "Installing pinned semgrep from ${REQUIREMENTS_FILE}"
+        "${VENV_DIR}/bin/pip" install --upgrade pip --quiet \
+            || die "pip self-upgrade failed"
+        "${VENV_DIR}/bin/pip" install -r "${REQUIREMENTS_FILE}" --progress-bar=off --quiet \
+            || die "pip install -r requirements.txt failed"
+    fi
+
+    SEMGREP_BIN="${VENV_DIR}/bin/semgrep"
+    if [[ -x "${VENV_DIR}/bin/python3" ]]; then
+        PYTHON_BIN="${VENV_DIR}/bin/python3"
+    else
+        PYTHON_BIN="${VENV_DIR}/bin/python"
+    fi
+    [[ -x "${SEMGREP_BIN}" ]] || die "${SEMGREP_BIN} is not executable (rerun without --skip-bootstrap?)"
+    [[ -x "${PYTHON_BIN}" ]] || die "${PYTHON_BIN} is not executable"
+
+    SEMGREP_VERSION="$("${SEMGREP_BIN}" --version 2>/dev/null | tail -1)"
+    log "semgrep version: ${SEMGREP_VERSION}"
+}
+
+# ----------------------------------------------------------------------
+# Phase 2 — rule-cache materialization.
+# ----------------------------------------------------------------------
+
+# Download a single rule pack to a local YAML file. Returns 0 on success.
+# Args: <pack-name-without-p-prefix> <output-path>
+download_pack_via_curl() {
+    local pack_id="$1"
+    local out_path="$2"
+    local url="https://semgrep.dev/c/p/${pack_id}"
+
     local tmp
     tmp="$(mktemp /tmp/sg-pack-XXXXXX.yml)"
-    if ! curl -sSfL -A "config-b-bootstrap" -o "$tmp" "$url"; then
-        rm -f "$tmp"
+    if ! curl -sSfL -A "config-b-bootstrap" -o "${tmp}" "${url}"; then
+        rm -f "${tmp}"
         return 1
     fi
     local size
-    size="$(wc -c <"$tmp")"
-    if [[ "$size" -lt 1000 ]]; then
-        log "rule pack $pack is suspiciously small ($size bytes); rejecting"
-        rm -f "$tmp"
+    size="$(wc -c <"${tmp}")"
+    if [[ "${size}" -lt 1000 ]]; then
+        log "Pack ${pack_id} download is suspiciously small (${size} bytes); rejecting"
+        rm -f "${tmp}"
         return 1
     fi
-    mv "$tmp" "$out"
-    log "  saved $out ($size bytes)"
+    mv "${tmp}" "${out_path}"
+    log "  saved ${out_path} (${size} bytes)"
     return 0
 }
 
-if [[ "$SKIP_BOOTSTRAP" -ne 1 ]]; then
-    log "downloading rule packs to $RULE_CACHE"
-    # security-audit
-    download_pack "security-audit" "$RULE_CACHE/security-audit.yml"
-    # secrets
-    download_pack "secrets" "$RULE_CACHE/secrets.yml"
-    # owasp -> owasp-top-ten fallback
-    if download_pack "owasp" "$RULE_CACHE/owasp.yml"; then
-        RULE_PACKS_USED[2]="p/owasp"
+materialize_rule_cache() {
+    if [[ "${SKIP_BOOTSTRAP}" -eq 1 ]]; then
+        log "Skipping rule-cache bootstrap (--skip-bootstrap)"
+        [[ -d "${RULE_CACHE}" ]] || die "rule-cache directory does not exist: ${RULE_CACHE}"
+        return 0
+    fi
+
+    mkdir -p "${RULE_CACHE}"
+    log "Downloading rule packs to ${RULE_CACHE}"
+
+    # p/security-audit
+    download_pack_via_curl "security-audit" "${RULE_CACHE}/${RULE_PACKS_FILE[0]}" \
+        || die "failed to materialize p/security-audit"
+    RULE_PACKS_USED+=("p/security-audit")
+
+    # p/secrets
+    download_pack_via_curl "secrets" "${RULE_CACHE}/${RULE_PACKS_FILE[1]}" \
+        || die "failed to materialize p/secrets"
+    RULE_PACKS_USED+=("p/secrets")
+
+    # p/owasp with documented fallback to p/owasp-top-ten (decision-log.md DEV-1).
+    if download_pack_via_curl "owasp" "${RULE_CACHE}/${RULE_PACKS_FILE[2]}"; then
+        RULE_PACKS_USED+=("p/owasp")
     else
-        log "  p/owasp returned 404 — substituting p/owasp-top-ten (see decision-log.md)"
-        download_pack "owasp-top-ten" "$RULE_CACHE/owasp.yml"
+        log "  p/owasp returned non-OK; substituting p/owasp-top-ten (see decision-log.md DEV-1)"
+        download_pack_via_curl "owasp-top-ten" "${RULE_CACHE}/${RULE_PACKS_FILE[2]}" \
+            || die "failed to materialize p/owasp-top-ten fallback"
+        RULE_PACKS_USED+=("p/owasp-top-ten")
     fi
-fi
+}
 
-# Verify the rule cache is non-empty and parseable.
-for f in "$RULE_CACHE"/security-audit.yml "$RULE_CACHE"/secrets.yml "$RULE_CACHE"/owasp.yml; do
-    if [[ ! -s "$f" ]]; then
-        log "FATAL: rule cache file missing or empty: $f"
-        exit 2
+verify_rule_cache() {
+    [[ -d "${RULE_CACHE}" ]] || die "rule-cache directory missing: ${RULE_CACHE}"
+    local f path
+    for f in "${RULE_PACKS_FILE[@]}"; do
+        path="${RULE_CACHE}/${f}"
+        [[ -s "${path}" ]] || die "rule-cache file missing or empty: ${path}"
+    done
+    local count
+    count="$(find "${RULE_CACHE}" -maxdepth 1 -type f -name '*.yml' | wc -l | tr -d ' ')"
+    log "Rule cache verified: ${count} packs at ${RULE_CACHE}"
+
+    # When --skip-bootstrap was used, RULE_PACKS_USED is empty. Probe the
+    # owasp file to recover the substituted identifier (decision-log.md DEV-1).
+    if [[ "${#RULE_PACKS_USED[@]}" -eq 0 ]]; then
+        RULE_PACKS_USED=("p/security-audit" "p/secrets")
+        if grep -q -i 'owasp-top-ten' "${RULE_CACHE}/${RULE_PACKS_FILE[2]}" 2>/dev/null; then
+            RULE_PACKS_USED+=("p/owasp-top-ten")
+        else
+            RULE_PACKS_USED+=("p/owasp")
+        fi
     fi
-done
-log "rule cache OK ($(ls -1 "$RULE_CACHE"/*.yml | wc -l) packs)"
+}
 
 # ----------------------------------------------------------------------
-# Phase 3: Directive 1 — offline dry-run gate
+# Phase 3 — Directive 1 offline dry-run gate.
+# Semgrep CLI accepts --dryrun (one word); the user-prompt --dry-run is the
+# decision-log.md DEV-2 deviation.
 # ----------------------------------------------------------------------
 
-# The user-prompt flag `--dry-run` is not a real Semgrep CLI flag; the closest
-# semantic equivalent is `--dryrun`. See decision-log.md for the deviation.
-DRY_RUN_TARGET="$(mktemp -d /tmp/sg-empty-target-XXXXXX)"
-echo '# placeholder' > "$DRY_RUN_TARGET/placeholder.py"
-log "Directive 1 dry-run gate: semgrep scan --metrics=off --config=$RULE_CACHE --dryrun"
-DRYRUN_START_NS=$(date +%s%N)
-set +e
-"$SEMGREP_BIN" scan \
-    --metrics=off \
-    --config="$RULE_CACHE" \
-    --dryrun \
-    "$DRY_RUN_TARGET" >/tmp/sg-dryrun.log 2>&1
-DRYRUN_EXIT=$?
-set -e
-DRYRUN_END_NS=$(date +%s%N)
-DRYRUN_DUR_MS=$(( (DRYRUN_END_NS - DRYRUN_START_NS) / 1000000 ))
-rm -rf "$DRY_RUN_TARGET"
-log "Directive 1 dry-run gate result: exit=$DRYRUN_EXIT duration_ms=$DRYRUN_DUR_MS"
-if [[ "$DRYRUN_EXIT" -ne 0 ]]; then
-    log "FATAL: dry-run gate failed (exit $DRYRUN_EXIT)"
-    tail -30 /tmp/sg-dryrun.log >&2
-    exit 3
-fi
+enforce_dry_run_gate() {
+    log "Directive 1 gate: offline dry-run"
+
+    local dry_target
+    dry_target="$(mktemp -d /tmp/sg-empty-target-XXXXXX)"
+    printf '# placeholder\n' > "${dry_target}/placeholder.py"
+
+    DRY_RUN_CMD="semgrep scan --metrics=off --config=${RULE_CACHE} --dryrun ${dry_target}"
+    log "Command: ${DRY_RUN_CMD}"
+
+    local start_ns end_ns
+    start_ns=$(date +%s%N)
+    set +e
+    "${SEMGREP_BIN}" scan \
+        --metrics=off \
+        --config="${RULE_CACHE}" \
+        --dryrun \
+        "${dry_target}" >/dev/null 2>&1
+    DRY_RUN_EXIT=$?
+    set -e
+    end_ns=$(date +%s%N)
+    DRY_RUN_DURATION_MS=$(( (end_ns - start_ns) / 1000000 ))
+
+    rm -rf "${dry_target}"
+
+    if [[ "${DRY_RUN_EXIT}" -ne 0 ]]; then
+        die "Directive 1 dry-run gate failed (exit ${DRY_RUN_EXIT})"
+    fi
+
+    log "Directive 1 gate PASSED (exit=${DRY_RUN_EXIT} duration_ms=${DRY_RUN_DURATION_MS})"
+}
 
 # ----------------------------------------------------------------------
-# Phase 4: Directive 2 — main SARIF scan
+# Phase 4 — Directive 2 main SARIF scan.
+# Verbatim user-prompt command:
+#   semgrep scan --config=/path/to/local-rules --sarif -o results-semgrep.sarif --metrics=off /path/to/blitzy-odoo
+# In Config B, /path/to/local-rules => ${RULE_CACHE}, /path/to/blitzy-odoo => ${TARGET_ROOT}.
 # ----------------------------------------------------------------------
 
-# Verbatim user-supplied command (Directive 2). The two /path/to/... placeholders
-# are resolved to absolute paths; nothing else in the command is altered.
-VERBATIM_CMD="semgrep scan --config=$RULE_CACHE --sarif -o $SARIF_PATH --metrics=off $TARGET_ROOT"
-log "Directive 2 verbatim command: $VERBATIM_CMD"
+run_sarif_scan() {
+    log "Directive 2: SARIF scan"
+    VERBATIM_CMD="semgrep scan --config=${RULE_CACHE} --sarif -o ${SARIF_OUTPUT} --metrics=off ${TARGET_ROOT}"
+    log "Verbatim Directive 2 command: ${VERBATIM_CMD}"
 
-# Remove any prior SARIF so detection is unambiguous.
-rm -f "$SARIF_PATH"
+    rm -f "${SARIF_OUTPUT}"
 
-SCAN_STARTED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-SCAN_START_NS=$(date +%s%N)
-set +e
-"$SEMGREP_BIN" scan \
-    --config="$RULE_CACHE" \
-    --sarif \
-    -o "$SARIF_PATH" \
-    --metrics=off \
-    "$TARGET_ROOT" > /tmp/sg-scan-stdout.log 2> /tmp/sg-scan-stderr.log
-SCAN_EXIT=$?
-set -e
-SCAN_END_NS=$(date +%s%N)
-SCAN_ENDED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-SCAN_DUR_SEC="$("$PYTHON_BIN" -c "print(f'{($SCAN_END_NS - $SCAN_START_NS) / 1e9:.3f}')")"
-log "Directive 2 scan result: exit=$SCAN_EXIT duration=${SCAN_DUR_SEC}s"
+    SCAN_START_ISO="$(date -u +%FT%TZ)"
+    local start_ns end_ns
+    start_ns=$(date +%s%N)
 
-# Extract files-scanned count from semgrep stderr summary.
-FILES_SCANNED="$(grep -oE 'Scanned\s+[0-9]+\s+files|Targets scanned: [0-9]+' /tmp/sg-scan-stdout.log /tmp/sg-scan-stderr.log 2>/dev/null | grep -oE '[0-9]+' | tail -1 || echo 0)"
-if [[ -z "$FILES_SCANNED" ]]; then FILES_SCANNED=0; fi
-log "files scanned (parsed from semgrep summary): $FILES_SCANNED"
+    local stdout_log="${SCRIPT_DIR}/.scan-stdout.log"
+    local stderr_log="${SCRIPT_DIR}/.scan-stderr.log"
 
-# Directive 2 pass/fail: SARIF exists and contains a top-level runs array.
-if [[ ! -s "$SARIF_PATH" ]]; then
-    log "FATAL: Directive 2 failed — $SARIF_PATH missing or empty"
-    tail -30 /tmp/sg-scan-stderr.log >&2
-    exit 4
-fi
-"$PYTHON_BIN" -c "
+    set +e
+    "${SEMGREP_BIN}" scan \
+        --config="${RULE_CACHE}" \
+        --sarif \
+        -o "${SARIF_OUTPUT}" \
+        --metrics=off \
+        "${TARGET_ROOT}" >"${stdout_log}" 2>"${stderr_log}"
+    SCAN_EXIT_CODE=$?
+    set -e
+
+    end_ns=$(date +%s%N)
+    SCAN_END_ISO="$(date -u +%FT%TZ)"
+    SCAN_DURATION_SECONDS="$("${PYTHON_BIN}" -c "print(f'{(${end_ns} - ${start_ns}) / 1e9:.3f}')")"
+
+    log "Directive 2 scan result: exit=${SCAN_EXIT_CODE} duration=${SCAN_DURATION_SECONDS}s"
+
+    # Parse "files scanned" from the semgrep summary; varies across versions.
+    FILES_SCANNED="$(grep -oE 'Scanned[[:space:]]+[0-9]+[[:space:]]+files|Targets scanned: [0-9]+' \
+        "${stdout_log}" "${stderr_log}" 2>/dev/null \
+        | grep -oE '[0-9]+' | tail -1 || true)"
+    if [[ -z "${FILES_SCANNED:-}" ]]; then
+        FILES_SCANNED="$("${PYTHON_BIN}" - "${SARIF_OUTPUT}" <<'PYEOF'
 import json, sys
-d = json.load(open('$SARIF_PATH', encoding='utf-8'))
-assert isinstance(d.get('runs'), list), 'no runs array'
-print(f'SARIF runs[]: {len(d[\"runs\"])}')
-print(f'SARIF total results: {sum(len(r.get(\"results\", [])) for r in d[\"runs\"])}')
-" >&2
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as f:
+        sarif = json.load(f)
+    uris = set()
+    for run in sarif.get("runs", []):
+        for r in run.get("results", []) or []:
+            for loc in r.get("locations", []) or []:
+                uri = ((loc.get("physicalLocation") or {}).get("artifactLocation") or {}).get("uri")
+                if uri:
+                    uris.add(uri)
+    print(len(uris))
+except Exception:
+    print(0)
+PYEOF
+)"
+    fi
+    [[ -n "${FILES_SCANNED}" ]] || FILES_SCANNED=0
+    log "Files scanned: ${FILES_SCANNED}"
+
+    if [[ "${SCAN_EXIT_CODE}" -ne 0 ]]; then
+        # Directive 2 gate is "SARIF runs[] present", not "exit == 0".
+        log "NOTE: semgrep exit was ${SCAN_EXIT_CODE} (non-zero when findings exist)"
+    fi
+
+    if [[ ! -s "${SARIF_OUTPUT}" ]]; then
+        tail -30 "${stderr_log}" >&2 || true
+        die "Directive 2 gate failed: SARIF output missing or empty at ${SARIF_OUTPUT}"
+    fi
+
+    "${PYTHON_BIN}" - "${SARIF_OUTPUT}" <<'PYEOF' \
+        || die "Directive 2 gate failed: SARIF JSON invalid or runs[] missing"
+import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+assert isinstance(d.get("runs"), list), "SARIF runs[] missing"
+sys.stderr.write(
+    f"SARIF runs[]={len(d['runs'])} total_results="
+    f"{sum(len(r.get('results', [])) for r in d['runs'])}\n"
+)
+PYEOF
+
+    rm -f "${stdout_log}" "${stderr_log}"
+    log "Directive 2 gate PASSED"
+}
 
 # ----------------------------------------------------------------------
-# Phase 5: Directive 3 — normalize SARIF to findings-config-b.json
+# Phase 5 — Directive 3 normalizer invocation + pass/fail gates.
 # ----------------------------------------------------------------------
 
-log "normalizing SARIF to $FINDINGS_PATH (target-root=$TARGET_ROOT)"
-"$PYTHON_BIN" "$NORMALIZER" "$SARIF_PATH" "$FINDINGS_PATH" --target-root "$TARGET_ROOT"
+run_normalizer() {
+    log "Directive 3: normalize SARIF -> ${FINDINGS_OUTPUT}"
 
-# Directive 3 pass/fail gates. See decision-log.md (DEV-3, D14) for rationale.
-log "Directive 3 pass/fail gates"
-# Gate 3a — single line: no newline bytes anywhere in the file.
-GATE_3A_NEWLINES="$(tr -dc '\n' < "$FINDINGS_PATH" | wc -c)"
-[[ "$GATE_3A_NEWLINES" == "0" ]] \
-    || { log "FATAL: 3a newline count != 0 (got '$GATE_3A_NEWLINES')"; exit 5; }
-# Gate 3a — empty result set is the literal two bytes '[]'.
-GATE_3A_BYTES="$(wc -c < "$FINDINGS_PATH")"
-if [[ "$(cat "$FINDINGS_PATH")" == "[]" ]]; then
-    [[ "$GATE_3A_BYTES" == "2" ]] \
-        || { log "FATAL: 3a empty case must be 2 bytes (got '$GATE_3A_BYTES')"; exit 5; }
-fi
+    "${PYTHON_BIN}" "${NORMALIZER}" "${SARIF_OUTPUT}" "${FINDINGS_OUTPUT}" --target-root "${TARGET_ROOT}" \
+        || die "normalizer failed"
 
-"$PYTHON_BIN" -m json.tool < "$FINDINGS_PATH" > /dev/null \
-    || { log "FATAL: 3b invalid JSON"; exit 5; }
+    # Gate 3a — zero embedded newlines (single-line semantic).
+    local newlines
+    newlines="$(tr -dc '\n' < "${FINDINGS_OUTPUT}" | wc -c | tr -d ' ')"
+    [[ "${newlines}" -eq 0 ]] \
+        || die "Directive 3a gate failed: ${newlines} newline(s) in findings-config-b.json (expected 0)"
 
-"$PYTHON_BIN" -c "
-import json
-data = json.load(open('$FINDINGS_PATH', encoding='utf-8'))
-expected = {'file','line','severity','cwe','description'}
+    # Gate 3a — zero-finding edge case: literal two bytes "[]".
+    if [[ "$(cat "${FINDINGS_OUTPUT}")" == "[]" ]]; then
+        local bytes
+        bytes="$(wc -c < "${FINDINGS_OUTPUT}" | tr -d ' ')"
+        [[ "${bytes}" -eq 2 ]] \
+            || die "Directive 3a gate failed: zero-finding file must be exactly 2 bytes (got ${bytes})"
+    fi
+
+    # Gate 3b — valid JSON.
+    "${PYTHON_BIN}" -m json.tool < "${FINDINGS_OUTPUT}" >/dev/null \
+        || die "Directive 3b gate failed: findings-config-b.json is not valid JSON"
+
+    # Gates 3c (five fields) + 3d (<= 200 chars) + closed severity enum.
+    "${PYTHON_BIN}" - "${FINDINGS_OUTPUT}" <<'PYEOF' \
+        || die "Directive 3c/3d gate failed (see normalizer stderr above)"
+import json, sys
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+expected = {"file", "line", "severity", "cwe", "description"}
+allowed_sev = {"critical", "high", "medium", "low"}
 for i, r in enumerate(data):
-    if set(r) != expected:
-        raise SystemExit(f'record {i} has wrong keys: {set(r)}')
-    if len(r['description']) > 200:
-        raise SystemExit(f'record {i} description is {len(r[\"description\"])} chars (>200)')
-print(f'3c/3d OK ({len(data)} records)')
-" >&2
+    if set(r.keys()) != expected:
+        raise SystemExit(f"record {i} has wrong keys: {sorted(r.keys())}")
+    if not isinstance(r["description"], str):
+        raise SystemExit(f"record {i} description is not a string")
+    if len(r["description"]) > 200:
+        raise SystemExit(f"record {i} description is {len(r['description'])} chars (>200)")
+    if r["severity"] not in allowed_sev:
+        raise SystemExit(f"record {i} severity {r['severity']!r} not in {sorted(allowed_sev)}")
+    if not isinstance(r["line"], int):
+        raise SystemExit(f"record {i} line is not int: {type(r['line']).__name__}")
+sys.stderr.write(f"Directive 3c/3d OK ({len(data)} records)\n")
+PYEOF
 
-# Reproducibility check: rerun normalizer and compare sha256.
-TMP_FINDINGS_2="$(mktemp /tmp/findings-2-XXXXXX.json)"
-"$PYTHON_BIN" "$NORMALIZER" "$SARIF_PATH" "$TMP_FINDINGS_2" --target-root "$TARGET_ROOT"
-SHA1="$(sha256sum "$FINDINGS_PATH" | awk '{print $1}')"
-SHA2="$(sha256sum "$TMP_FINDINGS_2" | awk '{print $1}')"
-rm -f "$TMP_FINDINGS_2"
-BYTE_IDENTICAL=false
-if [[ "$SHA1" == "$SHA2" ]]; then BYTE_IDENTICAL=true; fi
-log "reproducibility: sha256(first)=$SHA1 sha256(second)=$SHA2 byte_identical=$BYTE_IDENTICAL"
+    FINDINGS_COUNT="$("${PYTHON_BIN}" -c "import json; print(len(json.load(open('${FINDINGS_OUTPUT}', encoding='utf-8'))))")"
+    log "Directive 3 gates PASSED (${FINDINGS_COUNT} findings)"
+}
 
 # ----------------------------------------------------------------------
-# Phase 6: scan-metadata.json
+# Phase 6 — byte-identical normalizer rerun (reproducibility evidence).
 # ----------------------------------------------------------------------
 
-FINDINGS_COUNT="$("$PYTHON_BIN" -c "import json; print(len(json.load(open('$FINDINGS_PATH', encoding='utf-8'))))")"
+verify_byte_identical_rerun() {
+    log "Verifying byte-identical normalizer rerun"
+    NORMALIZE_SHA="$(sha256sum "${FINDINGS_OUTPUT}" | awk '{print $1}')"
 
-"$PYTHON_BIN" - "$META_PATH" <<META
-import json, sys, pathlib
-path = pathlib.Path(sys.argv[1])
+    local rerun_path
+    rerun_path="$(mktemp /tmp/findings-rerun-XXXXXX.json)"
+    "${PYTHON_BIN}" "${NORMALIZER}" "${SARIF_OUTPUT}" "${rerun_path}" --target-root "${TARGET_ROOT}" \
+        || { rm -f "${rerun_path}"; die "rerun normalizer failed"; }
+    SECOND_NORMALIZE_SHA="$(sha256sum "${rerun_path}" | awk '{print $1}')"
+    rm -f "${rerun_path}"
+
+    if [[ "${NORMALIZE_SHA}" == "${SECOND_NORMALIZE_SHA}" ]]; then
+        BYTE_IDENTICAL="true"
+        log "Reproducibility PASSED (sha256=${NORMALIZE_SHA})"
+    else
+        BYTE_IDENTICAL="false"
+        die "Byte-identical rerun FAILED (first=${NORMALIZE_SHA} second=${SECOND_NORMALIZE_SHA})"
+    fi
+}
+
+# ----------------------------------------------------------------------
+# Phase 7 — emit scan-metadata.json.
+# Captures the three Directive 2 operational facts (exit code, duration,
+# files scanned) plus reproducibility evidence and rule-pack provenance.
+# See decision-log.md DEV-3 for the choice of a sibling JSON over SARIF.
+# ----------------------------------------------------------------------
+
+emit_metadata() {
+    log "Writing operational metadata to ${METADATA_OUTPUT}"
+
+    local tool_version
+    tool_version="${SEMGREP_VERSION:-${SEMGREP_VERSION_PIN}}"
+
+    # Export runtime state via env vars so the heredoc body does not need to
+    # interpolate bash array values or quoted strings.
+    export __TOOL_VERSION="${tool_version}"
+    export __VERSION_PIN="${SEMGREP_VERSION_PIN}"
+    export __COMMAND="${VERBATIM_CMD}"
+    export __EXIT_CODE="${SCAN_EXIT_CODE}"
+    export __DURATION="${SCAN_DURATION_SECONDS}"
+    export __FILES_SCANNED="${FILES_SCANNED}"
+    export __DRY_RUN_CMD="${DRY_RUN_CMD}"
+    export __DRY_RUN_EXIT="${DRY_RUN_EXIT}"
+    export __DRY_RUN_MS="${DRY_RUN_DURATION_MS}"
+    export __SARIF_PATH="${SARIF_OUTPUT}"
+    export __FINDINGS_PATH="${FINDINGS_OUTPUT}"
+    export __FINDINGS_COUNT="${FINDINGS_COUNT}"
+    export __SHA1="${NORMALIZE_SHA}"
+    export __SHA2="${SECOND_NORMALIZE_SHA}"
+    export __BYTE_IDENTICAL="${BYTE_IDENTICAL}"
+    export __START_AT="${SCAN_START_ISO}"
+    export __END_AT="${SCAN_END_ISO}"
+    export __METADATA_OUTPUT="${METADATA_OUTPUT}"
+    export __REQUESTED_CSV="${RULE_PACKS_REQUESTED[*]}"
+    export __USED_CSV="${RULE_PACKS_USED[*]}"
+    export __RULE_CACHE="${RULE_CACHE}"
+    export __TARGET_ROOT="${TARGET_ROOT}"
+
+    "${PYTHON_BIN}" - <<'PYEOF'
+import json
+import os
+import pathlib
+
+requested = os.environ.get("__REQUESTED_CSV", "").split()
+used = os.environ.get("__USED_CSV", "").split()
+
 payload = {
     "config": "config-b",
     "tool": {
         "name": "semgrep",
         "edition": "CE",
-        "version": "$SEMGREP_VERSION".strip(),
+        "version": (os.environ.get("__TOOL_VERSION") or os.environ["__VERSION_PIN"]).strip(),
     },
     "rule_packs": {
-        "requested": ["p/security-audit", "p/secrets", "p/owasp"],
-        "used":      ["${RULE_PACKS_USED[0]}", "${RULE_PACKS_USED[1]}", "${RULE_PACKS_USED[2]}"],
+        "requested": requested,
+        "used": used,
     },
-    "command": "$VERBATIM_CMD",
-    "exit_code": $SCAN_EXIT,
-    "duration_seconds": $SCAN_DUR_SEC,
-    "files_scanned": $FILES_SCANNED,
+    "command": os.environ["__COMMAND"],
+    "exit_code": int(os.environ["__EXIT_CODE"]),
+    "duration_seconds": float(os.environ["__DURATION"]),
+    "files_scanned": int(os.environ["__FILES_SCANNED"]),
     "dry_run_gate": {
-        "command": "semgrep scan --metrics=off --config=$RULE_CACHE --dryrun /tmp/sg-empty-target",
-        "exit_code": $DRYRUN_EXIT,
-        "duration_ms": $DRYRUN_DUR_MS,
+        "command": os.environ["__DRY_RUN_CMD"],
+        "exit_code": int(os.environ["__DRY_RUN_EXIT"]),
+        "duration_ms": int(os.environ["__DRY_RUN_MS"]),
         "network_calls_observed": False,
     },
     "output": {
-        "sarif_path": "$SARIF_PATH",
-        "findings_path": "$FINDINGS_PATH",
-        "findings_count": $FINDINGS_COUNT,
+        "sarif_path": os.environ["__SARIF_PATH"],
+        "findings_path": os.environ["__FINDINGS_PATH"],
+        "findings_count": int(os.environ["__FINDINGS_COUNT"]),
     },
     "reproducibility": {
-        "normalize_output_sha256": "$SHA1",
-        "second_run_sha256": "$SHA2",
-        "byte_identical": $( [[ "$BYTE_IDENTICAL" == "true" ]] && echo True || echo False ),
+        "normalize_output_sha256": os.environ["__SHA1"],
+        "second_run_sha256": os.environ["__SHA2"],
+        "byte_identical": os.environ["__BYTE_IDENTICAL"].strip().lower() == "true",
     },
-    "run_started_at": "$SCAN_STARTED_AT",
-    "run_ended_at": "$SCAN_ENDED_AT",
+    "run_started_at": os.environ["__START_AT"],
+    "run_ended_at": os.environ["__END_AT"],
 }
-path.write_text(json.dumps(payload, indent=2, sort_keys=False), encoding="utf-8")
-print(f"wrote {path}", file=sys.stderr)
-META
 
-log "Config B scan complete"
-log "  deliverable: $FINDINGS_PATH ($FINDINGS_COUNT findings)"
-log "  metadata:    $META_PATH"
-log "  sarif:       $SARIF_PATH"
+out = pathlib.Path(os.environ["__METADATA_OUTPUT"])
+out.write_text(
+    json.dumps(payload, indent=2, sort_keys=False, ensure_ascii=False) + "\n",
+    encoding="utf-8",
+)
+PYEOF
+
+    # Clean up exported helper env vars.
+    unset __TOOL_VERSION __VERSION_PIN __COMMAND __EXIT_CODE __DURATION \
+        __FILES_SCANNED __DRY_RUN_CMD __DRY_RUN_EXIT __DRY_RUN_MS \
+        __SARIF_PATH __FINDINGS_PATH __FINDINGS_COUNT __SHA1 __SHA2 \
+        __BYTE_IDENTICAL __START_AT __END_AT __METADATA_OUTPUT \
+        __REQUESTED_CSV __USED_CSV __RULE_CACHE __TARGET_ROOT
+
+    log "Metadata written to ${METADATA_OUTPUT}"
+}
+
+# ----------------------------------------------------------------------
+# main — orchestrates every phase. This is the exported symbol referenced by
+# the file schema (security-scan/config-b/run-scan.sh exports: main).
+# ----------------------------------------------------------------------
+
+main() {
+    parse_args "$@"
+
+    log "Config B Semgrep CE harness starting"
+    log "  target root: ${TARGET_ROOT}"
+    log "  rule cache:  ${RULE_CACHE}"
+    if [[ "${USE_SYSTEM_SEMGREP}" -eq 1 ]]; then
+        log "  mode:        system-semgrep (skip_bootstrap=${SKIP_BOOTSTRAP})"
+    else
+        log "  mode:        venv (skip_bootstrap=${SKIP_BOOTSTRAP})"
+    fi
+
+    bootstrap_python_env
+    materialize_rule_cache
+    verify_rule_cache
+    enforce_dry_run_gate
+    run_sarif_scan
+    run_normalizer
+    verify_byte_identical_rerun
+    emit_metadata
+
+    log "Config B harness completed successfully"
+    log "  deliverable: ${FINDINGS_OUTPUT} (${FINDINGS_COUNT} findings)"
+    log "  metadata:    ${METADATA_OUTPUT}"
+    log "  sarif:       ${SARIF_OUTPUT}"
+}
+
+main "$@"

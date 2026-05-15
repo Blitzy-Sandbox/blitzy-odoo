@@ -3,14 +3,18 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Bandit Security Scan — Config C — blitzy-odoo</title>
+<title>Bandit Config C — Security Scan — blitzy-odoo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link
   href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Fira+Code:wght@400;500&display=swap"
   rel="stylesheet"
 />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css"
+      integrity="sha384-YgvgKeZJykuztG+iQPoZHNZENTFZvOcOJ/uRzmJTje6GHYN9zAw+y5rx/L8MQKA/"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer" />
 <style>
 :root {
   --blitzy-primary: #5B39F3;
@@ -375,8 +379,8 @@
 <!-- 1. TITLE -->
 <section class="slide-title">
   <div class="hero-icon"><i data-lucide="shield-check"></i></div>
-  <p class="eyebrow">Bandit Security Scan</p>
-  <h1>Config C of N · blitzy-odoo</h1>
+  <p class="eyebrow">Bandit Config C · Security Scan</p>
+  <h1>Bandit Config C · blitzy-odoo</h1>
   <div class="accent-bar"></div>
   <p>Python static-analysis baseline for the Odoo 19 codebase — one of N tool configs in a multi-config comparison.</p>
   <p class="deck-meta">Scan root · repository root &nbsp;|&nbsp; Tool · Bandit 1.9.4 &nbsp;|&nbsp; Audience · Leadership</p>
@@ -507,7 +511,7 @@ sequenceDiagram
     Bandit->>SARIF: write SARIF 2.1.0
     Bandit-->>Shell: exit code (0 / 1 / 2)
     Shell->>Shell: time.monotonic delta
-    Shell->>TF: transform_sarif.py
+    Shell->>TF: inline Python transformer (stdlib only)
     TF->>SARIF: load JSON
     TF->>TF: map level, resolve CWE, normalize path, truncate
     TF->>Out: write minified single-line JSON
@@ -657,12 +661,12 @@ sequenceDiagram
   <ul>
     <li><strong>No taint analysis</strong> — Bandit is an AST pattern matcher; it does not follow data flow across functions or files.</li>
     <li><strong>Default ruleset bias</strong> — test fixtures dominate hotspots; triage is intentionally out of scope for this baseline.</li>
-    <li><strong>SARIF formatter dependency</strong> — install required <span class="mono">[sarif]</span> extras; a runtime monkey-patch works around an upstream <span class="mono">IndexError</span>.</li>
+    <li><strong>SARIF formatter dependency</strong> — install requires the <span class="mono">[sarif]</span> extras; in Bandit 1.9.x the formatter is bundled in core, so the legacy standalone PyPI package is dormant (see decision-log.md Decision 15).</li>
   </ul>
   <div class="icon-row">
     <span class="icon-chip"><i data-lucide="git-compare"></i> Compare with taint-tracking SAST</span>
     <span class="icon-chip"><i data-lucide="filter"></i> Triage in a separate pass</span>
-    <span class="icon-chip"><i data-lucide="bug"></i> Upstream issue tracked</span>
+    <span class="icon-chip"><i data-lucide="package-check"></i> Formatter shipped in core</span>
   </div>
   <div class="brand-lockup">Blitzy · Config C</div>
 </section>
@@ -673,10 +677,10 @@ sequenceDiagram
   <h2>Re-run this scan in four steps</h2>
   <div class="accent-bar"></div>
   <ul>
-    <li>Install: <span class="mono">pip3 install 'bandit[sarif]'</span>.</li>
-    <li>Save the SARIF wrapper and transformer scripts referenced in <span class="mono">decision-log.md</span>.</li>
-    <li>From the repository root: <span class="mono">python3 bandit_sarif_wrapper.py -q -r . -f sarif -o results-bandit.sarif</span>.</li>
-    <li>Then: <span class="mono">python3 transform_sarif.py results-bandit.sarif findings-config-c.json $(pwd)</span>.</li>
+    <li>Install: <span class="mono">pip3 install 'bandit[sarif]'</span> (PEP&nbsp;668 host: add <span class="mono">--break-system-packages</span>).</li>
+    <li>From the repository root, run the bash recipe in <span class="mono">decision-log.md</span> &mdash; it captures the three metrics and invokes <span class="mono">bandit -r . -f sarif -o results-bandit.sarif</span>.</li>
+    <li>Continue with the inline Python transformer heredoc in the same recipe; it emits <span class="mono">findings-config-c.json</span> directly (no external scripts).</li>
+    <li>Validate with <span class="mono">wc -l &lt; findings-config-c.json</span> = 1 and <span class="mono">python3 -c "import json; json.load(open('findings-config-c.json'))"</span>.</li>
   </ul>
   <div class="icon-row">
     <span class="icon-chip"><i data-lucide="terminal-square"></i> 90 s on stock hardware</span>
@@ -703,9 +707,21 @@ sequenceDiagram
 </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"
+        integrity="sha384-M/JtqCVlLcK9lwVnBnMXP0V577CBULkjodKsR/PITOe4MSKNbbwqCemEyluOw0+5"
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+        defer></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"
+        integrity="sha384-Wm9qzEgq4j1jEnuFK2FxKTlwuhbV2QqtGhcchvjDoKxeJ7WWAW7fysBq+1s6myfX"
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+        defer></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"
+        integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge"
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+        defer></script>
 <script>
 // Wait for the Google Fonts (Inter, Space Grotesk, Fira Code) to finish loading
 // before initializing Mermaid — otherwise Mermaid measures label widths against

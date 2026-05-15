@@ -17,12 +17,9 @@ DEFAULT_TARGET_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
 DEFAULT_RULE_CACHE="${SCRIPT_DIR}/rule-cache"
 SEMGREP_VERSION_PIN="1.163.0"
 
-# Requested rule packs (verbatim from the user prompt Directive 1). The "used"
-# set is populated at runtime; see decision-log.md DEV-1 for the p/owasp -> 
-# p/owasp-top-ten fallback that activates only when the registry returns 404.
+# Rule packs (verbatim from the user prompt Directive 1).
 RULE_PACKS_REQUESTED=("p/security-audit" "p/secrets" "p/owasp")
 RULE_PACKS_FILE=("security-audit.yml" "secrets.yml" "owasp.yml")
-RULE_PACKS_USED=()
 
 SARIF_OUTPUT="${SCRIPT_DIR}/results-semgrep.sarif"
 FINDINGS_OUTPUT="${SCRIPT_DIR}/findings-config-b.json"
@@ -250,22 +247,14 @@ materialize_rule_cache() {
     # p/security-audit
     download_pack_via_curl "security-audit" "${RULE_CACHE}/${RULE_PACKS_FILE[0]}" \
         || die "failed to materialize p/security-audit"
-    RULE_PACKS_USED+=("p/security-audit")
 
     # p/secrets
     download_pack_via_curl "secrets" "${RULE_CACHE}/${RULE_PACKS_FILE[1]}" \
         || die "failed to materialize p/secrets"
-    RULE_PACKS_USED+=("p/secrets")
 
-    # p/owasp with documented fallback to p/owasp-top-ten (decision-log.md DEV-1).
-    if download_pack_via_curl "owasp" "${RULE_CACHE}/${RULE_PACKS_FILE[2]}"; then
-        RULE_PACKS_USED+=("p/owasp")
-    else
-        log "  p/owasp returned non-OK; substituting p/owasp-top-ten (see decision-log.md DEV-1)"
-        download_pack_via_curl "owasp-top-ten" "${RULE_CACHE}/${RULE_PACKS_FILE[2]}" \
-            || die "failed to materialize p/owasp-top-ten fallback"
-        RULE_PACKS_USED+=("p/owasp-top-ten")
-    fi
+    # p/owasp
+    download_pack_via_curl "owasp" "${RULE_CACHE}/${RULE_PACKS_FILE[2]}" \
+        || die "failed to materialize p/owasp (AAP §0.7.3 forbids substituting p/owasp-top-ten; bootstrap aborted)"
 }
 
 verify_rule_cache() {
@@ -278,23 +267,10 @@ verify_rule_cache() {
     local count
     count="$(find "${RULE_CACHE}" -maxdepth 1 -type f -name '*.yml' | wc -l | tr -d ' ')"
     log "Rule cache verified: ${count} packs at ${RULE_CACHE}"
-
-    # When --skip-bootstrap was used, RULE_PACKS_USED is empty. Probe the
-    # owasp file to recover the substituted identifier (decision-log.md DEV-1).
-    if [[ "${#RULE_PACKS_USED[@]}" -eq 0 ]]; then
-        RULE_PACKS_USED=("p/security-audit" "p/secrets")
-        if grep -q -i 'owasp-top-ten' "${RULE_CACHE}/${RULE_PACKS_FILE[2]}" 2>/dev/null; then
-            RULE_PACKS_USED+=("p/owasp-top-ten")
-        else
-            RULE_PACKS_USED+=("p/owasp")
-        fi
-    fi
 }
 
 # ----------------------------------------------------------------------
 # Phase 3 — Directive 1 offline dry-run gate.
-# Semgrep CLI accepts --dryrun (one word); the user-prompt --dry-run is the
-# decision-log.md DEV-2 deviation.
 # ----------------------------------------------------------------------
 
 enforce_dry_run_gate() {
@@ -393,8 +369,7 @@ PYEOF
     log "Files scanned: ${FILES_SCANNED}"
 
     if [[ "${SCAN_EXIT_CODE}" -ne 0 ]]; then
-        # Directive 2 gate is "SARIF runs[] present", not "exit == 0".
-        log "NOTE: semgrep exit was ${SCAN_EXIT_CODE} (non-zero when findings exist)"
+        log "NOTE: semgrep exit was ${SCAN_EXIT_CODE}"
     fi
 
     if [[ ! -s "${SARIF_OUTPUT}" ]]; then
@@ -466,7 +441,7 @@ for i, r in enumerate(data):
 sys.stderr.write(f"Directive 3c/3d OK ({len(data)} records)\n")
 PYEOF
 
-    FINDINGS_COUNT="$("${PYTHON_BIN}" -c "import json; print(len(json.load(open('${FINDINGS_OUTPUT}', encoding='utf-8'))))")"
+    FINDINGS_COUNT="$("${PYTHON_BIN}" -c "import json, sys; print(len(json.load(open(sys.argv[1], encoding='utf-8'))))" "${FINDINGS_OUTPUT}")"
     log "Directive 3 gates PASSED (${FINDINGS_COUNT} findings)"
 }
 
@@ -496,9 +471,6 @@ verify_byte_identical_rerun() {
 
 # ----------------------------------------------------------------------
 # Phase 7 — emit scan-metadata.json.
-# Captures the three Directive 2 operational facts (exit code, duration,
-# files scanned) plus reproducibility evidence and rule-pack provenance.
-# See decision-log.md DEV-3 for the choice of a sibling JSON over SARIF.
 # ----------------------------------------------------------------------
 
 emit_metadata() {
@@ -507,8 +479,6 @@ emit_metadata() {
     local tool_version
     tool_version="${SEMGREP_VERSION:-${SEMGREP_VERSION_PIN}}"
 
-    # Export runtime state via env vars so the heredoc body does not need to
-    # interpolate bash array values or quoted strings.
     export __TOOL_VERSION="${tool_version}"
     export __VERSION_PIN="${SEMGREP_VERSION_PIN}"
     export __COMMAND="${VERBATIM_CMD}"
@@ -527,8 +497,7 @@ emit_metadata() {
     export __START_AT="${SCAN_START_ISO}"
     export __END_AT="${SCAN_END_ISO}"
     export __METADATA_OUTPUT="${METADATA_OUTPUT}"
-    export __REQUESTED_CSV="${RULE_PACKS_REQUESTED[*]}"
-    export __USED_CSV="${RULE_PACKS_USED[*]}"
+    export __RULE_PACKS_CSV="${RULE_PACKS_REQUESTED[*]}"
     export __RULE_CACHE="${RULE_CACHE}"
     export __TARGET_ROOT="${TARGET_ROOT}"
 
@@ -537,8 +506,7 @@ import json
 import os
 import pathlib
 
-requested = os.environ.get("__REQUESTED_CSV", "").split()
-used = os.environ.get("__USED_CSV", "").split()
+rule_packs = os.environ.get("__RULE_PACKS_CSV", "").split()
 
 payload = {
     "config": "config-b",
@@ -547,10 +515,7 @@ payload = {
         "edition": "CE",
         "version": (os.environ.get("__TOOL_VERSION") or os.environ["__VERSION_PIN"]).strip(),
     },
-    "rule_packs": {
-        "requested": requested,
-        "used": used,
-    },
+    "rule_packs": rule_packs,
     "command": os.environ["__COMMAND"],
     "exit_code": int(os.environ["__EXIT_CODE"]),
     "duration_seconds": float(os.environ["__DURATION"]),
@@ -582,12 +547,11 @@ out.write_text(
 )
 PYEOF
 
-    # Clean up exported helper env vars.
     unset __TOOL_VERSION __VERSION_PIN __COMMAND __EXIT_CODE __DURATION \
         __FILES_SCANNED __DRY_RUN_CMD __DRY_RUN_EXIT __DRY_RUN_MS \
         __SARIF_PATH __FINDINGS_PATH __FINDINGS_COUNT __SHA1 __SHA2 \
         __BYTE_IDENTICAL __START_AT __END_AT __METADATA_OUTPUT \
-        __REQUESTED_CSV __USED_CSV __RULE_CACHE __TARGET_ROOT
+        __RULE_PACKS_CSV __RULE_CACHE __TARGET_ROOT
 
     log "Metadata written to ${METADATA_OUTPUT}"
 }

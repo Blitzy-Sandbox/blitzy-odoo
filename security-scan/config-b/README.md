@@ -132,7 +132,7 @@ The harness enforces every gate below. Each is verified inside `run-scan.sh`; th
 | `.venv/` | `run-scan.sh` | Isolated Python environment with `semgrep==1.163.0`. |
 | `rule-cache/security-audit.yml` | `run-scan.sh` bootstrap | Local materialization of registry pack `p/security-audit`. |
 | `rule-cache/secrets.yml` | `run-scan.sh` bootstrap | Local materialization of registry pack `p/secrets`. |
-| `rule-cache/owasp.yml` | `run-scan.sh` bootstrap | Local materialization of registry pack `p/owasp` (resolved via `p/owasp-top-ten`; see `decision-log.md` DEV-1). |
+| `rule-cache/owasp.yml` | `run-scan.sh` bootstrap | Local materialization of registry pack `p/owasp`. If the registry cannot serve `p/owasp`, the harness aborts per AAP §0.7.3 rather than substituting another pack. |
 | `results-semgrep.sarif` | `semgrep scan` | Raw SARIF v2.1.0 output (intermediate). |
 | `scan-metadata.json` | `run-scan.sh` | Operational record: exit code, wall-clock duration, files scanned, etc. |
 
@@ -148,10 +148,7 @@ Example shape:
 {
   "config": "config-b",
   "tool": {"name": "semgrep", "edition": "CE", "version": "1.163.0"},
-  "rule_packs": {
-    "requested": ["p/security-audit", "p/secrets", "p/owasp"],
-    "used":      ["p/security-audit", "p/secrets", "p/owasp-top-ten"]
-  },
+  "rule_packs": ["p/security-audit", "p/secrets", "p/owasp"],
   "command": "semgrep scan --config=<rule-cache> --sarif -o results-semgrep.sarif --metrics=off <repo-root>",
   "exit_code": 0,
   "duration_seconds": 123.45,
@@ -174,7 +171,7 @@ Example shape:
 
 Field notes:
 
-- `rule_packs.requested` records the verbatim identifiers from Directive 1; `rule_packs.used` records what was actually downloaded (the two lists differ only when the registry resolves a substitution; see `decision-log.md` DEV-1).
+- `rule_packs` is a flat array of the verbatim identifiers from Directive 1 (`p/security-audit`, `p/secrets`, `p/owasp`). AAP §0.7.3 forbids substitution, so the harness aborts on registry failure rather than rewriting this list.
 - `dry_run_gate.network_calls_observed: false` is the Directive 1 evidence.
 - `reproducibility.byte_identical: true` confirms that re-running the normalizer against the same SARIF produces the same `findings-config-b.json` byte-for-byte.
 
@@ -198,5 +195,5 @@ Field notes:
 
 ## Related deliverables
 
-- **`decision-log.md`** — Single source of truth for "why" decisions in Config B. Required reading before modifying any harness behavior. Contains the decision table, the bidirectional SARIF → findings traceability matrix, and the enumerated deviations (DEV-1 through DEV-6) from a literal reading of the user prompt.
+- **`decision-log.md`** — Single source of truth for "why" decisions in Config B. Required reading before modifying any harness behavior. Contains the decision table, the bidirectional SARIF → findings traceability matrix, and the enumerated deviations from a literal reading of the user prompt (DEV-2 through DEV-8; DEV-1 is RETIRED but the identifier is preserved for historical cross-references).
 - **`executive-summary.html`** — Non-technical leadership-facing reveal.js deck. Open in any modern browser; no build steps and no local file dependencies.

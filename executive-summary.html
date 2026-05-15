@@ -659,9 +659,9 @@ sequenceDiagram
   <h2>What Bandit cannot tell you alone</h2>
   <div class="accent-bar"></div>
   <ul>
-    <li><strong>No taint analysis</strong> — Bandit is an AST pattern matcher; it does not follow data flow across functions or files.</li>
-    <li><strong>Default ruleset bias</strong> — test fixtures dominate hotspots; triage is intentionally out of scope for this baseline.</li>
-    <li><strong>SARIF formatter dependency</strong> — install requires the <span class="mono">[sarif]</span> extras; in Bandit 1.9.x the formatter is bundled in core, so the legacy standalone PyPI package is dormant (see decision-log.md Decision 15).</li>
+    <li><strong>No taint analysis</strong> — AST patterns only; no cross-function data flow.</li>
+    <li><strong>Default ruleset bias</strong> — test fixtures dominate hotspots; triage is out of scope.</li>
+    <li><strong>SARIF formatter</strong> — bundled in Bandit 1.9.x core; install via <span class="mono">[sarif]</span> extras (Decision 15).</li>
   </ul>
   <div class="icon-row">
     <span class="icon-chip"><i data-lucide="git-compare"></i> Compare with taint-tracking SAST</span>
@@ -677,10 +677,10 @@ sequenceDiagram
   <h2>Re-run this scan in four steps</h2>
   <div class="accent-bar"></div>
   <ul>
-    <li>Install: <span class="mono">pip3 install 'bandit[sarif]'</span> (PEP&nbsp;668 host: add <span class="mono">--break-system-packages</span>).</li>
-    <li>From the repository root, run the bash recipe in <span class="mono">decision-log.md</span> &mdash; it captures the three metrics and invokes <span class="mono">bandit -r . -f sarif -o results-bandit.sarif</span>.</li>
-    <li>Continue with the inline Python transformer heredoc in the same recipe; it emits <span class="mono">findings-config-c.json</span> directly (no external scripts).</li>
-    <li>Validate with <span class="mono">wc -l &lt; findings-config-c.json</span> = 1 and <span class="mono">python3 -c "import json; json.load(open('findings-config-c.json'))"</span>.</li>
+    <li>Install: <span class="mono">pip3 install 'bandit[sarif]'</span>.</li>
+    <li>Run the bash recipe in <span class="mono">decision-log.md</span> — it captures metrics and invokes Bandit.</li>
+    <li>Continue with the inline Python transformer; it emits <span class="mono">findings-config-c.json</span>.</li>
+    <li>Validate: <span class="mono">wc -l &lt; findings-config-c.json</span> = 1 and <span class="mono">json.load()</span> succeeds.</li>
   </ul>
   <div class="icon-row">
     <span class="icon-chip"><i data-lucide="terminal-square"></i> 90 s on stock hardware</span>

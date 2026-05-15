@@ -1,162 +1,202 @@
-# Config B — Semgrep CE Static Analysis Harness
+# Config B — Semgrep CE Static-Analysis Harness
 
-This directory holds **Config B** of a multi-configuration security tool
-comparison run against the `blitzy-odoo` repository. It produces a single
-deliverable file, `findings-config-b.json`, that contains a minified, single-line,
-UTF-8 JSON array of normalized findings. Nothing in the `blitzy-odoo` source tree
-is modified by this harness — the scan is read-only.
-
-> Sibling configurations of the comparison (Config A, Config C, …) live in
-> `security-scan/config-a/`, `security-scan/config-c/`, etc., and do not share
-> any state with this directory.
+Read-only static analysis of `blitzy-odoo` using Semgrep Community Edition with three cached registry rule packs, producing a five-field minified JSON findings export.
 
 ---
 
-## 1. Prerequisites
+## Purpose
 
-| Requirement | Version | Notes |
-| --- | --- | --- |
-| Operating system | Linux or macOS (POSIX) | Bash assumed. |
-| Python | 3.10 or later | Required by Semgrep CE 1.163.0 (supports 3.10–3.14). |
-| `bash` | Any POSIX-compliant Bash | `run-scan.sh` uses `set -euo pipefail`. |
-| Network access | One-time during bootstrap | Required only to download Semgrep from PyPI and the three rule packs from the Semgrep Registry. After `rule-cache/` is populated, subsequent runs are offline. |
-| Disk space | ~500 MB | For the Semgrep wheel, its transitive dependencies in `.venv/`, the rule cache, and intermediate scan artifacts. |
+This folder is **Config B** of the multi-configuration security tool comparison. It scans the `blitzy-odoo` codebase (everything under the repository root) using Semgrep CE with three named registry rule packs cached locally — `p/security-audit`, `p/secrets`, and `p/owasp` — and produces a single deliverable `findings-config-b.json` in the format mandated by the user prompt (minified, single-line, UTF-8 JSON array; exactly five fields per record; severity in `{critical,high,medium,low}`; description ≤200 characters; `[]` for zero findings). The harness is offline-by-default after a one-time bootstrap, telemetry-free (`--metrics=off`), and produces byte-identical reruns. **No file outside `security-scan/config-b/` is modified.**
 
-The harness installs Semgrep into an isolated virtual environment under
-`security-scan/config-b/.venv/` so it never touches the project's root
-`requirements.txt` or the Odoo runtime environment.
+Sibling configurations of the comparison (Config A, Config C, …) live in `security-scan/config-a/`, `security-scan/config-c/`, etc., and do not share any state with this directory.
 
 ---
 
-## 2. Quickstart
+## Prerequisites
 
-From the repository root:
+- **Python 3.10 or later** (Semgrep CE requires it). Verify: `python3 --version`.
+- **POSIX shell** (Bash). Verify: `bash --version`.
+- **Network access** during the one-time bootstrap phase (rule-pack download). Subsequent runs are offline.
+- **About 200 MB of free disk space** for the `.venv/` and `rule-cache/` directories.
+
+The harness installs Semgrep into an isolated virtual environment under `security-scan/config-b/.venv/` so it never touches the project's root `requirements.txt` or the Odoo runtime environment.
+
+---
+
+## Quickstart
 
 ```bash
-bash security-scan/config-b/run-scan.sh
+# From the repository root:
+./security-scan/config-b/run-scan.sh
+
+# The harness will:
+#   1. Create security-scan/config-b/.venv/ and install semgrep==1.163.0.
+#   2. Materialize the three rule packs into security-scan/config-b/rule-cache/.
+#   3. Run the Directive 1 offline dry-run gate.
+#   4. Execute the Directive 2 SARIF scan.
+#   5. Capture exit code, wall-clock duration, and total files scanned into scan-metadata.json.
+#   6. Normalize SARIF to the five-field array in findings-config-b.json.
+#   7. Verify every Directive 3 pass/fail gate.
+
+# Re-running offline once the cache is populated:
+./security-scan/config-b/run-scan.sh --skip-bootstrap
+
+# Re-running with a system-installed Semgrep:
+./security-scan/config-b/run-scan.sh --use-system-semgrep
+
+# Scanning a different target root:
+./security-scan/config-b/run-scan.sh --target-root /path/to/another-checkout
 ```
 
-The script performs the following steps and aborts on the first failure:
-
-1. **Bootstrap.** Creates `.venv/` and installs `semgrep==1.163.0`.
-2. **Rule cache materialization.** Downloads `p/security-audit`, `p/secrets`, and
-   `p/owasp` from the Semgrep Registry into `rule-cache/` as YAML.
-3. **Offline dry-run gate (Directive 1 pass/fail).** Runs
-   `semgrep scan --metrics=off --config=security-scan/config-b/rule-cache --dry-run`
-   and asserts exit 0.
-4. **SARIF scan (Directive 2).** Runs the verbatim user-supplied command and
-   records exit code, wall-clock duration, and the total number of files
-   scanned into `scan-metadata.json`.
-5. **Normalize (Directive 3).** Runs `normalize-findings.py` against the SARIF
-   to emit `findings-config-b.json`.
-6. **Validate gates.** Asserts the deliverable is a single line, valid JSON,
-   has the closed 5-field schema, and contains no description exceeding 200
-   characters.
-7. **Reproducibility check.** Re-runs the normalizer and confirms a
-   byte-identical output (recorded under `scan-metadata.reproducibility`).
-
-### 2.1 Optional flags
+### Optional flags
 
 | Flag | Default | Purpose |
 | --- | --- | --- |
-| `--target-root <path>` | `$(git rev-parse --show-toplevel)` | Override the scanned repo root. |
+| `--target-root <path>` | `$(git rev-parse --show-toplevel)` | Override the scanned repository root. |
 | `--rule-cache <path>` | `security-scan/config-b/rule-cache` | Override the local rule cache directory. |
-| `--use-system-semgrep` | off | Skip the venv installation and use the `semgrep` already on `$PATH` (must be CE 1.163.0 for byte-identical output). |
+| `--use-system-semgrep` | off | Skip the `.venv/` install and use the `semgrep` already on `$PATH` (must be CE 1.163.0 for byte-identical output). |
 | `--skip-bootstrap` | off | Assume the rule cache is already populated (fully offline rerun). |
+| `-h`, `--help` | — | Show usage and exit. |
 
 ---
 
-## 3. Verbatim user command (Directive 2)
-
-The SARIF-generating invocation is preserved character-for-character from the
-user prompt. The two `/path/to/...` placeholders are resolved at runtime by
-`run-scan.sh` and printed to stderr before execution so the operator can
-verify wire-level fidelity:
+## The exact scan command (preserved verbatim from the user prompt, Directive 2)
 
 ```bash
 semgrep scan --config=/path/to/local-rules --sarif -o results-semgrep.sarif --metrics=off /path/to/blitzy-odoo
 ```
 
-`/path/to/local-rules` resolves to the absolute path of `rule-cache/` and
-`/path/to/blitzy-odoo` resolves to the absolute path of the repository root.
+In Config B, the two `/path/to/...` placeholders resolve to:
+
+- `/path/to/local-rules` → `security-scan/config-b/rule-cache` (the local materialization of `p/security-audit`, `p/secrets`, and `p/owasp`).
+- `/path/to/blitzy-odoo` → the absolute path of the repository root (auto-detected as `$(git rev-parse --show-toplevel)` by `run-scan.sh`, overridable with `--target-root`).
+
+No other flags are added or removed. `run-scan.sh` echoes the resolved command to stderr before executing it so an operator can independently verify wire-level fidelity.
 
 ---
 
-## 4. Output schema (Directive 3)
+## Output schema (`findings-config-b.json`)
 
-The deliverable `findings-config-b.json` is a JSON array of objects, each
-object having exactly five fields in this key order:
+The deliverable is a **minified, single-line, UTF-8 JSON array**. Each finding is exactly five fields. For zero findings, the file content is the two bytes `[]`.
 
 ```plaintext
 [{"file":"<relative path>","line":<integer>,"severity":"<critical|high|medium|low>","cwe":"<CWE-ID>","description":"<max 200 chars>"},...]
 ```
 
-Field mapping:
+| Field | Source | Notes |
+| --- | --- | --- |
+| `file` | SARIF `result.locations[0].physicalLocation.artifactLocation.uri` | Relative path emitted by Semgrep. |
+| `line` | SARIF `result.locations[0].physicalLocation.region.startLine` | Integer. |
+| `severity` | SARIF `result.level` mapped via `error→critical, warning→high, note→medium, info→low` | Falls back through rule `defaultConfiguration.level` and rule `properties.severity` to `"medium"`; see `decision-log.md` DEV-6 for fallback rationale. |
+| `cwe` | Rule `properties.cwe` (first if list); else `infer_cwe(message)`; else `"CWE-Unknown"` | Normalized to `CWE-<n>`. See `decision-log.md` DEV-5. |
+| `description` | SARIF `result.message.text` | Truncated to 200 Unicode characters (no ellipsis). |
 
-| Field | Source |
+---
+
+## Pass/fail gates
+
+The harness enforces every gate below. Each is verified inside `run-scan.sh`; the run aborts on the first failure with a non-zero exit code.
+
+| Gate | Verification command (executed inside `run-scan.sh`) |
 | --- | --- |
-| `file` | SARIF location (relative path), i.e. `result.locations[0].physicalLocation.artifactLocation.uri`. |
-| `line` | SARIF region start line, coerced to integer. |
-| `severity` | Mapping table `error→critical, warning→high, note→medium, info→low`. |
-| `cwe` | Rule metadata CWE ID. If absent, the most specific CWE inferable from the rule description (table-driven). Otherwise `CWE-Unknown` (see `decision-log.md`). |
-| `description` | SARIF message text, truncated to 200 characters. |
-
-When zero findings are produced, the file is the literal two-byte content `[]`.
+| Directive 1 — offline operation | `semgrep scan --metrics=off --config=security-scan/config-b/rule-cache --dryrun <empty-target>` exits 0 with no network calls. (The CLI flag is `--dryrun` rather than the user-prompt-literal `--dry-run`; see `decision-log.md` DEV-2.) |
+| Directive 2 — SARIF emission | `python -c "import json,sys; d=json.load(open('results-semgrep.sarif')); assert isinstance(d.get('runs'), list)"` exits 0. |
+| Directive 3a — single line | `tr -dc '\n' < findings-config-b.json \| wc -c` returns `0` (no newline bytes anywhere). For the empty-result baseline `wc -c < findings-config-b.json` returns `2` (the file is exactly the two bytes `[]`). This is the AAP-aligned formulation of the user-prompt-literal `wc -l == 1` gate; see `decision-log.md` DEV-3. |
+| Directive 3b — valid JSON | `python -m json.tool < findings-config-b.json > /dev/null` exits 0. |
+| Directive 3c — five fields | `python -c "import json; data=json.load(open('findings-config-b.json')); assert all(set(r)=={'file','line','severity','cwe','description'} for r in data)"` exits 0. |
+| Directive 3d — description ≤200 chars | `python -c "import json; data=json.load(open('findings-config-b.json')); assert all(len(r['description'])<=200 for r in data)"` exits 0. |
+| Explainability rule | `decision-log.md` has decision table, traceability matrix, deviations section. |
+| Executive Presentation rule | `executive-summary.html` is self-contained, has 12–18 `<section>` elements, every section carries ≥1 non-text visual, CDNs pinned to exact versions (reveal.js 5.1.0, Mermaid 11.4.0, Lucide 0.460.0). |
 
 ---
 
-## 5. Pass/fail gates
+## File inventory
 
-| Gate | Source | Verification |
+### Static (committed to version control)
+
+| File | Purpose |
+| --- | --- |
+| `README.md` | This file. Operator entry point. |
+| `requirements.txt` | Pinned harness dependency: `semgrep==1.163.0`. |
+| `run-scan.sh` | Orchestration entrypoint; performs install → cache → dry-run gate → SARIF scan → normalize → verify. |
+| `normalize-findings.py` | SARIF → five-field JSON normalizer (Python 3.10+ stdlib only). |
+| `findings-config-b.json` | **THE deliverable.** Minified single-line UTF-8 JSON array of normalized findings. |
+| `decision-log.md` | Explainability rule deliverable: decision table, traceability matrix, deviations log. |
+| `executive-summary.html` | Executive Presentation rule deliverable: single self-contained reveal.js deck. |
+| `.gitignore` | Excludes regenerable runtime outputs from version control. |
+
+### Runtime-generated (in `.gitignore`)
+
+| File | Generator | Purpose |
 | --- | --- | --- |
-| Directive 1 — offline operation | User prompt | Inside `run-scan.sh`: `semgrep scan --metrics=off --config=security-scan/config-b/rule-cache --dry-run` exits 0 with no network calls. |
-| Directive 2 — SARIF emission | User prompt | `python -c "import json; d=json.load(open('results-semgrep.sarif')); assert isinstance(d.get('runs'), list)"`. |
-| Directive 3a — single line | User prompt + AAP §0.1.2.3, §0.5.4.2, §0.6.2.1 | The file contains zero newline bytes (no embedded, no trailing): `[ "$(tr -dc '\n' < findings-config-b.json \| wc -c)" = "0" ]`. For an empty result set, the file is exactly the two bytes `[]`: `[ "$(wc -c < findings-config-b.json)" = "2" ]` when the payload is `[]`. See `decision-log.md` DEV-3 for the resolution of the AAP-vs-user-prompt tension around `wc -l`. |
-| Directive 3b — valid JSON | User prompt | `python -m json.tool < findings-config-b.json > /dev/null`. |
-| Directive 3c — five fields | User prompt | All objects have exactly `{file, line, severity, cwe, description}`. |
-| Directive 3d — description ≤ 200 chars | User prompt | All `description` strings have `len(...) <= 200`. |
-| Explainability rule | User rule | `decision-log.md` exists with decision table, traceability matrix, and deviations log. |
-| Executive Presentation rule | User rule | `executive-summary.html` opens in any modern browser, contains 12–18 `<section>` elements, and uses the pinned CDN versions. |
+| `.venv/` | `run-scan.sh` | Isolated Python environment with `semgrep==1.163.0`. |
+| `rule-cache/security-audit.yml` | `run-scan.sh` bootstrap | Local materialization of registry pack `p/security-audit`. |
+| `rule-cache/secrets.yml` | `run-scan.sh` bootstrap | Local materialization of registry pack `p/secrets`. |
+| `rule-cache/owasp.yml` | `run-scan.sh` bootstrap | Local materialization of registry pack `p/owasp` (resolved via `p/owasp-top-ten`; see `decision-log.md` DEV-1). |
+| `results-semgrep.sarif` | `semgrep scan` | Raw SARIF v2.1.0 output (intermediate). |
+| `scan-metadata.json` | `run-scan.sh` | Operational record: exit code, wall-clock duration, files scanned, etc. |
 
 ---
 
-## 6. Outputs produced
+## Operational metadata (`scan-metadata.json`)
 
-| File | Tracked in git? | Description |
+`run-scan.sh` writes this sibling JSON file to capture the three operational facts Directive 2 requires (exit code, wall-clock duration, total files scanned) without modifying the SARIF body.
+
+Example shape:
+
+```
+{
+  "config": "config-b",
+  "tool": {"name": "semgrep", "edition": "CE", "version": "1.163.0"},
+  "rule_packs": {
+    "requested": ["p/security-audit", "p/secrets", "p/owasp"],
+    "used":      ["p/security-audit", "p/secrets", "p/owasp-top-ten"]
+  },
+  "command": "semgrep scan --config=<rule-cache> --sarif -o results-semgrep.sarif --metrics=off <repo-root>",
+  "exit_code": 0,
+  "duration_seconds": 123.45,
+  "files_scanned": 12345,
+  "dry_run_gate": {"command": "...", "exit_code": 0, "duration_ms": 0, "network_calls_observed": false},
+  "output": {
+    "sarif_path": "results-semgrep.sarif",
+    "findings_path": "findings-config-b.json",
+    "findings_count": 0
+  },
+  "reproducibility": {
+    "normalize_output_sha256": "<hex>",
+    "second_run_sha256": "<hex>",
+    "byte_identical": true
+  },
+  "run_started_at": "2025-01-01T00:00:00Z",
+  "run_ended_at":   "2025-01-01T00:02:03Z"
+}
+```
+
+Field notes:
+
+- `rule_packs.requested` records the verbatim identifiers from Directive 1; `rule_packs.used` records what was actually downloaded (the two lists differ only when the registry resolves a substitution; see `decision-log.md` DEV-1).
+- `dry_run_gate.network_calls_observed: false` is the Directive 1 evidence.
+- `reproducibility.byte_identical: true` confirms that re-running the normalizer against the same SARIF produces the same `findings-config-b.json` byte-for-byte.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Resolution |
 | --- | --- | --- |
-| `findings-config-b.json` | yes | **THE deliverable.** Minified, single-line JSON array. |
-| `results-semgrep.sarif` | no (gitignored) | Intermediate SARIF v2.1.0 emitted by Semgrep. |
-| `scan-metadata.json` | no (gitignored) | Operational record: exit code, duration, files scanned, Semgrep version, rule-pack list, reproducibility evidence. |
-| `decision-log.md` | yes | Explainability rule deliverable. |
-| `executive-summary.html` | yes | Executive Presentation rule deliverable. |
-| `rule-cache/*.yml` | no (gitignored) | Locally materialized registry rule packs. |
-| `.venv/` | no (gitignored) | Isolated Python environment. |
+| `pip install semgrep==1.163.0` fails with "no matching distribution" | Python < 3.10 or unsupported platform | Verify `python3 --version` is 3.10 or later; on macOS use Homebrew Python; on Windows use WSL. |
+| Bootstrap fails downloading a rule pack | One-time network access to `semgrep.dev` blocked, or registry transient error | Re-run without `--skip-bootstrap`; ensure outbound HTTPS to `semgrep.dev` during bootstrap. Once successful, future runs can pass `--skip-bootstrap`. |
+| Dry-run gate exits non-zero with "config not found" | `rule-cache/` is empty or partial | Re-run without `--skip-bootstrap` to repopulate the cache. |
+| Main scan exits non-zero with "syntax error" | Semgrep parser error on a malformed file | Check stderr for the offending file; the scan continues past parse errors but logs them. |
+| `wc -l < findings-config-b.json` returns `0` | File has no trailing newline (Config B convention) | This is **expected**; see `decision-log.md` DEV-3. The "single line" gate is enforced semantically (no embedded newlines), not by trailing-LF count. The gate command in `run-scan.sh` uses `tr -dc '\n' \| wc -c == 0`. |
+| Findings file shows `"CWE-Unknown"` for some records | Rule metadata omits CWE AND no keyword inference matched | This is the documented fallback (see `decision-log.md` DEV-5). The rule ID is logged to stderr each time so operators can audit. |
+| Findings file shows `"severity": "medium"` for some records | SARIF result-level + rule-level severity both absent | Last-resort fallback (see `decision-log.md` DEV-6). |
+| Wheel install fails on Python 3.14+ | Semgrep CE 1.163.0 supports up to 3.14 only | If you are on a newer Python, install Python 3.13 alongside and re-invoke the harness with `PYTHON=python3.13 ./run-scan.sh`. |
+| `semgrep: command not found` after install | `.venv/` not activated in the current shell | The script auto-activates `.venv/`. If you skipped that, source it manually: `source security-scan/config-b/.venv/bin/activate`. |
 
 ---
 
-## 7. Troubleshooting
+## Related deliverables
 
-- **`semgrep: command not found` after install.** The script auto-activates
-  `.venv/`. If you skipped that, source it manually:
-  `source security-scan/config-b/.venv/bin/activate`.
-- **Rule pack download fails.** The bootstrap phase requires network access.
-  Once successful, future runs can pass `--skip-bootstrap`.
-- **Dry-run gate fails with network calls.** Re-run with `--metrics=off`
-  already on the command; if it still fails, inspect the rule cache for empty
-  or malformed YAML and rerun bootstrap.
-- **Wheel install fails on Python 3.14+.** Semgrep CE 1.163.0 supports up to
-  3.14; if you are on a newer Python, install Python 3.13 alongside and
-  re-invoke the harness with `PYTHON=python3.13 bash run-scan.sh`.
-
----
-
-## 8. Repository state assumptions
-
-The harness assumes it is invoked from inside a checkout of `blitzy-odoo`
-that has not been modified. Adding, removing, or modifying files between the
-scan and a re-scan will (legitimately) change the SARIF contents and therefore
-the deliverable; that is expected and is not a reproducibility violation.
-
-For a deeper account of design decisions, alternatives considered, and any
-deviations from a literal reading of the user prompt, see
-[`decision-log.md`](./decision-log.md).
+- **`decision-log.md`** — Single source of truth for "why" decisions in Config B. Required reading before modifying any harness behavior. Contains the decision table, the bidirectional SARIF → findings traceability matrix, and the enumerated deviations (DEV-1 through DEV-6) from a literal reading of the user prompt.
+- **`executive-summary.html`** — Non-technical leadership-facing reveal.js deck. Open in any modern browser; no build steps and no local file dependencies.

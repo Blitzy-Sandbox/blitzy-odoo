@@ -1,0 +1,1211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>blitzy-odoo · Config F · OSV-Scanner Findings</title>
+
+  <!-- Google Fonts: Inter (body), Space Grotesk (display), Fira Code (mono) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- reveal.js 5.1.0 from jsDelivr (rule-pinned) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css" id="reveal-theme" />
+
+  <!--
+    BLITZY THEME — inlined verbatim.
+    Source: decision-log.md decision 17 — the canonical theme file
+    blitzy-deck/references/blitzy-reveal-theme.css does NOT exist in this
+    repository, so the required :root token block and slide-type classes are
+    embedded directly to keep the deck single self-contained.
+    KEEP IN SYNC WITH blitzy-deck/references/blitzy-reveal-theme.css IF/WHEN INTRODUCED.
+  -->
+  <style>
+    :root {
+      /* Brand palette */
+      --c-primary: #5B39F3;
+      --c-primary-dark: #2D1C77;
+      --c-primary-deep: #1A105F;
+      --c-primary-bright: #4101DB;
+      --c-primary-soft: #7A6DEC;
+      --c-accent-teal: #94FAD5;
+      --c-neutral-900: #333333;
+      --c-neutral-600: #999999;
+      --c-neutral-300: #D9D9D9;
+      --c-neutral-200: #F4EFF6;
+      --c-neutral-100: #F5F5F5;
+      --c-neutral-000: #FFFFFF;
+      --c-mermaid-fill: #F2F0FE;
+
+      /* Typography */
+      --ff-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      --ff-display: 'Space Grotesk', 'Inter', sans-serif;
+      --ff-mono: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+      --fs-eyebrow: 18px;
+      --fs-body: 24px;
+      --fs-h3: 36px;
+      --fs-h2: 56px;
+      --fs-h1: 88px;
+      --fs-hero: 112px;
+
+      /* Spacing */
+      --sp-1: 8px;
+      --sp-2: 16px;
+      --sp-3: 24px;
+      --sp-4: 32px;
+      --sp-5: 48px;
+      --sp-6: 64px;
+      --sp-7: 96px;
+
+      /* Hero gradient */
+      --grad-hero: linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
+    }
+
+    /* Reveal.js base overrides */
+    html, body { background: var(--c-neutral-000); color: var(--c-neutral-900); }
+    .reveal { font-family: var(--ff-body); font-size: var(--fs-body); color: var(--c-neutral-900); }
+    .reveal .slides { text-align: left; }
+    .reveal .slides section {
+      padding: var(--sp-6) var(--sp-7);
+      box-sizing: border-box;
+      width: 1920px; height: 1080px;
+      display: flex; flex-direction: column; justify-content: flex-start;
+    }
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: var(--ff-display);
+      letter-spacing: -0.01em;
+      color: var(--c-neutral-900);
+      margin: 0 0 var(--sp-3) 0;
+      text-transform: none;
+    }
+    .reveal h1 { font-size: var(--fs-h1); line-height: 1.05; font-weight: 700; }
+    .reveal h2 { font-size: var(--fs-h2); line-height: 1.1; font-weight: 700; }
+    .reveal h3 { font-size: var(--fs-h3); line-height: 1.2; font-weight: 600; }
+    .reveal p, .reveal li { font-size: var(--fs-body); line-height: 1.45; color: var(--c-neutral-900); }
+    .reveal ul, .reveal ol { padding-left: var(--sp-4); margin: 0; }
+    .reveal ul li { margin-bottom: var(--sp-2); }
+    .reveal code { font-family: var(--ff-mono); font-size: 0.85em; background: var(--c-neutral-200); padding: 2px 8px; border-radius: 4px; color: var(--c-primary); }
+    .reveal a { color: var(--c-primary); text-decoration: none; border-bottom: 2px solid var(--c-accent-teal); }
+
+    /* Eyebrow — small Fira Code label above headings */
+    .eyebrow {
+      font-family: var(--ff-mono);
+      font-size: var(--fs-eyebrow);
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--c-primary);
+      margin: 0 0 var(--sp-2) 0;
+    }
+    .slide-title .eyebrow, .slide-divider .eyebrow, .slide-closing .eyebrow {
+      color: var(--c-accent-teal);
+    }
+
+    /* Accent bar — short horizontal mark in accent teal */
+    .accent-bar {
+      display: block;
+      width: 88px;
+      height: 6px;
+      background: var(--c-accent-teal);
+      border-radius: 999px;
+      margin: 0 0 var(--sp-3) 0;
+    }
+    .slide-title .accent-bar, .slide-divider .accent-bar, .slide-closing .accent-bar { background: var(--c-accent-teal); }
+
+    /* Title slide */
+    .slide-title {
+      background: var(--grad-hero) !important;
+      color: var(--c-neutral-000) !important;
+      justify-content: center !important;
+    }
+    .slide-title h1, .slide-title p { color: var(--c-neutral-000); }
+    .slide-title h1 { font-size: var(--fs-hero); font-weight: 700; line-height: 1.0; }
+    .slide-title .meta {
+      margin-top: var(--sp-5);
+      display: flex; gap: var(--sp-6);
+      font-family: var(--ff-mono);
+      font-size: 22px;
+      color: rgba(255,255,255,0.85);
+    }
+    .slide-title .meta b { color: var(--c-accent-teal); font-weight: 500; }
+    .hero-icon {
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      width: 96px; height: 96px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 20px;
+      margin-bottom: var(--sp-4);
+    }
+    .hero-icon i { width: 56px; height: 56px; color: var(--c-accent-teal); }
+
+    /* Section divider */
+    .slide-divider {
+      background: var(--c-primary-dark) !important;
+      color: var(--c-neutral-000) !important;
+      justify-content: center !important; align-items: flex-start;
+    }
+    .slide-divider h1, .slide-divider h2 { color: var(--c-neutral-000); }
+    .slide-divider .divider-icon {
+      display: inline-flex;
+      width: 120px; height: 120px;
+      align-items: center; justify-content: center;
+      background: rgba(148,250,213,0.15);
+      border: 2px solid var(--c-accent-teal);
+      border-radius: 28px;
+      margin-bottom: var(--sp-4);
+    }
+    .slide-divider .divider-icon i { width: 72px; height: 72px; color: var(--c-accent-teal); }
+
+    /* Closing slide */
+    .slide-closing {
+      background: var(--c-primary-deep) !important;
+      color: var(--c-neutral-000) !important;
+      justify-content: center !important;
+    }
+    .slide-closing h1, .slide-closing h2, .slide-closing p, .slide-closing li { color: var(--c-neutral-000); }
+    .slide-closing .accent-bar { background: var(--c-accent-teal); }
+    .brand-lockup {
+      margin-top: var(--sp-6);
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      padding: var(--sp-2) var(--sp-3);
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      font-family: var(--ff-mono);
+      font-size: 18px;
+      color: rgba(255,255,255,0.95);
+      letter-spacing: 0.04em;
+    }
+    .brand-lockup .lockup-dot { width: 10px; height: 10px; background: var(--c-accent-teal); border-radius: 50%; }
+
+    /* KPI cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--sp-3);
+      margin-top: var(--sp-4);
+    }
+    .kpi-card {
+      background: var(--c-neutral-200);
+      border: 2px solid transparent;
+      border-radius: 16px;
+      padding: var(--sp-4);
+      display: flex; flex-direction: column; gap: var(--sp-2);
+      position: relative;
+      transition: transform 120ms ease;
+    }
+    .kpi-card.severity-critical { border-color: var(--c-primary-bright); background: linear-gradient(180deg, #FFF 0%, #F5EEFF 100%); }
+    .kpi-card.severity-high { border-color: var(--c-primary); background: linear-gradient(180deg, #FFF 0%, #F2F0FE 100%); }
+    .kpi-card.severity-medium { border-color: var(--c-primary-soft); }
+    .kpi-card.severity-low { border-color: var(--c-neutral-300); }
+    .kpi-card.accent { border-color: var(--c-accent-teal); background: linear-gradient(180deg, #FFFFFF 0%, #E9FFF5 100%); }
+    .kpi-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 56px; height: 56px;
+      background: var(--c-neutral-000);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(91,57,243,0.08);
+    }
+    .kpi-icon i { width: 32px; height: 32px; color: var(--c-primary); }
+    .severity-critical .kpi-icon i { color: var(--c-primary-bright); }
+    .severity-high .kpi-icon i { color: var(--c-primary); }
+    .severity-medium .kpi-icon i { color: var(--c-primary-soft); }
+    .severity-low .kpi-icon i { color: var(--c-neutral-600); }
+    .kpi-value {
+      font-family: var(--ff-display);
+      font-size: 72px; font-weight: 700;
+      line-height: 1.0;
+      color: var(--c-primary-dark);
+      letter-spacing: -0.02em;
+    }
+    .severity-critical .kpi-value { color: var(--c-primary-bright); }
+    .severity-low .kpi-value { color: var(--c-neutral-900); }
+    .kpi-label {
+      font-family: var(--ff-mono);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--c-neutral-600);
+    }
+    .kpi-sub {
+      font-size: 16px;
+      color: var(--c-neutral-900);
+      opacity: 0.7;
+    }
+
+    /* Icon row — Lucide bullets */
+    .icon-row {
+      display: flex; flex-wrap: wrap; gap: var(--sp-3);
+      margin-top: var(--sp-3);
+    }
+    .icon-row .item {
+      display: flex; align-items: center; gap: var(--sp-2);
+      padding: var(--sp-2) var(--sp-3);
+      background: var(--c-neutral-100);
+      border-radius: 999px;
+      border: 1px solid var(--c-neutral-300);
+      font-family: var(--ff-mono);
+      font-size: 16px;
+    }
+    .icon-row .item i { width: 20px; height: 20px; color: var(--c-primary); }
+
+    /* Lucide icons baseline */
+    [data-lucide] { stroke-width: 2px; color: var(--c-primary); }
+
+    /* Mermaid container styling */
+    .mermaid-wrap {
+      background: var(--c-neutral-100);
+      border-radius: 16px;
+      padding: var(--sp-4);
+      margin-top: var(--sp-3);
+      border: 1px solid var(--c-neutral-300);
+      overflow: hidden;
+    }
+    .reveal .mermaid {
+      text-align: center;
+      font-size: 18px;
+      display: flex;
+      justify-content: center;
+    }
+    .reveal .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+
+    /* Custom HTML/CSS pipeline diagram (used on the architecture slide to
+       sidestep Mermaid font-loading race conditions; see decision-log.md). */
+    .pipeline-diagram {
+      display: grid;
+      grid-template-columns: 1fr 40px 1fr 40px 1fr 40px 1fr;
+      align-items: stretch;
+      gap: 0;
+      margin-top: var(--sp-3);
+    }
+    .stage-card {
+      background: var(--c-neutral-100);
+      border: 2px solid var(--c-primary);
+      border-radius: 16px;
+      padding: var(--sp-3) var(--sp-3);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      box-shadow: 0 4px 16px rgba(91, 57, 243, 0.06);
+    }
+    .stage-card.stage-bootstrap { background: linear-gradient(180deg, #FFFFFF 0%, #F2F0FE 100%); }
+    .stage-card.stage-scan { background: var(--c-primary); border-color: var(--c-primary-dark); color: #FFFFFF; }
+    .stage-card.stage-scan h3, .stage-card.stage-scan p { color: #FFFFFF; }
+    .stage-card.stage-scan .stage-pill { background: rgba(255,255,255,0.18); color: var(--c-accent-teal); }
+    .stage-card.stage-scan .stage-icon { background: rgba(255,255,255,0.12); }
+    .stage-card.stage-scan .stage-icon i { color: var(--c-accent-teal); }
+    .stage-card.stage-scan .stage-check { color: var(--c-accent-teal); }
+    .stage-card.stage-scan code { background: rgba(0,0,0,0.18); color: var(--c-accent-teal); }
+    .stage-card.stage-normalize { background: linear-gradient(180deg, #FFFFFF 0%, #E9FFF5 100%); border-color: #2EB88A; }
+    .stage-card.stage-deliver {
+      background: var(--c-primary-deep);
+      border-color: var(--c-accent-teal);
+      color: #FFFFFF;
+    }
+    .stage-card.stage-deliver h3, .stage-card.stage-deliver p { color: #FFFFFF; }
+    .stage-card.stage-deliver .stage-pill { background: rgba(148,250,213,0.18); color: var(--c-accent-teal); }
+    .stage-card.stage-deliver .stage-icon { background: rgba(255,255,255,0.10); }
+    .stage-card.stage-deliver .stage-icon i { color: var(--c-accent-teal); }
+    .stage-card.stage-deliver .stage-check { color: var(--c-accent-teal); }
+    .stage-pill {
+      display: inline-block;
+      align-self: flex-start;
+      padding: 4px 12px;
+      background: var(--c-neutral-200);
+      color: var(--c-primary);
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      border-radius: 999px;
+    }
+    .stage-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 56px; height: 56px;
+      background: var(--c-neutral-000);
+      border-radius: 14px;
+      align-self: flex-start;
+    }
+    .stage-icon i { width: 32px; height: 32px; color: var(--c-primary); }
+    .stage-card h3 {
+      font-family: var(--ff-display);
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0;
+      color: var(--c-primary-dark);
+    }
+    .stage-card p {
+      font-size: 16px;
+      margin: 0;
+      line-height: 1.4;
+      color: var(--c-neutral-900);
+    }
+    .stage-check {
+      margin-top: auto;
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: var(--c-primary);
+      padding-top: 8px;
+      border-top: 1px dashed var(--c-neutral-300);
+    }
+    .stage-card code {
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      background: var(--c-neutral-200);
+      color: var(--c-primary);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+    .stage-arrow {
+      display: flex; align-items: center; justify-content: center;
+    }
+    .stage-arrow i { width: 36px; height: 36px; color: var(--c-primary); stroke-width: 2.5px; }
+
+    /* Data flow row (architecture slide secondary visual) */
+    .dataflow-row {
+      display: grid;
+      grid-template-columns: 1fr 32px 1fr 32px 1fr 32px 1fr 32px 1fr;
+      align-items: center;
+      gap: 0;
+      margin-top: var(--sp-3);
+      background: var(--c-neutral-100);
+      border-radius: 16px;
+      padding: var(--sp-3);
+      border: 1px solid var(--c-neutral-300);
+    }
+    .dataflow-row > div {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+    }
+    .dataflow-row > div > i { width: 32px; height: 32px; flex-shrink: 0; }
+    .dataflow-row .df-label {
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-neutral-600);
+      margin-bottom: 4px;
+    }
+    .dataflow-row .df-value {
+      font-family: var(--ff-mono);
+      font-size: 14px;
+      color: var(--c-neutral-900);
+      line-height: 1.3;
+    }
+    .df-source { background: var(--c-neutral-200); border: 1px solid var(--c-primary); }
+    .df-source i { color: var(--c-primary); }
+    .df-pipe { background: var(--c-primary); color: #fff !important; }
+    .df-pipe i { color: var(--c-accent-teal); }
+    .df-pipe .df-label { color: var(--c-accent-teal); }
+    .df-pipe .df-value { color: #fff; }
+    .df-stage { background: #fff; border: 1px solid var(--c-neutral-300); }
+    .df-stage i { color: var(--c-neutral-600); }
+    .df-norm { background: #E9FFF5; border: 1px solid #2EB88A; }
+    .df-norm i { color: #2EB88A; }
+    .df-out { background: var(--c-primary-deep); }
+    .df-out i { color: var(--c-accent-teal); }
+    .df-out .df-label { color: var(--c-accent-teal); }
+    .df-out .df-value { color: #fff; }
+    .df-arrow {
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 !important;
+    }
+    .df-arrow i { width: 24px; height: 24px; color: var(--c-primary); }
+
+    /* Styled table */
+    table.findings {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: var(--sp-3);
+      font-size: 22px;
+    }
+    table.findings th, table.findings td {
+      padding: var(--sp-2) var(--sp-3);
+      text-align: left;
+      border-bottom: 1px solid var(--c-neutral-300);
+    }
+    table.findings thead th {
+      font-family: var(--ff-mono);
+      font-size: 16px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-primary);
+      background: var(--c-neutral-200);
+      border-bottom: 2px solid var(--c-primary);
+    }
+    table.findings tbody tr:hover { background: var(--c-neutral-200); }
+    table.findings .pkg { font-family: var(--ff-mono); }
+    table.findings .num { text-align: right; font-family: var(--ff-mono); font-weight: 500; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-family: var(--ff-mono);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .pill.critical { background: #FFE6F0; color: var(--c-primary-bright); }
+    .pill.high { background: #EEE7FE; color: var(--c-primary); }
+    .pill.medium { background: var(--c-neutral-200); color: var(--c-primary-soft); }
+    .pill.low { background: var(--c-neutral-100); color: var(--c-neutral-600); border: 1px solid var(--c-neutral-300); }
+
+    /* Content slide layout helpers */
+    .slide-head {
+      display: flex; align-items: flex-end; gap: var(--sp-3);
+      margin-bottom: var(--sp-4);
+    }
+    .slide-head .head-icon {
+      display: inline-flex; width: 64px; height: 64px;
+      background: var(--c-primary);
+      border-radius: 14px;
+      align-items: center; justify-content: center;
+    }
+    .slide-head .head-icon i { width: 36px; height: 36px; color: #fff; }
+    .columns-2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5);
+      align-items: start;
+    }
+    .columns-2.heavy-right { grid-template-columns: 0.85fr 1.15fr; }
+    .panel {
+      background: var(--c-neutral-100);
+      border-radius: 16px;
+      padding: var(--sp-3) var(--sp-4);
+      border: 1px solid var(--c-neutral-300);
+    }
+    .panel h3 {
+      font-size: 26px;
+      margin-bottom: var(--sp-2);
+      color: var(--c-primary-dark);
+    }
+    .panel ul li { margin-bottom: 10px; }
+    .panel.accent { border-color: var(--c-accent-teal); background: #F5FFFA; }
+    .panel.attention { border-color: var(--c-primary); background: #F8F4FF; }
+    .footnote {
+      position: absolute;
+      bottom: 24px; left: 96px;
+      font-family: var(--ff-mono);
+      font-size: 14px;
+      color: var(--c-neutral-600);
+      letter-spacing: 0.05em;
+    }
+    .reveal .slides section .slide-number { font-family: var(--ff-mono); }
+
+    /* Reveal controls / progress styled to brand */
+    .reveal .controls { color: var(--c-primary) !important; }
+    .reveal .progress { color: var(--c-primary) !important; height: 4px !important; }
+
+    /* Reduce overshoot of large headers */
+    .reveal h1, .reveal h2 { hyphens: none; }
+  </style>
+</head>
+<body>
+
+<div class="reveal">
+  <div class="slides">
+
+    <!-- ============================ SLIDE 1: TITLE ============================ -->
+    <section class="slide-title">
+      <div>
+        <div class="hero-icon"><i data-lucide="shield-check"></i></div>
+        <p class="eyebrow">Config F · OSV-Scanner</p>
+        <h1>Dependency-vulnerability evidence for blitzy-odoo.</h1>
+        <span class="accent-bar"></span>
+        <p style="max-width: 1200px; font-size: 28px; line-height: 1.4;">
+          A single normalized findings file produced by Google's OSV-Scanner against the repository's two
+          Python lockfiles — drop-in input for the multi-configuration security comparison.
+        </p>
+        <div class="meta">
+          <div><b>Scanner</b><br/>OSV-Scanner v2.3.8</div>
+          <div><b>Lockfiles</b><br/>2 in scope</div>
+          <div><b>Wall-clock</b><br/>5.176 s</div>
+          <div><b>Findings</b><br/>177 normalized</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 2: HEADLINE KPI ============================ -->
+    <section>
+      <div class="slide-head">
+        <div class="head-icon"><i data-lucide="bar-chart-3"></i></div>
+        <div>
+          <p class="eyebrow">Headline result</p>
+          <h2>177 findings · 5 critical · 51 high.</h2>
+        </div>
+      </div>
+      <span class="accent-bar"></span>
+      <p style="max-width:1500px;">
+        OSV-Scanner extracted <b>105 packages</b> from two lockfiles, queried OSV.dev, and produced
+        177 vulnerability records. Severity is bucketed by base CVSS score
+        (V4 &gt; V3 &gt; V2 priority, absent &rarr; <code>low</code>).
+      </p>
+
+      <div class="kpi-grid">
+        <div class="kpi-card accent">
+          <div class="kpi-icon"><i data-lucide="list-checks"></i></div>
+          <div class="kpi-value">177</div>
+          <div class="kpi-label">Total findings</div>
+          <div class="kpi-sub">Across both lockfiles</div>
+        </div>
+        <div class="kpi-card severity-critical">
+          <div class="kpi-icon"><i data-lucide="alert-octagon"></i></div>
+          <div class="kpi-value">5</div>
+          <div class="kpi-label">Critical (&ge;9.0)</div>
+          <div class="kpi-sub">Immediate action class</div>
+        </div>
+        <div class="kpi-card severity-high">
+          <div class="kpi-icon"><i data-lucide="triangle-alert"></i></div>
+          <div class="kpi-value">51</div>
+          <div class="kpi-label">High (7.0&ndash;8.9)</div>
+          <div class="kpi-sub">Schedule remediation</div>
+        </div>
+        <div class="kpi-card severity-medium">
+          <div class="kpi-icon"><i data-lucide="alert-circle"></i></div>
+          <div class="kpi-value">86</div>
+          <div class="kpi-label">Medium (4.0&ndash;6.9)</div>
+          <div class="kpi-sub">Plan + monitor</div>
+        </div>
+      </div>
+
+      <div class="kpi-grid" style="margin-top: var(--sp-3);">
+        <div class="kpi-card severity-low">
+          <div class="kpi-icon"><i data-lucide="info"></i></div>
+          <div class="kpi-value">35</div>
+          <div class="kpi-label">Low &amp; unscored</div>
+          <div class="kpi-sub">Includes 26 records with no CVSS vector</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="file-text"></i></div>
+          <div class="kpi-value">2</div>
+          <div class="kpi-label">Lockfiles scanned</div>
+          <div class="kpi-sub">Root + IoT (recursive)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="timer"></i></div>
+          <div class="kpi-value">5.2&thinsp;s</div>
+          <div class="kpi-label">Wall-clock</div>
+          <div class="kpi-sub">Online OSV.dev queries</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="package"></i></div>
+          <div class="kpi-value">105</div>
+          <div class="kpi-label">Packages extracted</div>
+          <div class="kpi-sub">97 root + 8 IoT</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 3: ARCHITECTURE ============================ -->
+    <section>
+      <div class="slide-head">
+        <div class="head-icon"><i data-lucide="workflow"></i></div>
+        <div>
+          <p class="eyebrow">How it works</p>
+          <h2>Three-stage deterministic pipeline.</h2>
+        </div>
+      </div>
+      <span class="accent-bar"></span>
+      <p style="max-width: 1600px;">
+        Install &rarr; scan &rarr; normalize. Each stage has a pass/fail criterion drawn verbatim from
+        the user directive. Output is one minified UTF-8 file, schema-identical across every configuration.
+      </p>
+
+      <!-- Architecture: custom HTML/CSS pipeline diagram with Mermaid as the
+           formal data-flow visual below. Custom diagram is used to avoid the
+           Mermaid foreignObject text-clipping race that occurs when Inter
+           web-font loads after the diagram has computed node widths
+           (see decision-log.md). -->
+      <div class="pipeline-diagram">
+        <div class="stage-card stage-bootstrap">
+          <div class="stage-pill">1 / Bootstrap</div>
+          <div class="stage-icon"><i data-lucide="download"></i></div>
+          <h3>Install</h3>
+          <p>osv-scanner v2.3.8 binary on PATH</p>
+          <div class="stage-check">D1 pass: <code>--version</code></div>
+        </div>
+        <div class="stage-arrow"><i data-lucide="arrow-right"></i></div>
+        <div class="stage-card stage-scan">
+          <div class="stage-pill">2 / Scan</div>
+          <div class="stage-icon"><i data-lucide="scan-search"></i></div>
+          <h3>Scan</h3>
+          <p>-r --format json --output results-osv.json</p>
+          <div class="stage-check">D2 pass: JSON produced</div>
+        </div>
+        <div class="stage-arrow"><i data-lucide="arrow-right"></i></div>
+        <div class="stage-card stage-normalize">
+          <div class="stage-pill">3 / Normalize</div>
+          <div class="stage-icon"><i data-lucide="settings-2"></i></div>
+          <h3>Normalize</h3>
+          <p>Apply 5-field mapping, emit UTF-8</p>
+          <div class="stage-check">D3 pass: <code>wc -l == 1</code></div>
+        </div>
+        <div class="stage-arrow"><i data-lucide="arrow-right"></i></div>
+        <div class="stage-card stage-deliver">
+          <div class="stage-pill">Deliverable</div>
+          <div class="stage-icon"><i data-lucide="file-check-2"></i></div>
+          <h3>Output</h3>
+          <p>findings-config-f.json &middot; 177 findings</p>
+          <div class="stage-check">single-line minified UTF-8</div>
+        </div>
+      </div>
+      <div class="dataflow-row">
+        <div class="df-source">
+          <i data-lucide="file-code-2"></i>
+          <div>
+            <div class="df-label">Inputs</div>
+            <div class="df-value">2 lockfiles<br/>105 packages</div>
+          </div>
+        </div>
+        <div class="df-arrow"><i data-lucide="arrow-right"></i></div>
+        <div class="df-pipe">
+          <i data-lucide="cloud"></i>
+          <div>
+            <div class="df-label">Query</div>
+            <div class="df-value">OSV.dev API<br/>online mode</div>
+          </div>
+        </div>
+        <div class="df-arrow"><i data-lucide="arrow-right"></i></div>
+        <div class="df-stage">
+          <i data-lucide="braces"></i>
+          <div>
+            <div class="df-label">Raw evidence</div>
+            <div class="df-value">results-osv.json<br/>1.4 MB, 177 vulns</div>
+          </div>
+        </div>
+        <div class="df-arrow"><i data-lucide="arrow-right"></i></div>
+        <div class="df-norm">
+          <i data-lucide="settings"></i>
+          <div>
+            <div class="df-label">Normalizer</div>
+            <div class="df-value">Python stdlib + cvss<br/>field mapping</div>
+          </div>
+        </div>
+        <div class="df-arrow"><i data-lucide="arrow-right"></i></div>
+        <div class="df-out">
+          <i data-lucide="badge-check"></i>
+          <div>
+            <div class="df-label">Deliverable</div>
+            <div class="df-value">findings-config-f.json<br/>177 rows, 32 KB</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 4: DIVIDER — Scope ============================ -->
+    <section class="slide-divider">
+      <div>
+        <div class="divider-icon"><i data-lucide="crosshair"></i></div>
+        <p class="eyebrow">Section 1 of 6</p>
+        <h1>Scope.</h1>
+        <span class="accent-bar"></span>
+        <p style="max-width: 1200px; font-size: 32px; color: rgba(255,255,255,0.85);">
+          What we scanned, what we did not, and why those boundaries matter.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 5: CONTENT — Scope detail ============================ -->
+    <section>
+      <div class="slide-head">
+        <div class="head-icon"><i data-lucide="folder-search"></i></div>
+        <div>
+          <p class="eyebrow">In-scope lockfiles</p>
+          <h2>Two Python files. Zero other ecosystems.</h2>
+        </div>
+      </div>
+      <span class="accent-bar"></span>
+
+      <div class="columns-2 heavy-right">
+        <div class="panel">
+          <h3>In scope <i data-lucide="check-circle-2" style="width:22px;height:22px;color:var(--c-accent-teal);vertical-align:middle"></i></h3>
+          <ul>
+            <li><code>requirements.txt</code> (99 lines, root)</li>
+            <li><code>addons/iot_box_image/configuration/requirements.txt</code> (20 lines, IoT)</li>
+            <li>Native OSV.dev queries online</li>
+            <li>Default transitive resolution on</li>
+          </ul>
+        </div>
+        <div class="panel attention">
+          <h3>Out of scope <i data-lucide="x-circle" style="width:22px;height:22px;color:var(--c-primary);vertical-align:middle"></i></h3>
+          <ul>
+            <li>Odoo source code (<code>odoo/**</code>, 607 addons)</li>
+            <li>npm, Maven, Go, Cargo, Composer, Bundler &mdash; none present</li>
+            <li>Container / SBOM / call-graph scanning</li>
+            <li>Remediation, package upgrades, CI wiring</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="icon-row" style="margin-top: var(--sp-4);">
+        <div class="item"><i data-lucide="git-branch"></i> isolated change</div>
+        <div class="item"><i data-lucide="file-plus"></i> additive only</div>
+        <div class="item"><i data-lucide="eye"></i> read-only against source</div>
+        <div class="item"><i data-lucide="shield"></i> no remediation</div>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 6: DIVIDER — Pipeline ============================ -->
+    <section class="slide-divider">
+      <div>
+        <div class="divider-icon"><i data-lucide="terminal"></i></div>
+        <p class="eyebrow">Section 2 of 6</p>
+        <h1>Pipeline.</h1>
+        <span class="accent-bar"></span>
+        <p style="max-width: 1200px; font-size: 32px; color: rgba(255,255,255,0.85);">
+          The three deterministic commands behind the deliverable.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 7: CONTENT — Stage 1 install ============================ -->
+    <section>
+      <div class="slide-head">
+        <div class="head-icon"><i data-lucide="download"></i></div>
+        <div>
+          <p class="eyebrow">Stage 1 of 3</p>
+          <h2>Install OSV-Scanner v2.3.8.</h2>
+        </div>
+      </div>
+      <span class="accent-bar"></span>
+      <p style="max-width:1600px;">
+        Prebuilt Linux/amd64 binary fetched from GitHub Releases, placed on <code>PATH</code>.
+        Go-build and <code>apt</code> paths are valid alternatives that this run did not require.
+      </p>
+
+      <div class="columns-2">
+        <div class="panel accent">
+          <h3>Path chosen <i data-lucide="check" style="width:22px;height:22px;color:var(--c-primary);vertical-align:middle"></i></h3>
+          <ul>
+            <li>Prebuilt binary (~58 MB)</li>
+            <li>Verified by <code>osv-scanner --version</code></li>
+            <li>Reports <code>version: 2.3.8</code></li>
+            <li>Backward-compatible JSON contract (V2 line)</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Alternatives considered</h3>
+          <ul>
+            <li><code>go install</code> requires Go 1.26.2+ (not installed)</li>
+            <li><code>apt install osv-scanner</code> not in Ubuntu 25.10 repos</li>
+            <li>Offline DB (<code>--experimental-local-db-path</code>) skipped &mdash; network OK</li>
+            <li>Pin: <code>v2.3.8</code> (latest in V2 line at run time)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="icon-row">
+        <div class="item"><i data-lucide="git-commit"></i> commit 408fcd6f</div>
+        <div class="item"><i data-lucide="hash"></i> v2.3.8</div>
+        <div class="item"><i data-lucide="check-circle"></i> D1 PASS</div>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 8: CONTENT — Stage 2 scan ============================ -->
+    <section>
+      <div class="slide-head">
+        <div class="head-icon"><i data-lucide="scan-search"></i></div>
+        <div>
+          <p class="eyebrow">Stage 2 of 3</p>
+          <h2>Scan blitzy-odoo recursively.</h2>
+        </div>
+      </div>
+      <span class="accent-bar"></span>
+      <p style="max-width:1600px;">
+        One command, one minute under, two lockfile sources, 177 raw records. Exit code 1 is the documented
+        OSV-Scanner convention for "vulnerabilities present" &mdash; not a process failure.
+      </p>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="files"></i></div>
+          <div class="kpi-value">2</div>
+          <div class="kpi-label">Lockfile sources</div>
+          <div class="kpi-sub">Both in-scope files covered</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="boxes"></i></div>
+          <div class="kpi-value">105</div>
+          <div class="kpi-label">Packages extracted</div>
+          <div class="kpi-sub">PyPI ecosystem</div>
+        </div>
+        <div class="kpi-card severity-high">
+          <div class="kpi-icon"><i data-lucide="bug"></i></div>
+          <div class="kpi-value">177</div>
+          <div class="kpi-label">Vulnerabilities</div>
+          <div class="kpi-sub">Raw OSV records</div>
+        </div>
+        <div class="kpi-card accent">
+          <div class="kpi-icon"><i data-lucide="zap"></i></div>
+          <div class="kpi-value">5.2&thinsp;s</div>
+          <div class="kpi-label">Wall-clock</div>
+          <div class="kpi-sub">Online API queries</div>
+        </div>
+      </div>
+
+      <p style="margin-top: var(--sp-3); font-family: var(--ff-mono); color: var(--c-primary-dark); font-size: 18px;">
+        <i data-lucide="terminal-square" style="width:18px;height:18px;vertical-align:middle;"></i>
+        &nbsp;<code>osv-scanner -r --format json --output results-osv.json &lt;repo&gt;</code>
+      </p>
+    </section>
+
+    <!-- ============================ SLIDE 9: CONTENT — Stage 3 normalize ============================ -->
+    <section>
+      <div class="slide-head">
+        <div class="head-icon"><i data-lucide="settings-2"></i></div>
+        <div>
+          <p class="eyebrow">Stage 3 of 3</p>
+          <h2>Normalize to the comparison schema.</h2>
+        </div>
+      </div>
+      <span class="accent-bar"></span>
+
+      <div class="columns-2">
+        <div class="panel">
+          <h3>Field mapping</h3>
+          <table class="findings" style="font-size: 18px;">
+            <thead><tr><th>Field</th><th>Source</th></tr></thead>
+            <tbody>
+              <tr><td><code>file</code></td><td>Relativized <code>source.path</code></td></tr>
+              <tr><td><code>line</code></td><td>Always <code>0</code> (integer)</td></tr>
+              <tr><td><code>severity</code></td><td>Bucketed CVSS V4 &gt; V3 &gt; V2</td></tr>
+              <tr><td><code>cwe</code></td><td>CWE &rarr; CVE &rarr; vuln id</td></tr>
+              <tr><td><code>description</code></td><td>summary&rarr;details, &le;200 chars</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel accent">
+          <h3>Output guarantees</h3>
+          <ul>
+            <li>Minified single-line UTF-8 JSON</li>
+            <li>Exactly the 5 keys, no extras</li>
+            <li>Severity &isin; <code>{critical, high, medium, low}</code></li>
+            <li><code>wc -l findings-config-f.json</code> &rarr; <b>1</b></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="icon-row">
+        <div class="item"><i data-lucide="file-json"></i> 32&thinsp;079 bytes</div>
+        <div class="item"><i data-lucide="check-circle"></i> D3 PASS &times; 4</div>
+        <div class="item"><i data-lucide="languages"></i> UTF-8 code-points</div>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 10: DIVIDER — Risk posture ============================ -->
+    <section class="slide-divider">
+      <div>
+        <div class="divider-icon"><i data-lucide="shield-alert"></i></div>
+        <p class="eyebrow">Section 3 of 6</p>
+        <h1>Risk posture.</h1>
+        <span class="accent-bar"></span>
+        <p style="max-width: 1200px; font-size: 32px; color: rgba(255,255,255,0.85);">
+          Where the critical and high findings concentrate.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 11: CONTENT — Top packages ============================ -->
+    <section>
+      <div class="slide-head">
+        <div class="head-icon"><i data-lucide="trending-up"></i></div>
+        <div>
+          <p class="eyebrow">Concentration</p>
+          <h2>Top 6 vulnerable packages drive 65% of findings.</h2>
+        </div>
+      </div>
+      <span class="accent-bar"></span>
+      <p style="max-width:1500px;">
+        Older pinned versions of <code>pypdf</code>, <code>werkzeug</code>, <code>cryptography</code>,
+        and <code>pillow</code> account for the majority of raw OSV records. None are fixed in this run.
+      </p>
+
+      <table class="findings">
+        <thead>
+          <tr>
+            <th>Package</th>
+            <th>Pinned version</th>
+            <th class="num">Vulnerabilities</th>
+            <th>Lockfile</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="pkg">pypdf</td><td class="pkg">5.4.0</td><td class="num"><span class="pill high">22</span></td><td><code>requirements.txt</code></td></tr>
+          <tr><td class="pkg">werkzeug</td><td class="pkg">2.0.2 / 2.2.2 / 3.0.1 / 3.1.3</td><td class="num"><span class="pill high">31</span></td><td><code>requirements.txt</code></td></tr>
+          <tr><td class="pkg">cryptography</td><td class="pkg">3.4.8 / 42.0.8</td><td class="num"><span class="pill high">12</span></td><td><code>requirements.txt</code></td></tr>
+          <tr><td class="pkg">pillow</td><td class="pkg">9.0.1 / 9.4.0 / 9.5.0</td><td class="num"><span class="pill medium">26</span></td><td><code>requirements.txt</code></td></tr>
+          <tr><td class="pkg">urllib3</td><td class="pkg">1.26.5</td><td class="num"><span class="pill medium">10</span></td><td><code>requirements.txt</code></td></tr>
+          <tr><td class="pkg">requests</td><td class="pkg">2.9.2 / 2.25.1</td><td class="num"><span class="pill low">10</span></td><td><code>requirements.txt</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================ SLIDE 12: CONTENT — Severity breakdown ============================ -->
+    <section>
+      <div class="slide-head">
+        <div class="head-icon"><i data-lucide="pie-chart"></i></div>
+        <div>
+          <p class="eyebrow">Severity distribution</p>
+          <h2>Where the 177 findings land.</h2>
+        </div>
+      </div>
+      <span class="accent-bar"></span>
+
+      <div class="columns-2 heavy-right">
+        <div class="panel">
+          <h3>Buckets <i data-lucide="layers" style="width:22px;height:22px;color:var(--c-primary);vertical-align:middle"></i></h3>
+          <ul>
+            <li><span class="pill critical">critical</span> &nbsp; &ge; 9.0 base CVSS</li>
+            <li><span class="pill high">high</span> &nbsp; 7.0 &ndash; 8.9</li>
+            <li><span class="pill medium">medium</span> &nbsp; 4.0 &ndash; 6.9</li>
+            <li><span class="pill low">low</span> &nbsp; &lt; 4.0 or no vector</li>
+          </ul>
+        </div>
+        <div class="mermaid-wrap" style="margin-top: 0;">
+<pre class="mermaid">
+pie showData
+    title Severity buckets
+    "critical" : 5
+    "high" : 51
+    "medium" : 86
+    "low" : 35
+</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 13: DIVIDER — Mitigations ============================ -->
+    <section class="slide-divider">
+      <div>
+        <div class="divider-icon"><i data-lucide="life-buoy"></i></div>
+        <p class="eyebrow">Section 4 of 6</p>
+        <h1>Mitigations.</h1>
+        <span class="accent-bar"></span>
+        <p style="max-width: 1200px; font-size: 32px; color: rgba(255,255,255,0.85);">
+          What this configuration controls and what it knowingly defers.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 14: CONTENT — Mitigations + risks ============================ -->
+    <section>
+      <div class="slide-head">
+        <div class="head-icon"><i data-lucide="anchor"></i></div>
+        <div>
+          <p class="eyebrow">Risk &amp; mitigation</p>
+          <h2>Known limits, deliberate choices.</h2>
+        </div>
+      </div>
+      <span class="accent-bar"></span>
+
+      <div class="columns-2">
+        <div class="panel">
+          <h3>Controlled <i data-lucide="check" style="width:22px;height:22px;color:var(--c-accent-teal);vertical-align:middle"></i></h3>
+          <ul>
+            <li>Scanner version pinned (v2.3.8)</li>
+            <li>Output schema deterministic and validated</li>
+            <li>UTF-8 safe truncation by Unicode code-points</li>
+            <li>CVSS computed by canonical library</li>
+          </ul>
+        </div>
+        <div class="panel attention">
+          <h3>Deferred (by design) <i data-lucide="alert-triangle" style="width:22px;height:22px;color:var(--c-primary);vertical-align:middle"></i></h3>
+          <ul>
+            <li>No package upgrades or remediation</li>
+            <li>No CI/CD wiring (not requested)</li>
+            <li>26 records lack a CVSS vector &rarr; bucketed low</li>
+            <li>Cross-config dedup owned by aggregator</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="icon-row">
+        <div class="item"><i data-lucide="book-open"></i> see <code>decision-log.md</code></div>
+        <div class="item"><i data-lucide="file-search"></i> <code>results-osv.json</code> for full evidence</div>
+        <div class="item"><i data-lucide="git-pull-request"></i> apples-to-apples comparison</div>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 15: DIVIDER — Onboarding ============================ -->
+    <section class="slide-divider">
+      <div>
+        <div class="divider-icon"><i data-lucide="users"></i></div>
+        <p class="eyebrow">Section 5 of 6</p>
+        <h1>Team onboarding.</h1>
+        <span class="accent-bar"></span>
+        <p style="max-width: 1200px; font-size: 32px; color: rgba(255,255,255,0.85);">
+          Reproduce this run in three commands, on any Linux host with curl + Python 3.10+.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 16: CONTENT — Onboarding ============================ -->
+    <section>
+      <div class="slide-head">
+        <div class="head-icon"><i data-lucide="rocket"></i></div>
+        <div>
+          <p class="eyebrow">Run it yourself</p>
+          <h2>Three commands &mdash; the whole pipeline.</h2>
+        </div>
+      </div>
+      <span class="accent-bar"></span>
+
+      <div class="columns-2">
+        <div class="panel accent">
+          <h3>Prerequisites</h3>
+          <ul>
+            <li>Linux/amd64 host</li>
+            <li>Python 3.10&ndash;3.13</li>
+            <li>Network access to OSV.dev</li>
+            <li><code>pip install --break-system-packages cvss</code></li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Commands</h3>
+          <ul>
+            <li><i data-lucide="circle-1" style="width:18px;height:18px;color:var(--c-primary);vertical-align:middle"></i>
+              <code>curl &hellip; &gt; /usr/local/bin/osv-scanner &amp;&amp; chmod +x &hellip;</code></li>
+            <li><i data-lucide="circle-2" style="width:18px;height:18px;color:var(--c-primary);vertical-align:middle"></i>
+              <code>osv-scanner -r --format json --output results-osv.json &lt;repo&gt;</code></li>
+            <li><i data-lucide="circle-3" style="width:18px;height:18px;color:var(--c-primary);vertical-align:middle"></i>
+              <code>python3 normalize_findings.py &lt;repo&gt; results-osv.json findings-config-f.json</code></li>
+            <li><i data-lucide="check-circle-2" style="width:18px;height:18px;color:var(--c-accent-teal);vertical-align:middle"></i>
+              <code>cat findings-config-f.json | wc -l</code> &rarr; <b>1</b></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="icon-row" style="margin-top: var(--sp-3);">
+        <div class="item"><i data-lucide="book"></i> <code>decision-log.md</code> &mdash; full rationale</div>
+        <div class="item"><i data-lucide="archive"></i> <code>results-osv.json</code> &mdash; audit input</div>
+        <div class="item"><i data-lucide="hash"></i> reproducible by build hash 408fcd6f</div>
+      </div>
+    </section>
+
+    <!-- ============================ SLIDE 17: CLOSING ============================ -->
+    <section class="slide-closing">
+      <div>
+        <div class="hero-icon" style="background: rgba(148,250,213,0.18);"><i data-lucide="check-check"></i></div>
+        <p class="eyebrow">Config F &middot; Status</p>
+        <h1>Evidence captured. Comparable. Reproducible.</h1>
+        <span class="accent-bar"></span>
+        <ul style="font-size: 30px; line-height: 1.6; max-width: 1500px;">
+          <li>177 normalized findings, schema-identical to peer configs</li>
+          <li>Two intermediates kept for audit; zero source files modified</li>
+          <li>Every non-trivial decision recorded in <code style="color: var(--c-accent-teal); background: transparent;">decision-log.md</code></li>
+        </ul>
+        <span class="brand-lockup">
+          <span class="lockup-dot"></span> blitzy-odoo &middot; OSV-Scanner v2.3.8 &middot; Config F
+        </span>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- reveal.js core (rule-pinned 5.1.0) -->
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+
+<!-- Mermaid 11.4.0 (rule-pinned) -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
+
+<!-- Lucide 0.460.0 (rule-pinned) -->
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+
+<script>
+  // Mermaid configuration per the Executive Presentation rule.
+  // Web fonts are awaited before initial render to prevent the well-known
+  // Mermaid text-clipping issue (node widths computed with fallback font
+  // before custom font loads, leaving rendered text wider than its rect).
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    securityLevel: 'loose',
+    flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: false, padding: 20, nodeSpacing: 40, rankSpacing: 50 },
+    themeVariables: {
+      primaryColor: '#F2F0FE',
+      primaryTextColor: '#333333',
+      primaryBorderColor: '#5B39F3',
+      lineColor: '#999999',
+      secondaryColor: '#F4EFF6',
+      fontFamily: 'Inter, system-ui, sans-serif'
+    }
+  });
+
+  // Wait for the custom fonts before any Mermaid render so node widths are
+  // computed against the actual Inter font face, not the fallback.
+  async function whenFontsReady() {
+    if (document.fonts && document.fonts.ready) {
+      try { await document.fonts.ready; } catch (_) {}
+      // Force-load the specific faces Mermaid will use.
+      try {
+        await Promise.all([
+          document.fonts.load('500 16px "Inter"'),
+          document.fonts.load('600 16px "Inter"'),
+          document.fonts.load('500 18px "Inter"')
+        ]);
+      } catch (_) {}
+    }
+  }
+
+  async function renderDiagramsAndIcons() {
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+    if (window.mermaid && typeof window.mermaid.run === 'function') {
+      try {
+        // Reset any prior render before re-running, to avoid double-rendering.
+        document.querySelectorAll('.mermaid').forEach(el => {
+          if (el.getAttribute('data-processed') === 'true') {
+            // already rendered; leave alone
+          }
+        });
+        await window.mermaid.run();
+      } catch (e) { /* tolerate re-renders */ }
+    }
+  }
+
+  // reveal.js initialization per the rule.
+  Reveal.initialize({
+    hash: true,
+    transition: 'slide',
+    controlsTutorial: false,
+    width: 1920,
+    height: 1080,
+    margin: 0.04,
+    minScale: 0.2,
+    maxScale: 1.5,
+    slideNumber: 'c/t'
+  }).then(async () => {
+    await whenFontsReady();
+    await renderDiagramsAndIcons();
+  });
+
+  // Re-render Lucide icons on slide change. Mermaid diagrams render once
+  // (they survive slide transitions) so a re-run isn't required and would
+  // cause double-rendering. We only re-run if a new unrendered diagram appears.
+  Reveal.on('slidechanged', () => {
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+    const unrendered = document.querySelectorAll('.mermaid:not([data-processed])');
+    if (unrendered.length > 0 && window.mermaid && typeof window.mermaid.run === 'function') {
+      try { window.mermaid.run({ nodes: Array.from(unrendered) }); } catch (e) {}
+    }
+  });
+</script>
+
+</body>
+</html>

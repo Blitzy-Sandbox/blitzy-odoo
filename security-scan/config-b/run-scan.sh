@@ -49,6 +49,9 @@ NORMALIZE_SHA=""
 SECOND_NORMALIZE_SHA=""
 BYTE_IDENTICAL="false"
 FINDINGS_COUNT=0
+# Tracks the /tmp working copy of executive-summary.html during KPI
+# substitution; cleared after the file is written back to SCRIPT_DIR.
+KPI_TMP_HTML=""
 
 # ----------------------------------------------------------------------
 # Logging helpers (stderr; stdout is reserved for computed values).
@@ -64,8 +67,13 @@ die() {
 }
 
 # Remove transient working files on any exit path (clean run, error, signal).
+# Includes the /tmp KPI substitution copy if the substitution phase was
+# interrupted before the file was written back to SCRIPT_DIR.
 cleanup_transients() {
     rm -f "${SCRIPT_DIR}/.scan-stdout.log" "${SCRIPT_DIR}/.scan-stderr.log"
+    if [[ -n "${KPI_TMP_HTML}" && -e "${KPI_TMP_HTML}" ]]; then
+        rm -f "${KPI_TMP_HTML}"
+    fi
 }
 trap cleanup_transients EXIT INT TERM
 
@@ -557,6 +565,96 @@ PYEOF
 }
 
 # ----------------------------------------------------------------------
+# Phase 8 — executive-summary.html KPI substitution (AAP §0.6.5).
+# Replaces the four `<div class="kpi-value">—</div>` placeholders in
+# slide 2 with runtime values: findings_count, critical_count,
+# files_scanned, scan_duration_seconds (in document order). The
+# substitution is idempotent: any prior-run kpi-value content is first
+# normalized back to the em-dash placeholder via a class-scoped sed
+# substitution, then the four placeholders are replaced in document
+# order using GNU sed `0,/PATTERN/{...}` first-match ranges. Slide-6
+# `kpi-value text-value` cards (extra class) are not matched and remain
+# untouched. The /tmp copy + write-back mechanism honors AAP §0.6.5
+# verbatim.
+# ----------------------------------------------------------------------
+
+substitute_kpi_values() {
+    local exec_summary="${SCRIPT_DIR}/executive-summary.html"
+    if [[ ! -f "${exec_summary}" ]]; then
+        log "WARN: executive-summary.html not found at ${exec_summary}; skipping KPI substitution"
+        return 0
+    fi
+
+    log "Phase 8: substitute KPI values into executive-summary.html (AAP §0.6.5)"
+
+    # Compute critical-severity count from the deliverable JSON.
+    local critical_count
+    critical_count="$("${PYTHON_BIN}" - "${FINDINGS_OUTPUT}" <<'PYEOF'
+import json, sys
+data = json.load(open(sys.argv[1], encoding='utf-8'))
+print(sum(1 for r in data if r.get('severity') == 'critical'))
+PYEOF
+)"
+    [[ -n "${critical_count}" ]] \
+        || die "could not compute critical-severity count from ${FINDINGS_OUTPUT}"
+
+    log "  findings count:   ${FINDINGS_COUNT}"
+    log "  critical count:   ${critical_count}"
+    log "  files scanned:    ${FILES_SCANNED}"
+    log "  scan duration s:  ${SCAN_DURATION_SECONDS}"
+
+    # Copy to /tmp per AAP §0.6.5 ("on a copy in /tmp"). Track the path
+    # in the global KPI_TMP_HTML so cleanup_transients can rm it if the
+    # harness aborts between cp and the final mv.
+    KPI_TMP_HTML="$(mktemp /tmp/exec-summary-XXXXXX.html)"
+    cp "${exec_summary}" "${KPI_TMP_HTML}"
+
+    # Normalize: reset any kpi-value content (em-dash or prior-run
+    # substituted value) back to the em-dash placeholder. The regex
+    # ends with `">` immediately after `kpi-value` so it only matches
+    # the slide-2 placeholder class and NOT the slide-6 `kpi-value
+    # text-value` variant.
+    sed -i 's|<div class="kpi-value">[^<]*</div>|<div class="kpi-value">—</div>|g' "${KPI_TMP_HTML}"
+
+    # Substitute in document order using GNU sed `0,/PATTERN/{s|...|}`
+    # which matches the first occurrence from line 1. Each `-e`
+    # replaces exactly one em-dash placeholder.
+    sed -i \
+        -e '0,/<div class="kpi-value">—<\/div>/{s|<div class="kpi-value">—</div>|<div class="kpi-value">'"${FINDINGS_COUNT}"'</div>|}' \
+        -e '0,/<div class="kpi-value">—<\/div>/{s|<div class="kpi-value">—</div>|<div class="kpi-value">'"${critical_count}"'</div>|}' \
+        -e '0,/<div class="kpi-value">—<\/div>/{s|<div class="kpi-value">—</div>|<div class="kpi-value">'"${FILES_SCANNED}"'</div>|}' \
+        -e '0,/<div class="kpi-value">—<\/div>/{s|<div class="kpi-value">—</div>|<div class="kpi-value">'"${SCAN_DURATION_SECONDS}"'</div>|}' \
+        "${KPI_TMP_HTML}"
+
+    # Verify substitution: zero em-dash placeholders should remain in
+    # slide-2 kpi-value divs.
+    local remaining
+    remaining="$(grep -c '<div class="kpi-value">—</div>' "${KPI_TMP_HTML}" 2>/dev/null || true)"
+    [[ -n "${remaining}" ]] || remaining=0
+    if [[ "${remaining}" -ne 0 ]]; then
+        die "KPI substitution incomplete: ${remaining} em-dash placeholder(s) remain"
+    fi
+
+    # Also verify each expected value is present at least once in slide-2
+    # kpi-value form (defense against regex glitches that might silently
+    # produce an empty replacement).
+    local expected_value
+    for expected_value in "${FINDINGS_COUNT}" "${critical_count}" "${FILES_SCANNED}" "${SCAN_DURATION_SECONDS}"; do
+        grep -q "<div class=\"kpi-value\">${expected_value}</div>" "${KPI_TMP_HTML}" \
+            || die "KPI substitution missing expected value: ${expected_value}"
+    done
+
+    # Write the final HTML back per AAP §0.6.5 ("the final HTML is
+    # written back"). Clear KPI_TMP_HTML so cleanup_transients does
+    # not attempt to rm the moved file (the source path is correct,
+    # the /tmp path no longer exists).
+    mv "${KPI_TMP_HTML}" "${exec_summary}"
+    KPI_TMP_HTML=""
+
+    log "Phase 8: KPI substitution PASSED (4 placeholders replaced in document order)"
+}
+
+# ----------------------------------------------------------------------
 # main — orchestrates every phase. This is the exported symbol referenced by
 # the file schema (security-scan/config-b/run-scan.sh exports: main).
 # ----------------------------------------------------------------------
@@ -581,6 +679,7 @@ main() {
     run_normalizer
     verify_byte_identical_rerun
     emit_metadata
+    substitute_kpi_values
 
     log "Config B harness completed successfully"
     log "  deliverable: ${FINDINGS_OUTPUT} (${FINDINGS_COUNT} findings)"

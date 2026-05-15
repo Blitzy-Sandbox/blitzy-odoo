@@ -333,6 +333,20 @@
   font-size: 1.1rem;
 }
 .icon-row .icon-chip i { width: 18px; height: 18px; }
+.icon-row.title-icon-row {
+  gap: 16px;
+  margin-top: 28px;
+}
+.icon-row .icon-chip.title-chip {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  color: var(--blitzy-text-invert);
+  font-family: var(--ff-mono);
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+.icon-row .icon-chip.title-chip i { color: var(--blitzy-accent-teal); }
 
 /* ---------- Misc layout helpers ---------- */
 .subtitle {
@@ -361,11 +375,16 @@
 <!-- 1. TITLE -->
 <section class="slide-title">
   <div class="hero-icon"><i data-lucide="shield-check"></i></div>
-  <p class="eyebrow">Config C · Static Application Security Testing</p>
-  <h1>Bandit Security Scan</h1>
+  <p class="eyebrow">Bandit Security Scan</p>
+  <h1>Config C of N · blitzy-odoo</h1>
   <div class="accent-bar"></div>
-  <p>Baseline AST-pattern analysis of the <strong>blitzy-odoo</strong> codebase — one of N tool configs in a multi-config comparison.</p>
+  <p>Python static-analysis baseline for the Odoo 19 codebase — one of N tool configs in a multi-config comparison.</p>
   <p class="deck-meta">Scan root · repository root &nbsp;|&nbsp; Tool · Bandit 1.9.4 &nbsp;|&nbsp; Audience · Leadership</p>
+  <div class="icon-row title-icon-row">
+    <span class="icon-chip title-chip"><i data-lucide="shield-check"></i> Static analysis</span>
+    <span class="icon-chip title-chip"><i data-lucide="bar-chart-3"></i> Metrics captured</span>
+    <span class="icon-chip title-chip"><i data-lucide="file-code-2"></i> 8,183 .py files</span>
+  </div>
   <div class="brand-lockup">Blitzy · Config C</div>
 </section>
 
@@ -420,7 +439,7 @@ flowchart LR
 
 <!-- 4. DIVIDER — METHODOLOGY -->
 <section class="slide-divider">
-  <div class="divider-icon"><i data-lucide="map"></i></div>
+  <div class="divider-icon"><i data-lucide="compass"></i></div>
   <p class="eyebrow">Section 01</p>
   <h2>Methodology</h2>
   <div class="accent-bar"></div>
@@ -498,7 +517,7 @@ sequenceDiagram
 
 <!-- 7. DIVIDER — FINDINGS -->
 <section class="slide-divider">
-  <div class="divider-icon"><i data-lucide="search-check"></i></div>
+  <div class="divider-icon"><i data-lucide="search-code"></i></div>
   <p class="eyebrow">Section 02</p>
   <h2>Findings</h2>
   <div class="accent-bar"></div>
@@ -586,7 +605,7 @@ sequenceDiagram
 
 <!-- 11. DIVIDER — SCHEMA -->
 <section class="slide-divider">
-  <div class="divider-icon"><i data-lucide="file-code-2"></i></div>
+  <div class="divider-icon"><i data-lucide="table-properties"></i></div>
   <p class="eyebrow">Section 03</p>
   <h2>Schema &amp; Reproducibility</h2>
   <div class="accent-bar"></div>

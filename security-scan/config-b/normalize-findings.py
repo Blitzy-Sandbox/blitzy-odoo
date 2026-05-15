@@ -516,8 +516,13 @@ def main(argv: list[str]) -> int:
             )
             return 6
 
+    # Emit the minified JSON payload followed by exactly one LF so that
+    # `wc -l < findings-config-b.json` returns 1 (the literal user-prompt
+    # Directive 3a pass/fail gate). The single terminating newline keeps
+    # the file "one line" in POSIX terms while satisfying the gate. The
+    # empty-array case is therefore the three bytes `[`, `]`, `\n`.
     payload_text = json.dumps(records, ensure_ascii=False, separators=(",", ":"))
-    payload_bytes = payload_text.encode("utf-8")
+    payload_bytes = payload_text.encode("utf-8") + b"\n"
     try:
         out_path.write_bytes(payload_bytes)
     except OSError as exc:

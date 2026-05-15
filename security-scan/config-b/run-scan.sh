@@ -410,18 +410,28 @@ run_normalizer() {
     "${PYTHON_BIN}" "${NORMALIZER}" "${SARIF_OUTPUT}" "${FINDINGS_OUTPUT}" --target-root "${TARGET_ROOT}" \
         || die "normalizer failed"
 
-    # Gate 3a — zero embedded newlines (single-line semantic).
+    # Gate 3a — literal user-prompt pass/fail: `cat findings-config-b.json | wc -l`
+    # returns `1`. POSIX `wc -l` counts newline-terminated lines, so the file
+    # must end with exactly one LF and contain no embedded newlines. The
+    # normalizer emits the minified JSON payload plus a single trailing LF.
+    local wc_lines
+    wc_lines="$(wc -l < "${FINDINGS_OUTPUT}" | tr -d ' ')"
+    [[ "${wc_lines}" -eq 1 ]] \
+        || die "Directive 3a gate failed: wc -l = ${wc_lines} (expected 1)"
+
+    # Defense-in-depth: the file must contain exactly one LF (the terminator)
+    # and no embedded newlines that would break the "single line" semantic.
     local newlines
     newlines="$(tr -dc '\n' < "${FINDINGS_OUTPUT}" | wc -c | tr -d ' ')"
-    [[ "${newlines}" -eq 0 ]] \
-        || die "Directive 3a gate failed: ${newlines} newline(s) in findings-config-b.json (expected 0)"
+    [[ "${newlines}" -eq 1 ]] \
+        || die "Directive 3a gate failed: ${newlines} newline byte(s) in findings-config-b.json (expected exactly 1, the trailing LF)"
 
-    # Gate 3a — zero-finding edge case: literal two bytes "[]".
+    # Zero-finding edge case: file is the three bytes `[`, `]`, `\n`.
     if [[ "$(cat "${FINDINGS_OUTPUT}")" == "[]" ]]; then
         local bytes
         bytes="$(wc -c < "${FINDINGS_OUTPUT}" | tr -d ' ')"
-        [[ "${bytes}" -eq 2 ]] \
-            || die "Directive 3a gate failed: zero-finding file must be exactly 2 bytes (got ${bytes})"
+        [[ "${bytes}" -eq 3 ]] \
+            || die "Directive 3a gate failed: zero-finding file must be exactly 3 bytes (\`[\`, \`]\`, LF); got ${bytes}"
     fi
 
     # Gate 3b — valid JSON.

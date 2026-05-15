@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>blitzy-odoo Security Audit · Config A Baseline · Blitzy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Fira+Code:wght@400;500&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.min.css">
+    <style>
+        /* ============================================================
+           Blitzy reveal.js theme — Config A executive deck
+           Mandated by AAP §0.8.1.2 (Executive Presentation rule)
+           ============================================================ */
+        :root {
+            --blitzy-primary: #5B39F3;
+            --blitzy-primary-dark: #2D1C77;
+            --blitzy-primary-navy: #1A105F;
+            --blitzy-primary-light: #7A6DEC;
+            --blitzy-primary-deep: #4101DB;
+            --blitzy-accent-teal: #94FAD5;
+            --blitzy-surface-0: #FFFFFF;
+            --blitzy-surface-1: #F4EFF6;
+            --blitzy-surface-2: #F2F0FE;
+            --blitzy-surface-3: #F5F5F5;
+            --blitzy-border: #D9D9D9;
+            --blitzy-border-soft: rgba(91, 57, 243, 0.18);
+            --blitzy-text: #333333;
+            --blitzy-text-muted: #999999;
+            --blitzy-text-invert: #FFFFFF;
+            --ff-body: 'Inter', system-ui, sans-serif;
+            --ff-display: 'Space Grotesk', 'Inter', sans-serif;
+            --ff-mono: 'Fira Code', 'Courier New', monospace;
+            --gradient-hero: linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
+            --gradient-divider: linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%);
+            --gradient-accent-bar: linear-gradient(90deg, #5B39F3 0%, #94FAD5 100%);
+        }
+
+        /* ---------- Reveal base overrides ---------- */
+        .reveal {
+            font-family: var(--ff-body);
+            color: var(--blitzy-text);
+            font-weight: 400;
+        }
+        .reveal h1,
+        .reveal h2,
+        .reveal h3,
+        .reveal h4 {
+            font-family: var(--ff-display);
+            color: var(--blitzy-text);
+            text-transform: none;
+            letter-spacing: -0.01em;
+            font-weight: 600;
+            margin: 0 0 0.4em 0;
+        }
+        .reveal h1 { font-size: 64px; line-height: 1.1; }
+        .reveal h2 { font-size: 48px; line-height: 1.15; }
+        .reveal h3 { font-size: 32px; line-height: 1.2; }
+        .reveal p,
+        .reveal li {
+            font-size: 24px;
+            line-height: 1.5;
+            color: var(--blitzy-text);
+        }
+        .reveal ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 16px 0 0 0;
+        }
+        .reveal ul li {
+            position: relative;
+            padding-left: 32px;
+            margin-bottom: 10px;
+        }
+        .reveal ul li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 14px;
+            width: 18px;
+            height: 2px;
+            background: var(--gradient-accent-bar);
+            border-radius: 2px;
+        }
+        .reveal code {
+            font-family: var(--ff-mono);
+            font-size: 0.92em;
+            background: var(--blitzy-surface-2);
+            color: var(--blitzy-primary-dark);
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--blitzy-border-soft);
+        }
+        .reveal .slides section {
+            text-align: left;
+            padding: 50px 72px;
+            box-sizing: border-box;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            overflow: hidden;
+        }
+        .reveal section.center-content {
+            justify-content: center;
+        }
+        .reveal .slides section h2 + .mermaid,
+        .reveal .slides section .mermaid {
+            flex-shrink: 0;
+        }
+
+        /* ---------- Eyebrow / kicker ---------- */
+        .eyebrow {
+            font-family: var(--ff-mono);
+            font-weight: 500;
+            font-size: 18px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--blitzy-accent-teal);
+            margin-bottom: 24px;
+        }
+        .eyebrow.on-light {
+            color: var(--blitzy-primary);
+        }
+
+        /* ---------- Title slide ---------- */
+        .reveal section.slide-title {
+            background: var(--gradient-hero);
+            color: var(--blitzy-text-invert);
+            justify-content: center;
+            position: relative;
+        }
+        .reveal section.slide-title h1,
+        .reveal section.slide-title h2,
+        .reveal section.slide-title p {
+            color: var(--blitzy-text-invert);
+        }
+        .reveal section.slide-title h1 { font-size: 84px; line-height: 1.05; margin-bottom: 24px; }
+        .reveal section.slide-title .subhead {
+            font-size: 28px;
+            font-weight: 400;
+            max-width: 1200px;
+            color: rgba(255,255,255,0.92);
+            margin-bottom: 48px;
+        }
+        .reveal section.slide-title .hero-icon-wrap {
+            position: absolute;
+            top: 80px;
+            right: 96px;
+        }
+
+        /* ---------- Divider slide ---------- */
+        .reveal section.slide-divider {
+            background: var(--gradient-divider);
+            color: var(--blitzy-text-invert);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .reveal section.slide-divider h1,
+        .reveal section.slide-divider h2,
+        .reveal section.slide-divider p {
+            color: var(--blitzy-text-invert);
+        }
+        .reveal section.slide-divider h1 { font-size: 80px; margin-bottom: 16px; }
+        .reveal section.slide-divider .divider-sub {
+            font-family: var(--ff-mono);
+            font-size: 20px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--blitzy-accent-teal);
+        }
+        .reveal section.slide-divider .hero-icon-wrap {
+            margin-bottom: 32px;
+        }
+
+        /* ---------- Closing slide ---------- */
+        .reveal section.slide-closing {
+            background: var(--blitzy-primary-navy);
+            color: var(--blitzy-text-invert);
+            justify-content: center;
+            position: relative;
+        }
+        .reveal section.slide-closing h1,
+        .reveal section.slide-closing h2,
+        .reveal section.slide-closing p,
+        .reveal section.slide-closing li {
+            color: var(--blitzy-text-invert);
+        }
+        .reveal section.slide-closing ul li::before {
+            background: var(--gradient-accent-bar);
+        }
+        .reveal section.slide-closing h1 { font-size: 84px; margin-bottom: 32px; }
+
+        /* ---------- Hero icon ---------- */
+        .hero-icon {
+            width: 96px;
+            height: 96px;
+            color: rgba(255, 255, 255, 0.88);
+            stroke-width: 1.5;
+        }
+        .hero-icon-wrap {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ---------- KPI grid + cards ---------- */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin: 32px 0;
+        }
+        .kpi-grid.two-up {
+            grid-template-columns: repeat(2, 1fr);
+            max-width: 1400px;
+        }
+        .kpi-card {
+            background: var(--blitzy-surface-0);
+            border: 1px solid var(--blitzy-border-soft);
+            border-radius: 12px;
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+            box-shadow: 0 6px 24px rgba(91, 57, 243, 0.06);
+            position: relative;
+        }
+        .kpi-card.compact {
+            flex-direction: row;
+            align-items: center;
+            gap: 20px;
+        }
+        .kpi-card.negative {
+            align-items: center;
+            text-align: center;
+        }
+        .kpi-icon {
+            width: 32px;
+            height: 32px;
+            color: var(--blitzy-primary);
+            stroke-width: 2;
+        }
+        .kpi-value {
+            font-family: var(--ff-display);
+            font-weight: 700;
+            font-size: 56px;
+            line-height: 1;
+            color: var(--blitzy-primary);
+        }
+        .kpi-card.compact .kpi-value {
+            font-size: 44px;
+        }
+        .kpi-value-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: var(--blitzy-surface-2);
+            color: var(--blitzy-primary-dark);
+            margin: 4px 0;
+        }
+        .kpi-value-icon svg {
+            width: 44px;
+            height: 44px;
+            stroke-width: 1.75;
+        }
+        .kpi-label {
+            font-family: var(--ff-body);
+            font-weight: 500;
+            font-size: 14px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--blitzy-text-muted);
+            line-height: 1.4;
+        }
+        .kpi-sublabel {
+            font-family: var(--ff-mono);
+            font-size: 13px;
+            color: var(--blitzy-text-muted);
+            margin-top: 4px;
+        }
+        .kpi-card .kpi-tag {
+            font-family: var(--ff-mono);
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--blitzy-primary);
+            background: var(--blitzy-surface-2);
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--blitzy-border-soft);
+            align-self: flex-start;
+        }
+
+        /* ---------- Icon row ---------- */
+        .icon-row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 20px;
+        }
+        .icon-row.center { justify-content: center; }
+        .icon-row svg {
+            color: var(--blitzy-primary);
+            width: 36px;
+            height: 36px;
+            stroke-width: 1.75;
+        }
+        /* On dark-background slides, icons need to invert */
+        .reveal section.slide-title .icon-row svg,
+        .reveal section.slide-divider .icon-row svg,
+        .reveal section.slide-closing .icon-row svg {
+            color: var(--blitzy-accent-teal);
+        }
+
+        /* ---------- Brand lockup + accent bar ---------- */
+        .brand-lockup {
+            position: absolute;
+            bottom: 32px;
+            right: 80px;
+            font-family: var(--ff-mono);
+            font-weight: 500;
+            font-size: 13px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--blitzy-accent-teal);
+        }
+        .accent-bar {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 6px;
+            background: var(--gradient-accent-bar);
+        }
+
+        /* ---------- Finding table ---------- */
+        .finding-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 24px 0;
+            background: var(--blitzy-surface-0);
+            box-shadow: 0 6px 24px rgba(91, 57, 243, 0.06);
+        }
+        .finding-table thead th {
+            background: var(--blitzy-surface-2);
+            color: var(--blitzy-primary-dark);
+            font-family: var(--ff-display);
+            font-weight: 600;
+            font-size: 18px;
+            text-align: left;
+            padding: 16px 18px;
+            border-bottom: 2px solid var(--blitzy-primary);
+        }
+        .finding-table tbody td {
+            padding: 14px 18px;
+            font-family: var(--ff-body);
+            font-weight: 400;
+            font-size: 18px;
+            color: var(--blitzy-text);
+            border-bottom: 1px solid var(--blitzy-border);
+            vertical-align: top;
+        }
+        .finding-table tbody tr:nth-child(even) td {
+            background: var(--blitzy-surface-3);
+        }
+        .finding-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .finding-table code {
+            font-size: 0.88em;
+        }
+        .severity-pill {
+            display: inline-block;
+            font-family: var(--ff-mono);
+            font-weight: 500;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--blitzy-border-soft);
+        }
+        .severity-pill.high {
+            color: var(--blitzy-primary-deep);
+            background: var(--blitzy-surface-2);
+        }
+        .severity-pill.medium {
+            color: var(--blitzy-primary-dark);
+            background: var(--blitzy-surface-1);
+        }
+        .severity-pill.low {
+            color: var(--blitzy-text-muted);
+            background: var(--blitzy-surface-3);
+        }
+
+        /* ---------- Mermaid container ---------- */
+        .mermaid {
+            background: var(--blitzy-surface-1);
+            padding: 16px;
+            border-radius: 12px;
+            max-width: 1700px;
+            margin: 16px auto;
+            border: 1px solid var(--blitzy-border-soft);
+            text-align: center;
+        }
+        .mermaid svg {
+            max-width: 100%;
+            max-height: 620px;
+            height: auto !important;
+        }
+
+        /* ---------- Header row helpers ---------- */
+        .h-with-icon {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .h-with-icon svg {
+            width: 40px;
+            height: 40px;
+            color: var(--blitzy-primary);
+            stroke-width: 2;
+        }
+
+        /* ---------- Two-column content layout ---------- */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 32px;
+            align-items: start;
+            margin-top: 16px;
+        }
+        .two-col .col-aside {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* ---------- Footer note ---------- */
+        .footer-note {
+            font-family: var(--ff-mono);
+            font-size: 16px;
+            color: var(--blitzy-text-muted);
+            margin-top: 16px;
+        }
+
+        /* ---------- Reveal controls / progress (brand-tint) ---------- */
+        .reveal .controls { color: var(--blitzy-primary); }
+        .reveal .progress { color: var(--blitzy-primary); }
+
+        /* Tighter spacing for table-heavy slides */
+        section.dense h2 { font-size: 42px; margin-bottom: 16px; }
+        section.dense .finding-table tbody td { padding: 11px 16px; font-size: 16px; }
+        section.dense .finding-table thead th { padding: 12px 16px; font-size: 16px; }
+        section.dense ul { margin-top: 16px; }
+        section.dense ul li { font-size: 20px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- =====================================================
+                 Slide 1 — Title
+                 ===================================================== -->
+            <section id="s-title" class="slide-title">
+                <div class="hero-icon-wrap">
+                    <i data-lucide="shield" class="hero-icon"></i>
+                </div>
+                <div class="eyebrow">BLITZY · NATIVE-AGENT BASELINE</div>
+                <h1>blitzy-odoo Security Audit</h1>
+                <p class="subhead">Config A — Native-only baseline · 34 findings across 9 CWE classes</p>
+                <div class="icon-row">
+                    <i data-lucide="search"></i>
+                    <i data-lucide="git-branch"></i>
+                    <i data-lucide="file-json"></i>
+                </div>
+                <div class="brand-lockup">BLITZY · Config A</div>
+            </section>
+
+            <!-- =====================================================
+                 Slide 2 — Audit at a Glance (KPIs)
+                 ===================================================== -->
+            <section id="s-kpis">
+                <div class="eyebrow on-light">SECTION 01 · HEADLINE NUMBERS</div>
+                <h2>Audit at a Glance</h2>
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <i data-lucide="file-text" class="kpi-icon"></i>
+                        <div class="kpi-value">34</div>
+                        <div class="kpi-label">Total Findings</div>
+                    </div>
+                    <div class="kpi-card">
+                        <i data-lucide="flame" class="kpi-icon"></i>
+                        <div class="kpi-value">9</div>
+                        <div class="kpi-label">High Severity</div>
+                    </div>
+                    <div class="kpi-card">
+                        <i data-lucide="alert-triangle" class="kpi-icon"></i>
+                        <div class="kpi-value">16</div>
+                        <div class="kpi-label">Medium Severity</div>
+                    </div>
+                    <div class="kpi-card">
+                        <i data-lucide="info" class="kpi-icon"></i>
+                        <div class="kpi-value">9</div>
+                        <div class="kpi-label">Low Severity</div>
+                    </div>
+                </div>
+                <ul>
+                    <li>Audited surface: 8,183 Python files, 5,310 XML files, 5,698 JS files, 605 addon modules — read-only, no external scanners.</li>
+                </ul>
+                <div class="footer-note">No critical findings encountered. Native analysis only — Bandit, Semgrep, CodeQL, Snyk were not invoked.</div>
+            </section>
+
+            <!-- =====================================================
+                 Slide 3 — What We Audited (surface map)
+                 ===================================================== -->
+            <section id="s-surface">
+                <div class="eyebrow on-light">SECTION 02 · SCOPE</div>
+                <h2>What We Audited</h2>
+                <pre class="mermaid">
+flowchart LR
+    U["Untrusted Input"] --> H["odoo/http.py<br/>HTTP / WSGI"]
+    H --> C["addons/**/controllers<br/>168 folders"]
+    C --> M["addons/**/models<br/>543 folders"]
+    M --> DB[("PostgreSQL")]
+    H -.-> S["security/<br/>215 folders<br/>ir.model.access.csv + ir.rule"]
+    H -.-> JS["static/src/**/*.js<br/>5,698 files"]
+    H -.-> CFG["debian/odoo.conf<br/>setup/**/nginx.conf<br/>requirements.txt"]
+    classDef hot fill:#F2F0FE,stroke:#5B39F3,color:#333333;
+    classDef warn fill:#F4EFF6,stroke:#7A6DEC,color:#333333;
+    class H,C,M hot
+    class S,JS,CFG warn
+                </pre>
+                <ul>
+                    <li>HTTP entry → controllers → models → DB chain</li>
+                    <li>Configs &amp; dependency manifests inspected line-by-line</li>
+                    <li>Front-end JS swept for DOM-XSS sinks</li>
+                    <li>Security XML + ACL CSV cross-referenced</li>
+                </ul>
+            </section>
+
+            <!-- =====================================================
+                 Slide 4 — Divider: Outdated Dependencies
+                 ===================================================== -->
+            <section id="s-divider-deps" class="slide-divider">
+                <div class="hero-icon-wrap">
+                    <i data-lucide="package" class="hero-icon"></i>
+                </div>
+                <div class="divider-sub">CWE-1104 · 15 OF 34 FINDINGS</div>
+                <h1>Outdated Dependencies</h1>
+            </section>
+
+            <!-- =====================================================
+                 Slide 5 — Pinned Components With Public CVEs
+                 ===================================================== -->
+            <section id="s-deps" class="dense">
+                <div class="eyebrow on-light">SECTION 03 · CWE-1104</div>
+                <h2>Pinned Components With Public CVEs</h2>
+                <div class="two-col">
+                    <table class="finding-table">
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Pin (requirements.txt)</th>
+                                <th>Severity</th>
+                                <th>Notable CVE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>Werkzeug</code></td>
+                                <td><code>2.0.2</code></td>
+                                <td><span class="severity-pill high">high</span></td>
+                                <td>CVE-2024-34069 (debugger PIN)</td>
+                            </tr>
+                            <tr>
+                                <td><code>Pillow</code></td>
+                                <td><code>9.0.1</code></td>
+                                <td><span class="severity-pill high">high</span></td>
+                                <td>CVE-2022-22817 (PIL.ImageMath)</td>
+                            </tr>
+                            <tr>
+                                <td><code>cryptography</code></td>
+                                <td><code>3.4.8</code></td>
+                                <td><span class="severity-pill high">high</span></td>
+                                <td>CVE-2023-0286 (X.400 type confusion)</td>
+                            </tr>
+                            <tr>
+                                <td><code>reportlab</code></td>
+                                <td><code>3.6.8</code></td>
+                                <td><span class="severity-pill medium">medium</span></td>
+                                <td>CVE-2023-33733 (paraparser RCE)</td>
+                            </tr>
+                            <tr>
+                                <td><code>requests</code></td>
+                                <td><code>2.25.1</code></td>
+                                <td><span class="severity-pill medium">medium</span></td>
+                                <td>CVE-2023-32681 (proxy auth leak)</td>
+                            </tr>
+                            <tr>
+                                <td><code>urllib3</code></td>
+                                <td><code>1.26.5</code></td>
+                                <td><span class="severity-pill medium">medium</span></td>
+                                <td>CVE-2024-37891 (proxy header leak)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="col-aside">
+                        <div class="kpi-card">
+                            <i data-lucide="package" class="kpi-icon"></i>
+                            <div class="kpi-value">15</div>
+                            <div class="kpi-label">Components flagged as CWE-1104</div>
+                            <span class="kpi-tag">44% of audit</span>
+                        </div>
+                        <div class="footer-note">Tracked, not patched — Config A forbids dependency upgrades.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- =====================================================
+                 Slide 6 — Divider: Cryptography & TLS
+                 ===================================================== -->
+            <section id="s-divider-crypto" class="slide-divider">
+                <div class="hero-icon-wrap">
+                    <i data-lucide="lock" class="hero-icon"></i>
+                </div>
+                <div class="divider-sub">CWE-327 · DEPRECATED PROTOCOLS &amp; RISKY ALGORITHMS</div>
+                <h1>Cryptography &amp; TLS</h1>
+            </section>
+
+            <!-- =====================================================
+                 Slide 7 — Where Crypto Falls Short
+                 ===================================================== -->
+            <section id="s-crypto">
+                <div class="eyebrow on-light">SECTION 04 · CWE-327</div>
+                <h2>Where Crypto Falls Short</h2>
+                <pre class="mermaid">
+flowchart TB
+    subgraph nginx["setup/win32/conf/nginx/nginx.conf:12"]
+        T["ssl_protocols TLSv1 TLSv1.1 TLSv1.2"]
+        T --> R["RFC 8996<br/>deprecates TLS 1.0/1.1"]
+    end
+    subgraph qfpay["addons/pos_qfpay/controllers/main.py:38"]
+        M["hashlib.md5(body + key)"]
+        M --> X["Collision-broken<br/>vs. HMAC-SHA-256"]
+    end
+    classDef issue fill:#F4EFF6,stroke:#5B39F3,color:#333333;
+    class T,M issue
+                </pre>
+                <ul>
+                    <li>Bundled Nginx reference still permits TLSv1 / TLSv1.1</li>
+                    <li>POS QFpay webhook signs payloads with MD5 (not HMAC-SHA-256)</li>
+                    <li>Core Odoo crypto controls (consteq, pbkdf2_sha512 600k, html_sanitize) remain intact</li>
+                </ul>
+            </section>
+
+            <!-- =====================================================
+                 Slide 8 — Divider: Default Credentials & Auth Drift
+                 ===================================================== -->
+            <section id="s-divider-auth" class="slide-divider">
+                <div class="hero-icon-wrap">
+                    <i data-lucide="key-round" class="hero-icon"></i>
+                </div>
+                <div class="divider-sub">CWE-798 · 7 FINDINGS</div>
+                <h1>Default Credentials &amp; Auth Drift</h1>
+            </section>
+
+            <!-- =====================================================
+                 Slide 9 — Hard-Coded & Default Credentials
+                 ===================================================== -->
+            <section id="s-auth" class="dense">
+                <div class="eyebrow on-light">SECTION 05 · CWE-798</div>
+                <h2>Hard-Coded &amp; Default Credentials</h2>
+                <table class="finding-table">
+                    <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th>Severity</th>
+                            <th>Why It Matters</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>odoo/tools/config.py:207</code></td>
+                            <td><span class="severity-pill medium">medium</span></td>
+                            <td><code>admin_passwd</code> defaults to literal <code>'admin'</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>debian/odoo.conf:3</code></td>
+                            <td><span class="severity-pill medium">medium</span></td>
+                            <td>Bundled <code>;admin_passwd = admin</code> invites uncomment</td>
+                        </tr>
+                        <tr>
+                            <td><code>addons/web/controllers/database.py:73,96,113,129,152</code></td>
+                            <td><span class="severity-pill high">high</span></td>
+                            <td><code>/web/database/*</code> auto-resets master password when default still in place</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <ul>
+                    <li>Five <code>auth=none</code> DB-manager routes share the same auto-reset path</li>
+                    <li>Mitigation: set <code>admin_passwd</code> to a strong value before exposing port 8069</li>
+                    <li>Disclosed via <code>SECURITY.md</code> channel</li>
+                </ul>
+            </section>
+
+            <!-- =====================================================
+                 Slide 10 — Divider: Session & Cookie Hardening
+                 ===================================================== -->
+            <section id="s-divider-cookies" class="slide-divider">
+                <div class="hero-icon-wrap">
+                    <i data-lucide="cookie" class="hero-icon"></i>
+                </div>
+                <div class="divider-sub">CWE-614 · CWE-1275 · BROWSER-LEVEL FLAGS</div>
+                <h1>Session &amp; Cookie Hardening</h1>
+            </section>
+
+            <!-- =====================================================
+                 Slide 11 — Session Cookie Flags (negative KPI cards)
+                 ===================================================== -->
+            <section id="s-cookies">
+                <div class="eyebrow on-light">SECTION 06 · CWE-614 / CWE-1275</div>
+                <h2>Session Cookie Flags</h2>
+                <div class="kpi-grid two-up">
+                    <div class="kpi-card negative">
+                        <i data-lucide="lock-open" class="kpi-icon"></i>
+                        <div class="kpi-value-icon"><i data-lucide="x-circle"></i></div>
+                        <div class="kpi-label">Secure flag missing · CWE-614 · medium</div>
+                        <div class="kpi-sublabel">odoo/http.py:2135</div>
+                    </div>
+                    <div class="kpi-card negative">
+                        <i data-lucide="globe" class="kpi-icon"></i>
+                        <div class="kpi-value-icon"><i data-lucide="x-circle"></i></div>
+                        <div class="kpi-label">SameSite flag missing · CWE-1275 · low</div>
+                        <div class="kpi-sublabel">odoo/http.py:2135</div>
+                    </div>
+                </div>
+                <ul>
+                    <li><code>session_id</code> cookie is <code>HttpOnly</code> but ships without <code>Secure</code> or <code>SameSite</code></li>
+                    <li>On plain HTTP, token leaks to any path observer</li>
+                    <li>Reverse proxy can layer-add the flags as compensating control</li>
+                </ul>
+            </section>
+
+            <!-- =====================================================
+                 Slide 12 — Divider: Web, Shell & Storage
+                 ===================================================== -->
+            <section id="s-divider-misc" class="slide-divider">
+                <div class="hero-icon-wrap">
+                    <i data-lucide="terminal" class="hero-icon"></i>
+                </div>
+                <div class="divider-sub">CWE-78 · CWE-79 · CWE-256 · CWE-319</div>
+                <h1>Web, Shell &amp; Storage</h1>
+            </section>
+
+            <!-- =====================================================
+                 Slide 13 — Cross-Cutting Findings
+                 ===================================================== -->
+            <section id="s-misc">
+                <div class="eyebrow on-light">SECTION 07 · CROSS-CUTTING</div>
+                <h2>Cross-Cutting Findings</h2>
+                <pre class="mermaid">
+flowchart LR
+    A["CWE-78<br/>OS Command Injection"]
+    A --> A1["odoo/service/server.py:1479"]
+    A --> A2["addons/iot_drivers/tools/upgrade.py:204"]
+    B["CWE-79<br/>DOM XSS"]
+    B --> B1["addons/web/static/src/core/file_viewer/file_viewer.js:259"]
+    C["CWE-256 / CWE-319<br/>Plaintext credentials &amp; wire"]
+    C --> C1["auth_ldap, ir_mail_server, fetchmail"]
+    C --> C2["IoT Box hostapd open Wi-Fi"]
+    classDef cwe fill:#F2F0FE,stroke:#5B39F3,color:#333333;
+    class A,B,C cwe
+                </pre>
+                <ul>
+                    <li>Shell command injection pattern survives in 2 spots</li>
+                    <li>Single DOM-XSS sink via <code>document.write</code></li>
+                    <li>LDAP/SMTP/IMAP passwords persisted in plaintext columns</li>
+                    <li>IoT Box hostapd ships as open AP</li>
+                </ul>
+            </section>
+
+            <!-- =====================================================
+                 Slide 14 — Divider: Risk & Mitigation
+                 ===================================================== -->
+            <section id="s-divider-risk" class="slide-divider">
+                <div class="hero-icon-wrap">
+                    <i data-lucide="shield-alert" class="hero-icon"></i>
+                </div>
+                <div class="divider-sub">FROM FINDING TO DISCLOSURE</div>
+                <h1>Risk &amp; Mitigation</h1>
+            </section>
+
+            <!-- =====================================================
+                 Slide 15 — What Happens Next
+                 ===================================================== -->
+            <section id="s-risk" class="dense">
+                <div class="eyebrow on-light">SECTION 08 · DISCLOSURE PIPELINE</div>
+                <div class="h-with-icon">
+                    <i data-lucide="git-pull-request"></i>
+                    <h2>What Happens Next</h2>
+                </div>
+                <table class="finding-table">
+                    <thead>
+                        <tr>
+                            <th>Severity</th>
+                            <th>Findings</th>
+                            <th>Pathway</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="severity-pill high">high</span></td>
+                            <td>9</td>
+                            <td>Private disclosure via <code>SECURITY.md</code> → Odoo Security Team</td>
+                        </tr>
+                        <tr>
+                            <td><span class="severity-pill medium">medium</span></td>
+                            <td>16</td>
+                            <td>Tracked in Config B/C/D comparison; deployment hardening guide</td>
+                        </tr>
+                        <tr>
+                            <td><span class="severity-pill low">low</span></td>
+                            <td>9</td>
+                            <td>Backlog; revisited each release</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <ul>
+                    <li>Config A is the baseline — Configs B/C/D will be measured against this honest under-reporting.</li>
+                </ul>
+            </section>
+
+            <!-- =====================================================
+                 Slide 16 — Closing: Disclose. Triage. Remediate.
+                 ===================================================== -->
+            <section id="s-closing" class="slide-closing">
+                <div class="eyebrow">BLITZY · CLOSING</div>
+                <h1>Disclose. Triage. Remediate.</h1>
+                <ul>
+                    <li>Native-only audit produced 34 findings with full CWE classification</li>
+                    <li>All findings routed through <code>SECURITY.md</code> private disclosure channel</li>
+                    <li>Downstream Configs B/C/D will quantify the delta of scanner-augmented analysis</li>
+                </ul>
+                <div class="icon-row" style="margin-top: 32px;">
+                    <i data-lucide="shield-check"></i>
+                    <i data-lucide="file-search"></i>
+                    <i data-lucide="message-square-warning"></i>
+                </div>
+                <div class="brand-lockup">BLITZY · Config A · v19.0</div>
+                <div class="accent-bar"></div>
+            </section>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            securityLevel: 'loose',
+            themeVariables: {
+                primaryColor: '#F2F0FE',
+                primaryTextColor: '#333333',
+                primaryBorderColor: '#5B39F3',
+                lineColor: '#999999',
+                secondaryColor: '#F4EFF6',
+                tertiaryColor: '#F5F5F5',
+                fontFamily: 'Inter, system-ui, sans-serif'
+            },
+            flowchart: {
+                htmlLabels: true,
+                useMaxWidth: true,
+                curve: 'basis',
+                padding: 18,
+                nodeSpacing: 50,
+                rankSpacing: 70,
+                wrappingWidth: 400,
+                diagramPadding: 16
+            }
+        });
+
+        // ----------------------------------------------------------------
+        // Mermaid rendering strategy
+        // ----------------------------------------------------------------
+        // Reveal.js hides every slide except the current one with visibility
+        // and 0-opacity transforms. When Mermaid runs against a hidden slide
+        // its foreignObject text-measurements collapse to 0px, producing a
+        // miniaturized 32x32 viewBox and unreadable labels.
+        //
+        // Strategy: capture each diagram's source on first load, then render
+        // (or re-render) only the diagrams in the currently-visible slide on
+        // every Reveal `ready` and `slidechanged` event. A diagram is also
+        // re-rendered if its prior render produced a degenerate (sub-200px)
+        // SVG, which catches the initial-paint case where the slide briefly
+        // measured zero before the layout settled.
+        // ----------------------------------------------------------------
+        const mermaidSources = new WeakMap();
+
+        function captureMermaidSources() {
+            document.querySelectorAll('.mermaid').forEach(el => {
+                if (!mermaidSources.has(el)) {
+                    // Use innerHTML so the <br/> tags inside node labels survive
+                    // (textContent would strip them, since the browser parses
+                    // <br/> inside <pre> as an HTML element rather than text).
+                    // We then normalize HTML entities back to their characters
+                    // so Mermaid's parser receives literal '<', '>', '&' as
+                    // expected by the diagram syntax.
+                    const raw = el.innerHTML;
+                    const decoded = raw
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .replace(/&amp;/g, '&')
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'");
+                    mermaidSources.set(el, decoded.trim());
+                }
+            });
+        }
+
+        function renderMermaidInSlide(slide) {
+            if (!slide || !window.mermaid) return;
+            const mermaids = slide.querySelectorAll('.mermaid');
+            if (mermaids.length === 0) return;
+            const needsRender = [];
+            mermaids.forEach(el => {
+                const isProcessed = el.getAttribute('data-processed') === 'true';
+                const svg = el.querySelector('svg');
+                const svgBox = svg ? svg.getBoundingClientRect() : null;
+                const isBroken = svg && (svgBox.width < 200 || svgBox.height < 80);
+                if (!isProcessed || isBroken) {
+                    const source = mermaidSources.get(el);
+                    if (source) {
+                        el.innerHTML = source;
+                        el.removeAttribute('data-processed');
+                        needsRender.push(el);
+                    }
+                }
+            });
+            if (needsRender.length > 0) {
+                mermaid.run({ nodes: needsRender })
+                    .then(() => requestAnimationFrame(fitMermaidLabels))
+                    .catch(() => {});
+            }
+        }
+
+        function renderVisuals(slide) {
+            if (window.lucide && typeof lucide.createIcons === 'function') {
+                lucide.createIcons();
+            }
+            renderMermaidInSlide(slide || (window.Reveal ? Reveal.getCurrentSlide() : null));
+        }
+
+        // Post-process Mermaid SVGs: Mermaid's foreignObject width measurement
+        // can undersize labels by a few pixels (5-13px) because text was measured
+        // before web fonts settled into their final metrics. Expand each node's
+        // foreignObject and rect to fit the natural label width to prevent
+        // right-edge clipping of multi-line labels. Also fixes subgraph cluster
+        // titles, which suffer the same measurement issue.
+        function expandFOToFit(fo, opts) {
+            opts = opts || {};
+            const div = fo.querySelector('div');
+            if (!div) return null;
+            const naturalW = div.scrollWidth;
+            const currentW = parseFloat(fo.getAttribute('width'));
+            if (!isFinite(currentW) || naturalW <= currentW + 1) return null;
+            const padding = opts.padding != null ? opts.padding : 4;
+            const newW = naturalW + padding;
+            const delta = newW - currentW;
+            const currentX = parseFloat(fo.getAttribute('x'));
+            fo.setAttribute('width', newW);
+            if (isFinite(currentX)) {
+                fo.setAttribute('x', currentX - delta / 2);
+            }
+            return { delta, newW, currentX };
+        }
+
+        function fitMermaidLabels() {
+            // Expand individual node labels
+            document.querySelectorAll('.mermaid svg .node').forEach(node => {
+                const fo = node.querySelector('foreignObject');
+                if (!fo) return;
+                const adj = expandFOToFit(fo, { padding: 4 });
+                if (!adj) return;
+                // Expand the bounding shape (rect only — cylinder/db uses a path)
+                const shape = node.querySelector('rect, polygon, ellipse, path');
+                if (!shape) return;
+                if (shape.tagName.toLowerCase() === 'rect') {
+                    const rW = parseFloat(shape.getAttribute('width'));
+                    const rX = parseFloat(shape.getAttribute('x'));
+                    if (isFinite(rW)) shape.setAttribute('width', rW + adj.delta);
+                    if (isFinite(rX)) shape.setAttribute('x', rX - adj.delta / 2);
+                }
+            });
+            // Expand subgraph cluster titles (the labels that name the box)
+            document.querySelectorAll('.mermaid svg .cluster-label foreignObject').forEach(fo => {
+                expandFOToFit(fo, { padding: 8 });
+            });
+            // Expand edge labels
+            document.querySelectorAll('.mermaid svg .edgeLabel foreignObject').forEach(fo => {
+                expandFOToFit(fo, { padding: 6 });
+            });
+
+            // After resizing nodes, the actual content bounding box may now
+            // exceed the original SVG viewBox. Recompute the viewBox so the
+            // browser displays everything (and so reveal.js scales the
+            // diagram correctly inside the slide).
+            document.querySelectorAll('.mermaid svg').forEach(svg => {
+                try {
+                    const bbox = svg.getBBox();
+                    if (!bbox || !isFinite(bbox.width) || bbox.width === 0) return;
+                    const margin = 12;
+                    const x = bbox.x - margin;
+                    const y = bbox.y - margin;
+                    const w = bbox.width + margin * 2;
+                    const h = bbox.height + margin * 2;
+                    svg.setAttribute('viewBox', x + ' ' + y + ' ' + w + ' ' + h);
+                    // Also remove any hard width/height attributes that would
+                    // cap the rendering size below what the new viewBox needs.
+                    svg.removeAttribute('width');
+                    svg.removeAttribute('height');
+                    svg.style.maxWidth = '100%';
+                } catch (e) { /* getBBox can throw on detached/hidden svg */ }
+            });
+        }
+
+        function whenFontsReady(cb) {
+            if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function') {
+                document.fonts.ready.then(cb);
+            } else {
+                cb();
+            }
+        }
+
+        // Capture each Mermaid diagram's source before Reveal.js mutates the DOM
+        captureMermaidSources();
+
+        Reveal.initialize({
+            hash: true,
+            transition: 'slide',
+            controlsTutorial: false,
+            width: 1920,
+            height: 1080,
+            margin: 0.04,
+            slideNumber: 'c/t'
+        }).then(() => {
+            whenFontsReady(() => {
+                renderVisuals(Reveal.getCurrentSlide());
+            });
+        });
+
+        Reveal.on('slidechanged', (event) => {
+            renderVisuals(event.currentSlide);
+        });
+    </script>
+</body>
+</html>

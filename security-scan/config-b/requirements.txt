@@ -1,1 +1,7 @@
+# Config B — Semgrep CE static-analysis harness dependency manifest.
+# Pinned to the latest Semgrep CE on PyPI compatible with Python 3.10-3.14.
+# Rationale for the version pin lives in security-scan/config-b/decision-log.md (Explainability rule).
+#
+# No other Python dependencies are required: the normalizer (normalize-findings.py)
+# uses only the Python 3.10+ standard library.
 semgrep==1.163.0

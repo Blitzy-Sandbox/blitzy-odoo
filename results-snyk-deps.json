@@ -1,30 +1,8 @@
 {
   "vulnerabilities": [],
-  "ok": true,
-  "dependencyCount": 0,
-  "org": "",
-  "policy": "",
-  "isPrivate": true,
-  "licensesPolicy": null,
+  "executionStatus": "NOT_EXECUTED",
+  "executionStatusReason": "NOT EXECUTED — token absent: SNYK_TOKEN environment variable was not set at runtime; snyk test was not invoked against api.snyk.io.",
   "packageManager": "pip",
-  "ignoreSettings": null,
-  "summary": "No known vulnerabilities",
-  "remediation": {
-    "unresolved": [],
-    "upgrade": {},
-    "patch": {},
-    "ignore": {},
-    "pin": {}
-  },
-  "filesystemPolicy": false,
-  "filtered": {
-    "ignore": [],
-    "patch": []
-  },
-  "uniqueCount": 0,
-  "projectName": "odoo",
-  "foundProjectCount": 1,
   "displayTargetFile": "requirements.txt",
-  "platform": "linux",
-  "path": "."
+  "summary": "Scan NOT EXECUTED — SNYK_TOKEN absent"
 }

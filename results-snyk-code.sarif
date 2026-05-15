@@ -1,18 +1,9 @@
 {
-  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
-  "version": "2.1.0",
   "runs": [
     {
-      "tool": {
-        "driver": {
-          "name": "SnykCode",
-          "semanticVersion": "1.0.0",
-          "version": "1.0.0",
-          "informationUri": "https://docs.snyk.io/scan-with-snyk/snyk-code",
-          "rules": []
-        }
-      },
       "results": []
     }
-  ]
+  ],
+  "executionStatus": "NOT_EXECUTED",
+  "executionStatusReason": "NOT EXECUTED — token absent: SNYK_TOKEN environment variable was not set at runtime; snyk code test was not invoked against api.snyk.io."
 }

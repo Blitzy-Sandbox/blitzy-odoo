@@ -1,0 +1,25 @@
+# Config B harness - regenerable runtime artifacts are not tracked.
+# The deliverable `findings-config-b.json` IS tracked (committed by the operator
+# after each scan run); the documentation deliverables `decision-log.md` and
+# `executive-summary.html` are also tracked. Everything below this comment is
+# regenerable from `run-scan.sh` and therefore excluded.
+
+# Virtual environment created by run-scan.sh
+.venv/
+
+# Intermediate scan outputs - regenerable from rule cache + source tree
+results-semgrep.sarif
+scan-metadata.json
+
+# Local rule cache - regenerable from the Semgrep Registry via run-scan.sh bootstrap
+rule-cache/*.yml
+rule-cache/*.yaml
+
+# Cached pip wheels / build detritus
+__pycache__/
+*.py[co]
+
+# Lint/tooling caches that may appear when developers run ruff locally
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/

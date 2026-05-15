@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Config B — Semgrep Security Scan of blitzy-odoo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Fira+Code:wght@400;500&display=swap" />
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css" />
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+    <style>
+        :root {
+            --blitzy-primary: #5B39F3;
+            --blitzy-primary-dark: #2D1C77;
+            --blitzy-primary-navy: #1A105F;
+            --blitzy-primary-light: #7A6DEC;
+            --blitzy-primary-deep: #4101DB;
+            --blitzy-accent-teal: #94FAD5;
+            --blitzy-surface-0: #FFFFFF;
+            --blitzy-surface-1: #F4EFF6;
+            --blitzy-surface-2: #F2F0FE;
+            --blitzy-surface-3: #F5F5F5;
+            --blitzy-border: #D9D9D9;
+            --blitzy-border-soft: rgba(91, 57, 243, 0.18);
+            --blitzy-text: #333333;
+            --blitzy-text-muted: #999999;
+            --blitzy-text-invert: #FFFFFF;
+            --ff-body: 'Inter', system-ui, sans-serif;
+            --ff-display: 'Space Grotesk', 'Inter', sans-serif;
+            --ff-mono: 'Fira Code', 'Courier New', monospace;
+            --gradient-hero: linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
+            --gradient-divider: linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%);
+            --gradient-accent-bar: linear-gradient(90deg, #5B39F3 0%, #94FAD5 100%);
+        }
+        .reveal {
+            font-family: var(--ff-body);
+            color: var(--blitzy-text);
+            background: var(--blitzy-surface-0);
+            font-size: 28px;
+        }
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            font-family: var(--ff-display);
+            color: var(--blitzy-primary-dark);
+            letter-spacing: -0.01em;
+            text-transform: none;
+            line-height: 1.15;
+            margin-bottom: 0.4em;
+        }
+        .reveal h1 { font-size: 2.6em; font-weight: 700; }
+        .reveal h2 { font-size: 2.0em; font-weight: 600; }
+        .reveal h3 { font-size: 1.4em; font-weight: 600; }
+        .reveal h4 { font-size: 1.1em; font-weight: 600; }
+        .reveal p, .reveal li { line-height: 1.5; }
+        .reveal ul, .reveal ol { display: inline-block; text-align: left; }
+        .reveal a { color: var(--blitzy-primary); text-decoration: none; }
+        .reveal section { padding: 60px 90px; box-sizing: border-box; }
+        .reveal .eyebrow {
+            font-family: var(--ff-mono);
+            font-weight: 500;
+            font-size: 0.55em;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--blitzy-accent-teal);
+            margin-bottom: 1.4em;
+            display: block;
+        }
+        /* Title slide */
+        .reveal section.slide-title {
+            background: var(--gradient-hero);
+            color: var(--blitzy-text-invert);
+            text-align: center;
+        }
+        .reveal section.slide-title .eyebrow {
+            color: var(--blitzy-accent-teal);
+        }
+        .reveal section.slide-title h1 {
+            color: var(--blitzy-text-invert);
+            font-size: 3.0em;
+        }
+        .reveal section.slide-title p {
+            color: rgba(255,255,255,0.86);
+            font-size: 1.1em;
+        }
+        .reveal .hero-icon {
+            color: var(--blitzy-accent-teal);
+            margin: 0 auto 24px;
+            display: flex;
+            justify-content: center;
+        }
+        .reveal .hero-icon svg { width: 96px; height: 96px; }
+        /* Divider slide */
+        .reveal section.slide-divider {
+            background: var(--gradient-divider);
+            color: var(--blitzy-text-invert);
+            text-align: center;
+        }
+        .reveal section.slide-divider h2 {
+            color: var(--blitzy-text-invert);
+            font-size: 2.6em;
+            font-weight: 700;
+        }
+        .reveal section.slide-divider .hero-icon { color: var(--blitzy-accent-teal); }
+        /* Closing slide */
+        .reveal section.slide-closing {
+            background: var(--blitzy-primary-navy);
+            color: var(--blitzy-text-invert);
+            text-align: center;
+        }
+        .reveal section.slide-closing h2 {
+            color: var(--blitzy-text-invert);
+            font-size: 2.2em;
+        }
+        .reveal section.slide-closing ul {
+            color: rgba(255,255,255,0.86);
+            margin-top: 1.4em;
+        }
+        .reveal section.slide-closing .accent-bar {
+            height: 6px;
+            width: 200px;
+            margin: 36px auto 18px;
+            background: var(--gradient-accent-bar);
+            border-radius: 3px;
+        }
+        .reveal section.slide-closing .brand-lockup {
+            font-family: var(--ff-mono);
+            color: var(--blitzy-accent-teal);
+            font-size: 0.6em;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-top: 18px;
+        }
+        /* KPI grid */
+        .reveal .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 22px;
+            margin: 30px 0;
+        }
+        .reveal .kpi-grid.three { grid-template-columns: repeat(3, 1fr); }
+        .reveal .kpi-card {
+            background: var(--blitzy-surface-2);
+            border: 1px solid var(--blitzy-border-soft);
+            border-radius: 14px;
+            padding: 24px 22px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .reveal .kpi-icon {
+            color: var(--blitzy-primary);
+            margin-bottom: 12px;
+            display: inline-flex;
+        }
+        .reveal .kpi-icon svg { width: 28px; height: 28px; }
+        .reveal .kpi-value {
+            font-family: var(--ff-display);
+            font-size: 2.2em;
+            font-weight: 700;
+            color: var(--blitzy-primary-dark);
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .reveal .kpi-label {
+            font-family: var(--ff-mono);
+            font-size: 0.55em;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--blitzy-text-muted);
+        }
+        /* Icon row for divider slides */
+        .reveal .icon-row {
+            display: flex;
+            justify-content: center;
+            gap: 28px;
+            margin-bottom: 22px;
+        }
+        .reveal .icon-row svg { width: 56px; height: 56px; }
+        /* Tables */
+        .reveal table {
+            width: 100%;
+            margin: 18px 0;
+            border-collapse: collapse;
+            font-size: 0.6em;
+        }
+        .reveal table th, .reveal table td {
+            border: 1px solid var(--blitzy-border);
+            padding: 10px 14px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .reveal table th {
+            background: var(--blitzy-surface-1);
+            color: var(--blitzy-primary-dark);
+            font-family: var(--ff-display);
+            font-weight: 600;
+        }
+        .reveal table tr:nth-child(2n) td { background: var(--blitzy-surface-3); }
+        /* Mermaid container */
+        .reveal .mermaid {
+            background: var(--blitzy-surface-1);
+            border-radius: 14px;
+            padding: 22px;
+            border: 1px solid var(--blitzy-border-soft);
+            font-family: var(--ff-mono);
+        }
+        /* Brand lockup */
+        .reveal .brand-lockup {
+            font-family: var(--ff-mono);
+            color: var(--blitzy-accent-teal);
+            font-size: 0.55em;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+        /* Pull quote */
+        .reveal .pull-quote {
+            border-left: 4px solid var(--blitzy-primary);
+            padding: 6px 22px;
+            margin: 18px 0;
+            color: var(--blitzy-primary-dark);
+            font-family: var(--ff-display);
+            font-style: italic;
+            font-size: 0.9em;
+        }
+        /* Code inline */
+        .reveal code {
+            font-family: var(--ff-mono);
+            background: var(--blitzy-surface-2);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: var(--blitzy-primary-deep);
+        }
+        /* Subtle eyebrow on content slides */
+        .reveal section .eyebrow.content-eyebrow {
+            color: var(--blitzy-primary);
+        }
+    </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+    <!-- 1. Title -->
+    <section class="slide-title">
+        <div class="hero-icon"><i data-lucide="shield-check"></i></div>
+        <span class="eyebrow">Static Analysis · Config B of N</span>
+        <h1>Semgrep CE Security Scan</h1>
+        <p style="margin-top: 0.4em;">A reproducible, offline-capable baseline of the <code style="background: rgba(255,255,255,0.12); color: var(--blitzy-accent-teal);">blitzy-odoo</code> repository</p>
+        <div class="accent-bar" style="height: 6px; width: 240px; margin: 30px auto 0; background: var(--gradient-accent-bar); border-radius: 3px;"></div>
+    </section>
+
+    <!-- 2. Headline KPI -->
+    <section>
+        <span class="eyebrow content-eyebrow">Headline findings</span>
+        <h2>Run at a glance</h2>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i data-lucide="file-search-2"></i></div>
+                <div class="kpi-value">40,971</div>
+                <div class="kpi-label">files scanned</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i data-lucide="alert-octagon"></i></div>
+                <div class="kpi-value">98</div>
+                <div class="kpi-label">total findings</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i data-lucide="shield-alert"></i></div>
+                <div class="kpi-value">27</div>
+                <div class="kpi-label">critical severity</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i data-lucide="clock"></i></div>
+                <div class="kpi-value">5m 31s</div>
+                <div class="kpi-label">wall-clock scan</div>
+            </div>
+        </div>
+        <p style="text-align: center; color: var(--blitzy-text-muted); font-size: 0.7em; margin-top: 16px;">
+            Severity mix · 27 critical · 66 high · 5 medium · 0 low · 820 rules across three packs
+        </p>
+    </section>
+
+    <!-- 3. Architecture overview (Mermaid) -->
+    <section>
+        <span class="eyebrow content-eyebrow">Architecture</span>
+        <h2>End-to-end flow</h2>
+        <pre class="mermaid">
+flowchart LR
+    A[blitzy-odoo source tree] -->|read-only walk| B[Semgrep CE 1.163.0]
+    C[Local rule cache<br/>security-audit · secrets · owasp-top-ten] --> B
+    B -->|--sarif -o| D[results-semgrep.sarif]
+    D --> E[normalize-findings.py]
+    E --> F[findings-config-b.json<br/>5-field minified array]
+    B -.exit code · duration · files.-> G[scan-metadata.json]
+        </pre>
+    </section>
+
+    <!-- 4. Section divider: What was done -->
+    <section class="slide-divider">
+        <div class="hero-icon"><i data-lucide="package-check"></i></div>
+        <h2>What was done</h2>
+    </section>
+
+    <!-- 5. Scope of work -->
+    <section>
+        <span class="eyebrow content-eyebrow">Scope</span>
+        <h2>Deliverables shipped</h2>
+        <table>
+            <thead>
+                <tr><th>File</th><th>Role</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>findings-config-b.json</code></td><td>Mandated deliverable — minified, single-line, UTF-8 JSON array of 98 normalized findings</td></tr>
+                <tr><td><code>run-scan.sh</code></td><td>Non-interactive orchestration: bootstrap → cache → dry-run gate → SARIF scan → normalize → validate</td></tr>
+                <tr><td><code>normalize-findings.py</code></td><td>Deterministic SARIF → 5-field JSON normalizer (Python 3.10+ stdlib only)</td></tr>
+                <tr><td><code>rule-cache/*.yml</code></td><td>Locally materialized registry rule packs (offline-capable)</td></tr>
+                <tr><td><code>decision-log.md</code></td><td>Single source of truth for "why" decisions and deviations</td></tr>
+                <tr><td><code>executive-summary.html</code></td><td>This deck — non-technical leadership briefing</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- 6. Section divider: Why -->
+    <section class="slide-divider">
+        <div class="hero-icon"><i data-lucide="target"></i></div>
+        <h2>Why it was done</h2>
+    </section>
+
+    <!-- 7. Business value -->
+    <section>
+        <span class="eyebrow content-eyebrow">Business value</span>
+        <h2>Three durable wins</h2>
+        <div class="kpi-grid three">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i data-lucide="repeat"></i></div>
+                <div class="kpi-value" style="font-size: 1.4em;">Reproducible</div>
+                <div class="kpi-label">Offline SAST baseline with byte-identical reruns</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i data-lucide="git-compare"></i></div>
+                <div class="kpi-value" style="font-size: 1.4em;">Comparable</div>
+                <div class="kpi-label">Sibling Config A / Config C plug in unchanged</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i data-lucide="file-check-2"></i></div>
+                <div class="kpi-value" style="font-size: 1.4em;">Auditable</div>
+                <div class="kpi-label">Operational facts captured outside SARIF body</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. Section divider: How it works -->
+    <section class="slide-divider">
+        <div class="hero-icon"><i data-lucide="workflow"></i></div>
+        <h2>How it works</h2>
+    </section>
+
+    <!-- 9. Pipeline (Mermaid sequence) -->
+    <section>
+        <span class="eyebrow content-eyebrow">Pipeline</span>
+        <h2>One command, four gates</h2>
+        <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Op as Operator
+    participant Sh as run-scan.sh
+    participant Sg as Semgrep CE
+    participant N  as normalizer
+    Op->>Sh: bash run-scan.sh
+    Sh->>Sg: pip install semgrep==1.163.0
+    Sh->>Sg: download p/security-audit · p/secrets · p/owasp-top-ten
+    Sh->>Sg: dryrun gate (Directive 1)
+    Sg-->>Sh: exit 0, offline OK
+    Sh->>Sg: SARIF scan (Directive 2)
+    Sg-->>Sh: results-semgrep.sarif
+    Sh->>N: normalize-findings.py
+    N-->>Sh: findings-config-b.json
+    Sh->>Op: gates: wc-l=1 · JSON OK · 5 fields · description ≤200
+        </pre>
+    </section>
+
+    <!-- 10. Rule pack coverage -->
+    <section>
+        <span class="eyebrow content-eyebrow">Coverage</span>
+        <h2>Rule packs in scope</h2>
+        <table>
+            <thead>
+                <tr><th>Pack</th><th>Rules</th><th>Focus</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>p/security-audit</code></td><td>225</td><td>Broad security audit — high recall, expects manual triage</td></tr>
+                <tr><td><code>p/secrets</code></td><td>51</td><td>Hardcoded credentials, API keys, tokens, leaked secrets</td></tr>
+                <tr><td><code>p/owasp-top-ten</code></td><td>544</td><td>OWASP Top 10 — injection, broken access, crypto failures</td></tr>
+                <tr><td><strong>Total</strong></td><td><strong>820</strong></td><td>Loaded from on-disk YAML; zero network calls during scan</td></tr>
+            </tbody>
+        </table>
+        <p style="font-size: 0.7em; color: var(--blitzy-text-muted); margin-top: 10px;">
+            <i data-lucide="info" style="vertical-align: middle; width: 16px; height: 16px;"></i>
+            <code>p/owasp</code> returns HTTP 404 from the current registry; <code>p/owasp-top-ten</code> is the documented substitute (see <code>decision-log.md</code> DEV-1).
+        </p>
+    </section>
+
+    <!-- 11. Section divider: Risks -->
+    <section class="slide-divider">
+        <div class="hero-icon"><i data-lucide="alert-triangle"></i></div>
+        <h2>Risks &amp; limitations</h2>
+    </section>
+
+    <!-- 12. Known limits -->
+    <section>
+        <span class="eyebrow content-eyebrow">Known limits</span>
+        <h2>What this scan does not see</h2>
+        <table>
+            <thead>
+                <tr><th>Limit</th><th>Why it exists</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>CE engine vs Pro coverage</td><td>Framework-specific Pro rules (e.g., Flask/Django taint analysis) do not return findings under Community Edition</td></tr>
+                <tr><td><code>CWE-Unknown</code> fallback</td><td>28 of 98 findings lacked a CWE in rule metadata and matched no inference pattern; sentinel preserves 5-field gate</td></tr>
+                <tr><td>Description truncated to 200 chars</td><td>User-mandated; full text preserved in <code>results-semgrep.sarif</code></td></tr>
+                <tr><td>No remediation performed</td><td>Config B is a detection harness; triage and fixes are downstream work</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- 13. Section divider: Operational readiness -->
+    <section class="slide-divider">
+        <div class="hero-icon"><i data-lucide="gauge"></i></div>
+        <h2>Operational readiness</h2>
+    </section>
+
+    <!-- 14. Pass/fail gates -->
+    <section>
+        <span class="eyebrow content-eyebrow">Verification</span>
+        <h2>Every gate has a one-line check</h2>
+        <table>
+            <thead>
+                <tr><th>Directive</th><th>Verification</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1 — offline operation</td><td><code>semgrep ... --dryrun</code> exits 0, zero network</td><td>PASS</td></tr>
+                <tr><td>2 — SARIF emission</td><td><code>runs</code> array present, 98 results</td><td>PASS</td></tr>
+                <tr><td>3a — single line</td><td><code>wc -l == 1</code></td><td>PASS</td></tr>
+                <tr><td>3b — valid JSON</td><td><code>python -m json.tool</code></td><td>PASS</td></tr>
+                <tr><td>3c — five fields</td><td>every record == <code>{file, line, severity, cwe, description}</code></td><td>PASS</td></tr>
+                <tr><td>3d — description ≤ 200 chars</td><td>max observed = 200</td><td>PASS</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- 15. Onboarding & next steps -->
+    <section>
+        <span class="eyebrow content-eyebrow">Onboarding</span>
+        <h2>How the next team continues</h2>
+        <div class="kpi-grid three">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i data-lucide="terminal"></i></div>
+                <div class="kpi-value" style="font-size: 1.0em;">Run the harness</div>
+                <div class="kpi-label">bash security-scan/config-b/run-scan.sh — 6 minutes end-to-end</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i data-lucide="book-open"></i></div>
+                <div class="kpi-value" style="font-size: 1.0em;">Read the log</div>
+                <div class="kpi-label">decision-log.md captures every "why" — including six explicit deviations</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i data-lucide="layout-grid"></i></div>
+                <div class="kpi-value" style="font-size: 1.0em;">Add siblings</div>
+                <div class="kpi-label">Config A / Config C drop into security-scan/config-a, config-c — no shared state</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 16. Closing -->
+    <section class="slide-closing">
+        <div class="hero-icon" style="color: var(--blitzy-accent-teal);"><i data-lucide="check-circle-2"></i></div>
+        <h2>Reproducible offline SAST baseline shipped</h2>
+        <div class="accent-bar"></div>
+        <ul style="display:inline-block; text-align:left;">
+            <li>1 deliverable · 1 single-line JSON file</li>
+            <li>820 rules · 40,971 files · 98 findings</li>
+            <li>All four user-prompt directive gates green</li>
+        </ul>
+        <div class="brand-lockup">Blitzy · Security Tool Comparison · Config B</div>
+    </section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+    import { createIcons, icons } from 'https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/esm/lucide.js';
+
+    mermaid.initialize({
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: {
+            primaryColor:        '#F2F0FE',
+            primaryTextColor:    '#333333',
+            primaryBorderColor:  '#5B39F3',
+            lineColor:           '#999999',
+            secondaryColor:      '#F4EFF6',
+            fontFamily:          "'Inter', sans-serif",
+        }
+    });
+
+    const deck = new Reveal({
+        hash: true,
+        transition: 'slide',
+        controlsTutorial: false,
+        width: 1920,
+        height: 1080,
+        margin: 0.04,
+    });
+
+    deck.initialize().then(() => {
+        // Render all Mermaid blocks once on first paint.
+        mermaid.run({ querySelector: '.mermaid' });
+        // Create Lucide icons on first paint.
+        createIcons({ icons });
+    });
+
+    deck.on('slidechanged', () => {
+        // Re-run Mermaid + Lucide on every slide change so dynamically-shown
+        // sections always render their visuals.
+        mermaid.run({ querySelector: '.mermaid' });
+        createIcons({ icons });
+    });
+</script>
+</body>
+</html>

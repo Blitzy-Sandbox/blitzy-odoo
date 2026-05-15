@@ -1,0 +1,30 @@
+{
+  "vulnerabilities": [],
+  "ok": true,
+  "dependencyCount": 0,
+  "org": "",
+  "policy": "",
+  "isPrivate": true,
+  "licensesPolicy": null,
+  "packageManager": "pip",
+  "ignoreSettings": null,
+  "summary": "No known vulnerabilities",
+  "remediation": {
+    "unresolved": [],
+    "upgrade": {},
+    "patch": {},
+    "ignore": {},
+    "pin": {}
+  },
+  "filesystemPolicy": false,
+  "filtered": {
+    "ignore": [],
+    "patch": []
+  },
+  "uniqueCount": 0,
+  "projectName": "odoo",
+  "foundProjectCount": 1,
+  "displayTargetFile": "requirements.txt",
+  "platform": "linux",
+  "path": "."
+}

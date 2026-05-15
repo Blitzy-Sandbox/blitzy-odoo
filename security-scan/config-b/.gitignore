@@ -1,25 +1,14 @@
-# Config B harness - regenerable runtime artifacts are not tracked.
-# The deliverable `findings-config-b.json` IS tracked (committed by the operator
-# after each scan run); the documentation deliverables `decision-log.md` and
-# `executive-summary.html` are also tracked. Everything below this comment is
-# regenerable from `run-scan.sh` and therefore excluded.
+# Config B — Semgrep CE static-analysis harness gitignore.
+# Rationale for every exclusion lives in security-scan/config-b/decision-log.md (Explainability rule).
 
-# Virtual environment created by run-scan.sh
+# Python virtualenv created by run-scan.sh bootstrap phase.
 .venv/
 
-# Intermediate scan outputs - regenerable from rule cache + source tree
-results-semgrep.sarif
-scan-metadata.json
-
-# Local rule cache - regenerable from the Semgrep Registry via run-scan.sh bootstrap
+# Locally materialized Semgrep registry rule packs (downloaded at bootstrap, regenerable).
 rule-cache/*.yml
-rule-cache/*.yaml
 
-# Cached pip wheels / build detritus
-__pycache__/
-*.py[co]
+# Raw SARIF output from each scan (regenerable; the deliverable is findings-config-b.json).
+results-semgrep.sarif
 
-# Lint/tooling caches that may appear when developers run ruff locally
-.ruff_cache/
-.mypy_cache/
-.pytest_cache/
+# Operational metadata captured per run (regenerable).
+scan-metadata.json

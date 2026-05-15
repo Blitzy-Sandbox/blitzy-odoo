@@ -1,0 +1,14 @@
+# Config B — Semgrep CE static-analysis harness gitignore.
+# Rationale for every exclusion lives in security-scan/config-b/decision-log.md (Explainability rule).
+
+# Python virtualenv created by run-scan.sh bootstrap phase.
+.venv/
+
+# Locally materialized Semgrep registry rule packs (downloaded at bootstrap, regenerable).
+rule-cache/*.yml
+
+# Raw SARIF output from each scan (regenerable; the deliverable is findings-config-b.json).
+results-semgrep.sarif
+
+# Operational metadata captured per run (regenerable).
+scan-metadata.json

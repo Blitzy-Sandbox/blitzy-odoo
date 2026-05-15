@@ -1,35 +1,12 @@
 #!/usr/bin/env python3
-# normalize-findings.py — deterministic SARIF -> Config B findings normalizer.
-#
-# Public contract:
-#   usage: normalize-findings.py <input-sarif> <output-json>
-#
-# Output format (Directive 3, verbatim user template):
-#   [{"file":"<relative path>","line":<integer>,"severity":"<critical|high|medium|low>","cwe":"<CWE-ID>","description":"<max 200 chars>"},...]
-#
-# Field sourcing:
-#   file        SARIF location: runs[].results[].locations[0].physicalLocation.artifactLocation.uri
-#               If --target-root is supplied and the URI is absolute under that
-#               root, the prefix is stripped so the output is a relative path
-#               (Directive 3 requires "SARIF location (relative path)").
-#   line        SARIF region: runs[].results[].locations[0].physicalLocation.region.startLine (int)
-#   severity    runs[].results[].level mapped error->critical, warning->high, note->medium, info->low.
-#               Fallback chain: rule defaultConfiguration.level -> rule properties.severity -> "medium".
-#   cwe         rule properties.cwe (first element if a list) normalized to "CWE-<n>".
-#               If absent, infer from rule message via keyword table. Else "CWE-Unknown".
-#   description result.message.text truncated to 200 Unicode characters; no ellipsis appended.
-#
-# Serialization is exactly:
-#   json.dumps(records, ensure_ascii=False, separators=(",", ":"))
-# written as bytes followed by exactly one trailing '\n'. The trailing newline is
-# what makes `wc -l < findings-config-b.json` return 1 (the user-prompt
-# pass/fail gate). For zero findings the file content is the three bytes `[]\n`.
-#
-# Determinism: result iteration preserves SARIF emission order. No sorting, no
-# de-duplication, no rule-grouping is applied. Re-running on an unchanged SARIF
-# produces a byte-identical output (verified by run-scan.sh sha256 comparison).
-#
-# Design rationale lives in decision-log.md, not in code comments.
+"""Config B — SARIF → five-field minified-JSON findings normalizer.
+
+Per user prompt Directive 3 (preserved verbatim), the output schema is:
+
+    [{"file":"<relative path>","line":<integer>,"severity":"<critical|high|medium|low>","cwe":"<CWE-ID>","description":"<max 200 chars>"},...]
+
+Rationale for every non-trivial decision lives in security-scan/config-b/decision-log.md (Explainability rule).
+"""
 
 from __future__ import annotations
 
@@ -38,261 +15,340 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any
 
-SEVERITY_MAP = {
+SEVERITY_MAP: dict[str, str] = {
     "error": "critical",
     "warning": "high",
     "note": "medium",
     "info": "low",
 }
-SEVERITY_FALLBACK = "medium"
-DESCRIPTION_MAX_CHARS = 200
-CWE_UNKNOWN = "CWE-Unknown"
 
-# Table-driven CWE inference. Order matters: the first matching pattern wins.
-# Patterns are case-insensitive whole-word-ish substrings on the result message.
-# This table is the single source of truth for the inference fallback; the
-# decision log enumerates the rationale for each entry.
-CWE_INFERENCE_TABLE: list[tuple[str, str]] = [
-    # SQL & NoSQL injection
-    (r"\bsql\s*injection\b", "CWE-89"),
-    (r"\bsqli\b", "CWE-89"),
-    (r"\bnosql\s*injection\b", "CWE-943"),
-    # Command / OS injection
-    (r"\bcommand\s*injection\b", "CWE-78"),
-    (r"\bos\s*command\s*injection\b", "CWE-78"),
-    (r"\bshell\s*injection\b", "CWE-78"),
-    # Code injection / eval
-    (r"\bcode\s*injection\b", "CWE-94"),
-    (r"\beval\(\)?\s*(usage|of\s*untrusted|injection)?", "CWE-95"),
-    # XSS
-    (r"\b(?:reflected|stored|dom)?\s*xss\b", "CWE-79"),
-    (r"\bcross[\s-]*site\s*scripting\b", "CWE-79"),
-    # CSRF
-    (r"\bcsrf\b", "CWE-352"),
-    (r"\bcross[\s-]*site\s*request\s*forgery\b", "CWE-352"),
-    # Path traversal
-    (r"\bpath\s*traversal\b", "CWE-22"),
-    (r"\bdirectory\s*traversal\b", "CWE-22"),
-    (r"\.\./", "CWE-22"),
-    # SSRF / open redirect
-    (r"\bssrf\b", "CWE-918"),
-    (r"\bserver[\s-]*side\s*request\s*forgery\b", "CWE-918"),
-    (r"\bopen\s*redirect\b", "CWE-601"),
-    # Hardcoded secrets / credentials
-    (r"\bhard[\s-]*coded\s*(?:secret|password|credential|token|key|api[\s-]*key)\b", "CWE-798"),
-    (r"\b(detected|leaked)\s+(?:secret|password|token|api[\s-]*key|access[\s-]*key)\b", "CWE-798"),
-    (r"\bsecret\s+in\s+code\b", "CWE-798"),
-    # Deserialization
-    (r"\b(?:insecure|unsafe)\s*deserializ", "CWE-502"),
-    (r"\bpickle\b", "CWE-502"),
-    (r"\byaml\.load\b", "CWE-502"),
-    # XXE
-    (r"\bxxe\b", "CWE-611"),
-    (r"\bxml\s*external\s*entity\b", "CWE-611"),
-    # Weak / broken crypto
-    (r"\b(weak|broken|insecure)\s+(crypto|cipher|hash|random)\b", "CWE-327"),
-    (r"\bmd5\b", "CWE-327"),
-    (r"\bsha1\b", "CWE-327"),
-    (r"\becb\s+mode\b", "CWE-327"),
-    (r"\bdes\s+(?:cipher|encryption)\b", "CWE-327"),
-    # Weak random
-    (r"\binsecure\s+random\b", "CWE-338"),
-    (r"\bmath\.random\b", "CWE-338"),
-    # TLS / cert verification
-    (r"\b(?:tls|ssl)\s+(?:certificate)?\s*verification\s+disabled\b", "CWE-295"),
-    (r"\bverify\s*=\s*false\b", "CWE-295"),
-    # Auth / authz
-    (r"\bauthentication\s+bypass\b", "CWE-287"),
-    (r"\bmissing\s+authorization\b", "CWE-862"),
-    (r"\bbroken\s+access\s+control\b", "CWE-284"),
-    # Sensitive data
-    (r"\b(?:logging|exposed)\s+(?:secret|password|credential|sensitive)\b", "CWE-532"),
-    (r"\binsecure\s+cookie\b", "CWE-614"),
-    (r"\b(?:missing|insecure)\s+(?:httponly|secure)\s+(?:flag|attribute)\b", "CWE-1004"),
-    # Headers / CORS
-    (r"\bcors\s+misconfiguration\b", "CWE-942"),
-    (r"\bopen\s+cors\b", "CWE-942"),
-    # SSRF aliases
-    (r"\bblind\s+ssrf\b", "CWE-918"),
-    # LDAP injection
-    (r"\bldap\s+injection\b", "CWE-90"),
-    # XPath injection
-    (r"\bxpath\s+injection\b", "CWE-643"),
-    # Template injection
-    (r"\b(?:server[\s-]*side\s+)?template\s+injection\b", "CWE-1336"),
-    (r"\bssti\b", "CWE-1336"),
-    # Race conditions
-    (r"\brace\s+condition\b", "CWE-362"),
-    # Integer issues
-    (r"\binteger\s+overflow\b", "CWE-190"),
-    # Improper input validation (catch-all near the end)
-    (r"\binput\s+validation\b", "CWE-20"),
-]
+LAST_RESORT_SEVERITY: str = "medium"
 
-_COMPILED_INFERENCE: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(p, re.IGNORECASE), c) for p, c in CWE_INFERENCE_TABLE
-]
+DESCRIPTION_MAX_CHARS: int = 200
+
+CWE_INFERENCE_TABLE: tuple[tuple[str, str], ...] = (
+    ("hard-coded credential", "CWE-798"),
+    ("hard-coded password", "CWE-798"),
+    ("hard-coded api key", "CWE-798"),
+    ("hard-coded api-key", "CWE-798"),
+    ("hard-coded secret", "CWE-798"),
+    ("hard-coded token", "CWE-798"),
+    ("hardcoded credential", "CWE-798"),
+    ("hardcoded password", "CWE-798"),
+    ("hardcoded api key", "CWE-798"),
+    ("hardcoded api-key", "CWE-798"),
+    ("hardcoded secret", "CWE-798"),
+    ("hardcoded token", "CWE-798"),
+    ("server-side request forgery", "CWE-918"),
+    ("server-side template injection", "CWE-1336"),
+    ("cross-site request forgery", "CWE-352"),
+    ("cross-site scripting", "CWE-79"),
+    ("cross site scripting", "CWE-79"),
+    ("xml external entity", "CWE-611"),
+    ("os command injection", "CWE-78"),
+    ("command injection", "CWE-78"),
+    ("shell injection", "CWE-78"),
+    ("sql injection", "CWE-89"),
+    ("nosql injection", "CWE-943"),
+    ("ldap injection", "CWE-90"),
+    ("xpath injection", "CWE-643"),
+    ("code injection", "CWE-94"),
+    ("template injection", "CWE-1336"),
+    ("path traversal", "CWE-22"),
+    ("directory traversal", "CWE-22"),
+    ("insecure deserialization", "CWE-502"),
+    ("unsafe deserialization", "CWE-502"),
+    ("open redirect", "CWE-601"),
+    ("authentication bypass", "CWE-287"),
+    ("missing authorization", "CWE-862"),
+    ("broken access control", "CWE-284"),
+    ("cors misconfiguration", "CWE-942"),
+    ("insecure cookie", "CWE-614"),
+    ("certificate verification disabled", "CWE-295"),
+    ("verify=false", "CWE-295"),
+    ("weak random", "CWE-338"),
+    ("insecure random", "CWE-338"),
+    ("weak hash", "CWE-328"),
+    ("weak cipher", "CWE-327"),
+    ("weak crypto", "CWE-327"),
+    ("broken crypto", "CWE-327"),
+    ("race condition", "CWE-362"),
+    ("integer overflow", "CWE-190"),
+    ("clickjacking", "CWE-1021"),
+    ("ssrf", "CWE-918"),
+    ("ssti", "CWE-1336"),
+    ("xxe", "CWE-611"),
+    ("xss", "CWE-79"),
+    ("csrf", "CWE-352"),
+    ("md5", "CWE-327"),
+    ("sha1", "CWE-327"),
+)
+
+CWE_NORMALIZE_RE: re.Pattern[str] = re.compile(r"(?i)\bCWE[-_:\s]*0*([0-9]+)\b")
+
+CWE_UNKNOWN: str = "CWE-Unknown"
 
 
-def load_sarif(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8", errors="strict") as fh:
-        return json.load(fh)
+def load_sarif(path: Path) -> dict:
+    """Load a SARIF v2.1.0 document with explicit UTF-8 decoding.
+
+    Validates that the top-level object contains a runs[] array
+    (Directive 2 pass/fail precondition). Raises ValueError on
+    structural failure; UnicodeDecodeError on non-UTF-8 bytes.
+    """
+    with path.open("r", encoding="utf-8", errors="strict") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ValueError("SARIF root must be a JSON object")
+    runs = data.get("runs")
+    if not isinstance(runs, list):
+        raise ValueError("SARIF missing top-level 'runs' array")
+    return data
 
 
-def index_rules(run: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def index_rules(run: dict) -> dict[str, dict]:
+    """Build a mapping rule_id -> rule_object from run.tool.driver.rules.
+
+    Keys are both the rule's "id" and "name" fields so result.ruleId
+    lookups can find the rule via either form.
+    """
+    rules_by_id: dict[str, dict] = {}
     driver = (run.get("tool") or {}).get("driver") or {}
     rules = driver.get("rules") or []
-    by_id: dict[str, dict[str, Any]] = {}
     for rule in rules:
+        if not isinstance(rule, dict):
+            continue
         rid = rule.get("id")
-        if rid:
-            by_id[rid] = rule
-    return by_id
+        rname = rule.get("name")
+        if isinstance(rid, str) and rid and rid not in rules_by_id:
+            rules_by_id[rid] = rule
+        if isinstance(rname, str) and rname and rname not in rules_by_id:
+            rules_by_id[rname] = rule
+    return rules_by_id
 
 
-def _rule_for_result(result: dict[str, Any], rules_by_id: dict[str, dict[str, Any]],
-                     rules_list: list[dict[str, Any]]) -> dict[str, Any]:
-    rid = result.get("ruleId")
-    if rid and rid in rules_by_id:
-        return rules_by_id[rid]
-    idx = result.get("ruleIndex")
-    if isinstance(idx, int) and 0 <= idx < len(rules_list):
-        return rules_list[idx]
-    return {}
 
+def severity_for(result: dict, rule: dict | None) -> str:
+    """Apply error->critical, warning->high, note->medium, info->low with fallbacks.
 
-def severity_for(result: dict[str, Any], rule: dict[str, Any]) -> str:
+    Fallback chain (in order):
+      1. result.level
+      2. rule.defaultConfiguration.level
+      3. rule.properties.severity (Semgrep places severity here when level is absent)
+      4. LAST_RESORT_SEVERITY ('medium')
+
+    Each last-resort fallback is logged to stderr with the rule ID so operators
+    can audit the gap between SARIF emission and the closed enum.
+    """
     level = result.get("level")
-    if level in SEVERITY_MAP:
-        return SEVERITY_MAP[level]
-    default_cfg = rule.get("defaultConfiguration") or {}
-    rule_level = default_cfg.get("level")
-    if rule_level in SEVERITY_MAP:
-        return SEVERITY_MAP[rule_level]
-    props = rule.get("properties") or {}
-    prop_sev = props.get("severity")
-    if isinstance(prop_sev, str):
-        low = prop_sev.strip().lower()
-        if low in SEVERITY_MAP:
-            return SEVERITY_MAP[low]
-        if low in {"critical", "high", "medium", "low"}:
-            return low
-    return SEVERITY_FALLBACK
+    if isinstance(level, str):
+        key = level.strip().lower()
+        if key in SEVERITY_MAP:
+            return SEVERITY_MAP[key]
+
+    if isinstance(rule, dict):
+        default_cfg = rule.get("defaultConfiguration") or {}
+        default_level = default_cfg.get("level") if isinstance(default_cfg, dict) else None
+        if isinstance(default_level, str):
+            key = default_level.strip().lower()
+            if key in SEVERITY_MAP:
+                return SEVERITY_MAP[key]
+
+        props = rule.get("properties") or {}
+        if isinstance(props, dict):
+            rule_sev = props.get("severity")
+            if isinstance(rule_sev, str):
+                key = rule_sev.strip().lower()
+                if key in SEVERITY_MAP:
+                    return SEVERITY_MAP[key]
+                if key in {"critical", "high", "medium", "low"}:
+                    return key
+
+    sys.stderr.write(
+        "normalize-findings: severity fallback to "
+        f"'{LAST_RESORT_SEVERITY}' for ruleId={result.get('ruleId', '?')!r} "
+        "(SARIF level + rule metadata both omit severity)\n"
+    )
+    return LAST_RESORT_SEVERITY
 
 
-_CWE_NORMALIZE = re.compile(r"^\s*(?:CWE[-_:\s]*)?(\d+)\s*$", re.IGNORECASE)
+def _normalize_cwe(raw: object) -> str | None:
+    """Normalize a single CWE input to the canonical form 'CWE-<n>'.
 
-
-def _normalize_cwe(raw: Any) -> str | None:
-    if raw is None:
+    Accepts heterogeneous inputs:
+      - 'CWE-79', 'cwe-079', 'CWE_89', 'cwe: 22'
+      - bare integer ('79' or 79)
+      - composite strings ("CWE-22: Improper Limitation of a Pathname...")
+    Returns None when no CWE token is recoverable.
+    """
+    if raw is None or isinstance(raw, bool):
         return None
-    if isinstance(raw, list):
-        if not raw:
-            return None
-        raw = raw[0]
-    if not isinstance(raw, (str, int)):
+    if isinstance(raw, (int, float)):
+        n = int(raw)
+        return f"CWE-{n}" if n >= 0 else None
+    if not isinstance(raw, str):
         return None
-    s = str(raw).strip()
+    s = raw.strip()
     if not s:
         return None
-    m = _CWE_NORMALIZE.match(s)
+    m = CWE_NORMALIZE_RE.search(s)
     if m:
         return f"CWE-{int(m.group(1))}"
+    if s.isdigit():
+        return f"CWE-{int(s)}"
     return None
 
 
 def infer_cwe(text: str) -> str | None:
-    if not text:
+    """Deterministic keyword-based CWE inference.
+
+    Walks CWE_INFERENCE_TABLE in declared order (longest, most-specific phrases
+    first) and returns the first matching CWE ID. Matching is a case-insensitive
+    substring test. Returns None when no keyword matches.
+    """
+    if not text or not isinstance(text, str):
         return None
-    for pattern, cwe in _COMPILED_INFERENCE:
-        if pattern.search(text):
+    haystack = text.lower()
+    for needle, cwe in CWE_INFERENCE_TABLE:
+        if needle in haystack:
             return cwe
     return None
 
 
-def cwe_for(result: dict[str, Any], rule: dict[str, Any]) -> str:
-    props = rule.get("properties") or {}
-    candidate = _normalize_cwe(props.get("cwe"))
-    if candidate:
-        return candidate
-    # Some Semgrep rules expose CWE under properties["cwe2022-top25"], "cwes",
-    # or as part of a taxonomy. Be defensive but never silently drop.
-    for key in ("cwes", "cwe2022-top25", "cwe2021-top25", "cwe-22", "cwe_id"):
-        candidate = _normalize_cwe(props.get(key))
-        if candidate:
-            return candidate
-    # Try result.taxa[].toolComponent.name == "CWE"
-    for tax in result.get("taxa") or []:
-        if isinstance(tax, dict):
+def cwe_for(result: dict, rule: dict | None) -> str:
+    """Resolve a finding's CWE.
+
+    Lookup order:
+      1. rule.properties.cwe (string, list, or numeric)
+      2. rule.properties.cwes, .cwe_id, .cwe2022-top25, .cwe2021-top25
+      3. rule.properties.tags items that begin with 'CWE-<n>'
+      4. result.taxa[] entries whose toolComponent.name == 'CWE'
+      5. infer_cwe() on result.message.text + rule short/full/help text + rule id/name
+      6. 'CWE-Unknown' (logged to stderr)
+    """
+    rule_id = result.get("ruleId", "?")
+
+    if isinstance(rule, dict):
+        props = rule.get("properties") or {}
+        if isinstance(props, dict):
+            primary = props.get("cwe")
+            normalized = _first_normalized_cwe(primary)
+            if normalized:
+                return normalized
+
+            for alt_key in ("cwes", "cwe_id", "cwe2022-top25", "cwe2021-top25"):
+                normalized = _first_normalized_cwe(props.get(alt_key))
+                if normalized:
+                    return normalized
+
+            tags = props.get("tags")
+            if isinstance(tags, list):
+                for tag in tags:
+                    if isinstance(tag, str) and "cwe" in tag.lower():
+                        normalized = _normalize_cwe(tag)
+                        if normalized:
+                            return normalized
+
+        for tax in result.get("taxa") or []:
+            if not isinstance(tax, dict):
+                continue
             comp = tax.get("toolComponent") or {}
-            if str(comp.get("name", "")).upper() == "CWE":
-                candidate = _normalize_cwe(tax.get("id"))
-                if candidate:
-                    return candidate
-    # Last resort: infer from the rule's message/full-description/short-description.
-    parts: list[str] = []
-    msg = result.get("message") or {}
+            if isinstance(comp, dict) and str(comp.get("name", "")).upper() == "CWE":
+                normalized = _normalize_cwe(tax.get("id"))
+                if normalized:
+                    return normalized
+
+    message_text = ""
+    msg = result.get("message")
     if isinstance(msg, dict):
-        parts.append(str(msg.get("text", "")))
-    for key in ("fullDescription", "shortDescription", "name", "id"):
-        v = rule.get(key)
-        if isinstance(v, dict):
-            parts.append(str(v.get("text", "")))
-        elif isinstance(v, str):
-            parts.append(v)
-    inferred = infer_cwe("\n".join(parts))
+        candidate = msg.get("text")
+        if isinstance(candidate, str):
+            message_text = candidate
+
+    rule_text_parts: list[str] = []
+    if isinstance(rule, dict):
+        for key in ("shortDescription", "fullDescription", "help"):
+            v = rule.get(key)
+            if isinstance(v, dict):
+                t = v.get("text")
+                if isinstance(t, str):
+                    rule_text_parts.append(t)
+        for key in ("name", "id"):
+            v = rule.get(key)
+            if isinstance(v, str):
+                rule_text_parts.append(v.replace("-", " ").replace("_", " ").replace(".", " "))
+
+    inferred = infer_cwe(" ".join([message_text, *rule_text_parts]))
     if inferred:
         return inferred
+
+    snippet = message_text[:80]
+    sys.stderr.write(
+        f"normalize-findings: CWE fallback to {CWE_UNKNOWN!r} for "
+        f"ruleId={rule_id!r} message={snippet!r}\n"
+    )
     return CWE_UNKNOWN
 
 
-def description_for(result: dict[str, Any]) -> str:
-    msg = result.get("message") or {}
-    text = ""
+def _first_normalized_cwe(value: object) -> str | None:
+    """Return the first normalizable CWE from a scalar or list value."""
+    if value is None:
+        return None
+    if isinstance(value, list):
+        for item in value:
+            normalized = _normalize_cwe(item)
+            if normalized:
+                return normalized
+        return None
+    return _normalize_cwe(value)
+
+
+
+def description_for(result: dict) -> str:
+    """Read result.message.text and truncate to DESCRIPTION_MAX_CHARS Unicode chars.
+
+    Truncation is performed on Unicode code points (Python str length), not bytes.
+    No ellipsis is appended (the full 200-character budget is preserved).
+    When the SARIF result omits message.text entirely, an empty string is emitted
+    and the fallback is logged to stderr with the rule ID.
+    """
+    msg = result.get("message")
+    text: str | None = None
     if isinstance(msg, dict):
-        text = msg.get("text") or msg.get("markdown") or ""
+        candidate = msg.get("text")
+        if isinstance(candidate, str):
+            text = candidate
+        else:
+            markdown = msg.get("markdown")
+            if isinstance(markdown, str):
+                text = markdown
     elif isinstance(msg, str):
         text = msg
-    if not isinstance(text, str):
-        text = str(text)
+
+    if text is None:
+        sys.stderr.write(
+            "normalize-findings: description fallback (empty) for "
+            f"ruleId={result.get('ruleId', '?')!r}\n"
+        )
+        return ""
+
     if len(text) > DESCRIPTION_MAX_CHARS:
-        text = text[:DESCRIPTION_MAX_CHARS]
+        return text[:DESCRIPTION_MAX_CHARS]
     return text
 
 
-def _location(result: dict[str, Any], target_root: str | None) -> tuple[str, int]:
-    locations = result.get("locations") or []
-    file_uri = ""
-    line = 0
-    if locations:
-        loc = locations[0] or {}
-        phys = (loc.get("physicalLocation") or {})
-        art = phys.get("artifactLocation") or {}
-        uri = art.get("uri")
-        if isinstance(uri, str):
-            file_uri = _make_relative(uri, target_root)
-        region = phys.get("region") or {}
-        start = region.get("startLine")
-        if isinstance(start, int):
-            line = start
-        elif isinstance(start, str):
-            try:
-                line = int(start)
-            except ValueError:
-                line = 0
-    return file_uri, line
-
-
 def _make_relative(uri: str, target_root: str | None) -> str:
-    if not target_root:
+    """Rewrite an absolute SARIF URI to a path relative to target_root.
+
+    Strips an optional 'file://' scheme prefix. If target_root is not a prefix
+    of the URI, returns the URI unchanged.
+    """
+    if not uri or not target_root:
         return uri
-    # Strip a file:// prefix if present.
     candidate = uri
     if candidate.startswith("file://"):
         candidate = candidate[len("file://"):]
-    # Normalize both sides for prefix comparison.
     root = target_root.rstrip("/")
     if root and candidate.startswith(root + "/"):
         return candidate[len(root) + 1:]
@@ -301,55 +357,174 @@ def _make_relative(uri: str, target_root: str | None) -> str:
     return uri
 
 
-def record_for(result: dict[str, Any], rule: dict[str, Any], target_root: str | None) -> dict[str, Any]:
-    file_uri, line = _location(result, target_root)
+def record_for(
+    result: dict,
+    rules_by_id: dict[str, dict],
+    target_root: str | None = None,
+) -> dict:
+    """Assemble the five-field record in canonical key order.
+
+    Canonical key order: file, line, severity, cwe, description.
+    Python 3.7+ guarantees dict insertion order; downstream serialization with
+    json.dumps preserves this order in the output.
+
+    When target_root is provided and the SARIF URI is an absolute path beneath
+    it, the prefix is stripped so the deliverable contains a repository-relative
+    path (Directive 3 'relative path' requirement).
+    """
+    rule_id = result.get("ruleId")
+    rule: dict | None = None
+    if isinstance(rule_id, str) and rule_id in rules_by_id:
+        rule = rules_by_id[rule_id]
+
+    locations = result.get("locations") or []
+    file_uri = ""
+    start_line = 0
+    if locations and isinstance(locations[0], dict):
+        phys = locations[0].get("physicalLocation") or {}
+        if isinstance(phys, dict):
+            artifact = phys.get("artifactLocation") or {}
+            if isinstance(artifact, dict):
+                uri_raw = artifact.get("uri")
+                if isinstance(uri_raw, str):
+                    file_uri = uri_raw
+            region = phys.get("region") or {}
+            if isinstance(region, dict):
+                sl = region.get("startLine")
+                if isinstance(sl, int):
+                    start_line = sl
+                elif isinstance(sl, str):
+                    try:
+                        start_line = int(sl)
+                    except ValueError:
+                        start_line = 0
+
+    if target_root and file_uri:
+        file_uri = _make_relative(file_uri, target_root)
+
+    if not file_uri:
+        sys.stderr.write(
+            "normalize-findings: location fallback (empty file) for "
+            f"ruleId={rule_id!r}\n"
+        )
+    if start_line == 0:
+        sys.stderr.write(
+            "normalize-findings: region fallback (line=0) for "
+            f"ruleId={rule_id!r}\n"
+        )
+
     return {
         "file": file_uri,
-        "line": line,
+        "line": start_line,
         "severity": severity_for(result, rule),
         "cwe": cwe_for(result, rule),
         "description": description_for(result),
     }
 
 
-def normalize(sarif: dict[str, Any], target_root: str | None = None) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    for run in sarif.get("runs") or []:
-        rules_list = ((run.get("tool") or {}).get("driver") or {}).get("rules") or []
-        rules_by_id = index_rules(run)
-        for result in run.get("results") or []:
-            rule = _rule_for_result(result, rules_by_id, rules_list)
-            out.append(record_for(result, rule, target_root))
-    return out
-
-
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="normalize-findings.py", add_help=True)
-    parser.add_argument("input_sarif", type=Path, help="Path to results-semgrep.sarif")
-    parser.add_argument("output_json", type=Path, help="Path to findings-config-b.json")
+    """Orchestrate SARIF -> five-field minified-JSON normalization.
+
+    Exit codes:
+      0  success
+      2  input SARIF not found
+      3  SARIF load failure (JSON parse, encoding, or structural)
+      4  schema violation in an emitted record
+      5  description length violation in an emitted record
+      6  severity enum violation in an emitted record
+    """
+    parser = argparse.ArgumentParser(
+        prog="normalize-findings.py",
+        description=(
+            "SARIF v2.1.0 -> five-field minified-JSON findings normalizer "
+            "for Config B."
+        ),
+        add_help=True,
+    )
+    parser.add_argument(
+        "input_sarif",
+        help="Path to the Semgrep SARIF v2.1.0 input file.",
+    )
+    parser.add_argument(
+        "output_json",
+        help="Path to write the minified single-line UTF-8 findings JSON.",
+    )
     parser.add_argument(
         "--target-root",
-        type=str,
+        dest="target_root",
         default=None,
-        help="Absolute path of the scanned repository root. When set, any "
-        "absolute SARIF URI beginning with this prefix is rewritten to a path "
-        "relative to that root (Directive 3 'relative path' requirement).",
+        help=(
+            "Absolute path of the scanned repository root. When set, any "
+            "SARIF URI beginning with this prefix is rewritten to a path "
+            "relative to that root (Directive 3 'relative path' requirement)."
+        ),
     )
     args = parser.parse_args(argv)
+
+    in_path = Path(args.input_sarif).resolve()
+    out_path = Path(args.output_json).resolve()
+
+    if not in_path.is_file():
+        sys.stderr.write(
+            f"normalize-findings: input SARIF not found: {in_path}\n"
+        )
+        return 2
 
     target_root: str | None = args.target_root
     if target_root:
         target_root = str(Path(target_root).resolve())
 
-    sarif = load_sarif(args.input_sarif)
-    records = normalize(sarif, target_root=target_root)
-    payload = json.dumps(records, ensure_ascii=False, separators=(",", ":")) + "\n"
-    args.output_json.write_bytes(payload.encode("utf-8"))
+    try:
+        sarif = load_sarif(in_path)
+    except (json.JSONDecodeError, ValueError, UnicodeDecodeError, OSError) as exc:
+        sys.stderr.write(
+            f"normalize-findings: failed to load SARIF: {exc}\n"
+        )
+        return 3
+
+    records: list[dict] = []
+    for run in sarif.get("runs") or []:
+        if not isinstance(run, dict):
+            continue
+        rules_by_id = index_rules(run)
+        results = run.get("results") or []
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+            records.append(record_for(result, rules_by_id, target_root=target_root))
+
+    expected_keys = {"file", "line", "severity", "cwe", "description"}
+    allowed_severities = {"critical", "high", "medium", "low"}
+    for idx, rec in enumerate(records):
+        if set(rec.keys()) != expected_keys:
+            sys.stderr.write(
+                f"normalize-findings: schema check failed for record {idx}: "
+                f"keys={sorted(rec.keys())}\n"
+            )
+            return 4
+        if not isinstance(rec["description"], str) or len(rec["description"]) > DESCRIPTION_MAX_CHARS:
+            sys.stderr.write(
+                f"normalize-findings: description length check failed for record {idx}: "
+                f"len={len(rec.get('description', ''))}\n"
+            )
+            return 5
+        if rec["severity"] not in allowed_severities:
+            sys.stderr.write(
+                f"normalize-findings: severity enum check failed for record {idx}: "
+                f"severity={rec['severity']!r}\n"
+            )
+            return 6
+
+    payload_text = json.dumps(records, ensure_ascii=False, separators=(",", ":"))
+    payload_bytes = (payload_text + "\n").encode("utf-8")
+    out_path.write_bytes(payload_bytes)
+
     sys.stderr.write(
-        f"wrote {args.output_json} ({len(records)} records, {len(payload)} bytes)\n",
+        f"normalize-findings: wrote {len(records)} records to {out_path} "
+        f"({len(payload_bytes)} bytes)\n"
     )
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+    sys.exit(main(sys.argv[1:]))

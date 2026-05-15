@@ -795,10 +795,10 @@ xychart-beta
       <div class="eyebrow">Decision Log Highlights</div>
       <h2>Why These Choices</h2>
       <ul>
-        <li><strong>Prebuilt binary install</strong> &mdash; no Go runtime; deterministic version pin</li>
-        <li><strong>CVSS_V4 &gt; V3 &gt; V2</strong> &mdash; newest vector wins when multiple present</li>
-        <li><strong>Absent CVSS &rarr; low</strong> &mdash; emits finding, defaults to lowest bucket</li>
-        <li><strong>Single LF terminator</strong> &mdash; satisfies <code>wc -l == 1</code> contract</li>
+        <li><strong>Prebuilt binary install</strong> &mdash; no Go runtime needed</li>
+        <li><strong>CVSS_V4 &gt; V3 &gt; V2</strong> &mdash; newest vector wins</li>
+        <li><strong>Absent CVSS &rarr; low</strong> &mdash; still emits finding</li>
+        <li><strong>Single LF terminator</strong> &mdash; satisfies <code>wc -l</code> contract</li>
       </ul>
       <div class="icon-row">
         <i data-lucide="download"></i>

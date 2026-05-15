@@ -4,15 +4,24 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Config B — Semgrep Security Scan of blitzy-odoo</title>
+
+    <!-- Google Fonts: Inter (body), Space Grotesk (display), Fira Code (mono/eyebrow) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Fira+Code:wght@400;500&display=swap" />
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css" />
+
+    <!-- reveal.js 5.1.0 (CSS + base theme; base theme is overridden by the inline <style> below) -->
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css" />
+
     <style>
+        /* ============================================================
+           Blitzy reveal.js theme — re-stated inline so this file remains
+           a single self-contained deliverable with no local deps.
+           ============================================================ */
         :root {
             --blitzy-primary: #5B39F3;
             --blitzy-primary-dark: #2D1C77;
@@ -36,502 +45,774 @@
             --gradient-divider: linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%);
             --gradient-accent-bar: linear-gradient(90deg, #5B39F3 0%, #94FAD5 100%);
         }
+
+        /* Base reveal.js body */
         .reveal {
             font-family: var(--ff-body);
             color: var(--blitzy-text);
             background: var(--blitzy-surface-0);
             font-size: 28px;
         }
-        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+        .reveal h1,
+        .reveal h2,
+        .reveal h3,
+        .reveal h4 {
             font-family: var(--ff-display);
             color: var(--blitzy-primary-dark);
             letter-spacing: -0.01em;
             text-transform: none;
             line-height: 1.15;
-            margin-bottom: 0.4em;
+            margin: 0 0 0.5em 0;
+            font-weight: 600;
         }
-        .reveal h1 { font-size: 2.6em; font-weight: 700; }
-        .reveal h2 { font-size: 2.0em; font-weight: 600; }
-        .reveal h3 { font-size: 1.4em; font-weight: 600; }
-        .reveal h4 { font-size: 1.1em; font-weight: 600; }
-        .reveal p, .reveal li { line-height: 1.5; }
-        .reveal ul, .reveal ol { display: inline-block; text-align: left; }
-        .reveal a { color: var(--blitzy-primary); text-decoration: none; }
-        .reveal section { padding: 60px 90px; box-sizing: border-box; }
+        .reveal h1 { font-size: 2.4em; font-weight: 700; }
+        .reveal h2 { font-size: 1.8em; }
+        .reveal h3 { font-size: 1.3em; }
+        .reveal h4 { font-size: 1.05em; }
+        .reveal p,
+        .reveal li {
+            line-height: 1.5;
+            color: var(--blitzy-text);
+        }
+        .reveal ul,
+        .reveal ol {
+            display: inline-block;
+            text-align: left;
+            margin: 0 auto;
+        }
+        .reveal a {
+            color: var(--blitzy-primary);
+            text-decoration: none;
+        }
+        .reveal section {
+            padding: 60px 90px;
+            box-sizing: border-box;
+        }
+
+        /* Eyebrow — Fira Code uppercase tracking accent */
         .reveal .eyebrow {
             font-family: var(--ff-mono);
-            font-weight: 500;
-            font-size: 0.55em;
-            letter-spacing: 0.18em;
             text-transform: uppercase;
+            letter-spacing: 0.15em;
+            font-size: 0.55em;
+            font-weight: 500;
             color: var(--blitzy-accent-teal);
-            margin-bottom: 1.4em;
             display: block;
+            margin-bottom: 1.2em;
         }
-        /* Title slide */
+        .reveal .eyebrow.content-eyebrow {
+            color: var(--blitzy-primary);
+        }
+
+        /* -------- Title slide --------
+           Background paint is delivered by reveal.js's data-background-gradient
+           attribute on the <section>; the inline background here is retained
+           only as a fallback for environments where reveal.js failed to mount
+           the slide-background layer. */
         .reveal section.slide-title {
-            background: var(--gradient-hero);
+            background: transparent;
             color: var(--blitzy-text-invert);
             text-align: center;
+        }
+        .reveal section.slide-title h1 {
+            color: var(--blitzy-text-invert);
+            font-size: 2.3em;
+            font-weight: 700;
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .reveal section.slide-title p {
+            color: rgba(255, 255, 255, 0.86);
+            font-size: 1.05em;
+            margin: 0.6em auto 0;
+            max-width: 1200px;
         }
         .reveal section.slide-title .eyebrow {
             color: var(--blitzy-accent-teal);
         }
-        .reveal section.slide-title h1 {
-            color: var(--blitzy-text-invert);
-            font-size: 3.0em;
+        .reveal section.slide-title .brand-lockup {
+            margin-top: 48px;
+            color: rgba(255, 255, 255, 0.72);
         }
-        .reveal section.slide-title p {
-            color: rgba(255,255,255,0.86);
-            font-size: 1.1em;
-        }
-        .reveal .hero-icon {
-            color: var(--blitzy-accent-teal);
-            margin: 0 auto 24px;
-            display: flex;
-            justify-content: center;
-        }
-        .reveal .hero-icon svg { width: 96px; height: 96px; }
-        /* Divider slide */
+
+        /* -------- Section divider --------
+           Background paint via data-background-gradient. */
         .reveal section.slide-divider {
-            background: var(--gradient-divider);
+            background: transparent;
             color: var(--blitzy-text-invert);
             text-align: center;
         }
         .reveal section.slide-divider h2 {
             color: var(--blitzy-text-invert);
-            font-size: 2.6em;
+            font-size: 2.4em;
             font-weight: 700;
+            margin-top: 0.4em;
         }
-        .reveal section.slide-divider .hero-icon { color: var(--blitzy-accent-teal); }
-        /* Closing slide */
+        .reveal section.slide-divider .hero-icon {
+            color: var(--blitzy-accent-teal);
+        }
+
+        /* -------- Closing slide --------
+           Background paint via data-background-color. */
         .reveal section.slide-closing {
-            background: var(--blitzy-primary-navy);
+            background: transparent;
             color: var(--blitzy-text-invert);
             text-align: center;
         }
-        .reveal section.slide-closing h2 {
+        .reveal section.slide-closing h1 {
             color: var(--blitzy-text-invert);
-            font-size: 2.2em;
+            font-size: 2.4em;
+            font-weight: 700;
+            margin-bottom: 0.6em;
         }
         .reveal section.slide-closing ul {
-            color: rgba(255,255,255,0.86);
-            margin-top: 1.4em;
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 0.95em;
+            margin-top: 0;
+        }
+        .reveal section.slide-closing li {
+            color: rgba(255, 255, 255, 0.88);
+            margin: 0.4em 0;
         }
         .reveal section.slide-closing .accent-bar {
-            height: 6px;
-            width: 200px;
             margin: 36px auto 18px;
+        }
+        .reveal section.slide-closing .brand-lockup {
+            color: var(--blitzy-accent-teal);
+            margin-top: 16px;
+        }
+
+        /* -------- Hero icon (large central icon for title + divider + select content) -------- */
+        .reveal .hero-icon {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 22px;
+            color: var(--blitzy-accent-teal);
+        }
+        .reveal .hero-icon svg {
+            width: 96px;
+            height: 96px;
+            stroke-width: 1.5;
+        }
+
+        /* -------- Accent bar (gradient bar) -------- */
+        .reveal .accent-bar {
+            height: 6px;
+            width: 220px;
+            margin: 30px auto 0;
             background: var(--gradient-accent-bar);
             border-radius: 3px;
         }
-        .reveal section.slide-closing .brand-lockup {
+
+        /* -------- Brand lockup -------- */
+        .reveal .brand-lockup {
             font-family: var(--ff-mono);
-            color: var(--blitzy-accent-teal);
-            font-size: 0.6em;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            margin-top: 18px;
-        }
-        /* KPI grid */
-        .reveal .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 22px;
-            margin: 30px 0;
-        }
-        .reveal .kpi-grid.three { grid-template-columns: repeat(3, 1fr); }
-        .reveal .kpi-card {
-            background: var(--blitzy-surface-2);
-            border: 1px solid var(--blitzy-border-soft);
-            border-radius: 14px;
-            padding: 24px 22px;
-            text-align: left;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .reveal .kpi-icon {
-            color: var(--blitzy-primary);
-            margin-bottom: 12px;
-            display: inline-flex;
-        }
-        .reveal .kpi-icon svg { width: 28px; height: 28px; }
-        .reveal .kpi-value {
-            font-family: var(--ff-display);
-            font-size: 2.2em;
-            font-weight: 700;
-            color: var(--blitzy-primary-dark);
-            line-height: 1;
-            margin-bottom: 6px;
-        }
-        .reveal .kpi-label {
-            font-family: var(--ff-mono);
+            font-weight: 500;
             font-size: 0.55em;
-            letter-spacing: 0.14em;
+            letter-spacing: 0.2em;
             text-transform: uppercase;
             color: var(--blitzy-text-muted);
         }
-        /* Icon row for divider slides */
+
+        /* -------- KPI grid -------- */
+        .reveal .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin: 28px 0 18px;
+            text-align: left;
+        }
+        .reveal .kpi-grid.three {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .reveal .kpi-card {
+            background: var(--blitzy-surface-2);
+            border: 1px solid var(--blitzy-border-soft);
+            border-radius: 12px;
+            padding: 24px 22px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 180px;
+        }
+        .reveal .kpi-icon {
+            color: var(--blitzy-primary);
+            margin-bottom: 14px;
+            display: inline-flex;
+        }
+        .reveal .kpi-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke-width: 1.75;
+        }
+        .reveal .kpi-value {
+            font-family: var(--ff-display);
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--blitzy-primary);
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+        .reveal .kpi-value.text-value {
+            font-size: 1.6rem;
+        }
+        .reveal .kpi-label {
+            font-size: 0.95rem;
+            color: var(--blitzy-text-muted);
+            font-family: var(--ff-body);
+            font-weight: 500;
+            line-height: 1.35;
+        }
+
+        /* -------- Icon row (horizontal Lucide icons + labels) -------- */
         .reveal .icon-row {
             display: flex;
             justify-content: center;
-            gap: 28px;
-            margin-bottom: 22px;
+            align-items: center;
+            gap: 32px;
+            margin: 24px 0;
         }
-        .reveal .icon-row svg { width: 56px; height: 56px; }
-        /* Tables */
+        .reveal .icon-row svg {
+            width: 48px;
+            height: 48px;
+            color: var(--blitzy-primary);
+        }
+
+        /* -------- Tables -------- */
         .reveal table {
             width: 100%;
-            margin: 18px 0;
             border-collapse: collapse;
-            font-size: 0.6em;
-        }
-        .reveal table th, .reveal table td {
-            border: 1px solid var(--blitzy-border);
-            padding: 10px 14px;
-            text-align: left;
-            vertical-align: top;
+            margin: 22px 0;
+            font-size: 0.62em;
+            background: var(--blitzy-surface-0);
         }
         .reveal table th {
-            background: var(--blitzy-surface-1);
+            background: var(--blitzy-surface-2);
             color: var(--blitzy-primary-dark);
             font-family: var(--ff-display);
             font-weight: 600;
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 2px solid var(--blitzy-primary);
         }
-        .reveal table tr:nth-child(2n) td { background: var(--blitzy-surface-3); }
-        /* Mermaid container */
-        .reveal .mermaid {
-            background: var(--blitzy-surface-1);
-            border-radius: 14px;
-            padding: 22px;
+        .reveal table td {
+            border-bottom: 1px solid var(--blitzy-border);
+            padding: 11px 16px;
+            text-align: left;
+            vertical-align: top;
+            color: var(--blitzy-text);
+        }
+        .reveal table tr:nth-child(2n) td {
+            background: var(--blitzy-surface-3);
+        }
+
+        /* -------- Mermaid container -------- */
+        /* Note: font-family is deliberately INHERITED (Inter) so that the
+           foreignObject labels Mermaid renders inside the SVG use the same
+           proportional font that Mermaid measured against. Using a monospace
+           font here causes the rendered text to overflow the SVG box widths
+           Mermaid computed from Inter metrics. */
+        .reveal pre.mermaid {
+            background: var(--blitzy-surface-3);
+            padding: 18px;
+            border-radius: 8px;
             border: 1px solid var(--blitzy-border-soft);
-            font-family: var(--ff-mono);
+            box-shadow: none;
+            text-align: center;
+            font-size: 0.7em;
+            line-height: 1.4;
+            display: block;
+            overflow: visible;
+            margin: 14px auto;
+            max-width: 100%;
         }
-        /* Brand lockup */
-        .reveal .brand-lockup {
-            font-family: var(--ff-mono);
-            color: var(--blitzy-accent-teal);
-            font-size: 0.55em;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
+        .reveal pre.mermaid svg {
+            max-width: 100%;
+            height: auto;
         }
-        /* Pull quote */
-        .reveal .pull-quote {
-            border-left: 4px solid var(--blitzy-primary);
-            padding: 6px 22px;
-            margin: 18px 0;
-            color: var(--blitzy-primary-dark);
-            font-family: var(--ff-display);
-            font-style: italic;
-            font-size: 0.9em;
+        /* foreignObject defaults to overflow:hidden which clips text that is a
+           few CSS pixels wider than Mermaid's measured width. The surrounding
+           rect element is significantly wider than the foreignObject, so we
+           opt foreignObject content out of clipping. */
+        .reveal pre.mermaid svg foreignObject {
+            overflow: visible;
         }
-        /* Code inline */
+        .reveal pre.mermaid svg .nodeLabel,
+        .reveal pre.mermaid svg .edgeLabel,
+        .reveal pre.mermaid svg .label {
+            overflow: visible !important;
+            white-space: nowrap;
+        }
+        .reveal pre.mermaid svg foreignObject > div {
+            overflow: visible !important;
+        }
+
+        /* -------- Inline code (no fenced blocks; inline only per spec) -------- */
         .reveal code {
             font-family: var(--ff-mono);
             background: var(--blitzy-surface-2);
+            color: var(--blitzy-primary-deep);
             padding: 1px 6px;
             border-radius: 4px;
-            font-size: 0.85em;
-            color: var(--blitzy-primary-deep);
+            font-size: 0.86em;
         }
-        /* Subtle eyebrow on content slides */
-        .reveal section .eyebrow.content-eyebrow {
-            color: var(--blitzy-primary);
+
+        /* -------- Caption (one-line annotation under visuals) -------- */
+        .reveal .caption {
+            font-family: var(--ff-body);
+            font-size: 0.7em;
+            color: var(--blitzy-text-muted);
+            text-align: center;
+            margin-top: 12px;
+            font-style: italic;
+        }
+
+        /* -------- Status pill (used in scope/gates tables) -------- */
+        .reveal .pill {
+            display: inline-block;
+            font-family: var(--ff-mono);
+            font-weight: 500;
+            font-size: 0.92em;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 2px 10px;
+            border-radius: 999px;
+            background: var(--blitzy-accent-teal);
+            color: var(--blitzy-primary-dark);
+        }
+
+        /* -------- Bullet list spacing on content slides -------- */
+        .reveal section li {
+            margin: 0.35em 0;
         }
     </style>
 </head>
 <body>
+
 <div class="reveal">
 <div class="slides">
 
-    <!-- 1. Title -->
-    <section class="slide-title">
+    <!-- ====================================================================
+         Slide 1 — Title (slide-title)
+         Hero gradient · shield-check icon · eyebrow · H1 · subtitle · lockup
+         The data-background-gradient attribute paints the entire 1920x1080
+         deck area; the inline .slide-title background is kept as a fallback.
+         ==================================================================== -->
+    <section class="slide-title"
+             data-background-gradient="linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%)">
         <div class="hero-icon"><i data-lucide="shield-check"></i></div>
         <span class="eyebrow">Static Analysis · Config B of N</span>
-        <h1>Semgrep CE Security Scan</h1>
-        <p style="margin-top: 0.4em;">A reproducible, offline-capable baseline of the <code style="background: rgba(255,255,255,0.12); color: var(--blitzy-accent-teal);">blitzy-odoo</code> repository</p>
-        <div class="accent-bar" style="height: 6px; width: 240px; margin: 30px auto 0; background: var(--gradient-accent-bar); border-radius: 3px;"></div>
+        <h1>Config B — Semgrep Security Scan of blitzy-odoo</h1>
+        <p>Reproducible offline SAST harness using Semgrep Community Edition</p>
+        <div class="accent-bar"></div>
+        <div class="brand-lockup">Blitzy / blitzy-odoo / Security Scan Config B</div>
     </section>
 
-    <!-- 2. Headline KPI -->
+    <!-- ====================================================================
+         Slide 2 — Content · Headline findings KPI grid (placeholders)
+         Four kpi-card elements; values are em-dash placeholders for sed
+         substitution by run-scan.sh.
+         ==================================================================== -->
     <section>
         <span class="eyebrow content-eyebrow">Headline findings</span>
-        <h2>Run at a glance</h2>
+        <h2>Headline findings at a glance</h2>
         <div class="kpi-grid">
             <div class="kpi-card">
-                <div class="kpi-icon"><i data-lucide="file-search-2"></i></div>
-                <div class="kpi-value">40,971</div>
-                <div class="kpi-label">files scanned</div>
+                <div class="kpi-icon"><i data-lucide="file-search"></i></div>
+                <div>
+                    <div class="kpi-value">—</div>
+                    <div class="kpi-label">Findings detected</div>
+                </div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-icon"><i data-lucide="alert-octagon"></i></div>
-                <div class="kpi-value">98</div>
-                <div class="kpi-label">total findings</div>
+                <div>
+                    <div class="kpi-value">—</div>
+                    <div class="kpi-label">Critical findings</div>
+                </div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-icon"><i data-lucide="shield-alert"></i></div>
-                <div class="kpi-value">27</div>
-                <div class="kpi-label">critical severity</div>
+                <div class="kpi-icon"><i data-lucide="files"></i></div>
+                <div>
+                    <div class="kpi-value">—</div>
+                    <div class="kpi-label">Files scanned</div>
+                </div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-icon"><i data-lucide="clock"></i></div>
-                <div class="kpi-value">5m 31s</div>
-                <div class="kpi-label">wall-clock scan</div>
+                <div class="kpi-icon"><i data-lucide="timer"></i></div>
+                <div>
+                    <div class="kpi-value">—</div>
+                    <div class="kpi-label">Scan duration (s)</div>
+                </div>
             </div>
         </div>
-        <p style="text-align: center; color: var(--blitzy-text-muted); font-size: 0.7em; margin-top: 16px;">
-            Severity mix · 27 critical · 66 high · 5 medium · 0 low · 820 rules across three packs
-        </p>
+        <p class="caption">Placeholders are replaced by the harness after each run.</p>
     </section>
 
-    <!-- 3. Architecture overview (Mermaid) -->
+    <!-- ====================================================================
+         Slide 3 — Content · Architecture overview (Mermaid flowchart)
+         ==================================================================== -->
     <section>
         <span class="eyebrow content-eyebrow">Architecture</span>
-        <h2>End-to-end flow</h2>
-        <pre class="mermaid">
+        <h2>End-to-end harness architecture</h2>
+<pre class="mermaid">
 flowchart LR
-    A[blitzy-odoo source tree] -->|read-only walk| B[Semgrep CE 1.163.0]
-    C[Local rule cache<br/>security-audit · secrets · owasp-top-ten] --> B
-    B -->|--sarif -o| D[results-semgrep.sarif]
-    D --> E[normalize-findings.py]
-    E --> F[findings-config-b.json<br/>5-field minified array]
-    B -.exit code · duration · files.-> G[scan-metadata.json]
-        </pre>
+  A[blitzy-odoo repository] --> B[Semgrep CE 1.163.0]
+  R[Local rule cache] --> B
+  B --> S[results-semgrep.sarif]
+  S --> N[normalize-findings.py]
+  N --> F[findings-config-b.json]
+  N --> M[scan-metadata.json]
+</pre>
+        <p class="caption">Bootstrap once, scan offline, export the five-field findings array.</p>
     </section>
 
-    <!-- 4. Section divider: What was done -->
-    <section class="slide-divider">
+    <!-- ====================================================================
+         Slide 4 — Section divider (slide-divider) · "What was done"
+         ==================================================================== -->
+    <section class="slide-divider"
+             data-background-gradient="linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%)">
         <div class="hero-icon"><i data-lucide="package-check"></i></div>
         <h2>What was done</h2>
     </section>
 
-    <!-- 5. Scope of work -->
+    <!-- ====================================================================
+         Slide 5 — Content · Scope of work (styled table)
+         ==================================================================== -->
     <section>
         <span class="eyebrow content-eyebrow">Scope</span>
-        <h2>Deliverables shipped</h2>
+        <h2>Scope of work</h2>
         <table>
             <thead>
-                <tr><th>File</th><th>Role</th></tr>
+                <tr>
+                    <th>Deliverable</th>
+                    <th style="width: 140px;">Status</th>
+                </tr>
             </thead>
             <tbody>
-                <tr><td><code>findings-config-b.json</code></td><td>Mandated deliverable — minified, single-line, UTF-8 JSON array of 98 normalized findings</td></tr>
-                <tr><td><code>run-scan.sh</code></td><td>Non-interactive orchestration: bootstrap → cache → dry-run gate → SARIF scan → normalize → validate</td></tr>
-                <tr><td><code>normalize-findings.py</code></td><td>Deterministic SARIF → 5-field JSON normalizer (Python 3.10+ stdlib only)</td></tr>
-                <tr><td><code>rule-cache/*.yml</code></td><td>Locally materialized registry rule packs (offline-capable)</td></tr>
-                <tr><td><code>decision-log.md</code></td><td>Single source of truth for "why" decisions and deviations</td></tr>
-                <tr><td><code>executive-summary.html</code></td><td>This deck — non-technical leadership briefing</td></tr>
+                <tr>
+                    <td><code>findings-config-b.json</code> (five-field minified JSON array)</td>
+                    <td><span class="pill">Shipped</span></td>
+                </tr>
+                <tr>
+                    <td><code>decision-log.md</code> (Explainability rule)</td>
+                    <td><span class="pill">Shipped</span></td>
+                </tr>
+                <tr>
+                    <td><code>executive-summary.html</code> (Executive Presentation rule)</td>
+                    <td><span class="pill">Shipped</span></td>
+                </tr>
+                <tr>
+                    <td><code>run-scan.sh</code> + <code>normalize-findings.py</code> (orchestration &amp; normalizer)</td>
+                    <td><span class="pill">Shipped</span></td>
+                </tr>
+                <tr>
+                    <td><code>rule-cache/</code> (offline materialization of 3 Semgrep packs)</td>
+                    <td><span class="pill">Shipped</span></td>
+                </tr>
             </tbody>
         </table>
     </section>
 
-    <!-- 6. Section divider: Why -->
-    <section class="slide-divider">
+    <!-- ====================================================================
+         Slide 6 — Section divider · "Why it was done"
+         ==================================================================== -->
+    <section class="slide-divider"
+             data-background-gradient="linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%)">
         <div class="hero-icon"><i data-lucide="target"></i></div>
         <h2>Why it was done</h2>
     </section>
 
-    <!-- 7. Business value -->
+    <!-- ====================================================================
+         Slide 7 — Content · Business value (KPI grid, three cards)
+         ==================================================================== -->
     <section>
         <span class="eyebrow content-eyebrow">Business value</span>
-        <h2>Three durable wins</h2>
+        <h2>Business value unlocked</h2>
         <div class="kpi-grid three">
             <div class="kpi-card">
-                <div class="kpi-icon"><i data-lucide="repeat"></i></div>
-                <div class="kpi-value" style="font-size: 1.4em;">Reproducible</div>
-                <div class="kpi-label">Offline SAST baseline with byte-identical reruns</div>
+                <div class="kpi-icon"><i data-lucide="shield"></i></div>
+                <div>
+                    <div class="kpi-value text-value">Offline</div>
+                    <div class="kpi-label">Reproducible SAST baseline (no telemetry, no cloud)</div>
+                </div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-icon"><i data-lucide="git-compare"></i></div>
-                <div class="kpi-value" style="font-size: 1.4em;">Comparable</div>
-                <div class="kpi-label">Sibling Config A / Config C plug in unchanged</div>
+                <div>
+                    <div class="kpi-value text-value">Comparable</div>
+                    <div class="kpi-label">Drop-in compatible with sibling Config A / C</div>
+                </div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-icon"><i data-lucide="file-check-2"></i></div>
-                <div class="kpi-value" style="font-size: 1.4em;">Auditable</div>
-                <div class="kpi-label">Operational facts captured outside SARIF body</div>
+                <div>
+                    <div class="kpi-value text-value">Audit-grade</div>
+                    <div class="kpi-label">Five-field schema · CWE-mapped · 200-char bounded</div>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- 8. Section divider: How it works -->
-    <section class="slide-divider">
+    <!-- ====================================================================
+         Slide 8 — Section divider · "How it works"
+         ==================================================================== -->
+    <section class="slide-divider"
+             data-background-gradient="linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%)">
         <div class="hero-icon"><i data-lucide="workflow"></i></div>
         <h2>How it works</h2>
     </section>
 
-    <!-- 9. Pipeline (Mermaid sequence) -->
+    <!-- ====================================================================
+         Slide 9 — Content · Scan pipeline (Mermaid sequence diagram)
+         ==================================================================== -->
     <section>
         <span class="eyebrow content-eyebrow">Pipeline</span>
-        <h2>One command, four gates</h2>
-        <pre class="mermaid">
+        <h2>Scan pipeline lifecycle</h2>
+<pre class="mermaid">
 sequenceDiagram
-    autonumber
-    participant Op as Operator
-    participant Sh as run-scan.sh
-    participant Sg as Semgrep CE
-    participant N  as normalizer
-    Op->>Sh: bash run-scan.sh
-    Sh->>Sg: pip install semgrep==1.163.0
-    Sh->>Sg: download p/security-audit · p/secrets · p/owasp-top-ten
-    Sh->>Sg: dryrun gate (Directive 1)
-    Sg-->>Sh: exit 0, offline OK
-    Sh->>Sg: SARIF scan (Directive 2)
-    Sg-->>Sh: results-semgrep.sarif
-    Sh->>N: normalize-findings.py
-    N-->>Sh: findings-config-b.json
-    Sh->>Op: gates: wc-l=1 · JSON OK · 5 fields · description ≤200
-        </pre>
+  autonumber
+  participant O as Operator
+  participant S as run-scan.sh
+  participant SG as Semgrep CE
+  participant N as normalize-findings.py
+  O->>S: ./run-scan.sh
+  S->>S: Create .venv &amp; install Semgrep 1.163.0
+  S->>SG: Download p/security-audit, p/secrets, p/owasp
+  S->>SG: --metrics=off --config=rule-cache --dry-run
+  SG-->>S: Exit 0 (offline gate passed)
+  S->>SG: Main scan emits SARIF
+  SG-->>S: results-semgrep.sarif
+  S->>N: normalize-findings.py
+  N-->>S: findings-config-b.json
+  S-->>O: Pass/fail gates + scan-metadata.json
+</pre>
     </section>
 
-    <!-- 10. Rule pack coverage -->
+    <!-- ====================================================================
+         Slide 10 — Content · Rule pack coverage (styled table)
+         ==================================================================== -->
     <section>
         <span class="eyebrow content-eyebrow">Coverage</span>
-        <h2>Rule packs in scope</h2>
+        <h2>Rule pack coverage</h2>
         <table>
             <thead>
-                <tr><th>Pack</th><th>Rules</th><th>Focus</th></tr>
+                <tr>
+                    <th>Pack</th>
+                    <th>Focus</th>
+                    <th>Expected detection categories</th>
+                </tr>
             </thead>
             <tbody>
-                <tr><td><code>p/security-audit</code></td><td>225</td><td>Broad security audit — high recall, expects manual triage</td></tr>
-                <tr><td><code>p/secrets</code></td><td>51</td><td>Hardcoded credentials, API keys, tokens, leaked secrets</td></tr>
-                <tr><td><code>p/owasp-top-ten</code></td><td>544</td><td>OWASP Top 10 — injection, broken access, crypto failures</td></tr>
-                <tr><td><strong>Total</strong></td><td><strong>820</strong></td><td>Loaded from on-disk YAML; zero network calls during scan</td></tr>
+                <tr>
+                    <td><code>p/security-audit</code></td>
+                    <td>Broad security audit</td>
+                    <td>Injection, deserialization, insecure crypto, misconfig</td>
+                </tr>
+                <tr>
+                    <td><code>p/secrets</code></td>
+                    <td>Credentials in code</td>
+                    <td>Hardcoded API keys, tokens, passwords</td>
+                </tr>
+                <tr>
+                    <td><code>p/owasp</code></td>
+                    <td>OWASP categories</td>
+                    <td>A01–A10 mapped patterns</td>
+                </tr>
             </tbody>
         </table>
-        <p style="font-size: 0.7em; color: var(--blitzy-text-muted); margin-top: 10px;">
-            <i data-lucide="info" style="vertical-align: middle; width: 16px; height: 16px;"></i>
-            <code>p/owasp</code> returns HTTP 404 from the current registry; <code>p/owasp-top-ten</code> is the documented substitute (see <code>decision-log.md</code> DEV-1).
-        </p>
     </section>
 
-    <!-- 11. Section divider: Risks -->
-    <section class="slide-divider">
+    <!-- ====================================================================
+         Slide 11 — Section divider · "Risks & limitations"
+         ==================================================================== -->
+    <section class="slide-divider"
+             data-background-gradient="linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%)">
         <div class="hero-icon"><i data-lucide="alert-triangle"></i></div>
         <h2>Risks &amp; limitations</h2>
     </section>
 
-    <!-- 12. Known limits -->
+    <!-- ====================================================================
+         Slide 12 — Content · Known limitations (styled table)
+         ==================================================================== -->
     <section>
         <span class="eyebrow content-eyebrow">Known limits</span>
-        <h2>What this scan does not see</h2>
+        <h2>Known limitations (transparent disclosure)</h2>
         <table>
             <thead>
-                <tr><th>Limit</th><th>Why it exists</th></tr>
+                <tr>
+                    <th style="width: 30%;">Limit</th>
+                    <th>Explanation</th>
+                </tr>
             </thead>
             <tbody>
-                <tr><td>CE engine vs Pro coverage</td><td>Framework-specific Pro rules (e.g., Flask/Django taint analysis) do not return findings under Community Edition</td></tr>
-                <tr><td><code>CWE-Unknown</code> fallback</td><td>28 of 98 findings lacked a CWE in rule metadata and matched no inference pattern; sentinel preserves 5-field gate</td></tr>
-                <tr><td>Description truncated to 200 chars</td><td>User-mandated; full text preserved in <code>results-semgrep.sarif</code></td></tr>
-                <tr><td>No remediation performed</td><td>Config B is a detection harness; triage and fixes are downstream work</td></tr>
+                <tr>
+                    <td>Semgrep CE vs Pro</td>
+                    <td>Framework-specific Pro rules not exercised; CE scope is the engine + community packs</td>
+                </tr>
+                <tr>
+                    <td><code>CWE-Unknown</code> fallback</td>
+                    <td>Used only when rule metadata omits CWE and no keyword inference matches</td>
+                </tr>
+                <tr>
+                    <td>Default targeting</td>
+                    <td>Verbatim user command — no <code>--include</code> / <code>--exclude</code> filters added</td>
+                </tr>
+                <tr>
+                    <td>No remediation</td>
+                    <td>Config B is scan-and-report; triage / fix is downstream</td>
+                </tr>
             </tbody>
         </table>
     </section>
 
-    <!-- 13. Section divider: Operational readiness -->
-    <section class="slide-divider">
+    <!-- ====================================================================
+         Slide 13 — Section divider · "Operational readiness"
+         ==================================================================== -->
+    <section class="slide-divider"
+             data-background-gradient="linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%)">
         <div class="hero-icon"><i data-lucide="gauge"></i></div>
         <h2>Operational readiness</h2>
     </section>
 
-    <!-- 14. Pass/fail gates -->
+    <!-- ====================================================================
+         Slide 14 — Content · Pass/fail gates (styled table)
+         ==================================================================== -->
     <section>
         <span class="eyebrow content-eyebrow">Verification</span>
-        <h2>Every gate has a one-line check</h2>
+        <h2>Pass/fail gates (every gate verified by the harness)</h2>
         <table>
             <thead>
-                <tr><th>Directive</th><th>Verification</th><th>Status</th></tr>
+                <tr>
+                    <th style="width: 32%;">Gate</th>
+                    <th>Verification</th>
+                </tr>
             </thead>
             <tbody>
-                <tr><td>1 — offline operation</td><td><code>semgrep ... --dryrun</code> exits 0, zero network</td><td>PASS</td></tr>
-                <tr><td>2 — SARIF emission</td><td><code>runs</code> array present, 98 results</td><td>PASS</td></tr>
-                <tr><td>3a — single line</td><td><code>wc -l == 1</code></td><td>PASS</td></tr>
-                <tr><td>3b — valid JSON</td><td><code>python -m json.tool</code></td><td>PASS</td></tr>
-                <tr><td>3c — five fields</td><td>every record == <code>{file, line, severity, cwe, description}</code></td><td>PASS</td></tr>
-                <tr><td>3d — description ≤ 200 chars</td><td>max observed = 200</td><td>PASS</td></tr>
+                <tr>
+                    <td>Offline operation</td>
+                    <td>Semgrep dry-run exits 0 with no network</td>
+                </tr>
+                <tr>
+                    <td>SARIF valid</td>
+                    <td><code>runs</code> array present</td>
+                </tr>
+                <tr>
+                    <td>Single line</td>
+                    <td><code>wc -l == 1</code> (no embedded newlines in JSON)</td>
+                </tr>
+                <tr>
+                    <td>Valid JSON</td>
+                    <td><code>python -m json.tool</code> exits 0</td>
+                </tr>
+                <tr>
+                    <td>Five fields</td>
+                    <td>Every record has <code>{file, line, severity, cwe, description}</code></td>
+                </tr>
+                <tr>
+                    <td>Description bound</td>
+                    <td><code>len(description) ≤ 200</code></td>
+                </tr>
             </tbody>
         </table>
     </section>
 
-    <!-- 15. Onboarding & next steps -->
+    <!-- ====================================================================
+         Slide 15 — Content · Onboarding & next steps (icon + 3 bullets)
+         ==================================================================== -->
     <section>
         <span class="eyebrow content-eyebrow">Onboarding</span>
-        <h2>How the next team continues</h2>
-        <div class="kpi-grid three">
-            <div class="kpi-card">
-                <div class="kpi-icon"><i data-lucide="terminal"></i></div>
-                <div class="kpi-value" style="font-size: 1.0em;">Run the harness</div>
-                <div class="kpi-label">bash security-scan/config-b/run-scan.sh — 6 minutes end-to-end</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-icon"><i data-lucide="book-open"></i></div>
-                <div class="kpi-value" style="font-size: 1.0em;">Read the log</div>
-                <div class="kpi-label">decision-log.md captures every "why" — including six explicit deviations</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-icon"><i data-lucide="layout-grid"></i></div>
-                <div class="kpi-value" style="font-size: 1.0em;">Add siblings</div>
-                <div class="kpi-label">Config A / Config C drop into security-scan/config-a, config-c — no shared state</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 16. Closing -->
-    <section class="slide-closing">
-        <div class="hero-icon" style="color: var(--blitzy-accent-teal);"><i data-lucide="check-circle-2"></i></div>
-        <h2>Reproducible offline SAST baseline shipped</h2>
-        <div class="accent-bar"></div>
-        <ul style="display:inline-block; text-align:left;">
-            <li>1 deliverable · 1 single-line JSON file</li>
-            <li>820 rules · 40,971 files · 98 findings</li>
-            <li>All four user-prompt directive gates green</li>
+        <h2>Onboarding and next steps</h2>
+        <div class="hero-icon" style="color: var(--blitzy-primary);"><i data-lucide="book-open"></i></div>
+        <ul>
+            <li>Run the harness: <code>./security-scan/config-b/run-scan.sh</code>.</li>
+            <li>Read the rationale: <code>security-scan/config-b/decision-log.md</code>.</li>
+            <li>Propose sibling configurations: <code>security-scan/config-a/</code>, <code>security-scan/config-c/</code>.</li>
         </ul>
-        <div class="brand-lockup">Blitzy · Security Tool Comparison · Config B</div>
+    </section>
+
+    <!-- ====================================================================
+         Slide 16 — Closing (slide-closing)
+         Navy bg · H1 · 3 bullets · accent bar · brand lockup
+         ==================================================================== -->
+    <section class="slide-closing"
+             data-background-color="#1A105F">
+        <div class="hero-icon" style="color: var(--blitzy-accent-teal);"><i data-lucide="check-circle-2"></i></div>
+        <h1>Reproducible offline SAST baseline shipped.</h1>
+        <ul>
+            <li>One-command harness with deterministic reruns.</li>
+            <li>Five-field findings export ready for comparison.</li>
+            <li>Zero modifications to <code>blitzy-odoo</code> source.</li>
+        </ul>
+        <div class="accent-bar"></div>
+        <div class="brand-lockup">Blitzy · blitzy-odoo · Semgrep CE Config B</div>
     </section>
 
 </div>
 </div>
 
+<!-- =====================================================================
+     Third-party libraries — UMD globals, pinned versions.
+     reveal.js 5.1.0 / Mermaid 11.4.0 / Lucide 0.460.0
+     ===================================================================== -->
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
-<script type="module">
-    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
-    import { createIcons, icons } from 'https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/esm/lucide.js';
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
 
-    mermaid.initialize({
-        startOnLoad: false,
-        theme: 'base',
-        themeVariables: {
-            primaryColor:        '#F2F0FE',
-            primaryTextColor:    '#333333',
-            primaryBorderColor:  '#5B39F3',
-            lineColor:           '#999999',
-            secondaryColor:      '#F4EFF6',
-            fontFamily:          "'Inter', sans-serif",
-        }
-    });
-
-    const deck = new Reveal({
+<script>
+    // reveal.js — static initialize so Reveal.on(...) lifecycle hooks work.
+    Reveal.initialize({
         hash: true,
         transition: 'slide',
         controlsTutorial: false,
         width: 1920,
-        height: 1080,
-        margin: 0.04,
+        height: 1080
     });
 
-    deck.initialize().then(() => {
-        // Render all Mermaid blocks once on first paint.
-        mermaid.run({ querySelector: '.mermaid' });
-        // Create Lucide icons on first paint.
-        createIcons({ icons });
+    // Mermaid — startOnLoad: false; we drive every render explicitly so
+    // diagrams on hidden slides still render when the slide is shown.
+    mermaid.initialize({
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: {
+            primaryColor: '#F2F0FE',
+            primaryTextColor: '#333333',
+            primaryBorderColor: '#5B39F3',
+            lineColor: '#999999',
+            secondaryColor: '#F4EFF6'
+        },
+        fontFamily: "'Inter', system-ui, sans-serif",
+        flowchart: { useMaxWidth: true, htmlLabels: false, padding: 18 },
+        sequence: { useMaxWidth: true }
     });
 
-    deck.on('slidechanged', () => {
-        // Re-run Mermaid + Lucide on every slide change so dynamically-shown
-        // sections always render their visuals.
-        mermaid.run({ querySelector: '.mermaid' });
-        createIcons({ icons });
+    // Mermaid measures glyph widths from the live font. If we render before
+    // Google Fonts have finished downloading, the SVG boxes are sized using
+    // the narrower system fallback and the loaded font then overflows. We
+    // therefore await document.fonts.ready before every Mermaid render.
+    const fontsReady = (document.fonts && document.fonts.ready)
+        ? document.fonts.ready
+        : Promise.resolve();
+
+    // First paint — render all visible Mermaid diagrams and Lucide icons.
+    Reveal.on('ready', () => {
+        fontsReady.then(() => {
+            mermaid.run({ querySelector: 'pre.mermaid' });
+            lucide.createIcons();
+        });
+    });
+
+    // Subsequent slide changes — re-run Mermaid + Lucide so deferred or
+    // re-rendered DOM nodes always pick up their visuals.
+    Reveal.on('slidechanged', () => {
+        fontsReady.then(() => {
+            mermaid.run({ querySelector: 'pre.mermaid' });
+            lucide.createIcons();
+        });
     });
 </script>
+
 </body>
 </html>

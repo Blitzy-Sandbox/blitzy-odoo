@@ -39,6 +39,10 @@
       --color-surface-lavender: #F4EFF6;
       --color-surface-grey: #F5F5F5;
       --color-white: #FFFFFF;
+      /* Derived tint of --color-accent-teal (#94FAD5) used as the bottom
+         stop of the .kpi-hero gradient. Defined as a named token so the
+         brand palette stays the single source of truth for all colors. */
+      --color-mint-tint: #E9FFF5;
 
       /* === TYPOGRAPHY === */
       --ff-body: 'Inter', system-ui, -apple-system, sans-serif;
@@ -209,6 +213,14 @@
       color: var(--color-accent-teal);
       font-size: 22px;
     }
+    /* Secondary eyebrow used on divider slides under the main eyebrow + h2
+       (e.g. "What we scanned · What we didn't touch"). Centralises the
+       semi-transparent white treatment so no inline styles are needed and
+       all divider eyebrows share the same brand-consistent token chain. */
+    .slide-divider .eyebrow-secondary {
+      color: rgba(255, 255, 255, 0.85);
+      margin-top: var(--space-md);
+    }
     .slide-divider .hero-icon {
       display: inline-flex;
       align-items: center;
@@ -319,7 +331,7 @@
     .kpi-card.kpi-high     { border-left-color: var(--color-primary); }
     .kpi-card.kpi-medium   { border-left-color: var(--color-primary-light); }
     .kpi-card.kpi-low      { border-left-color: var(--color-text-muted); }
-    .kpi-card.kpi-hero     { border-left-color: var(--color-accent-teal); background: linear-gradient(180deg, #FFFFFF 0%, #E9FFF5 100%); }
+    .kpi-card.kpi-hero     { border-left-color: var(--color-accent-teal); background: linear-gradient(180deg, var(--color-white) 0%, var(--color-mint-tint) 100%); }
     .kpi-icon {
       display: inline-flex;
       align-items: center;
@@ -673,7 +685,7 @@
       <div class="hero-icon"><i data-lucide="crosshair"></i></div>
       <div class="eyebrow">Section 1 &middot; What We Scanned</div>
       <h2>Scope &amp; Inputs</h2>
-      <p class="eyebrow" style="color: rgba(255,255,255,0.85); margin-top: var(--space-md);">What we scanned &middot; What we didn't touch</p>
+      <p class="eyebrow eyebrow-secondary">What we scanned &middot; What we didn't touch</p>
     </section>
 
     <!-- ====================== SLIDE 4 · In-Scope Lockfiles ====================== -->
@@ -700,7 +712,7 @@
       <div class="hero-icon"><i data-lucide="workflow"></i></div>
       <div class="eyebrow">Section 2 &middot; How It Works</div>
       <h2>Three-Stage Pipeline</h2>
-      <p class="eyebrow" style="color: rgba(255,255,255,0.85); margin-top: var(--space-md);">Bootstrap &middot; Scan &middot; Normalize</p>
+      <p class="eyebrow eyebrow-secondary">Bootstrap &middot; Scan &middot; Normalize</p>
     </section>
 
     <!-- ====================== SLIDE 6 · Architecture Flowchart ====================== -->
@@ -740,7 +752,7 @@ flowchart LR
       <div class="hero-icon"><i data-lucide="shield-alert"></i></div>
       <div class="eyebrow">Section 3 &middot; Findings Posture</div>
       <h2>Risk Posture</h2>
-      <p class="eyebrow" style="color: rgba(255,255,255,0.85); margin-top: var(--space-md);">Severity distribution &amp; top hotspots</p>
+      <p class="eyebrow eyebrow-secondary">Severity distribution &amp; top hotspots</p>
     </section>
 
     <!-- ====================== SLIDE 9 · Severity Distribution ====================== -->
@@ -775,7 +787,7 @@ xychart-beta
       <div class="hero-icon"><i data-lucide="git-pull-request-draft"></i></div>
       <div class="eyebrow">Section 4 &middot; Why These Choices</div>
       <h2>Decisions &amp; Trade-offs</h2>
-      <p class="eyebrow" style="color: rgba(255,255,255,0.85); margin-top: var(--space-md);">Explainability is non-negotiable</p>
+      <p class="eyebrow eyebrow-secondary">Explainability is non-negotiable</p>
     </section>
 
     <!-- ====================== SLIDE 12 · Key Decisions ====================== -->
@@ -816,7 +828,7 @@ xychart-beta
       <div class="hero-icon"><i data-lucide="rocket"></i></div>
       <div class="eyebrow">Section 5 &middot; Hand-Off</div>
       <h2>Reproduce in 3 Commands</h2>
-      <p class="eyebrow" style="color: rgba(255,255,255,0.85); margin-top: var(--space-md);">Hand-off ready for the next engineer</p>
+      <p class="eyebrow eyebrow-secondary">Hand-off ready for the next engineer</p>
     </section>
 
     <!-- ====================== SLIDE 15 · Reproduction Steps ====================== -->
@@ -825,7 +837,7 @@ xychart-beta
       <h2>Three Commands, Zero Surprises</h2>
       <ol>
         <li>Install: download the OSV-Scanner Linux/amd64 binary from the V2 release page; <code>chmod +x</code>; move onto <code>PATH</code></li>
-        <li>Scan: <code>osv-scanner --format json --output results-osv.json &lt;repo&gt;</code></li>
+        <li>Scan: <code>osv-scanner scan source --recursive --format json --output results-osv.json &lt;repo&gt;</code></li>
         <li>Normalize: run the documented Python normalizer to emit <code>findings-config-f.json</code></li>
       </ol>
       <div class="icon-row">
@@ -942,6 +954,17 @@ xychart-beta
   }
 
   /*
+   * Spec-compliance note (AAP §0.5.3 / §0.7.2): this function is a thin
+   * scoping wrapper around the AAP-mandated `mermaid.run()` call. The
+   * spirit of the spec — "mermaid.run() invoked after reveal.js ready
+   * and on every slidechanged event" — is honoured: `await window.mermaid.run({...})`
+   * IS invoked from both the Reveal.initialize(...).then(...) handler
+   * and the Reveal.on('slidechanged', ...) handler (both below). The
+   * only deviation from a bare `mermaid.run()` call is the
+   * { nodes: pending } scoping argument, which restricts the render
+   * pass to diagrams in the currently-visible slide so that off-screen
+   * slides do not corrupt their viewBox (see "Why lazy rendering" below).
+   *
    * Render every Mermaid diagram inside the supplied slide section. Each
    * diagram is restored from its cached original source first (cached
    * synchronously in the inline script that runs before the Mermaid CDN

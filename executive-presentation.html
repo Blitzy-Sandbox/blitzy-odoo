@@ -531,7 +531,7 @@
         <div class="meta">
           <div><b>Scanner</b><br/>OSV-Scanner v2.3.8</div>
           <div><b>Lockfiles</b><br/>2 in scope</div>
-          <div><b>Wall-clock</b><br/>5.176 s</div>
+          <div><b>Wall-clock</b><br/>3.744 s</div>
           <div><b>Findings</b><br/>177 normalized</div>
         </div>
       </div>
@@ -595,7 +595,7 @@
         </div>
         <div class="kpi-card">
           <div class="kpi-icon"><i data-lucide="timer"></i></div>
-          <div class="kpi-value">5.2&thinsp;s</div>
+          <div class="kpi-value">3.7&thinsp;s</div>
           <div class="kpi-label">Wall-clock</div>
           <div class="kpi-sub">Online OSV.dev queries</div>
         </div>
@@ -641,7 +641,7 @@
           <div class="stage-pill">2 / Scan</div>
           <div class="stage-icon"><i data-lucide="scan-search"></i></div>
           <h3>Scan</h3>
-          <p>-r --format json --output results-osv.json</p>
+          <p>scan source --recursive --format json</p>
           <div class="stage-check">D2 pass: JSON produced</div>
         </div>
         <div class="stage-arrow"><i data-lucide="arrow-right"></i></div>
@@ -849,7 +849,7 @@
         </div>
         <div class="kpi-card accent">
           <div class="kpi-icon"><i data-lucide="zap"></i></div>
-          <div class="kpi-value">5.2&thinsp;s</div>
+          <div class="kpi-value">3.7&thinsp;s</div>
           <div class="kpi-label">Wall-clock</div>
           <div class="kpi-sub">Online API queries</div>
         </div>
@@ -857,7 +857,7 @@
 
       <p style="margin-top: var(--sp-3); font-family: var(--ff-mono); color: var(--c-primary-dark); font-size: 18px;">
         <i data-lucide="terminal-square" style="width:18px;height:18px;vertical-align:middle;"></i>
-        &nbsp;<code>osv-scanner -r --format json --output results-osv.json &lt;repo&gt;</code>
+        &nbsp;<code>osv-scanner scan source --recursive --format json --output results-osv.json &lt;repo&gt;</code>
       </p>
     </section>
 
@@ -1078,7 +1078,7 @@ pie showData
             <li><i data-lucide="circle-1" style="width:18px;height:18px;color:var(--c-primary);vertical-align:middle"></i>
               <code>curl &hellip; &gt; /usr/local/bin/osv-scanner &amp;&amp; chmod +x &hellip;</code></li>
             <li><i data-lucide="circle-2" style="width:18px;height:18px;color:var(--c-primary);vertical-align:middle"></i>
-              <code>osv-scanner -r --format json --output results-osv.json &lt;repo&gt;</code></li>
+              <code>osv-scanner scan source --recursive --format json --output results-osv.json &lt;repo&gt;</code></li>
             <li><i data-lucide="circle-3" style="width:18px;height:18px;color:var(--c-primary);vertical-align:middle"></i>
               <code>python3 normalize_findings.py &lt;repo&gt; results-osv.json findings-config-f.json</code></li>
             <li><i data-lucide="check-circle-2" style="width:18px;height:18px;color:var(--c-accent-teal);vertical-align:middle"></i>

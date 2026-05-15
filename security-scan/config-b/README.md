@@ -106,7 +106,7 @@ The harness enforces every gate below. Each is verified inside `run-scan.sh`; th
 | Directive 3c — five fields | `python -c "import json; data=json.load(open('findings-config-b.json')); assert all(set(r)=={'file','line','severity','cwe','description'} for r in data)"` exits 0. |
 | Directive 3d — description ≤200 chars | `python -c "import json; data=json.load(open('findings-config-b.json')); assert all(len(r['description'])<=200 for r in data)"` exits 0. |
 | Explainability rule | `decision-log.md` has decision table, traceability matrix, deviations section. |
-| Executive Presentation rule | `executive-summary.html` is self-contained, has 12–18 `<section>` elements, every section carries ≥1 non-text visual, CDNs pinned to exact versions (reveal.js 5.1.0, Mermaid 11.4.0, Lucide 0.460.0). |
+| Executive Presentation rule | `executive-summary.html` is self-contained, has 12–18 `<section>` elements, every section carries ≥1 non-text visual, CDNs pinned to exact versions (reveal.js 5.1.0, Mermaid 11.10.0, Lucide 0.460.0). The Mermaid pin is 11.10.0 rather than the AAP §0.7.2 literal 11.4.0 to address CVE-2025-54881; see `decision-log.md` DEV-9. |
 
 ---
 

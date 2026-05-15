@@ -432,6 +432,7 @@ def main(argv: list[str]) -> int:
       4  schema violation in an emitted record
       5  description length violation in an emitted record
       6  severity enum violation in an emitted record
+      7  output JSON write failure (OSError raised by Path.write_bytes)
     """
     parser = argparse.ArgumentParser(
         prog="normalize-findings.py",
@@ -516,8 +517,14 @@ def main(argv: list[str]) -> int:
             return 6
 
     payload_text = json.dumps(records, ensure_ascii=False, separators=(",", ":"))
-    payload_bytes = (payload_text + "\n").encode("utf-8")
-    out_path.write_bytes(payload_bytes)
+    payload_bytes = payload_text.encode("utf-8")
+    try:
+        out_path.write_bytes(payload_bytes)
+    except OSError as exc:
+        sys.stderr.write(
+            f"normalize-findings: failed to write output JSON to {out_path}: {exc}\n"
+        )
+        return 7
 
     sys.stderr.write(
         f"normalize-findings: wrote {len(records)} records to {out_path} "

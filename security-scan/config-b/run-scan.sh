@@ -244,10 +244,18 @@ print(f'SARIF total results: {sum(len(r.get(\"results\", [])) for r in d[\"runs\
 log "normalizing SARIF to $FINDINGS_PATH (target-root=$TARGET_ROOT)"
 "$PYTHON_BIN" "$NORMALIZER" "$SARIF_PATH" "$FINDINGS_PATH" --target-root "$TARGET_ROOT"
 
-# Directive 3 pass/fail gates.
+# Directive 3 pass/fail gates. See decision-log.md (DEV-3, D14) for rationale.
 log "Directive 3 pass/fail gates"
-GATE_3A="$(wc -l < "$FINDINGS_PATH")"
-[[ "$GATE_3A" == "1" ]] || { log "FATAL: 3a wc -l != 1 (got '$GATE_3A')"; exit 5; }
+# Gate 3a — single line: no newline bytes anywhere in the file.
+GATE_3A_NEWLINES="$(tr -dc '\n' < "$FINDINGS_PATH" | wc -c)"
+[[ "$GATE_3A_NEWLINES" == "0" ]] \
+    || { log "FATAL: 3a newline count != 0 (got '$GATE_3A_NEWLINES')"; exit 5; }
+# Gate 3a — empty result set is the literal two bytes '[]'.
+GATE_3A_BYTES="$(wc -c < "$FINDINGS_PATH")"
+if [[ "$(cat "$FINDINGS_PATH")" == "[]" ]]; then
+    [[ "$GATE_3A_BYTES" == "2" ]] \
+        || { log "FATAL: 3a empty case must be 2 bytes (got '$GATE_3A_BYTES')"; exit 5; }
+fi
 
 "$PYTHON_BIN" -m json.tool < "$FINDINGS_PATH" > /dev/null \
     || { log "FATAL: 3b invalid JSON"; exit 5; }

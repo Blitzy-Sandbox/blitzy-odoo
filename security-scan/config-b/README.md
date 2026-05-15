@@ -111,7 +111,7 @@ When zero findings are produced, the file is the literal two-byte content `[]`.
 | --- | --- | --- |
 | Directive 1 — offline operation | User prompt | Inside `run-scan.sh`: `semgrep scan --metrics=off --config=security-scan/config-b/rule-cache --dry-run` exits 0 with no network calls. |
 | Directive 2 — SARIF emission | User prompt | `python -c "import json; d=json.load(open('results-semgrep.sarif')); assert isinstance(d.get('runs'), list)"`. |
-| Directive 3a — single line | User prompt | `[ "$(wc -l < findings-config-b.json)" = "1" ]`. |
+| Directive 3a — single line | User prompt + AAP §0.1.2.3, §0.5.4.2, §0.6.2.1 | The file contains zero newline bytes (no embedded, no trailing): `[ "$(tr -dc '\n' < findings-config-b.json \| wc -c)" = "0" ]`. For an empty result set, the file is exactly the two bytes `[]`: `[ "$(wc -c < findings-config-b.json)" = "2" ]` when the payload is `[]`. See `decision-log.md` DEV-3 for the resolution of the AAP-vs-user-prompt tension around `wc -l`. |
 | Directive 3b — valid JSON | User prompt | `python -m json.tool < findings-config-b.json > /dev/null`. |
 | Directive 3c — five fields | User prompt | All objects have exactly `{file, line, severity, cwe, description}`. |
 | Directive 3d — description ≤ 200 chars | User prompt | All `description` strings have `len(...) <= 200`. |

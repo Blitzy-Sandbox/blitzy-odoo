@@ -2,11 +2,14 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: blitzy-odoo
-  description: "Odoo 19.0 enterprise accounting parity — financial reporting engine, bank reconciliation, and IBM Carbon Design System UI redesign"
+  description: Odoo 19.0 enterprise accounting parity — financial reporting engine,
+    bank reconciliation, and IBM Carbon Design System UI redesign
   tags:
-    - python
-    - web-app
-    - refactor
+  - audit
+  - python
+  - refactor
+  - security
+  - web-app
   labels:
     blitzy.com/language: python
   annotations:
@@ -14,14 +17,14 @@ metadata:
     github.com/project-slug: Blitzy-Sandbox/blitzy-odoo
     backstage.io/source-location: url:https://github.com/Blitzy-Sandbox/blitzy-odoo/tree/19.0/
   links:
-    - url: https://github.com/Blitzy-Sandbox/blitzy-odoo
-      title: GitHub Repository
-    - url: https://github.com/Blitzy-Sandbox/blitzy-odoo/pull/2
-      title: "PR #2: Enterprise Accounting Docs & Reports Scaffold"
-      icon: github
-    - url: https://github.com/Blitzy-Sandbox/blitzy-odoo/tree/19.0/blitzy/documentation
-      title: Blitzy Documentation
-      icon: docs
+  - url: https://github.com/Blitzy-Sandbox/blitzy-odoo
+    title: GitHub Repository
+  - url: https://github.com/Blitzy-Sandbox/blitzy-odoo/pull/2
+    title: 'PR #2: Enterprise Accounting Docs & Reports Scaffold'
+    icon: github
+  - url: https://github.com/Blitzy-Sandbox/blitzy-odoo/tree/19.0/blitzy/documentation
+    title: Blitzy Documentation
+    icon: docs
 spec:
   type: website
   lifecycle: production

@@ -1,0 +1,1048 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Blitzy-Odoo Security Scan — SonarQube Config I</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+
+  <style>
+    :root {
+      --blitzy-primary: #5B39F3;
+      --blitzy-primary-dark: #2D1C77;
+      --blitzy-primary-navy: #1A105F;
+      --blitzy-primary-light: #7A6DEC;
+      --blitzy-primary-deep: #4101DB;
+      --blitzy-accent-teal: #94FAD5;
+      --blitzy-surface-0: #FFFFFF;
+      --blitzy-surface-1: #F4EFF6;
+      --blitzy-surface-2: #F2F0FE;
+      --blitzy-surface-3: #F5F5F5;
+      --blitzy-border: #D9D9D9;
+      --blitzy-border-soft: rgba(91, 57, 243, 0.18);
+      --blitzy-text: #333333;
+      --blitzy-text-muted: #999999;
+      --blitzy-text-invert: #FFFFFF;
+      --ff-body: 'Inter', system-ui, sans-serif;
+      --ff-display: 'Space Grotesk', 'Inter', sans-serif;
+      --ff-mono: 'Fira Code', 'Courier New', monospace;
+      --gradient-hero: linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
+      --gradient-divider: linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%);
+      --gradient-accent-bar: linear-gradient(90deg, #5B39F3 0%, #94FAD5 100%);
+    }
+
+    /* Reveal base overrides */
+    .reveal {
+      font-family: var(--ff-body);
+      color: var(--blitzy-text);
+      font-size: 28px;
+      line-height: 1.45;
+    }
+    .reveal .slides {
+      text-align: left;
+    }
+    .reveal .slides section {
+      background: var(--blitzy-surface-0);
+      color: var(--blitzy-text);
+      padding: 72px 96px;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: stretch;
+      overflow: hidden;
+    }
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: var(--ff-display);
+      color: var(--blitzy-text);
+      letter-spacing: -0.01em;
+      margin: 0 0 24px 0;
+      text-transform: none;
+    }
+    .reveal h1 {
+      font-size: 72px;
+      font-weight: 700;
+      line-height: 1.05;
+    }
+    .reveal h2 {
+      font-size: 52px;
+      font-weight: 600;
+      line-height: 1.1;
+    }
+    .reveal h3 {
+      font-size: 34px;
+      font-weight: 600;
+    }
+    .reveal p {
+      font-size: 26px;
+      line-height: 1.5;
+      margin: 12px 0;
+      color: var(--blitzy-text);
+    }
+    .reveal ul {
+      list-style: none;
+      padding: 0;
+      margin: 16px 0 0 0;
+    }
+    .reveal ul li {
+      position: relative;
+      padding: 8px 0 8px 32px;
+      font-size: 26px;
+      line-height: 1.45;
+      color: var(--blitzy-text);
+    }
+    .reveal ul li::before {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 22px;
+      width: 12px;
+      height: 12px;
+      background: var(--gradient-accent-bar);
+      border-radius: 3px;
+    }
+    .reveal code {
+      font-family: var(--ff-mono);
+      font-size: 0.85em;
+      background: var(--blitzy-surface-2);
+      color: var(--blitzy-primary-dark);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--blitzy-border-soft);
+    }
+
+    /* Eyebrow */
+    .eyebrow {
+      font-family: var(--ff-mono);
+      font-size: 14px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--blitzy-primary);
+      margin: 0 0 18px 0;
+      display: block;
+    }
+    .slide-title .eyebrow,
+    .slide-divider .eyebrow,
+    .slide-closing .eyebrow {
+      color: var(--blitzy-accent-teal);
+    }
+
+    /* TITLE SLIDE */
+    .slide-title {
+      background: var(--gradient-hero) !important;
+      color: var(--blitzy-text-invert) !important;
+      justify-content: center !important;
+      align-items: flex-start !important;
+      position: relative;
+    }
+    .slide-title h1 {
+      color: var(--blitzy-text-invert);
+      font-size: 84px;
+      font-weight: 700;
+      line-height: 1.04;
+      max-width: 1400px;
+      margin: 0 0 28px 0;
+    }
+    .slide-title .subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-family: var(--ff-body);
+      font-size: 30px;
+      font-weight: 400;
+      max-width: 1200px;
+      margin: 0 0 36px 0;
+    }
+    .slide-title .audience-tag {
+      display: inline-block;
+      padding: 10px 22px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 999px;
+      font-family: var(--ff-mono);
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--blitzy-text-invert);
+    }
+    .slide-title .hero-shield {
+      position: absolute;
+      top: 80px;
+      right: 96px;
+      width: 96px;
+      height: 96px;
+      color: var(--blitzy-accent-teal);
+    }
+    .slide-title .hero-shield svg {
+      width: 96px;
+      height: 96px;
+      stroke-width: 1.5;
+    }
+    .slide-title .icon-row {
+      margin-top: 56px;
+    }
+    .slide-title .icon-row .icon-item .icon-caption {
+      color: rgba(255, 255, 255, 0.85);
+    }
+    .slide-title .icon-row .icon-item svg {
+      color: var(--blitzy-accent-teal);
+      stroke: var(--blitzy-accent-teal);
+    }
+
+    /* DIVIDER SLIDES */
+    .slide-divider {
+      background: var(--gradient-divider) !important;
+      color: var(--blitzy-text-invert) !important;
+      justify-content: center !important;
+      align-items: center !important;
+      text-align: center !important;
+    }
+    .slide-divider h2 {
+      color: var(--blitzy-text-invert);
+      font-size: 76px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin: 0;
+      max-width: 1400px;
+    }
+    .slide-divider .hero-icon {
+      width: 128px;
+      height: 128px;
+      margin: 0 auto 40px auto;
+      color: var(--blitzy-accent-teal);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .slide-divider .hero-icon svg {
+      width: 128px;
+      height: 128px;
+      stroke-width: 1.4;
+    }
+    .slide-divider .divider-sub {
+      margin-top: 28px;
+      font-family: var(--ff-mono);
+      color: var(--blitzy-accent-teal);
+      font-size: 18px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    /* CLOSING SLIDE */
+    .slide-closing {
+      background: var(--blitzy-primary-navy) !important;
+      color: var(--blitzy-text-invert) !important;
+      justify-content: center !important;
+    }
+    .slide-closing h1 {
+      color: var(--blitzy-text-invert);
+      font-size: 96px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 36px 0;
+      line-height: 1.02;
+    }
+    .slide-closing ul li {
+      color: rgba(255, 255, 255, 0.92);
+      font-size: 28px;
+    }
+    .slide-closing ul li::before {
+      background: var(--gradient-accent-bar);
+    }
+    .slide-closing .accent-bar {
+      width: 96px;
+      height: 5px;
+      background: var(--gradient-accent-bar);
+      border-radius: 3px;
+      margin: 56px 0 24px 0;
+    }
+    .slide-closing .brand-lockup {
+      font-family: var(--ff-mono);
+      font-size: 18px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--blitzy-accent-teal);
+    }
+    .slide-closing .closing-eyebrow {
+      color: var(--blitzy-accent-teal);
+    }
+
+    /* DEFAULT CONTENT SLIDES */
+    section .slide-header {
+      margin-bottom: 32px;
+    }
+    section .slide-footnote {
+      margin-top: 24px;
+      font-family: var(--ff-mono);
+      font-size: 14px;
+      color: var(--blitzy-text-muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    section .body-lede {
+      font-size: 24px;
+      color: var(--blitzy-text);
+      max-width: 1500px;
+      margin: 0 0 24px 0;
+    }
+
+    /* KPI GRID + CARDS */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+      margin: 24px 0;
+    }
+    .kpi-grid.kpi-grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .kpi-grid.kpi-grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .kpi-card {
+      background: var(--blitzy-surface-2);
+      border: 1px solid var(--blitzy-border-soft);
+      border-radius: 14px;
+      padding: 28px 28px 26px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      box-shadow: 0 6px 18px rgba(91, 57, 243, 0.05);
+    }
+    .kpi-icon {
+      color: var(--blitzy-primary);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .kpi-icon svg {
+      width: 32px;
+      height: 32px;
+      stroke-width: 1.6;
+      color: var(--blitzy-primary);
+    }
+    .kpi-value {
+      font-family: var(--ff-display);
+      font-size: 64px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--blitzy-primary);
+      letter-spacing: -0.02em;
+    }
+    .kpi-label {
+      font-family: var(--ff-mono);
+      font-size: 13px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--blitzy-text-muted);
+    }
+    .kpi-card.kpi-card-accent {
+      background: linear-gradient(135deg, rgba(91, 57, 243, 0.06) 0%, rgba(148, 250, 213, 0.12) 100%);
+      border-color: rgba(91, 57, 243, 0.32);
+    }
+    .kpi-card.kpi-card-accent .kpi-value {
+      color: var(--blitzy-primary-deep);
+    }
+
+    /* ICON ROW */
+    .icon-row {
+      display: flex;
+      gap: 56px;
+      align-items: flex-start;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .icon-row .icon-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      min-width: 132px;
+    }
+    .icon-row .icon-item svg {
+      width: 56px;
+      height: 56px;
+      color: var(--blitzy-primary);
+      stroke-width: 1.5;
+    }
+    .icon-row .icon-item .icon-caption {
+      font-family: var(--ff-mono);
+      font-size: 13px;
+      color: var(--blitzy-text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    /* ACCENT BAR + BRAND LOCKUP */
+    .accent-bar {
+      width: 80px;
+      height: 4px;
+      background: var(--gradient-accent-bar);
+      border-radius: 3px;
+      margin: 0 0 16px 0;
+    }
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-top: 12px;
+    }
+    .brand-lockup .accent-bar {
+      margin: 0;
+    }
+    .brand-lockup .brand-text {
+      font-family: var(--ff-mono);
+      font-size: 18px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--blitzy-accent-teal);
+    }
+
+    /* HERO ICON utility (used inside dividers, etc.) */
+    .hero-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* STYLED TABLES */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--ff-body);
+      font-size: 22px;
+      background: var(--blitzy-surface-0);
+      border: 1px solid var(--blitzy-border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(91, 57, 243, 0.04);
+    }
+    table.data-table thead th {
+      background: var(--blitzy-primary);
+      color: var(--blitzy-text-invert);
+      font-family: var(--ff-display);
+      font-weight: 600;
+      text-align: left;
+      padding: 14px 18px;
+      font-size: 20px;
+      letter-spacing: 0.01em;
+    }
+    table.data-table tbody td {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--blitzy-border);
+      vertical-align: top;
+      color: var(--blitzy-text);
+      line-height: 1.4;
+    }
+    table.data-table tbody tr:nth-child(even) td {
+      background: var(--blitzy-surface-3);
+    }
+    table.data-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    table.data-table .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-family: var(--ff-mono);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    table.data-table .tag.tag-critical {
+      background: rgba(220, 38, 38, 0.1);
+      color: #B91C1C;
+      border: 1px solid rgba(220, 38, 38, 0.3);
+    }
+    table.data-table .tag.tag-high {
+      background: rgba(217, 119, 6, 0.12);
+      color: #B45309;
+      border: 1px solid rgba(217, 119, 6, 0.3);
+    }
+    table.data-table .tag.tag-medium {
+      background: var(--blitzy-surface-2);
+      color: var(--blitzy-primary-deep);
+      border: 1px solid var(--blitzy-border-soft);
+    }
+    table.data-table .tag.tag-low {
+      background: rgba(148, 250, 213, 0.25);
+      color: var(--blitzy-primary-navy);
+      border: 1px solid rgba(91, 57, 243, 0.2);
+    }
+    table.data-table code {
+      font-size: 0.85em;
+    }
+
+    /* MERMAID containers */
+    .mermaid-wrap {
+      background: var(--blitzy-surface-2);
+      padding: 28px;
+      border-radius: 14px;
+      border: 1px solid var(--blitzy-border-soft);
+      margin: 18px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 14px rgba(91, 57, 243, 0.05);
+      max-height: 640px;
+      overflow: hidden;
+    }
+    .mermaid-wrap-wide { padding: 36px; }
+    .mermaid {
+      font-family: var(--ff-body) !important;
+      background: transparent;
+      width: 100%;
+      max-width: 1700px;
+      text-align: center;
+      color: var(--blitzy-text);
+    }
+    .mermaid svg {
+      max-width: 100%;
+      max-height: 620px;
+      width: 100%;
+      height: auto;
+      font-family: var(--ff-body) !important;
+    }
+    .mermaid foreignObject {
+      overflow: visible !important;
+    }
+    .mermaid foreignObject p,
+    .mermaid foreignObject span,
+    .mermaid foreignObject div {
+      font-family: var(--ff-body) !important;
+      color: var(--blitzy-text) !important;
+      white-space: nowrap;
+      padding: 0 4px;
+    }
+    .mermaid .nodeLabel,
+    .mermaid .label {
+      font-family: var(--ff-body) !important;
+    }
+
+    /* Severity-stripe horizontal bar visual (alternative to pie) */
+    .severity-bar {
+      width: 100%;
+      max-width: 1500px;
+      margin: 24px 0 12px 0;
+    }
+    .severity-bar .seg-row {
+      display: grid;
+      grid-template-columns: 180px 1fr 100px;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+    .severity-bar .seg-label {
+      font-family: var(--ff-mono);
+      font-size: 16px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--blitzy-text);
+      font-weight: 500;
+    }
+    .severity-bar .seg-track {
+      height: 22px;
+      background: var(--blitzy-surface-3);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--blitzy-border);
+    }
+    .severity-bar .seg-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+    .severity-bar .seg-fill.crit { background: linear-gradient(90deg, #B91C1C 0%, #DC2626 100%); }
+    .severity-bar .seg-fill.high { background: linear-gradient(90deg, #B45309 0%, #F59E0B 100%); }
+    .severity-bar .seg-fill.med  { background: linear-gradient(90deg, var(--blitzy-primary) 0%, var(--blitzy-primary-light) 100%); }
+    .severity-bar .seg-fill.low  { background: linear-gradient(90deg, var(--blitzy-accent-teal) 0%, #6EE7B7 100%); }
+    .severity-bar .seg-value {
+      font-family: var(--ff-display);
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--blitzy-text);
+      text-align: right;
+    }
+
+    /* Two-column content layout */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 36px;
+      align-items: start;
+    }
+    .two-col > * { min-width: 0; }
+
+    /* Small caption / hint */
+    .footnote-eyebrow {
+      font-family: var(--ff-mono);
+      font-size: 13px;
+      color: var(--blitzy-text-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-top: 16px;
+    }
+
+    /* Reveal progress + controls */
+    .reveal .progress {
+      color: var(--blitzy-primary);
+      height: 4px;
+    }
+    .reveal .controls {
+      color: var(--blitzy-primary);
+    }
+  </style>
+</head>
+<body>
+<div class="reveal">
+  <div class="slides">
+
+    <!-- 1. TITLE SLIDE -->
+    <section class="slide-title">
+      <div class="hero-shield"><i data-lucide="shield-check"></i></div>
+      <span class="eyebrow">Static Security Analysis  ·  Config I</span>
+      <h1>Blitzy-Odoo Security Scan: SonarQube Config I</h1>
+      <p class="subtitle">Ephemeral one-shot SAST run against the Odoo 19 strategic fork — normalized findings ready for cross-tool comparison.</p>
+      <span class="audience-tag">For Leadership &amp; Operations</span>
+      <div class="icon-row">
+        <div class="icon-item">
+          <i data-lucide="package"></i>
+          <span class="icon-caption">606 modules</span>
+        </div>
+        <div class="icon-item">
+          <i data-lucide="cpu"></i>
+          <span class="icon-caption">Containerized</span>
+        </div>
+        <div class="icon-item">
+          <i data-lucide="radar"></i>
+          <span class="icon-caption">Vuln + Bug</span>
+        </div>
+        <div class="icon-item">
+          <i data-lucide="clipboard-check"></i>
+          <span class="icon-caption">Deterministic</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. SECTION DIVIDER — Why this matters -->
+    <section class="slide-divider">
+      <div class="hero-icon"><i data-lucide="compass"></i></div>
+      <h2>Why this matters</h2>
+      <div class="divider-sub">Mission · Value · Posture</div>
+    </section>
+
+    <!-- 3. CONTENT — Mission &amp; Value -->
+    <section>
+      <span class="eyebrow">Mission</span>
+      <h2>Why we ran this scan</h2>
+      <p class="body-lede">A reproducible vulnerability inventory for Blitzy-Odoo that feeds an apples-to-apples, cross-tool comparison.</p>
+      <ul>
+        <li>Establish a reproducible vulnerability inventory for Blitzy-Odoo.</li>
+        <li>Feed a multi-tool comparison with deterministic JSON output.</li>
+        <li>Operate ephemerally — zero impact to the Odoo source tree.</li>
+        <li>Surface risk posture to leadership in one minute.</li>
+      </ul>
+      <div class="icon-row">
+        <div class="icon-item">
+          <i data-lucide="gauge"></i>
+          <span class="icon-caption">Reproducible</span>
+        </div>
+        <div class="icon-item">
+          <i data-lucide="git-branch"></i>
+          <span class="icon-caption">Read-only fork</span>
+        </div>
+        <div class="icon-item">
+          <i data-lucide="clipboard-check"></i>
+          <span class="icon-caption">Comparable</span>
+        </div>
+        <div class="icon-item">
+          <i data-lucide="bar-chart-3"></i>
+          <span class="icon-caption">Quantified risk</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. SECTION DIVIDER — What we scanned -->
+    <section class="slide-divider">
+      <div class="hero-icon"><i data-lucide="folder-search"></i></div>
+      <h2>What we scanned</h2>
+      <div class="divider-sub">Scope · Inventory · Boundaries</div>
+    </section>
+
+    <!-- 5. CONTENT — Scope at a Glance -->
+    <section>
+      <span class="eyebrow">Repository Scope</span>
+      <h2>Scope at a glance</h2>
+      <p class="body-lede">Strategic fork of Odoo 19.0; the entire tree is reference input — no source file modified by this task.</p>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="package"></i></div>
+          <div class="kpi-value">606</div>
+          <div class="kpi-label">Odoo Modules</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="file-code-2"></i></div>
+          <div class="kpi-value">7,649</div>
+          <div class="kpi-label">Python files · addons</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="braces"></i></div>
+          <div class="kpi-value">5,698</div>
+          <div class="kpi-label">JavaScript files</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="file-text"></i></div>
+          <div class="kpi-value">5,310</div>
+          <div class="kpi-label">XML files</div>
+        </div>
+      </div>
+      <div class="footnote-eyebrow">Branch: 19.0 · Analyzer target: Python 3.10 (per ruff.toml)</div>
+    </section>
+
+    <!-- 6. SECTION DIVIDER — How it works -->
+    <section class="slide-divider">
+      <div class="hero-icon"><i data-lucide="workflow"></i></div>
+      <h2>How it works</h2>
+      <div class="divider-sub">Pipeline · Choices · Hygiene</div>
+    </section>
+
+    <!-- 7. CONTENT — Scan Pipeline (Mermaid flowchart) -->
+    <section>
+      <span class="eyebrow">Architecture</span>
+      <h2>Scan pipeline</h2>
+      <p class="body-lede">Containerized scan, ephemeral by design — install, start, scan, normalize, teardown.</p>
+      <div class="mermaid-wrap mermaid-wrap-wide">
+        <pre class="mermaid">
+flowchart LR
+  A["Install"] --> B["Start container"]
+  B --> C{"Health UP?"}
+  C -->|yes| D["Authenticate"]
+  D --> E["sonar-scanner"]
+  E --> F["Export issues"]
+  F --> G["Normalize"]
+  G --> H["Write JSON"]
+  H --> I["Teardown"]
+  classDef start fill:#F2F0FE,stroke:#5B39F3,color:#333333,stroke-width:1.5px;
+  classDef io fill:#F4EFF6,stroke:#5B39F3,color:#333333,stroke-width:1.5px;
+  classDef end1 fill:#94FAD5,stroke:#2D1C77,color:#1A105F,stroke-width:1.5px;
+  class A,B,D,E,F,G start;
+  class C io;
+  class H,I end1;
+        </pre>
+      </div>
+      <div class="footnote-eyebrow">Cold-start observed at 39s · Quality gate awaited via sonar.qualitygate.wait=true</div>
+    </section>
+
+    <!-- 8. CONTENT — Operational Choices -->
+    <section>
+      <span class="eyebrow">Operational Posture</span>
+      <h2>Operational choices</h2>
+      <table class="data-table">
+        <thead>
+          <tr><th>Choice</th><th>Selected</th><th>Rationale</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Image tag</td>
+            <td><code>sonarqube:community</code> (rolling)</td>
+            <td>Latest rules and CWE coverage at run time.</td>
+          </tr>
+          <tr>
+            <td>Database</td>
+            <td>Embedded H2</td>
+            <td>Ephemeral, single-run; no persistence required.</td>
+          </tr>
+          <tr>
+            <td>Authentication</td>
+            <td><code>admin:admin</code></td>
+            <td>Default Basic Auth; bootstrap path documented if first-login forces a change.</td>
+          </tr>
+          <tr>
+            <td>Page size</td>
+            <td><code>ps=500</code></td>
+            <td>API maximum; paginate via <code>&amp;p=n</code> when total exceeds 500.</td>
+          </tr>
+          <tr>
+            <td>Teardown</td>
+            <td><code>finally</code> block</td>
+            <td>Frees port 9000 and disk on every success and failure path.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="footnote-eyebrow">Every choice is recorded in <code>decisions.md</code> with risks acknowledged.</p>
+    </section>
+
+    <!-- 9. SECTION DIVIDER — What we found -->
+    <section class="slide-divider">
+      <div class="hero-icon"><i data-lucide="search-check"></i></div>
+      <h2>What we found</h2>
+      <div class="divider-sub">Inventory · Severity · CWE</div>
+    </section>
+
+    <!-- 10. CONTENT — Findings Headline KPIs -->
+    <section>
+      <span class="eyebrow">Findings</span>
+      <h2>Headline numbers</h2>
+      <p class="body-lede">Inventory is the deliverable; remediation is downstream. Numbers below populate from <code>findings-config-i.json</code>.</p>
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-card-accent">
+          <div class="kpi-icon"><i data-lucide="list-checks"></i></div>
+          <div class="kpi-value" data-source="findings-config-i.json">902</div>
+          <div class="kpi-label">Total Findings</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="alert-octagon"></i></div>
+          <div class="kpi-value" data-source="findings-config-i.json">172</div>
+          <div class="kpi-label">Critical</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
+          <div class="kpi-value" data-source="findings-config-i.json">692</div>
+          <div class="kpi-label">High</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="info"></i></div>
+          <div class="kpi-value" data-source="findings-config-i.json">38</div>
+          <div class="kpi-label">Medium + Low</div>
+        </div>
+      </div>
+      <div class="footnote-eyebrow">Values reflect the live scan of branch 19.0 · Severity buckets defined by the user fold map.</div>
+    </section>
+
+    <!-- 11. CONTENT — Severity Distribution -->
+    <section>
+      <span class="eyebrow">Severity Distribution</span>
+      <h2>How findings split by severity</h2>
+      <p class="body-lede">Mapping follows the user-specified severity fold; categories are deterministic and re-run stable.</p>
+      <div class="severity-bar" aria-label="Severity distribution bar chart">
+        <div class="seg-row">
+          <div class="seg-label">Critical</div>
+          <div class="seg-track"><div class="seg-fill crit" style="width: 19.1%;"></div></div>
+          <div class="seg-value">172</div>
+        </div>
+        <div class="seg-row">
+          <div class="seg-label">High</div>
+          <div class="seg-track"><div class="seg-fill high" style="width: 76.7%;"></div></div>
+          <div class="seg-value">692</div>
+        </div>
+        <div class="seg-row">
+          <div class="seg-label">Medium</div>
+          <div class="seg-track"><div class="seg-fill med" style="width: 4.2%;"></div></div>
+          <div class="seg-value">38</div>
+        </div>
+        <div class="seg-row">
+          <div class="seg-label">Low</div>
+          <div class="seg-track"><div class="seg-fill low" style="width: 0%;"></div></div>
+          <div class="seg-value">0</div>
+        </div>
+      </div>
+      <div class="footnote-eyebrow">Bucket source: blocker/critical → critical · major → high · minor → medium · info → low</div>
+    </section>
+
+    <!-- 12. CONTENT — Representative CWEs -->
+    <section>
+      <span class="eyebrow">CWE Landscape</span>
+      <h2>CWE coverage</h2>
+      <p class="body-lede">CWE pulled from rule tags first, then inferred from rule description; unmapped findings retain a documented sentinel.</p>
+      <table class="data-table">
+        <thead>
+          <tr><th>CWE</th><th>Title</th><th>Count</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>CWE-798</code></td><td>Use of Hard-coded Credentials</td><td>159</td></tr>
+          <tr><td><code>CWE-482</code></td><td>Comparing instead of Assigning</td><td>82</td></tr>
+          <tr><td><code>CWE-628</code></td><td>Function Call with Incorrectly Specified Arguments</td><td>5</td></tr>
+          <tr><td><code>CWE-327</code></td><td>Use of a Broken or Risky Cryptographic Algorithm</td><td>5</td></tr>
+          <tr><td><code>CWE-611</code></td><td>Improper Restriction of XML External Entity Reference</td><td>4</td></tr>
+          <tr><td><code>CWE-UNMAPPED</code></td><td>Bug findings without a SonarQube CWE tag</td><td>638</td></tr>
+        </tbody>
+      </table>
+      <div class="footnote-eyebrow">Tag-first, description-inferred fallback · UTF-8-safe truncation at 200 code points.</div>
+    </section>
+
+    <!-- 13. SECTION DIVIDER — Risk & mitigation -->
+    <section class="slide-divider">
+      <div class="hero-icon"><i data-lucide="shield-alert"></i></div>
+      <h2>Risk &amp; mitigation</h2>
+      <div class="divider-sub">Threats · Owners · Next steps</div>
+    </section>
+
+    <!-- 14. CONTENT — Top Risks & Mitigations -->
+    <section>
+      <span class="eyebrow">Risk Posture</span>
+      <h2>Top risks</h2>
+      <table class="data-table">
+        <thead>
+          <tr><th>Risk</th><th>Likelihood</th><th>Mitigation</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>First-login <code>admin/admin</code> rejection</td>
+            <td><span class="tag tag-medium">Medium</span></td>
+            <td>Bootstrap via <code>change_password</code> or token endpoint; logged in <code>decisions.md</code>.</td>
+          </tr>
+          <tr>
+            <td>Issue count above 10,000 silently truncated</td>
+            <td><span class="tag tag-low">Low</span></td>
+            <td>Paginate up to bound; document if the cap is hit.</td>
+          </tr>
+          <tr>
+            <td>Rolling image tag drift between runs</td>
+            <td><span class="tag tag-medium">Medium</span></td>
+            <td>Capture image digest in operational log; pin if reproducibility required.</td>
+          </tr>
+          <tr>
+            <td>Embedded H2 data loss</td>
+            <td><span class="tag tag-low">By design</span></td>
+            <td>Container destroyed at end; no persistence expected.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="footnote-eyebrow">Each risk has an owner-ready next step in <code>decisions.md</code>.</div>
+    </section>
+
+    <!-- 15. CONTENT — Operational Handoff -->
+    <section>
+      <span class="eyebrow">Operational Handoff</span>
+      <h2>How the team consumes this</h2>
+      <p class="body-lede">Three repo-root artifacts cover data, decisions, and narrative — no build step, no service to maintain.</p>
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+sequenceDiagram
+  participant Eng as Engineer
+  participant JSON as findings-config-i.json
+  participant Cmp as Cross-tool Comparator
+  participant Deck as presentation.html
+  participant Log as decisions.md
+  Eng->>JSON: read normalized findings
+  JSON->>Cmp: feed Config I dataset
+  Cmp-->>Eng: comparative report
+  Eng->>Deck: open in browser
+  Eng->>Log: drill into decisions
+        </pre>
+      </div>
+      <ul>
+        <li>Consume <code>findings-config-i.json</code> in the cross-tool comparator.</li>
+        <li>Re-run the workflow per release branch to refresh the inventory.</li>
+        <li>Reference <code>decisions.md</code> for every implementation choice.</li>
+        <li>Open this deck in any modern browser; no build required.</li>
+      </ul>
+    </section>
+
+    <!-- 16. CLOSING SLIDE -->
+    <section class="slide-closing">
+      <span class="eyebrow closing-eyebrow">Takeaway</span>
+      <h1>Ephemeral. Deterministic. Comparable.</h1>
+      <ul>
+        <li>One-shot SAST run on the immutable Odoo 19 fork.</li>
+        <li>Single-line JSON ready for cross-tool comparison.</li>
+        <li>Decisions and visuals archived alongside the data.</li>
+      </ul>
+      <div class="accent-bar"></div>
+      <div class="brand-lockup">
+        <div class="accent-bar"></div>
+        <div class="brand-text">Blitzy · Security Tooling</div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    flowchart: {
+      htmlLabels: true,
+      useMaxWidth: true,
+      nodeSpacing: 60,
+      rankSpacing: 70,
+      padding: 18
+    },
+    sequence: {
+      useMaxWidth: true,
+      mirrorActors: false,
+      noteFontFamily: 'Inter, system-ui, sans-serif',
+      actorFontFamily: 'Inter, system-ui, sans-serif',
+      messageFontFamily: 'Inter, system-ui, sans-serif'
+    },
+    themeVariables: {
+      primaryColor: '#F2F0FE',
+      primaryTextColor: '#333333',
+      primaryBorderColor: '#5B39F3',
+      lineColor: '#999999',
+      secondaryColor: '#F4EFF6',
+      fontFamily: '"Inter", system-ui, sans-serif',
+      fontSize: '16px'
+    }
+  });
+
+  // Cache the original Mermaid source so we can re-render after slides become visible.
+  // SVG dimensions are computed from the layout context; rendering while a slide is
+  // display:none yields a 0x0 SVG, which then cannot be retargeted by mermaid.run().
+  document.querySelectorAll('pre.mermaid').forEach(function (node) {
+    node.setAttribute('data-mermaid-source', node.textContent);
+  });
+
+  Reveal.initialize({
+    hash: true,
+    transition: 'slide',
+    controlsTutorial: false,
+    width: 1920,
+    height: 1080
+  });
+
+  function renderMermaidOnSlide(slide) {
+    if (!slide) { return; }
+    var nodes = slide.querySelectorAll('pre.mermaid');
+    if (!nodes.length) { return; }
+    nodes.forEach(function (node) {
+      var src = node.getAttribute('data-mermaid-source');
+      if (src) {
+        node.removeAttribute('data-processed');
+        node.textContent = src;
+      }
+    });
+    try { mermaid.run({ nodes: nodes }); } catch (e) { /* mermaid runtime fallback */ }
+  }
+
+  function refreshIcons() {
+    try { lucide.createIcons(); } catch (e) { /* lucide runtime fallback */ }
+  }
+
+  // Mermaid measures text widths from the DOM. If a slide's Inter webfont has not
+  // yet downloaded, the measured boxes are sized to the fallback (narrower) font
+  // and the rendered text overflows once the real font swaps in. Waiting for
+  // document.fonts.ready before any mermaid.run() avoids the off-by-N pixel clip.
+  var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+
+  function whenFontsReady(fn) {
+    fontsReady.then(fn, fn);
+  }
+
+  Reveal.on('ready', function (event) {
+    refreshIcons();
+    whenFontsReady(function () {
+      renderMermaidOnSlide(event.currentSlide || Reveal.getCurrentSlide());
+    });
+  });
+  Reveal.on('slidechanged', function (event) {
+    refreshIcons();
+    whenFontsReady(function () {
+      renderMermaidOnSlide(event.currentSlide);
+    });
+  });
+</script>
+</body>
+</html>
+

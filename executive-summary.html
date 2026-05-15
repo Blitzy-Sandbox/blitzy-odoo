@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bandit Config C — Security Scan — blitzy-odoo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Fira+Code:wght@400;500&display=swap"
+  rel="stylesheet"
+/>
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css"
+      integrity="sha384-YgvgKeZJykuztG+iQPoZHNZENTFZvOcOJ/uRzmJTje6GHYN9zAw+y5rx/L8MQKA/"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer" />
+<style>
+:root {
+  --blitzy-primary: #5B39F3;
+  --blitzy-primary-dark: #2D1C77;
+  --blitzy-primary-navy: #1A105F;
+  --blitzy-primary-light: #7A6DEC;
+  --blitzy-primary-deep: #4101DB;
+  --blitzy-accent-teal: #94FAD5;
+  --blitzy-surface-0: #FFFFFF;
+  --blitzy-surface-1: #F4EFF6;
+  --blitzy-surface-2: #F2F0FE;
+  --blitzy-surface-3: #F5F5F5;
+  --blitzy-border: #D9D9D9;
+  --blitzy-border-soft: rgba(91, 57, 243, 0.18);
+  --blitzy-text: #333333;
+  --blitzy-text-muted: #999999;
+  --blitzy-text-invert: #FFFFFF;
+  --ff-body: 'Inter', system-ui, sans-serif;
+  --ff-display: 'Space Grotesk', 'Inter', sans-serif;
+  --ff-mono: 'Fira Code', 'Courier New', monospace;
+  --gradient-hero: linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
+  --gradient-divider: linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%);
+  --gradient-accent-bar: linear-gradient(90deg, #5B39F3 0%, #94FAD5 100%);
+}
+
+.reveal {
+  font-family: var(--ff-body);
+  color: var(--blitzy-text);
+  background: var(--blitzy-surface-0);
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+.reveal .slides section {
+  background: var(--blitzy-surface-0);
+  padding: 60px 90px;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.reveal .slides section *, .reveal .slides section *::before, .reveal .slides section *::after {
+  box-sizing: border-box;
+}
+
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family: var(--ff-display);
+  color: var(--blitzy-primary-dark);
+  text-transform: none;
+  letter-spacing: -0.01em;
+}
+
+.reveal h1 { font-size: 5.2rem; font-weight: 700; line-height: 1.05; margin: 0 0 24px; }
+.reveal h2 { font-size: 3.6rem; font-weight: 600; line-height: 1.1; margin: 0 0 28px; }
+.reveal h3 { font-size: 2.4rem; font-weight: 600; line-height: 1.2; margin: 0 0 16px; }
+
+.reveal p, .reveal li {
+  font-size: 1.5rem;
+  line-height: 1.55;
+  color: var(--blitzy-text);
+}
+
+.reveal ul { margin: 0 0 0 1.4em; padding: 0; }
+.reveal ul li { margin: 0.45em 0; }
+
+.reveal code, .reveal .mono {
+  font-family: var(--ff-mono);
+  font-size: 0.92em;
+  color: var(--blitzy-primary-deep);
+  background: var(--blitzy-surface-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--blitzy-border-soft);
+}
+
+/* ---------- Eyebrow / accent bar / brand lockup ---------- */
+.eyebrow {
+  font-family: var(--ff-mono);
+  font-weight: 500;
+  font-size: 1.05rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--blitzy-accent-teal);
+  margin: 0 0 18px;
+}
+.slide-title .eyebrow { color: var(--blitzy-accent-teal); }
+.slide-closing .eyebrow { color: var(--blitzy-accent-teal); }
+.content .eyebrow { color: var(--blitzy-primary); }
+
+.accent-bar {
+  width: 96px;
+  height: 6px;
+  background: var(--gradient-accent-bar);
+  border-radius: 4px;
+  margin: 18px 0 22px;
+}
+
+.brand-lockup {
+  position: absolute;
+  bottom: 36px;
+  right: 60px;
+  font-family: var(--ff-mono);
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--blitzy-text-muted);
+}
+.slide-title .brand-lockup, .slide-divider .brand-lockup, .slide-closing .brand-lockup {
+  color: rgba(255,255,255,0.65);
+}
+
+/* ---------- Title slide ---------- */
+.reveal section.slide-title {
+  background: var(--gradient-hero);
+  color: var(--blitzy-text-invert);
+  justify-content: center;
+}
+.slide-title h1 { color: var(--blitzy-text-invert); }
+.slide-title p { color: rgba(255,255,255,0.92); }
+.slide-title .hero-icon {
+  width: 110px;
+  height: 110px;
+  margin-bottom: 20px;
+  color: var(--blitzy-accent-teal);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.slide-title .hero-icon i { width: 56px; height: 56px; }
+.slide-title .accent-bar { background: var(--blitzy-accent-teal); }
+.slide-title .deck-meta {
+  font-family: var(--ff-mono);
+  font-size: 1.1rem;
+  margin-top: 24px;
+  color: rgba(255,255,255,0.85);
+  letter-spacing: 0.08em;
+}
+
+/* ---------- Divider slide ---------- */
+.reveal section.slide-divider {
+  background: var(--gradient-divider);
+  color: var(--blitzy-text-invert);
+  justify-content: center;
+  text-align: center;
+}
+.slide-divider h2 {
+  color: var(--blitzy-text-invert);
+  font-size: 4.4rem;
+  margin-bottom: 14px;
+}
+.slide-divider p, .slide-divider li {
+  color: rgba(255, 255, 255, 0.92);
+}
+.slide-divider .eyebrow { color: var(--blitzy-accent-teal); }
+.slide-divider .divider-icon {
+  margin: 0 auto 24px;
+  width: 110px;
+  height: 110px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--blitzy-accent-teal);
+}
+.slide-divider .divider-icon i { width: 56px; height: 56px; }
+.slide-divider .accent-bar { margin: 24px auto 0; background: var(--blitzy-accent-teal); }
+
+/* ---------- Closing slide ---------- */
+.reveal section.slide-closing {
+  background: var(--blitzy-primary-navy);
+  color: var(--blitzy-text-invert);
+  justify-content: center;
+}
+.slide-closing h2 {
+  color: var(--blitzy-text-invert);
+  font-size: 4.4rem;
+}
+.slide-closing p, .slide-closing li { color: rgba(255,255,255,0.92); }
+.slide-closing .accent-bar { background: var(--gradient-accent-bar); }
+.slide-closing .closing-icon {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 18px;
+  color: var(--blitzy-accent-teal);
+}
+
+/* ---------- KPI grid / cards ---------- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+  margin: 18px 0 4px;
+}
+.kpi-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.kpi-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.kpi-card {
+  background: var(--blitzy-surface-1);
+  border: 1px solid var(--blitzy-border-soft);
+  border-radius: 12px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kpi-card .kpi-icon {
+  width: 36px;
+  height: 36px;
+  color: var(--blitzy-primary);
+  background: var(--blitzy-surface-2);
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.kpi-card .kpi-icon i { width: 20px; height: 20px; }
+.kpi-value {
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--blitzy-primary-dark);
+}
+.kpi-label {
+  font-family: var(--ff-body);
+  font-weight: 500;
+  font-size: 1.05rem;
+  color: var(--blitzy-text-muted);
+  letter-spacing: 0.04em;
+}
+.kpi-card.severity-critical .kpi-value { color: #B30B2B; }
+.kpi-card.severity-high     .kpi-value { color: #C9461A; }
+.kpi-card.severity-medium   .kpi-value { color: #B07B00; }
+.kpi-card.severity-low      .kpi-value { color: #2B7A4E; }
+
+/* ---------- Tables ---------- */
+.blitzy-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 1.25rem;
+  background: var(--blitzy-surface-0);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--blitzy-border);
+  margin-top: 14px;
+}
+.blitzy-table thead th {
+  background: var(--blitzy-surface-2);
+  color: var(--blitzy-primary-dark);
+  font-weight: 600;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--blitzy-border);
+  font-family: var(--ff-display);
+  font-size: 1.15rem;
+}
+.blitzy-table tbody td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--blitzy-surface-3);
+  vertical-align: top;
+  color: var(--blitzy-text);
+}
+.blitzy-table tbody tr:nth-child(even) td { background: var(--blitzy-surface-3); }
+.blitzy-table tbody tr:last-child td { border-bottom: none; }
+.blitzy-table td .mono { font-size: 0.95rem; }
+
+/* ---------- Mermaid ---------- */
+.mermaid {
+  background: var(--blitzy-surface-2);
+  border: 1px solid var(--blitzy-border-soft);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 12px 0;
+  font-family: var(--ff-mono);
+  font-size: 0.9rem;
+}
+.mermaid svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+/* Override Mermaid 11's hardcoded inline `max-width: 200px` on the label div
+   inside each node's <foreignObject>. Without this override, longer node
+   labels (e.g., "executive-summary.html") are clipped at 200px by the
+   foreignObject's clipping region, because Mermaid sizes the <rect> from a
+   pre-render measurement that does not account for the (wider) Inter font
+   actually rendering the text. */
+.mermaid svg .node > .label foreignObject,
+.mermaid svg .edgeLabel foreignObject {
+  overflow: visible !important;
+}
+.mermaid svg .node > .label foreignObject > div,
+.mermaid svg .edgeLabel foreignObject > div {
+  max-width: none !important;
+  display: inline-block !important;
+}
+
+/* ---------- Icon row / inline icons ---------- */
+.icon-row {
+  display: flex;
+  gap: 22px;
+  margin-top: 12px;
+}
+.icon-row .icon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--blitzy-surface-2);
+  border: 1px solid var(--blitzy-border-soft);
+  border-radius: 999px;
+  color: var(--blitzy-primary-dark);
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+.icon-row .icon-chip i { width: 18px; height: 18px; }
+.icon-row.title-icon-row {
+  gap: 16px;
+  margin-top: 28px;
+}
+.icon-row .icon-chip.title-chip {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  color: var(--blitzy-text-invert);
+  font-family: var(--ff-mono);
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+.icon-row .icon-chip.title-chip i { color: var(--blitzy-accent-teal); }
+
+/* ---------- Misc layout helpers ---------- */
+.subtitle {
+  color: var(--blitzy-text-muted);
+  font-size: 1.4rem;
+  margin: 0 0 18px;
+  max-width: 1400px;
+}
+.callout {
+  background: var(--blitzy-surface-2);
+  border-left: 4px solid var(--blitzy-primary);
+  padding: 14px 18px;
+  border-radius: 8px;
+  margin: 14px 0;
+  font-size: 1.2rem;
+  color: var(--blitzy-text);
+}
+.row-2 { display: grid; grid-template-columns: 1.05fr 1fr; gap: 28px; }
+.row-2 > .col { min-width: 0; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1. TITLE -->
+<section class="slide-title">
+  <div class="hero-icon"><i data-lucide="shield-check"></i></div>
+  <p class="eyebrow">Bandit Config C · Security Scan</p>
+  <h1>Bandit Config C · blitzy-odoo</h1>
+  <div class="accent-bar"></div>
+  <p>Python static-analysis baseline for the Odoo 19 codebase — one of N tool configs in a multi-config comparison.</p>
+  <p class="deck-meta">Scan root · repository root &nbsp;|&nbsp; Tool · Bandit 1.9.4 &nbsp;|&nbsp; Audience · Leadership</p>
+  <div class="icon-row title-icon-row">
+    <span class="icon-chip title-chip"><i data-lucide="shield-check"></i> Static analysis</span>
+    <span class="icon-chip title-chip"><i data-lucide="bar-chart-3"></i> Metrics captured</span>
+    <span class="icon-chip title-chip"><i data-lucide="file-code-2"></i> 8,183 .py files</span>
+  </div>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 2. CONTENT — HEADLINE KPIs -->
+<section>
+  <p class="eyebrow">Run at a Glance</p>
+  <h2>1,553 findings · 90 seconds · 8,183 files</h2>
+  <div class="accent-bar"></div>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
+      <div class="kpi-value">1,553</div>
+      <div class="kpi-label">Total findings</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon"><i data-lucide="files"></i></div>
+      <div class="kpi-value">8,183</div>
+      <div class="kpi-label">Python files scanned</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon"><i data-lucide="timer"></i></div>
+      <div class="kpi-value">90.0s</div>
+      <div class="kpi-label">Wall-clock duration</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon"><i data-lucide="terminal"></i></div>
+      <div class="kpi-value">1</div>
+      <div class="kpi-label">Bandit exit code (findings reported)</div>
+    </div>
+  </div>
+  <p class="callout">Exit code <span class="mono">1</span> is the expected outcome when Bandit reports findings — it is not a failure. Only exit code <span class="mono">2</span> indicates a scanner error.</p>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 3. CONTENT — ARCHITECTURE OVERVIEW -->
+<section>
+  <p class="eyebrow">Pipeline Architecture</p>
+  <h2>From AST to a single-line JSON deliverable</h2>
+  <div class="accent-bar"></div>
+  <pre class="mermaid">
+flowchart LR
+    A["8,183 .py files"] --> B["Bandit 1.9.4"]
+    B --> C["results-bandit.sarif"]
+    C --> D["SARIF transformer"]
+    D --> E["findings-config-c.json"]
+    D --> F["decision-log.md"]
+    D --> G["executive-summary.html"]
+  </pre>
+  <p class="subtitle">Bandit runs once recursively. The transformer reads SARIF, applies the five-field mapping, and emits a single-line JSON array suitable for cross-tool comparison.</p>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 4. DIVIDER — METHODOLOGY -->
+<section class="slide-divider">
+  <div class="divider-icon"><i data-lucide="compass"></i></div>
+  <p class="eyebrow">Section 01</p>
+  <h2>Methodology</h2>
+  <div class="accent-bar"></div>
+  <p>How the scan was instrumented, executed, and normalized.</p>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 5. CONTENT — INSTALL & INVOCATION -->
+<section>
+  <p class="eyebrow">Install &amp; Invocation</p>
+  <h2>One install, one scan, three metrics</h2>
+  <div class="accent-bar"></div>
+  <div class="row-2">
+    <div class="col">
+      <ul>
+        <li>Install: <span class="mono">pip3 install 'bandit[sarif]'</span> — Bandit 1.9.4 with native SARIF formatter.</li>
+        <li>Invoke: <span class="mono">bandit -r &lt;repo&gt; -f sarif -o results-bandit.sarif</span>.</li>
+        <li>Capture exit code, <span class="mono">time.monotonic()</span> duration, and pre-scan file count.</li>
+        <li>Default Bandit rule set; no <span class="mono">.bandit</span> config authored.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <div class="kpi-grid cols-2">
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="package"></i></div>
+          <div class="kpi-value">1.9.4</div>
+          <div class="kpi-label">Bandit version</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="rocket"></i></div>
+          <div class="kpi-value">31</div>
+          <div class="kpi-label">SARIF rules surfaced</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="file-json"></i></div>
+          <div class="kpi-value">5.88 MB</div>
+          <div class="kpi-label">results-bandit.sarif</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><i data-lucide="file-text"></i></div>
+          <div class="kpi-value">291 KB</div>
+          <div class="kpi-label">findings-config-c.json</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 6. CONTENT — SEQUENCE DIAGRAM -->
+<section>
+  <p class="eyebrow">Runtime Sequence</p>
+  <h2>Wrapper · Bandit · SARIF · Transformer</h2>
+  <div class="accent-bar"></div>
+  <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Shell as Shell wrapper
+    participant Bandit as Bandit 1.9.4
+    participant SARIF as results-bandit.sarif
+    participant TF as Python transformer
+    participant Out as findings-config-c.json
+    Shell->>Shell: pre-scan find *.py | wc -l
+    Shell->>Bandit: bandit -r . -f sarif -o results-bandit.sarif
+    Bandit->>SARIF: write SARIF 2.1.0
+    Bandit-->>Shell: exit code (0 / 1 / 2)
+    Shell->>Shell: time.monotonic delta
+    Shell->>TF: inline Python transformer (stdlib only)
+    TF->>SARIF: load JSON
+    TF->>TF: map level, resolve CWE, normalize path, truncate
+    TF->>Out: write minified single-line JSON
+  </pre>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 7. DIVIDER — FINDINGS -->
+<section class="slide-divider">
+  <div class="divider-icon"><i data-lucide="search-code"></i></div>
+  <p class="eyebrow">Section 02</p>
+  <h2>Findings</h2>
+  <div class="accent-bar"></div>
+  <p>What the scan surfaced, by severity, by CWE, and by file.</p>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 8. CONTENT — FINDINGS BY SEVERITY -->
+<section>
+  <p class="eyebrow">Severity Distribution</p>
+  <h2>1,227 medium · 286 high · 40 critical</h2>
+  <div class="accent-bar"></div>
+  <div class="kpi-grid">
+    <div class="kpi-card severity-critical">
+      <div class="kpi-icon"><i data-lucide="flame"></i></div>
+      <div class="kpi-value">40</div>
+      <div class="kpi-label">Critical</div>
+    </div>
+    <div class="kpi-card severity-high">
+      <div class="kpi-icon"><i data-lucide="alert-octagon"></i></div>
+      <div class="kpi-value">286</div>
+      <div class="kpi-label">High</div>
+    </div>
+    <div class="kpi-card severity-medium">
+      <div class="kpi-icon"><i data-lucide="alert-circle"></i></div>
+      <div class="kpi-value">1,227</div>
+      <div class="kpi-label">Medium</div>
+    </div>
+    <div class="kpi-card severity-low">
+      <div class="kpi-icon"><i data-lucide="info"></i></div>
+      <div class="kpi-value">0</div>
+      <div class="kpi-label">Low</div>
+    </div>
+  </div>
+  <p class="callout">Severities derive from SARIF <span class="mono">level</span>: <span class="mono">error→critical</span>, <span class="mono">warning→high</span>, <span class="mono">note→medium</span>, <span class="mono">info→low</span>. Bandit emits only three SARIF levels, so the four-tier vocabulary is partially populated.</p>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 9. CONTENT — TOP CWEs -->
+<section>
+  <p class="eyebrow">Top CWEs Detected</p>
+  <h2>Where Bandit's pattern matchers raised the most signal</h2>
+  <div class="accent-bar"></div>
+  <table class="blitzy-table">
+    <thead>
+      <tr><th style="width:8%">#</th><th style="width:18%">CWE</th><th>Name</th><th style="width:14%">Count</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td><span class="mono">CWE-703</span></td><td>Improper Check of Exceptional Conditions</td><td>620</td></tr>
+      <tr><td>2</td><td><span class="mono">CWE-259</span></td><td>Use of Hardcoded Password</td><td>402</td></tr>
+      <tr><td>3</td><td><span class="mono">CWE-78</span></td><td>OS Command Injection</td><td>116</td></tr>
+      <tr><td>4</td><td><span class="mono">CWE-79</span></td><td>Cross-Site Scripting (XSS)</td><td>102</td></tr>
+      <tr><td>5</td><td><span class="mono">CWE-89</span></td><td>SQL Injection</td><td>101</td></tr>
+      <tr><td>6</td><td><span class="mono">CWE-330</span></td><td>Insufficiently Random Values</td><td>88</td></tr>
+      <tr><td>7</td><td><span class="mono">CWE-377</span></td><td>Insecure Temporary File</td><td>41</td></tr>
+      <tr><td>8</td><td><span class="mono">CWE-20</span></td><td>Improper Input Validation</td><td>29</td></tr>
+    </tbody>
+  </table>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 10. CONTENT — TOP FILES -->
+<section>
+  <p class="eyebrow">Hotspot Files</p>
+  <h2>Top 8 files by finding count</h2>
+  <div class="accent-bar"></div>
+  <table class="blitzy-table">
+    <thead>
+      <tr><th style="width:6%">#</th><th>File</th><th style="width:14%">Findings</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td><span class="mono">odoo/addons/base/tests/test_configmanager.py</span></td><td>56</td></tr>
+      <tr><td>2</td><td><span class="mono">odoo/addons/base/tests/test_res_lang.py</span></td><td>30</td></tr>
+      <tr><td>3</td><td><span class="mono">odoo/tests/form.py</span></td><td>26</td></tr>
+      <tr><td>4</td><td><span class="mono">odoo/orm/models.py</span></td><td>22</td></tr>
+      <tr><td>5</td><td><span class="mono">odoo/tests/common.py</span></td><td>22</td></tr>
+      <tr><td>6</td><td><span class="mono">addons/mass_mailing/tests/test_mailing_controllers.py</span></td><td>20</td></tr>
+      <tr><td>7</td><td><span class="mono">addons/mail/tools/discuss.py</span></td><td>17</td></tr>
+      <tr><td>8</td><td><span class="mono">odoo/tools/translate.py</span></td><td>16</td></tr>
+    </tbody>
+  </table>
+  <p class="callout">Test fixtures dominate the hotspot list because the default Bandit rule set flags <span class="mono">assert</span> usage and string literals that look like passwords — expected un-triaged signal for a baseline scan.</p>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 11. DIVIDER — SCHEMA -->
+<section class="slide-divider">
+  <div class="divider-icon"><i data-lucide="table-properties"></i></div>
+  <p class="eyebrow">Section 03</p>
+  <h2>Schema &amp; Reproducibility</h2>
+  <div class="accent-bar"></div>
+  <p>The contract every config in the comparison must honor.</p>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 12. CONTENT — FIELD SCHEMA -->
+<section>
+  <p class="eyebrow">Field Mapping</p>
+  <h2>Five fields per finding · no exceptions</h2>
+  <div class="accent-bar"></div>
+  <table class="blitzy-table">
+    <thead>
+      <tr><th style="width:14%">Field</th><th style="width:32%">SARIF source</th><th>Normalization</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="mono">file</span></td><td><span class="mono">locations[0].physicalLocation.artifactLocation.uri</span></td><td>Strip <span class="mono">file:///</span>, strip scan-root prefix, forward-slash.</td></tr>
+      <tr><td><span class="mono">line</span></td><td><span class="mono">region.startLine</span></td><td>Cast to <span class="mono">int</span>; absent or zero aborts.</td></tr>
+      <tr><td><span class="mono">severity</span></td><td><span class="mono">level</span> (absent &rarr; <span class="mono">warning</span>)</td><td><span class="mono">error&rarr;critical</span>, <span class="mono">warning&rarr;high</span>, <span class="mono">note&rarr;medium</span>, <span class="mono">info&rarr;low</span>.</td></tr>
+      <tr><td><span class="mono">cwe</span></td><td><span class="mono">rules[i].properties.tags</span> matching <span class="mono">external/cwe/cwe-N</span></td><td>Static B-ID → CWE fallback table; aborts if unresolved.</td></tr>
+      <tr><td><span class="mono">description</span></td><td><span class="mono">message.text</span></td><td><span class="mono">' '.join(text.split())[:200]</span>.</td></tr>
+    </tbody>
+  </table>
+  <div class="icon-row">
+    <span class="icon-chip"><i data-lucide="braces"></i> Minified JSON</span>
+    <span class="icon-chip"><i data-lucide="globe"></i> UTF-8</span>
+    <span class="icon-chip"><i data-lucide="rows"></i> wc -l == 1</span>
+    <span class="icon-chip"><i data-lucide="check-circle-2"></i> Deterministic</span>
+  </div>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 13. DIVIDER — RISKS -->
+<section class="slide-divider">
+  <div class="divider-icon"><i data-lucide="shield-alert"></i></div>
+  <p class="eyebrow">Section 04</p>
+  <h2>Risks &amp; Caveats</h2>
+  <div class="accent-bar"></div>
+  <p>What this scan does — and just as importantly, what it does not.</p>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 14. CONTENT — RISKS -->
+<section>
+  <p class="eyebrow">Tool-Coverage Caveats</p>
+  <h2>What Bandit cannot tell you alone</h2>
+  <div class="accent-bar"></div>
+  <ul>
+    <li><strong>No taint analysis</strong> — AST patterns only; no cross-function data flow.</li>
+    <li><strong>Default ruleset bias</strong> — test fixtures dominate hotspots; triage is out of scope.</li>
+    <li><strong>SARIF formatter</strong> — bundled in Bandit 1.9.x core; install via <span class="mono">[sarif]</span> extras (Decision 15).</li>
+  </ul>
+  <div class="icon-row">
+    <span class="icon-chip"><i data-lucide="git-compare"></i> Compare with taint-tracking SAST</span>
+    <span class="icon-chip"><i data-lucide="filter"></i> Triage in a separate pass</span>
+    <span class="icon-chip"><i data-lucide="package-check"></i> Formatter shipped in core</span>
+  </div>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 15. CONTENT — ONBOARDING -->
+<section>
+  <p class="eyebrow">Onboarding &amp; Reproduction</p>
+  <h2>Re-run this scan in four steps</h2>
+  <div class="accent-bar"></div>
+  <ul>
+    <li>Install: <span class="mono">pip3 install 'bandit[sarif]'</span>.</li>
+    <li>Run the bash recipe in <span class="mono">decision-log.md</span> — it captures metrics and invokes Bandit.</li>
+    <li>Continue with the inline Python transformer; it emits <span class="mono">findings-config-c.json</span>.</li>
+    <li>Validate: <span class="mono">wc -l &lt; findings-config-c.json</span> = 1 and <span class="mono">json.load()</span> succeeds.</li>
+  </ul>
+  <div class="icon-row">
+    <span class="icon-chip"><i data-lucide="terminal-square"></i> 90 s on stock hardware</span>
+    <span class="icon-chip"><i data-lucide="repeat-2"></i> Byte-deterministic</span>
+    <span class="icon-chip"><i data-lucide="file-search"></i> All decisions in decision-log.md</span>
+  </div>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+<!-- 16. CLOSING -->
+<section class="slide-closing">
+  <div class="closing-icon"><i data-lucide="flag"></i></div>
+  <p class="eyebrow">Takeaway</p>
+  <h2>Baseline Established. Next: Triage.</h2>
+  <div class="accent-bar"></div>
+  <ul>
+    <li>1,553 findings normalized to a comparable, schema-uniform JSON.</li>
+    <li>Reproducibility, rule rationale, and risks captured in the decision log.</li>
+    <li>Ready to fold into the multi-config comparison harness.</li>
+  </ul>
+  <div class="brand-lockup">Blitzy · Config C</div>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"
+        integrity="sha384-M/JtqCVlLcK9lwVnBnMXP0V577CBULkjodKsR/PITOe4MSKNbbwqCemEyluOw0+5"
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+        defer></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"
+        integrity="sha384-Wm9qzEgq4j1jEnuFK2FxKTlwuhbV2QqtGhcchvjDoKxeJ7WWAW7fysBq+1s6myfX"
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+        defer></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"
+        integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge"
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+        defer></script>
+<script>
+// Wait for the Google Fonts (Inter, Space Grotesk, Fira Code) to finish loading
+// before initializing Mermaid — otherwise Mermaid measures label widths against
+// the system fallback font and then re-renders with the wider Inter font,
+// causing labels to be clipped at the right edge of their bounding boxes.
+// After Mermaid renders, walk every node's <foreignObject> and grow its
+// width attribute to match the actual rendered content. Also widen the
+// sibling .label-container <rect> so the box visibly encloses the label.
+// This compensates for Mermaid 11's pre-render measurement using a font that
+// differs from the actual (Inter) render font.
+function _resizeMermaidLabels() {
+  try {
+    document.querySelectorAll('.mermaid svg').forEach(function (svg) {
+      svg.querySelectorAll('.node').forEach(function (node) {
+        var fo = node.querySelector('foreignObject');
+        if (!fo) return;
+        var inner = fo.querySelector('div');
+        if (!inner) return;
+        var needed = Math.ceil(inner.scrollWidth) + 4;
+        var current = parseFloat(fo.getAttribute('width') || '0');
+        if (needed > current) {
+          var delta = needed - current;
+          fo.setAttribute('width', needed);
+          // Shift foreignObject left so the label stays centered around its
+          // original anchor point.
+          var x = parseFloat(fo.getAttribute('x') || '0');
+          fo.setAttribute('x', x - delta / 2);
+          // Grow the surrounding rect.
+          var rect = node.querySelector('rect.basic.label-container, rect.label-container, rect');
+          if (rect) {
+            var rectW = parseFloat(rect.getAttribute('width') || '0');
+            var rectX = parseFloat(rect.getAttribute('x') || '0');
+            var rectGrow = Math.max(0, (needed + 60) - rectW);
+            rect.setAttribute('width', rectW + rectGrow);
+            rect.setAttribute('x', rectX - rectGrow / 2);
+          }
+        }
+      });
+      svg.querySelectorAll('.edgeLabel foreignObject').forEach(function (fo) {
+        var inner = fo.querySelector('div');
+        if (!inner) return;
+        var needed = Math.ceil(inner.scrollWidth) + 4;
+        var current = parseFloat(fo.getAttribute('width') || '0');
+        if (needed > current) {
+          fo.setAttribute('width', needed);
+        }
+      });
+    });
+  } catch (err) {
+    console.warn('[mermaid label resize] skipped:', err);
+  }
+}
+
+function _bootDeck() {
+  if (typeof mermaid !== 'undefined') {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#F2F0FE',
+        primaryTextColor: '#333333',
+        primaryBorderColor: '#5B39F3',
+        lineColor: '#999999',
+        secondaryColor: '#F4EFF6',
+        tertiaryColor: '#FFFFFF',
+        fontFamily: "'Inter', system-ui, sans-serif"
+      },
+      // htmlLabels: false makes Mermaid use native SVG <text> elements
+      // for node labels. This avoids a Mermaid 11 foreignObject-width vs
+      // inner-content-width mismatch that clips long labels when the chart
+      // is rendered with the (wider) Inter font instead of the default
+      // sans-serif used during measurement.
+      flowchart: { useMaxWidth: true, htmlLabels: false, curve: 'basis' },
+      sequence: { useMaxWidth: true, noteFontFamily: 'Inter, system-ui, sans-serif', messageFontFamily: 'Inter, system-ui, sans-serif' }
+    });
+  }
+
+  if (typeof Reveal !== 'undefined') {
+    Reveal.initialize({
+      hash: true,
+      transition: 'slide',
+      controlsTutorial: false,
+      width: 1920,
+      height: 1080
+    });
+
+    Reveal.on('ready', function () {
+      if (typeof mermaid !== 'undefined') {
+        mermaid.run().then(function () { setTimeout(_resizeMermaidLabels, 80); });
+      }
+      if (typeof lucide !== 'undefined') { lucide.createIcons(); }
+    });
+
+    Reveal.on('slidechanged', function () {
+      if (typeof mermaid !== 'undefined') {
+        mermaid.run({ querySelector: '.mermaid:not([data-processed="true"])' })
+          .then(function () { setTimeout(_resizeMermaidLabels, 80); });
+      }
+      if (typeof lucide !== 'undefined') { lucide.createIcons(); }
+    });
+  } else {
+    // Fallback: render icons & diagrams even if Reveal fails to load (rare).
+    if (typeof lucide !== 'undefined') { lucide.createIcons(); }
+    if (typeof mermaid !== 'undefined') { mermaid.run(); }
+  }
+}
+
+window.addEventListener('DOMContentLoaded', function () {
+  if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function') {
+    document.fonts.ready.then(_bootDeck).catch(_bootDeck);
+  } else {
+    // Older browsers without FontFaceSet — defer one tick so external <link> CSS settles.
+    setTimeout(_bootDeck, 250);
+  }
+});
+</script>
+</body>
+</html>

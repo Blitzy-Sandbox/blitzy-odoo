@@ -480,27 +480,27 @@
         <div class="kpi-grid">
           <div class="kpi-card">
             <span class="kpi-icon"><i data-lucide="list-checks" aria-hidden="true"></i></span>
-            <div class="kpi-value">&ndash;</div>
+            <div class="kpi-value">525</div>
             <div class="kpi-label">Total Findings</div>
           </div>
           <div class="kpi-card">
             <span class="kpi-icon"><i data-lucide="alert-octagon" aria-hidden="true"></i></span>
-            <div class="kpi-value">&ndash;</div>
+            <div class="kpi-value">68</div>
             <div class="kpi-label">Critical / High</div>
           </div>
           <div class="kpi-card">
             <span class="kpi-icon"><i data-lucide="file-code" aria-hidden="true"></i></span>
-            <div class="kpi-value">&ndash;</div>
+            <div class="kpi-value">405</div>
             <div class="kpi-label">SAST Records</div>
           </div>
           <div class="kpi-card">
             <span class="kpi-icon"><i data-lucide="package-search" aria-hidden="true"></i></span>
-            <div class="kpi-value">&ndash;</div>
+            <div class="kpi-value">120</div>
             <div class="kpi-label">Dependency Records</div>
           </div>
         </div>
-        <p class="kpi-footnote">Findings pending &mdash; SNYK_TOKEN provisioning halts the pipeline at Stage 1.</p>
-        <p class="body-text">Two Snyk engines converge into one normalized JSON record set. KPI tiles refresh when the operator exports a valid token and re-runs the four-directive recipe.</p>
+        <p class="kpi-footnote">Scan executed against api.snyk.io; full results in <code>findings-config-h.json</code>.</p>
+        <p class="body-text">Two Snyk engines converged into one normalized JSON record set. SAST surfaced 405 issues across 27 rule classes; dependency scan surfaced 120 known CVEs across 65 pinned packages.</p>
       </section>
 
       <!-- ============================================================
@@ -597,11 +597,13 @@ flowchart LR
         </div>
         <div class="mermaid-wrap">
 <pre class="mermaid">
-pie title No findings recorded
-    "none" : 1
+pie title Severity mix (525 findings)
+    "critical" : 4
+    "high" : 64
+    "medium" : 457
 </pre>
         </div>
-        <p class="body-text">The unified vocabulary projects every record into <code>critical / high / medium / low</code>. Distribution refreshes automatically once SNYK_TOKEN is provisioned and the recipe re-runs.</p>
+        <p class="body-text">The unified vocabulary projects every record into <code>critical / high / medium / low</code>. Critical and high (68 of 525) concentrate in dependency CVEs &mdash; remediation begins with package upgrades.</p>
       </section>
 
       <!-- ============================================================
@@ -765,11 +767,11 @@ pie title No findings recorded
             </tr>
             <tr>
               <td>Secondary IoT manifest scope</td>
-              <td>Scan scoped to the root <code>requirements.txt</code> only; the IoT manifest's absolute wheel path would trip Snyk's pip parser. Documented in decision-log Row 9.</td>
+              <td>Refine PR Directive 1 expanded the scan to <code>--all-projects</code>; both <code>requirements.txt</code> manifests scanned. IoT manifest reported 0 vulnerabilities. Documented in decision-log Row 9 and Row 26.</td>
             </tr>
             <tr>
-              <td><code>SNYK_TOKEN</code> absence</td>
-              <td>Pipeline halts cleanly at Stage 1; synthetic empty envelopes carry <code>executionStatus: NOT_EXECUTED</code> so the gap is self-documenting. Documented in decision-log Row 5 and Row 18.</td>
+              <td>Authenticated re-run</td>
+              <td><code>SNYK_TOKEN</code> provisioned; <code>snyk auth</code> verified (HTTP 200 from api.snyk.io). SAST and Open Source engines executed successfully against the repo root. Documented in decision-log Row 5 and the Execution Record.</td>
             </tr>
           </tbody>
         </table>

@@ -97,3 +97,8 @@ xlwt==1.3.0
 zeep==4.1.0 ; python_version < '3.11'  # (jammy)
 zeep==4.2.1 ; python_version >= '3.11' and python_version < '3.13'
 zeep==4.3.1 ; python_version >= '3.13'
+httpx>=0.27.0
+# Security floor 3.4.0+ avoids CVE-2024-33663 (algorithm confusion / signature
+# forgery, CWE-327) and CVE-2024-33664 (JWT bomb DoS, CWE-400) which affect
+# python-jose 3.3.0. Both are fixed in 3.4.0. See AAP Rule R8.
+python-jose[cryptography]>=3.4.0

@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    FEATURE-004 Asset Management - AM-005 Asset Modification Wizard Views
+    =====================================================================
+
+    Provides the form view and window action for the TransientModel
+    ``account.asset.modification.wizard``.  Supports five modification
+    types in accordance with IAS 16 (Property, Plant and Equipment),
+    IAS 36 (Impairment of Assets), and US GAAP ASC 360:
+
+      * ``revaluation``          - value increase posted to equity
+                                   revaluation surplus (IAS 16 revaluation
+                                   model; credit revaluation reserve).
+      * ``impairment``           - value decrease posted to expense
+                                   impairment loss (IAS 36 / ASC 360;
+                                   debit impairment loss expense).
+      * ``impairment_reversal``  - partial reversal of a prior impairment
+                                   where recoverable amount has risen;
+                                   limited to the original impairment or
+                                   the depreciated historical cost,
+                                   whichever is lower.
+      * ``useful_life_change``   - extend or reduce remaining useful life
+                                   with automatic depreciation schedule
+                                   recalculation on confirmation.
+      * ``salvage_change``       - adjust salvage/residual value; final
+                                   NBV still converges to salvage at the
+                                   end of useful life.
+
+    Each modification type applies GAAP/IFRS-compliant journal entries
+    and triggers depreciation recalculation on the underlying asset.
+
+    The form is opened from the Asset form's header "Modify" button via
+    ``account.asset.action_modify()``, which returns this action.  The
+    action also binds to the ``account.asset`` model so that it surfaces
+    in the Action menu on asset records (contextual action).
+
+    AAP Rule Compliance
+    ===================
+    * R-01 (Module independence) - No references to sibling CE modules
+      (account_budget_management, account_deferred_revenue,
+      account_payment_followup).  Only references this module's model
+      ``account.asset.modification.wizard`` (net-new TransientModel),
+      ``account.asset`` (same module, net-new), and core Odoo models
+      (``account.move``, ``account.account``, ``res.company``,
+      ``res.currency``, ``base.group_multi_company``).
+    * R-02 (No Enterprise deps) - No references to Enterprise modules
+      in any field, action, or attribute.
+    * R-05 (No core view modification) - This file defines NET-NEW views
+      on a NET-NEW TransientModel; NO ``inherit_id`` attribute appears
+      on any record.
+    * R-07 (No sudo) - Not applicable; XML-only data file.
+    * R-09 (Exact module folder name) - File lives in
+      ``addons/account_asset_management/views/`` as required.
+
+    Odoo 19.0 View Conventions Observed
+    ===================================
+    * ``invisible="expression"`` and ``readonly="expression"`` attributes
+      (NOT ``attrs="..."``) per Odoo 17+ convention.
+    * Boolean / comparison operators: ``and``, ``or``, ``not``, ``in``,
+      ``not in``; comparisons use XML-escaped ``&gt;``, ``&lt;``, ``&amp;``.
+    * 4-space indentation throughout.
+    * ``<?xml version="1.0" encoding="utf-8"?>`` header.
+-->
+<odoo>
+
+    <!-- ==================================================================
+         WIZARD FORM VIEW
+         ==================================================================
+         The single form view for the ``account.asset.modification.wizard``
+         TransientModel.  Displays the target asset, modification type,
+         and modification-specific input groups (value adjustment, useful
+         life change, or salvage change).  After posting, the generated
+         journal entry is linked for drill-through.
+
+         Conditional visibility is driven by ``modification_type`` and
+         ``state`` so that the wizard adapts to each of the five
+         modification types without overwhelming the user with irrelevant
+         fields.
+         ================================================================== -->
+    <record id="view_account_asset_modification_wizard_form" model="ir.ui.view">
+        <field name="name">account.asset.modification.wizard.form</field>
+        <field name="model">account.asset.modification.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Modify Asset">
+                <!-- HEADER: state statusbar only. Action buttons live
+                     in the <footer> block so Odoo suppresses the default
+                     Save/Discard wizard buttons (Issue #5 fix). The
+                     state field stays in the header so the statusbar
+                     widget renders at the top of the form. -->
+                <header>
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,confirmed,posted"/>
+                </header>
+                <sheet>
+                    <!-- PRIMARY GROUP: Asset + Modification metadata.
+                         Two-column layout.  Left: asset and company context.
+                         Right: modification type and effective date. -->
+                    <group>
+                        <group string="Asset">
+                            <field name="asset_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True, 'no_open': False}"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Modification">
+                            <field name="modification_type"
+                                   readonly="state != 'draft'"/>
+                            <field name="effective_date"
+                                   readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+
+                    <!-- VALUE ADJUSTMENT GROUP (conditional).
+                         Shown for revaluation, impairment, and impairment
+                         reversal.  Displays the previous value (current NBV),
+                         the proposed new value, and the computed amount
+                         delta with colour-coded decorations:
+                             green  = increase (revaluation / reversal)
+                             red    = decrease (impairment) -->
+                    <group string="Value Adjustment"
+                           invisible="modification_type not in ('revaluation', 'impairment', 'impairment_reversal')">
+                        <group>
+                            <field name="previous_value"/>
+                            <field name="new_value"
+                                   readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="modification_amount"
+                                   decoration-success="modification_amount &gt; 0"
+                                   decoration-danger="modification_amount &lt; 0"/>
+                        </group>
+                    </group>
+
+                    <!-- USEFUL LIFE CHANGE GROUP (conditional).
+                         Shown only when modification_type is
+                         'useful_life_change'.  The shared previous_value
+                         field is relabeled to "Current Remaining Months"
+                         so the same underlying field is contextualised per
+                         modification type without requiring separate
+                         storage columns. -->
+                    <group string="Useful Life Change"
+                           invisible="modification_type != 'useful_life_change'">
+                        <field name="previous_value"
+                               string="Current Remaining Months"/>
+                        <field name="new_useful_life_months"
+                               readonly="state != 'draft'"/>
+                    </group>
+
+                    <!-- SALVAGE VALUE CHANGE GROUP (conditional).
+                         Shown only when modification_type is
+                         'salvage_change'.  The shared previous_value
+                         field is relabeled to "Current Salvage Value". -->
+                    <group string="Salvage Value Change"
+                           invisible="modification_type != 'salvage_change'">
+                        <field name="previous_value"
+                               string="Current Salvage Value"/>
+                        <field name="new_salvage_value"
+                               readonly="state != 'draft'"/>
+                    </group>
+
+                    <!-- ACCOUNTING ENTRIES GROUP (conditional).
+                         Per IAS 16 / IAS 36 / ASC 360 account-type rules:
+                           * revaluation         -> equity revaluation
+                                                    surplus (credit)
+                           * impairment          -> expense impairment loss
+                                                    (debit)
+                           * impairment_reversal -> income impairment
+                                                    reversal gain (credit)
+                         Each field is individually visible based on its
+                         modification type; ``no_create: True`` prevents
+                         accidental inline account creation since the
+                         correct accounts must already be configured. -->
+                    <group string="Accounting Entries">
+                        <field name="revaluation_surplus_account_id"
+                               readonly="state != 'draft'"
+                               invisible="modification_type != 'revaluation'"
+                               options="{'no_create': True}"/>
+                        <field name="impairment_loss_account_id"
+                               readonly="state != 'draft'"
+                               invisible="modification_type != 'impairment'"
+                               options="{'no_create': True}"/>
+                        <field name="impairment_reversal_account_id"
+                               readonly="state != 'draft'"
+                               invisible="modification_type != 'impairment_reversal'"
+                               options="{'no_create': True}"/>
+                    </group>
+
+                    <!-- JUSTIFICATION & DOCUMENTATION GROUP.
+                         Per AM-005 Scenario 5 (complete audit trail), the
+                         reason text is required and the supporting
+                         document attachment (appraisal, impairment
+                         assessment) is captured on the wizard and
+                         persisted via the audit trail on the underlying
+                         asset.
+
+                         Binary widget pair: ``supporting_document``
+                         (Binary, attachment=True on the wizard model) is
+                         accompanied by its mandatory filename companion
+                         ``supporting_document_filename`` (Char, invisible)
+                         per Odoo's standard Binary-field convention. -->
+                    <group string="Justification &amp; Supporting Documentation">
+                        <field name="reason"
+                               readonly="state != 'draft'"
+                               placeholder="Required: reason for modification (e.g., external appraisal, impairment indicators)..."/>
+                        <field name="supporting_document"
+                               filename="supporting_document_filename"
+                               readonly="state != 'draft'"/>
+                        <field name="supporting_document_filename"
+                               invisible="1"/>
+                    </group>
+
+                    <!-- POSTED JOURNAL ENTRY GROUP (post-state only).
+                         After successful posting, displays a read-only
+                         link to the generated ``account.move`` for
+                         drill-through audit.  ``no_create: True`` prevents
+                         accidental creation; ``no_open: False`` keeps the
+                         "open record" icon enabled. -->
+                    <group string="Posted Journal Entry"
+                           invisible="state != 'posted'">
+                        <field name="move_id"
+                               readonly="1"
+                               options="{'no_create': True, 'no_open': False}"/>
+                    </group>
+                </sheet>
+                <!-- FOOTER: action buttons. Placing them in <footer>
+                     suppresses Odoo's default Save/Discard wizard
+                     buttons that would otherwise appear at the bottom
+                     of the modal (Issue #5 fix). Each button is gated
+                     on the wizard state machine:
+                         draft     -> Confirm / Cancel
+                         confirmed -> Post Modification / Cancel
+                         posted    -> Close (terminal)
+                         cancelled -> Close (terminal) -->
+                <footer>
+                    <button name="action_confirm"
+                            string="Confirm"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"
+                            data-hotkey="q"/>
+                    <button name="action_post"
+                            string="Post Modification"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'confirmed'"
+                            data-hotkey="q"/>
+                    <button name="action_cancel"
+                            string="Cancel"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state in ('posted', 'cancelled')"/>
+                    <button special="cancel"
+                            string="Close"
+                            class="btn-secondary"
+                            invisible="state not in ('posted', 'cancelled')"
+                            data-hotkey="z"/>
+                    <button special="cancel"
+                            string="Discard"
+                            class="btn-secondary"
+                            invisible="state in ('posted', 'cancelled')"
+                            data-hotkey="z"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ==================================================================
+         WINDOW ACTION
+         ==================================================================
+         Opens the modification wizard as a modal dialog (``target="new"``).
+         Two entry points:
+             1. From the asset form's header "Modify" button, where the
+                Python method ``account.asset.action_modify()`` returns
+                this action with the asset_id pre-populated via context.
+             2. From the Action menu on asset records (contextual action)
+                via the ``binding_model_id`` reference.
+
+         The model technical id ``model_account_asset`` is Odoo's
+         canonical ``ir.model`` record id, auto-generated from the model
+         name ``account.asset`` (dots replaced with underscores, prefixed
+         with ``model_``).  This id is already referenced by the module's
+         ``security/ir.model.access.csv``, confirming it exists after
+         ``account.asset`` is registered at module load time.
+         ================================================================== -->
+    <record id="action_account_asset_modification_wizard"
+            model="ir.actions.act_window">
+        <field name="name">Modify Asset</field>
+        <field name="res_model">account.asset.modification.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id"
+               ref="view_account_asset_modification_wizard_form"/>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_account_asset"/>
+        <field name="binding_view_types">form</field>
+    </record>
+
+</odoo>

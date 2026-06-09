@@ -1,0 +1,516 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 OCA, Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Follow-up Line Views — account_payment_followup Module (PF-005)
+    ================================================================
+
+    List, form, search, graph, pivot, and window action definitions
+    for `account.followup.line` — the per-partner denormalized aging
+    summary model that backs the "Overdue Customers" workflow menu.
+
+    Implements:
+      - PF-005: Overdue calculation (aging buckets, total overdue,
+                max days overdue, next action date, follow-up level,
+                follow-up status)
+
+    Conventions: Odoo 19.0 — `invisible`/`column_invisible`,
+    `optional="hidden"`, 4-space indentation.
+
+    Rules Compliance (AAP §0.7):
+      - R-01: No cross-module imports.
+      - R-02: No Enterprise references (no `account_followup`,
+              `account_reports`, `account_accountant`).
+      - R-03: Defines views for net-new model `account.followup.line`
+              (no `inherit_id`).
+      - R-05: N/A — does not touch core `account.move` /
+              `account.move.line` / `res.partner` fields directly.
+
+    Model Adaptation Notes:
+      The `account.followup.line` model uses a 4-value selection for
+      `followup_status` (per AAP Phase 5 spec):
+        - `no_action`     'No Action Needed'
+        - `in_need`       'Needs Follow-up'
+        - `in_progress`   'In Progress'
+        - `promised`      'Payment Promised'
+
+      Date fields:
+        - `last_followup_date` (Datetime) — last follow-up history timestamp
+        - `next_action_date`   (Date)     — scheduled next action
+
+      The model defines the following object-level actions invoked from
+      the form view smart buttons:
+        - `action_view_partner`   — navigates to the partner form
+        - `action_view_invoices`  — opens the overdue invoice list
+
+    Access Control (per security/ir.model.access.csv):
+      - account.group_account_user: read-only  (1,0,0,0)
+      - account.group_account_manager: full    (1,1,1,1)
+      - Records are computed snapshots refreshed by cron — hence
+        `create="false" edit="false" delete="false"` on the form
+        and `create="false" delete="false"` on the list for UI-layer
+        defense-in-depth.
+-->
+<odoo>
+    <data>
+
+        <!-- ============================================================ -->
+        <!-- LIST (TREE) VIEW                                             -->
+        <!-- ============================================================ -->
+        <record id="view_account_followup_line_list" model="ir.ui.view">
+            <field name="name">account.followup.line.list</field>
+            <field name="model">account.followup.line</field>
+            <field name="arch" type="xml">
+                <list string="Overdue Customers"
+                      default_order="max_days_overdue desc, total_overdue desc"
+                      create="false"
+                      delete="false">
+                    <!--
+                        Issue #22 fix: shortened column labels (Max
+                        Days, Level, Status, Next Action) so the list
+                        view fits at 1280px without truncation.
+                        Issue #23 fix: ``decoration-danger`` on
+                        ``aging_bucket_90_plus`` and ``total_overdue``
+                        applies the red ``text-danger`` class when the
+                        90+ bucket is positive — collections-industry
+                        convention for severe aging.
+
+                        QA Issue #1 fix (Checkpoint 5): per-bucket
+                        cell-level decoration provides progressive
+                        visual severity that escalates left-to-right
+                        in the bucket columns. Each conditional fires
+                        only when the bucket is positive, so $0 cells
+                        keep the default text colour rather than
+                        misleadingly turning green / yellow / red.
+
+                          aging_bucket_current  → success (green)
+                          aging_bucket_1_30     → info    (cyan)
+                          aging_bucket_31_60    → warning (amber)
+                          aging_bucket_61_90    → danger  (red)
+                          aging_bucket_90_plus  → danger + bf (bold red)
+
+                        Mirrors the partner-form aging-buckets group
+                        in res_partner_views.xml so the same data
+                        receives identical visual treatment in both
+                        views.
+
+                        QA Issue #1 fix (Checkpoint 5, follow-up
+                        resolution):  the previous row-level
+                        ``decoration-*`` attributes on the ``<list>``
+                        element (``decoration-danger`` /
+                        ``decoration-warning`` keyed off
+                        ``max_days_overdue`` and
+                        ``decoration-info`` / ``decoration-success`` /
+                        ``decoration-muted`` keyed off
+                        ``followup_status``) painted **every** cell in
+                        a row with the same colour, masking the
+                        per-bucket distinction the QA report
+                        explicitly requested ("Each bucket should be
+                        visually distinct").  Specifically, when the
+                        row's severity colour happened to coincide
+                        with a cell's bucket colour (e.g. a row in the
+                        31-60 day band rendered ``text-warning`` and
+                        also had its 31-60 bucket cell decorated
+                        ``text-warning``), the bucket distinction
+                        became invisible.
+
+                        The row-level severity decorations are
+                        removed here so the per-cell bucket colours
+                        on each ``<field>`` (lines 109-144) are the
+                        primary visual mechanism in this list, in
+                        line with the QA acceptance criterion.
+                        Severity context remains available through:
+
+                          • the ``followup_status`` badge column
+                            (own decoration-* attributes on the
+                            ``<field name="followup_status">`` below)
+                          • the ``max_days_overdue`` numeric column
+                          • the default ordering
+                            (``max_days_overdue desc``)
+                          • the ``aging_bucket_90_plus`` cell which
+                            renders bold red when populated
+                    -->
+                    <field name="partner_id" string="Customer"/>
+                    <field name="total_overdue"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           decoration-danger="aging_bucket_90_plus &gt; 0"
+                           sum="Total Overdue"/>
+                    <field name="aging_bucket_current"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           string="Current"
+                           sum="Current"
+                           decoration-success="aging_bucket_current &gt; 0"
+                           optional="show"/>
+                    <field name="aging_bucket_1_30"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           string="1-30 Days"
+                           sum="1-30 Days"
+                           decoration-info="aging_bucket_1_30 &gt; 0"
+                           optional="show"/>
+                    <field name="aging_bucket_31_60"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           string="31-60 Days"
+                           sum="31-60 Days"
+                           decoration-warning="aging_bucket_31_60 &gt; 0"
+                           optional="show"/>
+                    <field name="aging_bucket_61_90"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           string="61-90 Days"
+                           sum="61-90 Days"
+                           decoration-danger="aging_bucket_61_90 &gt; 0"
+                           optional="show"/>
+                    <field name="aging_bucket_90_plus"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           string="90+ Days"
+                           decoration-danger="aging_bucket_90_plus &gt; 0"
+                           decoration-bf="aging_bucket_90_plus &gt; 0"
+                           sum="90+ Days"
+                           optional="show"/>
+                    <field name="max_days_overdue"
+                           string="Max Days"
+                           optional="show"/>
+                    <field name="followup_level_id"
+                           string="Level"
+                           optional="show"/>
+                    <field name="followup_status"
+                           widget="badge"
+                           string="Status"
+                           decoration-muted="followup_status == 'no_action'"
+                           decoration-warning="followup_status == 'in_need'"
+                           decoration-info="followup_status == 'in_progress'"
+                           decoration-success="followup_status == 'promised'"
+                           optional="show"/>
+                    <field name="next_action_date"
+                           string="Next Action"
+                           optional="show"/>
+                    <field name="last_followup_date"
+                           string="Last Action"
+                           optional="hidden"/>
+                    <field name="company_id"
+                           groups="base.group_multi_company"
+                           optional="hidden"/>
+                    <field name="currency_id"
+                           column_invisible="True"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- FORM VIEW (Read-only — records are computed snapshots)       -->
+        <!-- ============================================================ -->
+        <record id="view_account_followup_line_form" model="ir.ui.view">
+            <field name="name">account.followup.line.form</field>
+            <field name="model">account.followup.line</field>
+            <field name="arch" type="xml">
+                <form string="Overdue Customer"
+                      create="false"
+                      edit="false"
+                      delete="false">
+                    <sheet>
+                        <!-- Smart button bar.
+
+                             Uses `type="object"` with the model's own
+                             `action_view_partner` / `action_view_invoices`
+                             methods. Each method returns an
+                             `ir.actions.act_window` dict that routes to the
+                             appropriate target (partner form / invoice list).
+                        -->
+                        <div name="button_box" class="oe_button_box">
+                            <button class="oe_stat_button"
+                                    type="object"
+                                    name="action_view_partner"
+                                    icon="fa-user"
+                                    help="Open the customer record">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">View</span>
+                                    <span class="o_stat_text">Partner</span>
+                                </div>
+                            </button>
+                            <button class="oe_stat_button"
+                                    type="object"
+                                    name="action_view_invoices"
+                                    icon="fa-file-text-o"
+                                    help="Open the overdue customer invoices for this partner">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">Related</span>
+                                    <span class="o_stat_text">Invoices</span>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Title: the partner_id Many2one rendered as a
+                             clickable link provides native navigation to
+                             the partner form, complementing the smart
+                             button above.
+                        -->
+                        <div class="oe_title">
+                            <label for="partner_id"/>
+                            <h1>
+                                <field name="partner_id" readonly="1"/>
+                            </h1>
+                        </div>
+
+                        <group>
+                            <group string="Aging Summary"
+                                   name="aging_summary_group">
+                                <!--
+                                    Issue #23 fix: ``decoration-danger``
+                                    applies the red ``text-danger`` CSS
+                                    class to the ``total_overdue`` and
+                                    ``aging_bucket_90_plus`` cells when
+                                    the 90+ bucket is positive —
+                                    collections-industry convention for
+                                    severe aging. (Form widgets respect
+                                    ``decoration-*`` attributes the same
+                                    way list cells do.)
+
+                                    QA Issue #1 fix (Checkpoint 5):
+                                    progressive per-bucket decoration
+                                    matches the partner-form aging
+                                    group and the overdue list view —
+                                    success → info → warning → danger
+                                    → bold danger across the five
+                                    bucket rows. Conditional firing
+                                    (``> 0``) keeps zero balances at
+                                    default colour to avoid misleading
+                                    visual cues.
+                                -->
+                                <field name="total_overdue"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       decoration-danger="aging_bucket_90_plus &gt; 0"/>
+                                <field name="aging_bucket_current"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="Current (Not Due)"
+                                       decoration-success="aging_bucket_current &gt; 0"/>
+                                <field name="aging_bucket_1_30"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="1-30 Days Overdue"
+                                       decoration-info="aging_bucket_1_30 &gt; 0"/>
+                                <field name="aging_bucket_31_60"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="31-60 Days Overdue"
+                                       decoration-warning="aging_bucket_31_60 &gt; 0"/>
+                                <field name="aging_bucket_61_90"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="61-90 Days Overdue"
+                                       decoration-danger="aging_bucket_61_90 &gt; 0"/>
+                                <field name="aging_bucket_90_plus"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="90+ Days Overdue"
+                                       decoration-danger="aging_bucket_90_plus &gt; 0"
+                                       decoration-bf="aging_bucket_90_plus &gt; 0"/>
+                                <field name="max_days_overdue"/>
+                                <field name="currency_id" invisible="1"/>
+                            </group>
+                            <group string="Follow-up State"
+                                   name="followup_state_group">
+                                <field name="followup_level_id"/>
+                                <field name="followup_status"
+                                       widget="badge"/>
+                                <field name="last_followup_date"/>
+                                <field name="next_action_date"/>
+                                <field name="company_id"
+                                       groups="base.group_multi_company"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- SEARCH VIEW                                                  -->
+        <!-- ============================================================ -->
+        <record id="view_account_followup_line_search" model="ir.ui.view">
+            <field name="name">account.followup.line.search</field>
+            <field name="model">account.followup.line</field>
+            <field name="arch" type="xml">
+                <search string="Overdue Customers">
+                    <!-- Autocomplete fields -->
+                    <field name="partner_id"/>
+                    <field name="followup_level_id"/>
+                    <field name="company_id"
+                           groups="base.group_multi_company"/>
+
+                    <separator/>
+
+                    <!-- Overdue presence filters -->
+                    <filter name="has_overdue"
+                            string="Has Overdue"
+                            domain="[('total_overdue', '&gt;', 0)]"/>
+                    <filter name="has_level"
+                            string="At Follow-up Level"
+                            domain="[('followup_level_id', '!=', False)]"/>
+
+                    <separator/>
+
+                    <!-- Status filters (4-value selection per AAP) -->
+                    <filter name="status_no_action"
+                            string="No Action Needed"
+                            domain="[('followup_status', '=', 'no_action')]"/>
+                    <filter name="status_in_need"
+                            string="Needs Follow-up"
+                            domain="[('followup_status', '=', 'in_need')]"/>
+                    <filter name="status_in_progress"
+                            string="In Progress"
+                            domain="[('followup_status', '=', 'in_progress')]"/>
+                    <filter name="status_promised"
+                            string="Payment Promised"
+                            domain="[('followup_status', '=', 'promised')]"/>
+
+                    <separator/>
+
+                    <!-- Aging bucket filters -->
+                    <filter name="bucket_current"
+                            string="Has Current Balance"
+                            domain="[('aging_bucket_current', '&gt;', 0)]"/>
+                    <filter name="bucket_1_30"
+                            string="1-30 Days"
+                            domain="[('aging_bucket_1_30', '&gt;', 0)]"/>
+                    <filter name="bucket_31_60"
+                            string="31-60 Days"
+                            domain="[('aging_bucket_31_60', '&gt;', 0)]"/>
+                    <filter name="bucket_61_90"
+                            string="61-90 Days"
+                            domain="[('aging_bucket_61_90', '&gt;', 0)]"/>
+                    <filter name="bucket_90_plus"
+                            string="90+ Days"
+                            domain="[('aging_bucket_90_plus', '&gt;', 0)]"/>
+
+                    <separator/>
+
+                    <!-- Days-overdue threshold filters -->
+                    <filter name="over_30_days"
+                            string="Over 30 Days Overdue"
+                            domain="[('max_days_overdue', '&gt;', 30)]"/>
+                    <filter name="over_60_days"
+                            string="Over 60 Days Overdue"
+                            domain="[('max_days_overdue', '&gt;', 60)]"/>
+                    <filter name="over_90_days"
+                            string="Over 90 Days Overdue"
+                            domain="[('max_days_overdue', '&gt;', 90)]"/>
+
+                    <separator/>
+
+                    <!-- Next action date filters -->
+                    <filter name="next_action_today"
+                            string="Next Action Today"
+                            domain="[('next_action_date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                    <filter name="next_action_overdue"
+                            string="Action Overdue"
+                            domain="[('next_action_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                    <filter name="next_action_this_week"
+                            string="Action This Week"
+                            domain="[('next_action_date', '&gt;=', context_today().strftime('%Y-%m-%d')),
+                                     ('next_action_date', '&lt;=', (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+
+                    <!-- Group By options.  The `<group>` element inside
+                         a `<search>` view does not accept `expand` or
+                         `string` attributes in Odoo 19; collapsed-by-
+                         default behaviour is automatic and the label is
+                         rendered by the Group By menu itself.
+                    -->
+                    <group>
+                        <filter name="group_partner"
+                                string="Partner"
+                                context="{'group_by': 'partner_id'}"/>
+                        <filter name="group_level"
+                                string="Follow-up Level"
+                                context="{'group_by': 'followup_level_id'}"/>
+                        <filter name="group_status"
+                                string="Status"
+                                context="{'group_by': 'followup_status'}"/>
+                        <filter name="group_next_action_date"
+                                string="Next Action Date"
+                                context="{'group_by': 'next_action_date'}"/>
+                        <filter name="group_company"
+                                string="Company"
+                                context="{'group_by': 'company_id'}"
+                                groups="base.group_multi_company"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- GRAPH VIEW                                                   -->
+        <!-- ============================================================ -->
+        <record id="view_account_followup_line_graph" model="ir.ui.view">
+            <field name="name">account.followup.line.graph</field>
+            <field name="model">account.followup.line</field>
+            <field name="arch" type="xml">
+                <graph string="Overdue by Follow-up Level" type="bar">
+                    <field name="followup_level_id"/>
+                    <field name="total_overdue" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- PIVOT VIEW (Aging cross-tab analysis)                        -->
+        <!-- ============================================================ -->
+        <record id="view_account_followup_line_pivot" model="ir.ui.view">
+            <field name="name">account.followup.line.pivot</field>
+            <field name="model">account.followup.line</field>
+            <field name="arch" type="xml">
+                <pivot string="Aging Analysis">
+                    <field name="followup_level_id" type="row"/>
+                    <field name="followup_status" type="col"/>
+                    <field name="total_overdue" type="measure"/>
+                    <field name="aging_bucket_current" type="measure"/>
+                    <field name="aging_bucket_1_30" type="measure"/>
+                    <field name="aging_bucket_31_60" type="measure"/>
+                    <field name="aging_bucket_61_90" type="measure"/>
+                    <field name="aging_bucket_90_plus" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- WINDOW ACTION                                                -->
+        <!-- ============================================================ -->
+        <!-- External ID `action_account_followup_line` is referenced by
+             `views/menuitem.xml` (line 80) on the `menu_account_followup_line`
+             menu item. Renaming requires coordinated update.
+        -->
+        <record id="action_account_followup_line" model="ir.actions.act_window">
+            <field name="name">Overdue Customers</field>
+            <field name="res_model">account.followup.line</field>
+            <field name="view_mode">list,form,graph,pivot</field>
+            <field name="search_view_id" ref="view_account_followup_line_search"/>
+            <field name="context">{'search_default_has_overdue': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No overdue customers found.
+                </p>
+                <p>
+                    This view aggregates, per partner, the total overdue
+                    balance broken down into aging buckets (Current,
+                    1-30, 31-60, 61-90, 90+ days), the applicable
+                    follow-up level, and the workflow status of the
+                    follow-up process. Use it to prioritise collection
+                    efforts.
+                </p>
+                <p>
+                    Rows are denormalized snapshots refreshed by the
+                    follow-up cron — they cannot be created, edited, or
+                    deleted directly from the user interface.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

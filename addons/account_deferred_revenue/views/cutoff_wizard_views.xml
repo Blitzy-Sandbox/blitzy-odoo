@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    DR-003 Cut-off Entry Generation Wizard Views
+    =============================================
+
+    Provides the TransientModel wizard UI for period-end cut-off entry
+    generation.  Backed by the TransientModel ``account.deferred.cutoff.wizard``
+    defined in ``addons/account_deferred_revenue/wizard/cutoff_wizard.py``.
+
+    Implements DR-003 acceptance criteria (6 BDD scenarios):
+      1. Single Period Generation  -> mode == 'single' posts one entry per
+         schedule for all qualifying recognition lines up to cutoff_date.
+      2. Preview Before Posting    -> action_preview computes move_data and
+         renders the preview panel; NO account.move records are created.
+      3. Batch Generation          -> mode == 'batch' processes all pending
+         schedules in a single pass (consolidated by company).
+      4. Partial Period Proration  -> qualifying recognition lines already
+         carry their prorated amounts from the schedule computation; the
+         wizard merely posts them as-is.
+      5. Reversal Entry            -> mode == 'reversal' (or post_reversal=True)
+         invokes action_post_with_reversal which creates a reversal move
+         dated reversal_date (default: first day of next period) with
+         auto_post='at_date'.
+      6. Lock Date Constraints     -> @api.constrains('_check_date') enforces
+         all 5 lock date types (fiscalyear, tax, hard, sale, purchase); the
+         lock_date_message banner surfaces any warning to the user.
+
+    Model: account.deferred.cutoff.wizard
+      - inherits models.TransientModel (non-persistent wizard)
+      - _check_company_auto = True  (enforces company consistency on all
+        company-bound Many2one fields)
+
+    Views registered here:
+      1. view_deferred_cutoff_wizard_form  (wizard form with 4-mode branching)
+      2. action_deferred_cutoff_wizard     (window action with binding_model_id
+                                           on account.deferred.schedule)
+
+    Referenced by:
+      - views/menuitem.xml via menu item ``menu_deferred_cutoff_wizard``
+        (standalone invocation path from Accounting top menu).
+      - account.deferred.schedule form Actions menu via binding_model_id
+        (contextual invocation path on a selected schedule).
+      - models/account_deferred_schedule.py ``action_generate_cutoff`` returns
+        this action populated with ``default_schedule_ids`` context.
+
+    AAP alignment notes:
+      - Uses modern Odoo 19 ``invisible="<python-expr>"`` direct attribute
+        syntax (NOT the legacy ``attrs="{'invisible': [...]}"`` dict form).
+      - Uses ``<odoo>`` root element (NOT the legacy ``<odoo><data>`` wrapper).
+      - ``binding_model_id`` references ``model_account_deferred_schedule``,
+        the auto-generated ir.model xmlid that Odoo creates for every model;
+        the xmlid is derived by replacing dots with underscores and prepending
+        ``model_`` (i.e. ``account.deferred.schedule`` -> ``model_account_deferred_schedule``).
+      - Preview panel uses ``widget="json"`` on the ``preview_move_data`` field
+        to render the computed move dicts as an inline read-only JSON payload.
+      - Footer button data-hotkeys follow Odoo UX conventions: ``q`` for the
+        primary confirm action, ``z`` for cancel.
+
+    Rules compliance (AAP §0.7):
+      - R-01 Module Independence: only references account.deferred.cutoff.wizard
+        and account.deferred.schedule (both intra-module) plus core models
+        (account.journal, res.company, res.currency). No sibling new-module
+        references to account_asset_management, account_budget_management, or
+        account_payment_followup.
+      - R-02 No Enterprise Dependencies: no references to Enterprise modules
+        (account_accountant, account_reports, account_asset, account_budget,
+        account_followup, account_deferred_revenue Enterprise names).
+      - R-05 No Core Field Redefinition: this file declares views for the
+        net-new wizard model only; no modification of any core view.
+      - R-07 No sudo() without justification: not applicable to XML files.
+      - R-09 Exact Module Folder Names: file path is
+        ``addons/account_deferred_revenue/views/cutoff_wizard_views.xml``.
+-->
+<odoo>
+
+    <!-- =================================================================
+         SECTION 1: Wizard Form View
+         .................................................................
+         Single form view for the TransientModel wizard; opened in a modal
+         dialog (target='new') via the window action defined in SECTION 2.
+         Uses Odoo 19's direct ``invisible`` attribute for all
+         mode-dependent field visibility.
+         ================================================================= -->
+    <record id="view_deferred_cutoff_wizard_form" model="ir.ui.view">
+        <field name="name">account.deferred.cutoff.wizard.form</field>
+        <field name="model">account.deferred.cutoff.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generate Cut-off Entries">
+
+                <!-- =============================================
+                     Lock-date Diagnostic Banner
+                     Shown only when the wizard's
+                     _compute_lock_date_message has populated a
+                     warning (i.e. at least one lock date is
+                     violated by cutoff_date).  Non-blocking: the
+                     blocking enforcement lives in @api.constrains
+                     _check_date which is evaluated at post time.
+                     ============================================= -->
+                <div class="alert alert-warning"
+                     role="alert"
+                     invisible="not lock_date_message">
+                    <field name="lock_date_message"
+                           readonly="1"
+                           nolabel="1"/>
+                </div>
+
+                <sheet>
+
+                    <!-- =========================================
+                         Mode Selection
+                         Horizontal radio group for the 4 modes.
+                         ========================================= -->
+                    <group string="Mode">
+                        <field name="mode"
+                               widget="radio"
+                               options="{'horizontal': true}"/>
+                    </group>
+
+                    <!-- =========================================
+                         Schedule Selection
+                         Single Many2one vs. batch/reversal M2M.
+                         schedule_id is computed (first of
+                         schedule_ids) and shown in single mode
+                         for a compact one-schedule picker UX.
+                         schedule_ids is the source of truth,
+                         populated by default_schedule_ids context
+                         when the wizard is opened from a schedule.
+                         ========================================= -->
+                    <group string="Schedule Selection">
+                        <field name="schedule_id"
+                               invisible="mode != 'single'"
+                               required="mode == 'single'"
+                               options="{'no_create': True}"
+                               domain="[('state', '=', 'confirmed')]"/>
+                        <field name="schedule_ids"
+                               invisible="mode not in ('batch', 'reversal')"
+                               required="mode in ('batch', 'reversal')"
+                               widget="many2many_tags"
+                               options="{'no_create': True}"
+                               domain="[('state', '=', 'confirmed')]"/>
+                    </group>
+
+                    <!-- =========================================
+                         Posting Configuration
+                         Left column: cut-off date, journal, company.
+                         Right column: reversal flag & date.
+                         ========================================= -->
+                    <group string="Posting Configuration">
+                        <group>
+                            <field name="cutoff_date"/>
+                            <field name="journal_id"
+                                   options="{'no_create': True}"
+                                   domain="[('type', '=', 'general'), ('company_id', '=', company_id)]"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"
+                                   options="{'no_create': True}"/>
+                            <field name="company_currency_id"
+                                   invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="post_reversal"
+                                   invisible="mode == 'reversal'"/>
+                            <field name="reversal_date"
+                                   invisible="not post_reversal and mode != 'reversal'"
+                                   required="post_reversal or mode == 'reversal'"/>
+                        </group>
+                    </group>
+
+                    <!-- =========================================
+                         Preview Panel
+                         Visible when the user is explicitly in
+                         preview mode OR when action_preview has
+                         populated preview_move_data regardless of
+                         mode.  Uses the ``grouped_view_widget``
+                         (registered by the core ``account`` module)
+                         which parses the JSON-stringified payload and
+                         renders a structured table with the columns
+                         declared in ``options.columns`` so the user
+                         can verify accounts, amounts, and partners
+                         before committing to a post — Issue #15 fix
+                         (the previous ``widget="json"`` displayed the
+                         raw JSON literally and was unreadable).
+                         ========================================= -->
+                    <notebook invisible="mode != 'preview' and not preview_move_data">
+                        <page name="preview" string="Preview">
+                            <label for="preview_move_data"
+                                   string="The following Journal Entries will be generated:"/>
+                            <field name="preview_move_data"
+                                   widget="grouped_view_widget"
+                                   readonly="1"
+                                   nolabel="1"
+                                   class="d-block"/>
+                        </page>
+                    </notebook>
+
+                    <!-- =========================================
+                         Hidden Move Data
+                         Internal buffer populated by
+                         _compute_move_data; consumed by
+                         action_post / action_post_with_reversal
+                         to create account.move records.
+                         ========================================= -->
+                    <field name="move_data" invisible="1"/>
+                </sheet>
+
+                <!-- =============================================
+                     Footer Buttons
+                     - Preview (secondary, always visible): invokes
+                       action_preview to populate preview_move_data.
+                     - Post Entries (primary): invokes action_post;
+                       hidden in preview and reversal modes.
+                     - Post with Reversal (primary): invokes
+                       action_post_with_reversal; shown when mode
+                       is reversal OR user has ticked post_reversal.
+                     - Cancel: standard Odoo wizard cancel.
+                     ============================================= -->
+                <footer>
+                    <button name="action_preview"
+                            type="object"
+                            string="Preview"
+                            class="btn-secondary"
+                            icon="fa-eye"/>
+                    <button name="action_post"
+                            type="object"
+                            string="Post Entries"
+                            class="btn-primary"
+                            icon="fa-check"
+                            invisible="mode == 'preview' or mode == 'reversal'"
+                            data-hotkey="q"/>
+                    <button name="action_post_with_reversal"
+                            type="object"
+                            string="Post with Reversal"
+                            class="btn-primary"
+                            icon="fa-undo"
+                            invisible="mode != 'reversal' and not post_reversal"/>
+                    <button special="cancel"
+                            string="Cancel"
+                            class="btn-secondary"
+                            data-hotkey="z"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- =================================================================
+         SECTION 2: Window Action
+         .................................................................
+         Opens the wizard form in a modal (target='new').  The
+         ``binding_model_id`` attribute binds this action to the
+         account.deferred.schedule model so it appears under the Actions
+         (gear) menu on schedule form and list views.  The same action is
+         also invoked from the top-level menu item declared in menuitem.xml.
+
+         When invoked from the schedule binding, Odoo populates
+         ``active_model`` and ``active_ids`` in the context, which the
+         wizard's ``default_get`` uses to pre-populate ``schedule_ids``.
+
+         ``binding_view_types`` = 'list,form' means the action appears on
+         both the schedule list view and the schedule form view.  The
+         'list,form' ordering follows the Odoo 19 convention (list first,
+         form second) consistent with the rest of this module's view
+         declarations and with the FEATURE-001/FEATURE-002 precedent.
+         ================================================================= -->
+    <record id="action_deferred_cutoff_wizard" model="ir.actions.act_window">
+        <field name="name">Generate Cut-off Entries</field>
+        <field name="res_model">account.deferred.cutoff.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_deferred_cutoff_wizard_form"/>
+        <field name="binding_model_id" ref="model_account_deferred_schedule"/>
+        <field name="binding_view_types">list,form</field>
+    </record>
+
+</odoo>

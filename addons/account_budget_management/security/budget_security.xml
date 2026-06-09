@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 OCA, [contributor]
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <!--
+         ===================================================================
+         Multi-Company Record Rules (account_budget_management — FEATURE-003)
+         ===================================================================
+
+         This file declares the multi-company isolation rules (``ir.rule``)
+         for every net-new persistent model contributed by the
+         ``account_budget_management`` addon. No ``res.groups`` records are
+         created here: the module reuses the existing core accounting groups
+         (``account.group_account_user`` and ``account.group_account_manager``)
+         that ``security/ir.model.access.csv`` references directly. This
+         minimal-change posture aligns with R-03 (correct ``_inherit`` usage
+         and minimal extension) and with the AAP §0.1.2 "minimal change
+         mandate" — every module adds only what its ticket acceptance
+         criteria require.
+
+         Loaded BEFORE ``security/ir.model.access.csv`` per the manifest
+         data ordering so that record rules are in place before the ACL
+         rows are evaluated. Both files reference the auto-generated
+         ``model_budget_*`` XML IDs that Odoo creates from the Python
+         ``_name`` attribute when the model classes register with the ORM
+         during the module-import phase (which precedes the data-loading
+         phase).
+
+         Wrapped in ``<data noupdate="1">`` to follow the OCA convention
+         (precedent: ``addons/account_financial_report_ce/security/account_financial_report_security.xml``
+         and ``addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml``):
+         once an administrator customizes a record rule (e.g. to add
+         branch-level filtering), subsequent ``-u account_budget_management``
+         upgrades MUST NOT revert their customization.
+
+         Each rule:
+         * uses ``global=True`` so it applies to all users regardless of
+           group membership — multi-company isolation must be unconditional.
+         * sets all four ``perm_*`` flags to ``True`` so the rule is
+           evaluated for read, write, create, and unlink operations.
+         * uses the reserved ``company_ids`` runtime context variable
+           which contains the current user's allowed-company set.
+
+         R-01 compliance: no references to sibling new modules
+         (``account_asset_management``, ``account_deferred_revenue``,
+         ``account_payment_followup``).
+         R-02 compliance: no references to Odoo Enterprise modules or
+         groups.
+         Gate 2 / Gate 9 compliance: every model referenced below is
+         registered through ``ir.model.access.csv`` and is reachable from
+         the Odoo web client through the menu items defined in
+         ``views/menuitem.xml``.
+    -->
+    <data noupdate="1">
+
+        <!--
+             budget.budget — direct ``company_id`` field
+             ============================================
+             ``BudgetBudget`` declares ``company_id`` as a stored Many2one
+             to ``res.company`` with ``required=True`` and
+             ``default=lambda self: self.env.company`` (see
+             ``models/budget_budget.py``). The simplest possible domain
+             therefore filters by direct equality against the user's
+             allowed companies.
+        -->
+        <record id="budget_budget_comp_rule" model="ir.rule">
+            <field name="name">Budget: multi-company</field>
+            <field name="model_id" ref="model_budget_budget"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!--
+             budget.budget.line — company via ``budget_id``
+             ===============================================
+             ``BudgetBudgetLine`` reaches ``company_id`` via its required
+             ``budget_id`` Many2one (``ondelete='cascade'``, ``index=True``).
+             The dotted-path domain ``budget_id.company_id`` is preferred
+             over relying on the local stored related ``company_id``
+             because it makes the security-relationship chain explicit and
+             auditable in security review (mirrors the precedent in
+             ``addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml``).
+        -->
+        <record id="budget_budget_line_comp_rule" model="ir.rule">
+            <field name="name">Budget Line: multi-company</field>
+            <field name="model_id" ref="model_budget_budget_line"/>
+            <field name="domain_force">[('budget_id.company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!--
+             budget.budget.period — company via ``budget_line_id.budget_id``
+             ================================================================
+             Period allocations are grandchildren of the budget header.
+             ``BudgetBudgetPeriod`` declares ``budget_line_id`` as a
+             required Many2one to ``budget.budget.line``
+             (``ondelete='cascade'``, ``index=True``). The two-hop
+             dotted path traverses line → budget → company. The model
+             also declares a stored related ``company_id`` for performance
+             (``related='budget_line_id.company_id'``, indexed), but the
+             explicit two-hop domain documents the relationship lineage.
+        -->
+        <record id="budget_budget_period_comp_rule" model="ir.rule">
+            <field name="name">Budget Period: multi-company</field>
+            <field name="model_id" ref="model_budget_budget_period"/>
+            <field name="domain_force">[('budget_line_id.budget_id.company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!--
+             budget.alert — company via ``budget_line_id.budget_id``
+             ========================================================
+             Threshold alerts are grandchildren of the budget header.
+             ``BudgetAlert`` declares ``budget_line_id`` as a required
+             tracked Many2one to ``budget.budget.line``
+             (``ondelete='cascade'``, ``index=True``, ``tracking=True``).
+
+             This multi-company rule complements (but does not replace)
+             ``BudgetAlert``'s Python-level immutability enforcement:
+             * the ``unlink()`` override raises ``UserError`` for
+               non-system users (BM-005 Scenario 4 — immutable audit trail);
+             * the ``write()`` override blocks mutation of the immutable
+               snapshot fields;
+             * ``ir.model.access.csv`` sets ``perm_unlink=0`` for the
+               ``account.group_account_user`` row.
+
+             This record rule specifically handles cross-company visibility:
+             a user with allowed-companies = [A] cannot see alerts whose
+             ``budget_line_id.budget_id.company_id`` is B.
+        -->
+        <record id="budget_alert_comp_rule" model="ir.rule">
+            <field name="name">Budget Alert: multi-company</field>
+            <field name="model_id" ref="model_budget_alert"/>
+            <field name="domain_force">[('budget_line_id.budget_id.company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

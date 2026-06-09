@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 Enterprise Accounting Team
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <data noupdate="1">
+
+        <!-- =================================================================
+             Multi-Company Record Rules
+             =================================================================
+             These ir.rule records enforce row-level security so that users
+             only see records belonging to companies they have access to
+             (via the multi-company selector). The `company_ids` context
+             variable is populated by Odoo at query time with the current
+             user's allowed company IDs.
+
+             All rules are declared `global=True` so they apply to ALL
+             groups including admin — multi-company isolation must NOT be
+             bypassable by group membership.
+             ================================================================= -->
+
+        <!-- Rule 1: account.followup.level (PF-001)
+             Strict per-company isolation. `company_id` is declared
+             ``required=True`` on the model (PF-001 BR-001), so every
+             record is owned by exactly one company; there are no
+             "global" (NULL) records to leak across companies. This
+             domain mirrors the rules for follow-up lines and history
+             to guarantee consistent multi-company isolation across
+             the entire module. -->
+        <record id="account_followup_level_company_rule" model="ir.rule">
+            <field name="name">Follow-up Level: multi-company</field>
+            <field name="model_id" ref="model_account_followup_level"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Rule 2: account.followup.line (PF-005)
+             Denormalized per-partner aging summary. Always tied to a
+             specific company (no global records). -->
+        <record id="account_followup_line_company_rule" model="ir.rule">
+            <field name="name">Follow-up Line: multi-company</field>
+            <field name="model_id" ref="model_account_followup_line"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Rule 3: account.followup.history (PF-004)
+             Immutable audit trail of follow-up actions. Always tied to a
+             specific company (ties to invoices/partners which are
+             company-scoped). -->
+        <record id="account_followup_history_company_rule" model="ir.rule">
+            <field name="name">Follow-up History: multi-company</field>
+            <field name="model_id" ref="model_account_followup_history"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

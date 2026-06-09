@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 OCA, Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Follow-up Report Wizard Views — account_payment_followup Module (PF-003)
+    ========================================================================
+
+    Form view and window action for
+    `account.followup.report.wizard` — a TransientModel that collects
+    filter parameters and produces the Aged Receivables Follow-up
+    report in PDF or XLSX format.
+
+    Implements:
+      - PF-003: Follow-up report generation with filters, grouping
+                options, PDF export, and XLSX export
+
+    The underlying `ir.actions.report` record
+    (`action_report_followup_aged_receivables`) is defined in
+    `report/followup_report.xml`; this file defines only the wizard
+    dialog action (`action_followup_report_wizard`) that opens the
+    wizard form.
+
+    Wizard Field Inventory (mirrors wizard/followup_report_wizard.py):
+      * Scope:        company_id, currency_id (invisible), target_moves
+      * Date range:   date_from, date_to, report_date
+      * Customer:     partner_ids (M2M), followup_level_ids (M2M)
+      * Aging:        aging_bucket_filter, minimum_amount, include_disputed
+      * Grouping:     group_by_salesperson, group_by_country,
+                      group_by (computed, readonly),
+                      group_by_label (computed, invisible)
+      * Options:      include_effectiveness,
+                      followup_level_names (computed, readonly),
+                      partner_count (computed, readonly)
+
+    Wizard Action Methods (defined on the TransientModel):
+      * action_generate_report() — returns ir.actions.report for PDF
+      * action_export_xlsx()    — returns ir.actions.act_url for XLSX
+      * action_preview()        — alias for action_generate_report
+
+    Odoo 19.0 XML Conventions Applied:
+      - ``invisible`` attribute (not ``attrs``) per Odoo 17+ convention
+      - Consistent 4-space indentation
+      - ``<footer>`` placed inside ``<form>`` but OUTSIDE ``<sheet>``
+        so action buttons auto-position at the bottom of the modal
+      - Window action uses ``target="new"`` so the form renders as a
+        modal dialog rather than a full-page view
+-->
+<odoo>
+    <data>
+
+        <!-- ================================================================
+             SECTION 1: FOLLOW-UP REPORT WIZARD FORM VIEW
+             Model: account.followup.report.wizard (TransientModel)
+             =================================================================
+             Collects filter, grouping, and output options from the user
+             and surfaces action buttons that dispatch PDF / XLSX / preview
+             generation methods on the underlying TransientModel.
+
+             Implements:
+               - PF-003 Scenario 1: Generate Aged Receivables Follow-up Report
+               - PF-003 Scenario 2: Filter Report by Follow-up Level
+               - PF-003 Scenario 4: Export Report to PDF Format
+               - PF-003 Scenario 5: Export Report to Excel Format
+               - PF-003 Scenario 7: Filter by Date Range and Amount Threshold
+               - PF-003 Scenario 8: Group Report by Salesperson or Region
+             ================================================================ -->
+        <record id="view_account_followup_report_wizard_form" model="ir.ui.view">
+            <field name="name">account.followup.report.wizard.form</field>
+            <field name="model">account.followup.report.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Follow-up Report">
+                    <sheet>
+                        <!-- Title block: describes the report's purpose
+                             so users understand what the wizard produces
+                             before they configure filters. -->
+                        <div class="oe_title">
+                            <h1>Aged Receivables Follow-up Report</h1>
+                            <p class="text-muted">
+                                Configure the filters below to generate a report of
+                                outstanding customer balances grouped by aging bucket.
+                            </p>
+                        </div>
+
+                        <!-- Section 1: Report Scope and Date Range
+                             Company selection is gated by the multi-company
+                             group so it appears only when the user can
+                             actually switch companies.  ``no_create`` prevents
+                             accidental creation of a res.company record from
+                             the wizard.  currency_id is hidden but MUST be
+                             present on the form for the monetary widget on
+                             minimum_amount to resolve its currency reference. -->
+                        <group string="Report Scope" name="scope_group">
+                            <group>
+                                <field name="company_id"
+                                       options="{'no_create': True}"
+                                       groups="base.group_multi_company"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="target_moves"/>
+                            </group>
+                            <group>
+                                <field name="date_from"/>
+                                <field name="date_to"/>
+                                <field name="report_date"/>
+                            </group>
+                        </group>
+
+                        <!-- Section 2: Customer Filters
+                             Partner and follow-up-level selectors use
+                             many2many_tags for compact multi-select display.
+                             Empty selection means "include ALL" — the
+                             placeholder text communicates this semantics
+                             clearly since it differs from the usual
+                             "empty = nothing" interpretation of M2M.
+                             ``no_create`` prevents creation of partners or
+                             follow-up levels from the wizard context. -->
+                        <group string="Customer Filters" name="customer_filters_group">
+                            <field name="partner_ids"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Leave empty for all customers..."/>
+                            <field name="followup_level_ids"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Leave empty for all levels..."/>
+                        </group>
+
+                        <!-- Section 3: Aging and Amount Filters (left)
+                                        Grouping options (right)
+                             The aging bucket filter narrows output to a
+                             specific age cohort (Current / 1-30 / 31-60 /
+                             61-90 / 90+ / overdue / all).  minimum_amount
+                             uses the monetary widget driven by the hidden
+                             currency_id declared in Section 1.
+
+                             The grouping side shows booleans for the two
+                             user-toggleable group dimensions (salesperson,
+                             country) and a readonly ``group_by`` selection
+                             that reflects the computed outcome of those
+                             booleans, giving the user visual confirmation
+                             of the grouping that will be applied.  The
+                             ``group_by_label`` field is an internal helper
+                             used by the report template and is intentionally
+                             hidden from the wizard UI. -->
+                        <group>
+                            <!--
+                                Issue #27 fix: Shorten long Python-level
+                                ``string=`` values via XML override so
+                                each label fits on one line at the
+                                standard 1280 viewport.  Using XML-level
+                                overrides keeps the canonical Python
+                                labels intact for search-view, group-by,
+                                and audit-log surfaces while only
+                                tightening the wizard form's
+                                presentation.
+
+                                Issue #28 fix: The ``group_by`` field is
+                                computed-without-inverse, which Odoo
+                                renders as readonly and applies the
+                                ``o_form_label_readonly`` class on any
+                                ``<label>`` (including those declared
+                                explicitly in XML) — that class forces
+                                ``opacity: 0.66`` via the SCSS rule in
+                                ``addons/web/static/src/views/form/form_controller.scss``,
+                                making the label appear noticeably
+                                muted relative to its sibling editable
+                                labels.
+
+                                Because the ``notMuttedLabel`` prop on
+                                the ``FormLabel`` component is not
+                                exposed through the XML form compiler
+                                (it is only used internally by the
+                                Settings view), the only way to render
+                                a non-muted label here is to bypass the
+                                FormLabel component entirely — so we
+                                render the section caption as a static
+                                ``<div class="o_form_label fw-bold">``
+                                with explicit classes that mirror the
+                                visual styling of an editable label
+                                without inheriting any readonly
+                                modifier.
+
+                                The field value is rendered inline
+                                with ``widget="badge"`` to give it a
+                                visually distinct chip presentation
+                                that does not look "disabled".
+                            -->
+                            <group string="Aging Filter" name="aging_filter_group">
+                                <field name="aging_bucket_filter"/>
+                                <field name="minimum_amount"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"
+                                       string="Min. Overdue"/>
+                                <field name="include_disputed"
+                                       string="Disputed Invoices"/>
+                            </group>
+                            <group string="Grouping" name="grouping_group">
+                                <field name="group_by_salesperson"
+                                       string="By Salesperson"/>
+                                <field name="group_by_country"
+                                       string="By Country/Region"/>
+                                <!--
+                                    Render section caption + field on a
+                                    single grid row using the
+                                    ``<div class="o_wrap_label"/>`` and
+                                    ``<div class="o_cell"/>`` two-cell
+                                    pattern so the caption sits in the
+                                    label column (matching the visual
+                                    rhythm of the sibling rows above)
+                                    while bypassing FormLabel
+                                    compilation entirely.
+                                -->
+                                <div class="o_wrap_label">
+                                    <div class="o_form_label fw-bold">Primary Grouping</div>
+                                </div>
+                                <div class="o_cell">
+                                    <field name="group_by"
+                                           nolabel="1"
+                                           widget="badge"/>
+                                </div>
+                                <field name="group_by_label" invisible="1"/>
+                            </group>
+                        </group>
+
+                        <!-- Section 4: Report Options
+                             ``include_effectiveness`` toggles the collection-
+                             effectiveness KPI block (Scenario 6).  The
+                             right column shows computed summary feedback:
+                               * followup_level_names — human-readable list
+                                 of currently-selected levels; hidden when
+                                 empty to reduce clutter when no filter
+                                 is applied.
+                               * partner_count — number of partners matching
+                                 the current filters; helps the user gauge
+                                 report size before producing a potentially
+                                 expensive PDF. -->
+                        <group string="Report Options" name="report_options_group">
+                            <!--
+                                Issue #27 fix (continued): Shorten the
+                                three remaining wrapped labels via XML
+                                ``string=`` override so they all fit on
+                                a single line at the standard 1280
+                                viewport.  Like the labels above, the
+                                Python-level field labels remain
+                                unchanged so search-view filters and
+                                audit logs continue to use the longer,
+                                fully-qualified names.
+                            -->
+                            <group>
+                                <field name="include_effectiveness"
+                                       string="Effectiveness KPIs"/>
+                            </group>
+                            <group>
+                                <field name="followup_level_names"
+                                       readonly="1"
+                                       invisible="not followup_level_names"
+                                       string="Selected Levels"/>
+                                <field name="partner_count"
+                                       readonly="1"
+                                       string="Partners"/>
+                            </group>
+                        </group>
+                    </sheet>
+
+                    <!-- Footer: action buttons for the wizard.
+                         Per Odoo wizard convention, action buttons live in
+                         <footer> (NOT inside <sheet>) so they auto-position
+                         at the bottom of the modal dialog regardless of
+                         sheet scroll state.
+
+                         Button semantics:
+                           * Generate PDF (btn-primary)    —
+                               Calls action_generate_report() on the
+                               wizard; returns the ir.actions.report
+                               action that renders the QWeb PDF template
+                               defined in report/followup_report.xml.
+                           * Export to Excel (btn-secondary) —
+                               Calls action_export_xlsx() on the wizard;
+                               returns an ir.actions.act_url that
+                               streams the XLSX download to the browser.
+                           * Preview (btn-secondary)       —
+                               Calls action_preview() on the wizard;
+                               alias of action_generate_report() that
+                               opens the PDF in a preview window rather
+                               than as a download.
+                           * Cancel (btn-secondary, special)  —
+                               Uses Odoo's ``special="cancel"`` so the
+                               dialog closes without invoking any action
+                               method.  This is the standard pattern for
+                               wizard cancel buttons. -->
+                    <footer>
+                        <button name="action_generate_report"
+                                type="object"
+                                string="Generate PDF"
+                                class="btn-primary"/>
+                        <button name="action_export_xlsx"
+                                type="object"
+                                string="Export to Excel"
+                                class="btn-secondary"/>
+                        <button name="action_preview"
+                                type="object"
+                                string="Preview"
+                                class="btn-secondary"/>
+                        <button string="Cancel"
+                                class="btn-secondary"
+                                special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+
+        <!-- ================================================================
+             SECTION 2: WIZARD WINDOW ACTION
+             =================================================================
+             Entry point referenced from views/menuitem.xml as
+             ``action_followup_report_wizard``.  Opens the wizard form
+             as a modal dialog (``target="new"``) so the wizard behaves
+             as a transient parameter-collection step rather than a
+             full-page view.
+
+             Note — this is DISTINCT from the report action
+             ``action_report_followup_aged_receivables`` defined in
+             report/followup_report.xml.  The chain of invocation is:
+
+               1. User clicks "Follow-ups > Follow-up Report" menu.
+               2. This ``action_followup_report_wizard`` opens the
+                  wizard form as a modal (target="new").
+               3. User configures filters and clicks "Generate PDF".
+               4. The wizard's ``action_generate_report()`` returns
+                  ``env.ref('account_payment_followup.
+                   action_report_followup_aged_receivables')
+                   .report_action(self)``.
+               5. Odoo renders the QWeb PDF via the report action and
+                  streams it to the browser.
+
+             view_mode="form" is mandatory for wizards — TransientModel
+             records are not browsable in list/form pairs and must be
+             reached through a dedicated dialog. -->
+        <record id="action_followup_report_wizard" model="ir.actions.act_window">
+            <field name="name">Follow-up Report</field>
+            <field name="res_model">account.followup.report.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_account_followup_report_wizard_form"/>
+            <field name="target">new</field>
+            <field name="context">{}</field>
+        </record>
+
+    </data>
+</odoo>

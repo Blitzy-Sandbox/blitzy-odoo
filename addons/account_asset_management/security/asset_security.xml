@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 Enterprise Accounting Team
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+
+    <!--
+        Security Configuration for Asset Management (FEATURE-004)
+        ==========================================================
+        This module does NOT define dedicated Asset User / Asset Manager
+        groups.  Per the Agent Action Plan (section 0.2.3.2), the three
+        new persistent models (account.asset, account.asset.category,
+        account.asset.depreciation.line) and the two wizards
+        (account.asset.modification.wizard, account.asset.disposal.wizard)
+        reuse the existing accounting groups:
+
+            - account.group_account_user     (granted read/write/create)
+            - account.group_account_manager  (granted full CRUD)
+
+        which are declared in addons/account/security/account_security.xml.
+
+        Per-model access rights (ir.model.access.csv) reference those
+        existing groups directly; see security/ir.model.access.csv.
+
+        This file contributes multi-company record rules that enforce
+        company-based isolation on the three persistent models, mirroring
+        the pattern used by addons/account/security/account_security.xml
+        (account_move_comp_rule, lines 128-132) and
+        addons/account_bank_reconciliation_ce (reconciliation_matching_comp_rule).
+    -->
+
+    <data noupdate="1">
+
+        <!--
+            Multi-Company Record Rules
+            ==========================
+            Enforce data isolation across companies for persistent models.
+            Uses the ``company_ids`` placeholder which Odoo replaces at
+            request-time with the current user's allowed-companies set
+            (env.user.company_ids.ids).
+
+            Wrapped in <data noupdate="1"> so record-rule domains are
+            preserved if an administrator customizes them (e.g. to relax
+            multi-company isolation for a single-company deployment) and
+            not overwritten by subsequent module upgrades.
+
+            No <field name="groups" .../> is specified on any rule; per
+            Odoo ir.rule semantics, a rule without an explicit groups set
+            is implicitly global and applies to every user regardless of
+            role, which is exactly what multi-company isolation requires.
+        -->
+
+        <!--
+            Rule 1: account.asset
+            The model's company_id field is required (no default=False allowed),
+            so a plain ``company_id in company_ids`` domain is sufficient.
+        -->
+        <record id="account_asset_multi_company_rule" model="ir.rule">
+            <field name="name">Asset multi-company</field>
+            <field name="model_id" ref="model_account_asset"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!--
+            Rule 2: account.asset.category
+            The model's company_id field is NULLABLE (default=self.env.company
+            but not required) to permit "global" categories that are shared
+            across all companies - matching the standard Odoo pattern for
+            master-data models such as account.payment.term and
+            account.account.tag.
+
+            The domain uses polish-notation OR (prefix '|') to include BOTH
+            records whose company_id is unset (shared across all companies)
+            AND records whose company_id is in the user's allowed set.
+
+            This mirrors core patterns such as
+            addons/account/security/account_security.xml's
+            journal_group_comp_rule (line 140-144), payment_term_comp_rule,
+            and tax_repartition_comp_rule.
+        -->
+        <record id="account_asset_category_multi_company_rule" model="ir.rule">
+            <field name="name">Asset Category multi-company</field>
+            <field name="model_id" ref="model_account_asset_category"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!--
+            Rule 3: account.asset.depreciation.line
+            The line model has a stored related field
+            company_id = fields.Many2one(related='asset_id.company_id', store=True)
+            so it can be filtered directly by company_id OR indirectly via
+            the asset_id relation.  The traversal form
+            ``asset_id.company_id in company_ids`` is used here for
+            semantic clarity and to avoid relying on the stored related
+            field being populated at every point (e.g. during compute-
+            triggered recomputation).
+        -->
+        <record id="account_asset_depreciation_line_multi_company_rule" model="ir.rule">
+            <field name="name">Asset Depreciation Line multi-company</field>
+            <field name="model_id" ref="model_account_asset_depreciation_line"/>
+            <field name="domain_force">[('asset_id.company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

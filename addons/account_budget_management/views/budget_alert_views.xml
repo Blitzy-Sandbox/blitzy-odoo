@@ -1,0 +1,543 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 OCA, [contributor]
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <!--
+        BM-005 — Budget Alerts
+
+        Immutable audit log of threshold-crossing events on
+        ``budget.budget.line``. Records are created by the scheduled
+        action ``ir_cron_budget_alert_evaluation`` (see
+        ``data/budget_alert_cron.xml``) which invokes
+        ``budget.alert._cron_evaluate_thresholds()``.
+
+        Per BM-005 Scenario 5: records are immutable after creation —
+        enforced by four complementary layers of defense:
+
+        1. Security CSV (``security/ir.model.access.csv``):
+           ``perm_unlink=0`` for all groups.
+        2. Model overrides (``models/budget_alert.py``): ``unlink()``
+           raises ``UserError`` for non-system users; ``write()``
+           raises ``UserError`` on mutation of ``_IMMUTABLE_FIELDS``.
+        3. View attributes (this file): form, list, AND kanban all
+           carry ``create="false"``, ``edit="false"``, and
+           ``delete="false"`` — full 3-attribute parity across all
+           three surfaces (form, list, kanban) so the inline-edit
+           affordance is not surfaced to end users on any layout.
+        4. Field attributes (this file): every user-visible field is
+           marked ``readonly="1"`` as defense-in-depth.
+
+        Thresholds are stored as String Selection values ('75', '90',
+        '100', '110') — not Floats — to guarantee deterministic
+        deduplication (``(budget_line_id, alert_threshold_percent)``
+        unique constraint) and to keep search-domain filters
+        indexable.
+
+        Severity (``alert_severity``) is a computed Selection
+        (low/medium/high/critical) derived from
+        ``alert_threshold_percent`` and drives the kanban color coding.
+
+        Load order: FOURTH among view files (after
+        ``views/budget_variance_views.xml``, before
+        ``views/menuitem.xml``). The menu record
+        ``menu_budget_alert`` in ``views/menuitem.xml`` references
+        ``action_budget_alert`` defined in this file.
+
+        R-08 compliance: every non-relational field referenced here
+        carries the ``alert_*`` prefix. No ``variance_*`` fields are
+        referenced — those belong to BM-004 scope on
+        ``budget.budget.line``. Relational foreign keys (budget_id,
+        budget_line_id, company_id, currency_id) are exempt from the
+        prefix rule by design and are confirmed on the model spec.
+    -->
+
+    <!--
+        =================================================================
+        Form View — budget.alert
+        =================================================================
+
+        Fully read-only — BM-005 Scenario 5 audit-immutability mandate.
+        Users can inspect an alert in full detail but cannot edit,
+        create, or delete from this view. All write gates are also
+        enforced at the model and ACL layers (see header comment).
+    -->
+    <record id="view_budget_alert_form" model="ir.ui.view">
+        <field name="name">budget.alert.form</field>
+        <field name="model">budget.alert</field>
+        <field name="arch" type="xml">
+            <form string="Budget Alert" create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Alert Scope">
+                            <field name="budget_id" readonly="1"
+                                   options="{'no_create': True}"/>
+                            <field name="budget_line_id" readonly="1"
+                                   options="{'no_create': True}"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"
+                                   readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Threshold Event">
+                            <field name="alert_date" readonly="1"/>
+                            <field name="alert_threshold_percent"
+                                   widget="badge" readonly="1"
+                                   decoration-success="alert_threshold_percent == '75'"
+                                   decoration-warning="alert_threshold_percent == '90'"
+                                   decoration-info="alert_threshold_percent == '100'"
+                                   decoration-danger="alert_threshold_percent == '110'"/>
+                            <field name="alert_type"
+                                   widget="badge" readonly="1"
+                                   decoration-success="alert_type == 'warning'"
+                                   decoration-warning="alert_type == 'alert'"
+                                   decoration-info="alert_type == 'critical'"
+                                   decoration-danger="alert_type == 'over_budget'"/>
+                            <field name="alert_severity"
+                                   widget="badge" readonly="1"
+                                   decoration-muted="alert_severity == 'low'"
+                                   decoration-info="alert_severity == 'medium'"
+                                   decoration-warning="alert_severity == 'high'"
+                                   decoration-danger="alert_severity == 'critical'"/>
+                        </group>
+                    </group>
+                    <group string="Consumption Snapshot">
+                        <group>
+                            <field name="alert_planned_amount"
+                                   widget="monetary" readonly="1"/>
+                            <field name="alert_actual_amount"
+                                   widget="monetary" readonly="1"/>
+                        </group>
+                        <group>
+                            <!--
+                                ``alert_consumption_percent`` is stored
+                                in 0-100 form (see budget_alert.py
+                                ``_check_alert_thresholds`` line storing
+                                ``consumption = (actual / planned) *
+                                100``). Plain Float display avoids the
+                                ``widget="percentage"`` 100×
+                                multiplication that would render e.g.
+                                100.00 as "10000%".
+                            -->
+                            <field name="alert_consumption_percent"
+                                   readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Notification">
+                        <group>
+                            <field name="alert_notified" readonly="1"/>
+                            <field name="alert_notification_date"
+                                   readonly="1"
+                                   invisible="not alert_notified"/>
+                            <field name="alert_notification_channels"
+                                   readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="alert_recipient_user_ids"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   readonly="1"/>
+                            <field name="alert_recipient_group_ids"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   readonly="1"
+                                   groups="base.group_no_one"/>
+                            <field name="alert_mail_message_id"
+                                   readonly="1"
+                                   invisible="not alert_mail_message_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Alert Message" name="message">
+                            <field name="alert_message" readonly="1"
+                                   placeholder="Descriptive alert message composed by the threshold-evaluation cron."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        List View — budget.alert
+        =================================================================
+
+        Tabular browsing of the alert history. Creation and deletion
+        are disabled (BM-005 Scenario 5 immutability). Rows are
+        decorated by severity so critical alerts stand out in mixed
+        lists. The default sort surfaces the most recent events first,
+        breaking ties on severity so same-day criticals rank above
+        same-day lows.
+    -->
+    <record id="view_budget_alert_tree" model="ir.ui.view">
+        <field name="name">budget.alert.list</field>
+        <field name="model">budget.alert</field>
+        <field name="arch" type="xml">
+            <list string="Budget Alerts"
+                  create="false"
+                  edit="false"
+                  delete="false"
+                  default_order="alert_date desc, alert_severity desc"
+                  decoration-muted="alert_severity == 'low'"
+                  decoration-info="alert_severity == 'medium'"
+                  decoration-warning="alert_severity == 'high'"
+                  decoration-danger="alert_severity == 'critical'">
+                <field name="alert_date" widget="datetime"/>
+                <field name="budget_id" options="{'no_create': True}"/>
+                <field name="budget_line_id" options="{'no_create': True}"/>
+                <field name="alert_threshold_percent" widget="badge"
+                       decoration-success="alert_threshold_percent == '75'"
+                       decoration-warning="alert_threshold_percent == '90'"
+                       decoration-info="alert_threshold_percent == '100'"
+                       decoration-danger="alert_threshold_percent == '110'"/>
+                <!-- ``alert_consumption_percent`` stored in 0-100 form;
+                     plain Float display avoids ``widget="percentage"``
+                     100× multiplication. -->
+                <field name="alert_consumption_percent"/>
+                <field name="alert_planned_amount" widget="monetary"
+                       sum="Total Planned" optional="show"/>
+                <field name="alert_actual_amount" widget="monetary"
+                       sum="Total Actual" optional="show"/>
+                <field name="alert_type" widget="badge"
+                       decoration-success="alert_type == 'warning'"
+                       decoration-warning="alert_type == 'alert'"
+                       decoration-info="alert_type == 'critical'"
+                       decoration-danger="alert_type == 'over_budget'"/>
+                <field name="alert_severity" widget="badge"
+                       decoration-muted="alert_severity == 'low'"
+                       decoration-info="alert_severity == 'medium'"
+                       decoration-warning="alert_severity == 'high'"
+                       decoration-danger="alert_severity == 'critical'"/>
+                <field name="alert_notified" widget="boolean_toggle"
+                       readonly="1" optional="show"/>
+                <field name="alert_recipient_user_ids"
+                       widget="many2many_tags"
+                       options="{'no_create': True}"
+                       optional="hide"/>
+                <field name="company_id"
+                       groups="base.group_multi_company"
+                       optional="hide"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        Kanban Dashboard View — budget.alert
+        =================================================================
+
+        BM-005 Scenario 6 — Budget Alert Dashboard Summary.
+        Color-coded indicator cards grouped by severity:
+
+        * critical → oe_kanban_color_2 (red)
+        * high     → oe_kanban_color_3 (orange)
+        * medium   → oe_kanban_color_4 (yellow)
+        * low      → oe_kanban_color_0 (grey — advisory)
+
+        Each card displays:
+        * Budget name (title)
+        * Budget line (subtitle)
+        * Threshold percent (colored badge: green 75% / yellow 90% /
+          info 100% / red 110%)
+        * Consumption percentage
+        * Actual vs Planned monetary amounts
+        * Alert message (muted)
+        * Alert date
+        * Notification state badge (green "Notified" or grey "Pending")
+
+        Creation and deletion are disabled — kanban is a
+        dashboard-only surface on an immutable audit log.
+    -->
+    <record id="view_budget_alert_kanban" model="ir.ui.view">
+        <field name="name">budget.alert.kanban</field>
+        <field name="model">budget.alert</field>
+        <field name="arch" type="xml">
+            <!--
+                QA Issue #4 fix (Checkpoint 5): ``default_group_by`` removed.
+
+                Odoo 19's ``KanbanRenderer`` template renders ``KanbanGroupedRenderer``
+                inside ``t-if="props.list.isGrouped"`` and only falls through to
+                ``NoContentHelper`` in the ``t-else`` branch. When a kanban with
+                ``default_group_by`` is filtered to zero matching records (e.g., a
+                user types a non-matching search term) the renderer takes the
+                grouped branch, finds zero groups, and emits a blank canvas — the
+                ``<help>`` element on the action is never rendered.
+
+                Removing ``default_group_by`` lets the kanban render the records
+                unstructured by default (still legible for a small alert dataset),
+                which means ``NoContentHelper`` correctly fires when filters
+                exclude all rows. Users that want grouping can still apply it from
+                the search panel via the existing ``group_severity`` /
+                ``group_budget`` / ``group_threshold`` filters in
+                ``view_budget_alert_search`` — no functionality is lost.
+
+                The companion change to action ``context`` (removal of
+                ``search_default_group_budget``) is in the action record below;
+                both are needed because either source of grouping suppresses
+                the no-content helper.
+            -->
+            <kanban default_order="alert_date desc"
+                    create="false"
+                    edit="false"
+                    delete="false"
+                    class="o_kanban_dashboard o_budget_alert_kanban"
+                    sample="1">
+                <field name="id"/>
+                <field name="alert_date"/>
+                <field name="budget_id"/>
+                <field name="budget_line_id"/>
+                <field name="alert_threshold_percent"/>
+                <field name="alert_consumption_percent"/>
+                <field name="alert_planned_amount"/>
+                <field name="alert_actual_amount"/>
+                <field name="alert_type"/>
+                <field name="alert_severity"/>
+                <field name="alert_notified"/>
+                <field name="alert_message"/>
+                <field name="currency_id"/>
+                <field name="company_id"/>
+                <templates>
+                    <t t-name="card">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click #{record.alert_severity.raw_value === 'critical' ? 'oe_kanban_color_2' : (record.alert_severity.raw_value === 'high' ? 'oe_kanban_color_3' : (record.alert_severity.raw_value === 'medium' ? 'oe_kanban_color_4' : 'oe_kanban_color_0'))}">
+                            <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="budget_id"/>
+                                    </strong>
+                                    <br/>
+                                    <span class="o_kanban_record_subtitle">
+                                        <field name="budget_line_id"/>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span t-attf-class="badge #{record.alert_threshold_percent.raw_value === '75' ? 'text-bg-success' : (record.alert_threshold_percent.raw_value === '90' ? 'text-bg-warning' : (record.alert_threshold_percent.raw_value === '100' ? 'text-bg-info' : 'text-bg-danger'))}">
+                                        <field name="alert_threshold_percent"/>%
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <div>
+                                    <strong>Consumption: </strong>
+                                    <!--
+                                        ``alert_consumption_percent``
+                                        stored in 0-100 form; plain
+                                        Float display avoids
+                                        ``widget="percentage"`` 100×
+                                        multiplication. The trailing
+                                        "%" suffix is supplied by the
+                                        explicit text below for kanban
+                                        cosmetic consistency.
+                                    -->
+                                    <field name="alert_consumption_percent"/>%
+                                </div>
+                                <div>
+                                    <strong>Actual: </strong>
+                                    <field name="alert_actual_amount"
+                                           widget="monetary"/>
+                                    <span> / </span>
+                                    <field name="alert_planned_amount"
+                                           widget="monetary"/>
+                                </div>
+                                <div t-if="record.alert_message.raw_value"
+                                     class="text-muted mt-1">
+                                    <field name="alert_message"/>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_left">
+                                    <field name="alert_date" widget="date"/>
+                                </div>
+                                <div class="oe_kanban_bottom_right">
+                                    <span t-if="record.alert_notified.raw_value"
+                                          class="badge text-bg-success">
+                                        Notified
+                                    </span>
+                                    <span t-if="!record.alert_notified.raw_value"
+                                          class="badge text-bg-secondary">
+                                        Pending
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        Search View — budget.alert
+        =================================================================
+
+        Drives filtering on the kanban dashboard and list view.
+        Filters cover the four classifications BM-005 distinguishes
+        (threshold crossed, severity, alert type, notification state)
+        plus rolling date ranges for operational review cadences.
+
+        Group-by options enable the controller to pivot the alert
+        history by any of the key dimensions (budget, line, threshold,
+        severity, type, date, notification status, company).
+    -->
+    <record id="view_budget_alert_search" model="ir.ui.view">
+        <field name="name">budget.alert.search</field>
+        <field name="model">budget.alert</field>
+        <field name="arch" type="xml">
+            <search string="Budget Alerts">
+                <field name="budget_id"/>
+                <field name="budget_line_id"/>
+                <field name="alert_date"/>
+                <field name="alert_recipient_user_ids" string="Recipient"/>
+
+                <filter string="Threshold 75%" name="threshold_75"
+                        domain="[('alert_threshold_percent', '=', '75')]"/>
+                <filter string="Threshold 90%" name="threshold_90"
+                        domain="[('alert_threshold_percent', '=', '90')]"/>
+                <filter string="Threshold 100%" name="threshold_100"
+                        domain="[('alert_threshold_percent', '=', '100')]"/>
+                <filter string="Threshold 110%" name="threshold_110"
+                        domain="[('alert_threshold_percent', '=', '110')]"/>
+                <separator/>
+                <filter string="Severity Low" name="severity_low"
+                        domain="[('alert_severity', '=', 'low')]"/>
+                <filter string="Severity Medium" name="severity_medium"
+                        domain="[('alert_severity', '=', 'medium')]"/>
+                <filter string="Severity High" name="severity_high"
+                        domain="[('alert_severity', '=', 'high')]"/>
+                <filter string="Severity Critical" name="severity_critical"
+                        domain="[('alert_severity', '=', 'critical')]"/>
+                <separator/>
+                <filter string="Warning" name="type_warning"
+                        domain="[('alert_type', '=', 'warning')]"/>
+                <filter string="Alert" name="type_alert"
+                        domain="[('alert_type', '=', 'alert')]"/>
+                <filter string="Critical" name="type_critical"
+                        domain="[('alert_type', '=', 'critical')]"/>
+                <filter string="Over Budget" name="type_over_budget"
+                        domain="[('alert_type', '=', 'over_budget')]"/>
+                <separator/>
+                <filter string="Notified" name="notified"
+                        domain="[('alert_notified', '=', True)]"/>
+                <filter string="Pending Notification" name="not_notified"
+                        domain="[('alert_notified', '=', False)]"/>
+                <separator/>
+                <filter string="Today" name="today"
+                        domain="[('alert_date', '&gt;=', (context_today()).strftime('%Y-%m-%d 00:00:00')),
+                                 ('alert_date', '&lt;=', (context_today()).strftime('%Y-%m-%d 23:59:59'))]"/>
+                <filter string="Last 7 Days" name="last_7_days"
+                        domain="[('alert_date', '&gt;=', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d 00:00:00'))]"/>
+                <filter string="Last 30 Days" name="last_30_days"
+                        domain="[('alert_date', '&gt;=', (context_today() - relativedelta(days=30)).strftime('%Y-%m-%d 00:00:00'))]"/>
+
+                <group>
+                    <filter string="Budget" name="group_budget"
+                            domain="[]"
+                            context="{'group_by': 'budget_id'}"/>
+                    <filter string="Budget Line" name="group_line"
+                            domain="[]"
+                            context="{'group_by': 'budget_line_id'}"/>
+                    <filter string="Threshold %" name="group_threshold"
+                            domain="[]"
+                            context="{'group_by': 'alert_threshold_percent'}"/>
+                    <filter string="Severity" name="group_severity"
+                            domain="[]"
+                            context="{'group_by': 'alert_severity'}"/>
+                    <filter string="Type" name="group_type"
+                            domain="[]"
+                            context="{'group_by': 'alert_type'}"/>
+                    <filter string="Alert Date" name="group_date"
+                            domain="[]"
+                            context="{'group_by': 'alert_date:day'}"/>
+                    <filter string="Notification Status" name="group_notified"
+                            domain="[]"
+                            context="{'group_by': 'alert_notified'}"/>
+                    <filter string="Company" name="group_company"
+                            domain="[]"
+                            context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        Pivot View — budget.alert
+        =================================================================
+
+        Aggregated cross-tabulation of alerts by budget (rows) and
+        threshold percent (columns), with consumption percentage and
+        actual amount as measures. Used by controllers to compare
+        threshold-crossing density across multiple budgets at a
+        glance.
+    -->
+    <record id="view_budget_alert_pivot" model="ir.ui.view">
+        <field name="name">budget.alert.pivot</field>
+        <field name="model">budget.alert</field>
+        <field name="arch" type="xml">
+            <pivot string="Alert Aggregation" sample="1">
+                <field name="budget_id" type="row"/>
+                <field name="alert_threshold_percent" type="col"/>
+                <field name="alert_consumption_percent" type="measure"/>
+                <field name="alert_actual_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!--
+        =================================================================
+        Window Action — budget.alert
+        =================================================================
+
+        Kanban-first entry point for BM-005 Scenario 6 (dashboard
+        summary). Opens with alerts grouped by budget to give
+        controllers an immediate portfolio overview; the search view
+        exposes threshold, severity, type, and date filters for
+        drill-down. All views are read-only surfaces backed by the
+        security CSV's ``perm_unlink=0`` constraint.
+
+        The ``help`` block is shown when the dashboard is empty and
+        explains that alert records are system-generated by the
+        scheduled action; it directs operators to the cron and
+        clarifies the audit-trail semantics.
+    -->
+    <record id="action_budget_alert" model="ir.actions.act_window">
+        <field name="name">Budget Alerts</field>
+        <field name="res_model">budget.alert</field>
+        <field name="view_mode">kanban,list,form,pivot</field>
+        <field name="search_view_id" ref="view_budget_alert_search"/>
+        <!--
+            QA Issue #4 fix (Checkpoint 5): ``search_default_group_budget``
+            removed from the context. With the auto-applied group-by filter,
+            the kanban renderer's ``KanbanGroupedRenderer`` branch suppressed
+            the no-content helper when a filter excluded all rows. Pairing
+            this removal with ``default_group_by`` removal on the kanban view
+            (see comment above) restores the expected empty-state UX: the
+            action loads ungrouped, ``<help>`` renders when the search box
+            excludes all alerts, and users can still apply grouping from the
+            search panel via ``group_budget`` / ``group_severity`` /
+            ``group_threshold`` / ``group_type`` / ``group_date`` /
+            ``group_notified`` / ``group_company`` filters.
+        -->
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No alerts yet
+            </p>
+            <p>
+                Budget threshold alerts are created automatically by the
+                "Budget Alert Threshold Evaluation" scheduled action. Each
+                alert corresponds to a distinct crossing of 75%, 90%, 100%,
+                or 110% consumption on a budget line. Records here are
+                immutable and serve as an audit trail.
+            </p>
+        </field>
+    </record>
+
+</odoo>

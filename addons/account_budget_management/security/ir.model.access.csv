@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_budget_budget_user,budget.budget user,model_budget_budget,account.group_account_user,1,1,1,0
+access_budget_budget_manager,budget.budget manager,model_budget_budget,account.group_account_manager,1,1,1,1
+access_budget_budget_line_user,budget.budget.line user,model_budget_budget_line,account.group_account_user,1,1,1,0
+access_budget_budget_line_manager,budget.budget.line manager,model_budget_budget_line,account.group_account_manager,1,1,1,1
+access_budget_budget_period_user,budget.budget.period user,model_budget_budget_period,account.group_account_user,1,1,1,0
+access_budget_budget_period_manager,budget.budget.period manager,model_budget_budget_period,account.group_account_manager,1,1,1,1
+access_budget_alert_user,budget.alert user,model_budget_alert,account.group_account_user,1,0,0,0
+access_budget_alert_manager,budget.alert manager,model_budget_alert,account.group_account_manager,1,1,1,0
+access_budget_variance_wizard_user,budget.variance.wizard user,model_budget_variance_wizard,account.group_account_user,1,1,1,1
+access_budget_variance_wizard_manager,budget.variance.wizard manager,model_budget_variance_wizard,account.group_account_manager,1,1,1,1

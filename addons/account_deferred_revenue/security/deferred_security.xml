@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 Enterprise Accounting Team
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+
+    <!--
+        ==================================================================
+        Module Category
+        ==================================================================
+        Defined OUTSIDE <data noupdate="1"> so that category metadata
+        (including any future sequence or description changes) propagates
+        on upgrade. Provides a dedicated "Deferred Revenue" category in
+        Settings -> Users -> Access Rights for clean group organization.
+    -->
+    <record id="module_category_deferred_revenue" model="ir.module.category">
+        <field name="name">Deferred Revenue</field>
+        <field name="description">Manage deferred revenue and deferred expense schedules and recognition.</field>
+        <field name="sequence">25</field>
+    </record>
+
+    <!--
+        ==================================================================
+        Groups Privilege
+        ==================================================================
+        In Odoo 19, res.groups no longer holds category_id directly;
+        instead, a res.groups.privilege record carries the category_id
+        and is referenced from res.groups via privilege_id.  This matches
+        the pattern established by addons/account/security/account_security.xml
+        (res_groups_privilege_accounting).  Defined OUTSIDE <data noupdate="1">
+        so that category-propagation metadata re-applies on upgrade.
+    -->
+    <record id="res_groups_privilege_deferred_revenue" model="res.groups.privilege">
+        <field name="name">Deferred Revenue</field>
+        <field name="category_id" ref="module_category_deferred_revenue"/>
+        <field name="sequence">25</field>
+    </record>
+
+    <!--
+        ==================================================================
+        Groups
+        ==================================================================
+        Defined OUTSIDE <data noupdate="1"> so that implied_ids
+        relationships re-apply on every module upgrade. If an administrator
+        customizes the group, their changes to implied_ids would otherwise
+        be preserved at the cost of losing new implications added by later
+        module versions - that is not the correct trade-off for a security
+        group defining module capabilities.
+    -->
+
+    <!-- User Group: read/write/create on schedules; cannot unlink. -->
+    <record id="group_deferred_revenue_user" model="res.groups">
+        <field name="name">User: Own Deferrals</field>
+        <field name="privilege_id" ref="res_groups_privilege_deferred_revenue"/>
+        <field name="implied_ids" eval="[Command.link(ref('account.group_account_user'))]"/>
+    </record>
+
+    <!-- Manager Group: full CRUD; can configure default accounts and period methods. -->
+    <record id="group_deferred_revenue_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <field name="privilege_id" ref="res_groups_privilege_deferred_revenue"/>
+        <field name="implied_ids" eval="[Command.link(ref('group_deferred_revenue_user')), Command.link(ref('account.group_account_manager'))]"/>
+    </record>
+
+    <!--
+        ==================================================================
+        Reverse-implication: extend existing account groups
+        ==================================================================
+        Every user holding `account.group_account_user` automatically gets
+        `group_deferred_revenue_user`. Every user holding
+        `account.group_account_manager` automatically gets
+        `group_deferred_revenue_manager`. This is the CE UX pattern:
+        installing this module transparently grants deferred revenue
+        access to every existing accountant, without requiring an admin
+        to manually add users to new groups.
+
+        Uses Command.link (NOT Command.set / tuple (6,0,[...])) to APPEND
+        to the existing implied_ids list without clobbering prior
+        implications added by other addons (e.g., FEATURE-001, FEATURE-002).
+    -->
+    <record id="account.group_account_user" model="res.groups">
+        <field name="implied_ids" eval="[Command.link(ref('group_deferred_revenue_user'))]"/>
+    </record>
+
+    <record id="account.group_account_manager" model="res.groups">
+        <field name="implied_ids" eval="[Command.link(ref('group_deferred_revenue_manager'))]"/>
+    </record>
+
+    <!--
+        ==================================================================
+        Record Rules
+        ==================================================================
+        Defined INSIDE <data noupdate="1"> so that administrators can
+        customize the multi-company domain (e.g., to add branch-level
+        filtering) without their customizations being wiped on each
+        module upgrade. This matches the Odoo core pattern for ir.rule.
+    -->
+    <data noupdate="1">
+
+        <!-- Multi-company rule: schedules visible only for the user's allowed companies. -->
+        <record id="account_deferred_schedule_multi_company_rule" model="ir.rule">
+            <field name="name">Deferral Schedule Multi-Company</field>
+            <field name="model_id" ref="model_account_deferred_schedule"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+
+        <!-- Multi-company rule: recognition lines follow their parent schedule's company. -->
+        <record id="account_deferred_line_multi_company_rule" model="ir.rule">
+            <field name="name">Deferral Recognition Line Multi-Company</field>
+            <field name="model_id" ref="model_account_deferred_line"/>
+            <field name="domain_force">['|', ('schedule_id.company_id', '=', False), ('schedule_id.company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+
+    </data>
+
+</odoo>

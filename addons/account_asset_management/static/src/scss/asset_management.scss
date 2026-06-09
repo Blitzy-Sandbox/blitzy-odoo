@@ -1,0 +1,68 @@
+/**
+ * Asset Management — Backend Styling
+ *
+ * Copyright 2024 OCA, Blitzy
+ * License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+ *
+ * QA Issue #3 fix (Checkpoint 5) — Focus Visibility for Primary Buttons
+ * --------------------------------------------------------------------
+ * Odoo 19's default theme paints ``btn-primary`` with a transparent
+ * ``box-shadow`` and ``outline: none`` even when the button has the
+ * matching ``:focus-visible`` state. The button receives focus (verified
+ * via ``element.matches(':focus-visible') === true``), but the visual
+ * styling renders no perceivable indicator — a WCAG 2.1 AA violation
+ * of Success Criterion 2.4.7 "Focus Visible".
+ *
+ * Form fields (``.o_field_widget`` inputs) and tab links DO receive a
+ * visible focus ring in the same theme, so the regression is scoped to
+ * primary buttons specifically. This rule restores a focus indicator
+ * that:
+ *
+ *   * Uses an ``outline`` (preferred WCAG mechanism — does not push
+ *     surrounding layout, supported by every modern browser).
+ *   * Adds an ``outline-offset`` so the ring sits clear of the
+ *     button border instead of overlapping it.
+ *   * Layers a soft ``box-shadow`` ring matching the existing tab-link
+ *     focus glow (``rgba(113, 99, 158, 0.25)``) for stylistic harmony
+ *     with the rest of the Odoo backend.
+ *   * Falls back to the brand purple ``#71639E`` if the Bootstrap
+ *     ``--bs-focus-ring-color`` CSS variable is not exposed.
+ *
+ * The rule targets only ``:focus-visible`` (NOT ``:focus``) so mouse
+ * clicks do NOT show a focus ring — only keyboard navigation and
+ * other "intent to focus" signals trigger the indicator. This matches
+ * the Odoo design-language precedent for keyboard accessibility and
+ * the Bootstrap 5 best-practice pattern.
+ *
+ * Loaded via ``web.assets_backend`` so it applies to every backend
+ * page rendered after this module installs. The same rule appears in
+ * the sibling new modules (account_budget_management, account_deferred_revenue,
+ * account_payment_followup) so the fix is in force regardless of which
+ * subset of the four modules is installed; CSS rule duplication when
+ * all four are installed is harmless because every copy is byte-identical.
+ */
+
+.btn-primary {
+
+    // Keyboard / programmatic-focus indicator.
+    //
+    // ``:focus-visible`` only fires when the user-agent heuristic
+    // determines focus came from a keyboard or assistive technology
+    // (i.e. NOT a mouse click), matching the WCAG 2.4.7 intent.
+    &:focus-visible {
+
+        // 2px solid outline using the Bootstrap 5 focus-ring colour
+        // CSS variable, with a brand-purple fallback for older
+        // Bootstrap layers that may not expose the variable.
+        outline: 2px solid var(--bs-focus-ring-color, #71639E);
+
+        // Push the outline 2px clear of the button border so the
+        // ring does not blend with the button's own outline.
+        outline-offset: 2px;
+
+        // Soft outer glow: 4px ring at 25% opacity. Matches the
+        // existing tab-link focus glow (purple inset 4px ring at
+        // 25% opacity in the default Odoo theme) for visual unity.
+        box-shadow: 0 0 0 4px rgba(113, 99, 158, 0.25);
+    }
+}

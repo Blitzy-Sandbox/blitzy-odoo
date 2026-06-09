@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+    
+    FEATURE-004 Asset Management — Menu Structure
+    
+    Defines the complete backend menu hierarchy:
+      Accounting (core)
+      └── Assets (menu_asset_management_root)
+          ├── Assets (list of all assets — main workflow entry)
+          ├── Depreciation Board (cross-asset depreciation schedule view)
+          ├── [separator]
+          └── Configuration
+              └── Asset Categories (manager-only)
+    
+    Groups:
+      - account.group_account_user: default (all regular accountants)
+      - account.group_account_manager: Configuration submenu items only
+    
+    Loading order: MUST be last in __manifest__.py data list because this
+    file references actions declared in all other views/*.xml files.
+-->
+<odoo>
+
+    <!-- ==================================================================
+         ROOT MENU: Assets (under core Accounting menu)
+         ================================================================== -->
+    <menuitem id="menu_asset_management_root"
+              name="Assets"
+              parent="account.menu_finance"
+              sequence="25"
+              groups="account.group_account_user"/>
+
+    <!-- ==================================================================
+         PRIMARY WORKFLOW MENUS (sequence 1-9)
+         ================================================================== -->
+    
+    <!-- Assets list: main entry for AM-001 registration workflow -->
+    <menuitem id="menu_account_asset"
+              name="Assets"
+              parent="menu_asset_management_root"
+              action="action_account_asset"
+              sequence="1"/>
+    
+    <!-- Depreciation Board: cross-asset schedule view (AM-003) -->
+    <menuitem id="menu_account_asset_depreciation_line"
+              name="Depreciation Board"
+              parent="menu_asset_management_root"
+              action="action_account_asset_depreciation_line"
+              sequence="5"/>
+
+    <!-- ==================================================================
+         SEPARATOR (sequence 10)
+         ================================================================== -->
+    <menuitem id="menu_asset_management_separator"
+              parent="menu_asset_management_root"
+              sequence="10"/>
+
+    <!-- ==================================================================
+         CONFIGURATION SUBMENU (sequence 20+) — MANAGER-ONLY
+         ================================================================== -->
+    <menuitem id="menu_asset_management_config"
+              name="Configuration"
+              parent="menu_asset_management_root"
+              sequence="20"
+              groups="account.group_account_manager"/>
+    
+    <!-- Asset Categories configuration (manager-only master data) -->
+    <menuitem id="menu_account_asset_category"
+              name="Asset Categories"
+              parent="menu_asset_management_config"
+              action="action_account_asset_category"
+              sequence="1"
+              groups="account.group_account_manager"/>
+
+</odoo>

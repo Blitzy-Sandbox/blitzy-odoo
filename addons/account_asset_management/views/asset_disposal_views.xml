@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    FEATURE-004 Asset Management - AM-006 Asset Disposal Wizard Views
+    ==================================================================
+
+    Provides the form view and window action for the TransientModel
+    ``account.asset.disposal.wizard``.  Supports three disposal methods
+    in accordance with IAS 16 (Property, Plant and Equipment) derecognition
+    requirements and US GAAP ASC 360-10-40 disposal rules:
+
+      * ``sale``      - asset disposal with proceeds (cash or receivable
+                        debit, asset credit, accumulated depreciation
+                        debit, gain/loss recognition for any difference
+                        between proceeds and net book value).
+      * ``scrap``     - disposal with zero proceeds for obsolete or
+                        damaged assets; remaining NBV (if any) recognized
+                        as loss on disposal.
+      * ``write_off`` - disposal for lost, stolen, or destroyed assets
+                        with optional insurance recovery; remaining NBV
+                        net of any recovery recognized as loss.
+
+    Additional features supported by the wizard:
+      * Automatic gain/loss calculation: Gain/Loss = Proceeds - NBV.
+        Positive difference is credited to gain account; negative
+        difference is debited to loss account.
+      * Optional catch-up depreciation: when the disposal date is after
+        the last posted depreciation entry, a prorated catch-up
+        depreciation journal entry is generated automatically to bring
+        accumulated depreciation current through the disposal date.
+      * Partial disposal: disposing of a portion of an asset (e.g., 30
+        of 100 units) with proportional acquisition cost, accumulated
+        depreciation, and NBV calculations; the original asset record
+        is updated to reflect the retained portion for continued
+        depreciation.
+
+    Called from the Asset form's header "Dispose" button via
+    ``account.asset.action_dispose()``, which returns this action.  The
+    action also binds to the ``account.asset`` model so it surfaces in
+    the Action menu on asset records (contextual action).
+
+    AAP Rule Compliance
+    ===================
+    * R-01 (Module independence) - No references to sibling CE modules
+      (account_budget_management, account_deferred_revenue,
+      account_payment_followup).  Only references this module's model
+      ``account.asset.disposal.wizard`` (net-new TransientModel),
+      ``account.asset`` (same module, net-new), and core Odoo models
+      (``account.move``, ``account.account``, ``res.company``,
+      ``res.currency``, ``base.group_multi_company``).
+    * R-02 (No Enterprise deps) - No references to Enterprise modules
+      in any field, action, or attribute.
+    * R-05 (No core view modification) - This file defines NET-NEW views
+      on a NET-NEW TransientModel; NO ``inherit_id`` attribute appears
+      on any record.
+    * R-07 (No sudo) - Not applicable; XML-only data file.
+    * R-09 (Exact module folder name) - File lives in
+      ``addons/account_asset_management/views/`` as required.
+
+    Odoo 19.0 View Conventions Observed
+    ===================================
+    * ``invisible="expression"`` and ``readonly="expression"`` attributes
+      (NOT ``attrs="..."``) per Odoo 17+ convention.
+    * Boolean / comparison operators: ``and``, ``or``, ``not``, ``in``,
+      ``not in``; comparisons use XML-escaped ``&gt;``, ``&lt;``, ``&amp;``.
+    * 4-space indentation throughout.
+    * ``<?xml version="1.0" encoding="utf-8"?>`` header.
+-->
+<odoo>
+
+    <!-- ==================================================================
+         WIZARD FORM VIEW
+         ==================================================================
+         The single form view for the ``account.asset.disposal.wizard``
+         TransientModel.  Displays the target asset, disposal method and
+         date, method-specific input groups (sale proceeds, partial
+         disposal), gain/loss summary, documentation for audit trail,
+         and post-state result links.
+
+         Conditional visibility is driven by ``disposal_method``,
+         ``is_partial``, ``catchup_depreciation_required``, ``state``,
+         and ``gain_loss_amount`` so the wizard adapts to each disposal
+         scenario without overwhelming the user with irrelevant fields.
+         ================================================================== -->
+    <record id="view_account_asset_disposal_wizard_form" model="ir.ui.view">
+        <field name="name">account.asset.disposal.wizard.form</field>
+        <field name="model">account.asset.disposal.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Dispose Asset">
+                <!-- HEADER: state statusbar only. Action buttons live
+                     in the <footer> block so Odoo suppresses the default
+                     Save/Discard wizard buttons (Issue #5 fix). The
+                     state field stays in the header so the statusbar
+                     widget renders at the top of the form. -->
+                <header>
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,confirmed,posted"/>
+                </header>
+                <sheet>
+                    <!-- CATCH-UP DEPRECIATION WARNING BANNER.
+                         Per AM-006 Scenario 6 (disposal date validation
+                         against depreciation schedule), when the disposal
+                         date falls after the last posted depreciation
+                         entry the system must compute prorated catch-up
+                         depreciation through the disposal date.  This
+                         alert informs the user that a separate catch-up
+                         journal entry will be posted before the disposal
+                         entry upon confirmation. -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not catchup_depreciation_required">
+                        <strong>Catch-up depreciation required:</strong>
+                        Depreciation through the disposal date has not yet been
+                        posted. A catch-up entry will be created automatically
+                        when you post this disposal.
+                    </div>
+
+                    <!-- PRIMARY GROUP: Asset + Disposal metadata.
+                         Two-column layout.  Left: asset and company context.
+                         Right: disposal method (radio widget for clarity),
+                         disposal date, and partial-disposal toggle. -->
+                    <group>
+                        <group string="Asset">
+                            <field name="asset_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True, 'no_open': False}"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Disposal Details">
+                            <field name="disposal_method"
+                                   readonly="state != 'draft'"
+                                   widget="radio"/>
+                            <field name="disposal_date"
+                                   readonly="state != 'draft'"/>
+                            <field name="is_partial"
+                                   readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+
+                    <!-- PARTIAL DISPOSAL GROUP (conditional).
+                         Per AM-006 Scenario 5 (partial asset disposal),
+                         visible only when ``is_partial`` is True.  The
+                         user enters the disposed quantity; the system
+                         computes the disposal_proportion (disposed /
+                         total) which drives the proportional calculation
+                         of acquisition cost, accumulated depreciation,
+                         and NBV for the disposed portion. -->
+                    <group string="Partial Disposal"
+                           invisible="not is_partial">
+                        <field name="disposed_quantity"
+                               readonly="state != 'draft'"/>
+                        <field name="total_quantity"/>
+                        <field name="disposal_proportion"
+                               widget="percentage"/>
+                    </group>
+
+                    <!-- SALE PROCEEDS GROUP (conditional).
+                         Per AM-006 Scenario 1 (disposal by sale),
+                         visible only when ``disposal_method`` is 'sale'.
+                         Proceeds amount and destination account (cash or
+                         accounts receivable) drive the proceeds debit
+                         line of the disposal journal entry and the
+                         gain/loss calculation.  ``no_create: True`` on
+                         the account field prevents accidental inline
+                         creation of account records. -->
+                    <group string="Sale Proceeds"
+                           invisible="disposal_method != 'sale'">
+                        <field name="proceeds_amount"
+                               readonly="state != 'draft'"/>
+                        <field name="proceeds_account_id"
+                               readonly="state != 'draft'"
+                               options="{'no_create': True}"/>
+                    </group>
+
+                    <!-- GAIN / LOSS SUMMARY GROUP (always visible).
+                         Per AM-006 Scenario 4 (automatic gain/loss
+                         calculation), the system computes Gain/Loss =
+                         Proceeds - NBV and displays the result before
+                         disposal confirmation for user review.
+
+                         Decorations on ``gain_loss_amount``:
+                           success (green) when positive -> gain
+                           danger  (red)   when negative -> loss
+                         XML-escaped ``&gt;`` and ``&lt;`` operators are
+                         required inside the double-quoted attribute.
+
+                         Account selection is polarity-driven:
+                           * ``gain_account_id`` shown only when the
+                             computed amount is positive (visible when
+                             amount is > 0, i.e. NOT <= 0).
+                           * ``loss_account_id`` shown only when the
+                             computed amount is negative (visible when
+                             amount is < 0, i.e. NOT >= 0).
+                           * When the amount is exactly zero, neither
+                             account field is shown (no gain/loss entry
+                             is posted in that case).
+
+                         ``catchup_depreciation_amount`` is shown only
+                         when catch-up depreciation is required so the
+                         user can see the magnitude of the prorated
+                         entry before confirmation. -->
+                    <group string="Gain / Loss Summary">
+                        <group>
+                            <field name="net_book_value"/>
+                            <field name="catchup_depreciation_required"/>
+                            <field name="catchup_depreciation_amount"
+                                   invisible="not catchup_depreciation_required"/>
+                        </group>
+                        <group>
+                            <field name="gain_loss_amount"
+                                   class="oe_inline"
+                                   decoration-success="gain_loss_amount &gt; 0"
+                                   decoration-danger="gain_loss_amount &lt; 0"/>
+                            <field name="gain_account_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"
+                                   invisible="gain_loss_amount &lt;= 0"/>
+                            <field name="loss_account_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"
+                                   invisible="gain_loss_amount &gt;= 0"/>
+                        </group>
+                    </group>
+
+                    <!-- DOCUMENTATION GROUP (required for audit trail).
+                         Per AM-006 Scenarios 2 and 3 (scrapping and
+                         write-off), the disposal reason is required
+                         for audit trail completeness and the optional
+                         documentation_ref captures external references
+                         such as insurance claim numbers, police report
+                         IDs, or sale invoice numbers. -->
+                    <group string="Documentation">
+                        <field name="disposal_reason"
+                               readonly="state != 'draft'"
+                               placeholder="Reason for disposal (required for audit trail)..."/>
+                        <field name="documentation_ref"
+                               readonly="state != 'draft'"
+                               placeholder="External document reference (invoice #, work order, etc.)"/>
+                    </group>
+
+                    <!-- POSTED JOURNAL ENTRIES GROUP (post-state only).
+                         After successful posting, displays read-only
+                         links to the generated ``account.move`` records
+                         for drill-through audit:
+                           * ``move_id`` - the main disposal journal entry.
+                           * ``catchup_depreciation_move_id`` - the
+                             separate catch-up depreciation entry (only
+                             visible if one was required and created).
+
+                         ``no_create: True`` prevents accidental creation;
+                         ``no_open: False`` keeps the "open record" icon
+                         enabled for drill-through navigation. -->
+                    <group string="Posted Journal Entries"
+                           invisible="state != 'posted'">
+                        <field name="move_id"
+                               readonly="1"
+                               options="{'no_create': True, 'no_open': False}"/>
+                        <field name="catchup_depreciation_move_id"
+                               readonly="1"
+                               invisible="not catchup_depreciation_move_id"
+                               options="{'no_create': True, 'no_open': False}"/>
+                    </group>
+                </sheet>
+                <!-- FOOTER: action buttons. Placing them in <footer>
+                     suppresses Odoo's default Save/Discard wizard
+                     buttons that would otherwise appear at the bottom
+                     of the modal (Issue #5 fix). Each button is gated
+                     on the wizard state machine:
+                         draft     -> Confirm / Cancel
+                         confirmed -> Post Disposal / Cancel
+                         posted    -> Close (terminal)
+                         cancelled -> Close (terminal) -->
+                <footer>
+                    <button name="action_confirm"
+                            string="Confirm"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"
+                            data-hotkey="q"/>
+                    <button name="action_post"
+                            string="Post Disposal"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'confirmed'"
+                            data-hotkey="q"/>
+                    <button name="action_cancel"
+                            string="Cancel"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state in ('posted', 'cancelled')"/>
+                    <button special="cancel"
+                            string="Close"
+                            class="btn-secondary"
+                            invisible="state not in ('posted', 'cancelled')"
+                            data-hotkey="z"/>
+                    <button special="cancel"
+                            string="Discard"
+                            class="btn-secondary"
+                            invisible="state in ('posted', 'cancelled')"
+                            data-hotkey="z"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ==================================================================
+         WINDOW ACTION
+         ==================================================================
+         Opens the disposal wizard as a modal dialog (``target="new"``).
+         Two entry points:
+             1. From the asset form's header "Dispose" button, where the
+                Python method ``account.asset.action_dispose()`` returns
+                this action with the asset_id pre-populated via context.
+             2. From the Action menu on asset records (contextual action)
+                via the ``binding_model_id`` reference.
+
+         The model technical id ``model_account_asset`` is Odoo's
+         canonical ``ir.model`` record id, auto-generated from the model
+         name ``account.asset`` (dots replaced with underscores, prefixed
+         with ``model_``).  This id is already referenced by the module's
+         ``security/ir.model.access.csv``, confirming it exists after
+         ``account.asset`` is registered at module load time.
+
+         The explicit ``view_id`` reference ensures deterministic view
+         resolution even if other form views on the wizard model are
+         defined in future extensions.  ``binding_view_types="form"``
+         restricts the contextual action to asset form views (not list
+         views), matching the standard UX for per-record wizards.
+         ================================================================== -->
+    <record id="action_account_asset_disposal_wizard"
+            model="ir.actions.act_window">
+        <field name="name">Dispose Asset</field>
+        <field name="res_model">account.asset.disposal.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id"
+               ref="view_account_asset_disposal_wizard_form"/>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_account_asset"/>
+        <field name="binding_view_types">form</field>
+    </record>
+
+</odoo>

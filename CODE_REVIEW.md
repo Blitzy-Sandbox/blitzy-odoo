@@ -586,3 +586,20 @@ The seven domain phases execute **sequentially in the fixed order below**. A lat
 
 **Phase 1 verdict:** `APPROVED`
 
+### Domain Phase 2 — Security
+
+- **Owning specialist (review-only):** Application-Security SME.
+- **Files reviewed:** the 12 files in Domain 2 of §C (6× `ir.model.access.csv`, 6× `*_security.xml`).
+- **Focus:** ACL completeness, record rules, groups, `sudo()` boundaries, multi-company isolation.
+
+**Findings (file:line):**
+
+1. **ACL completeness.** Each addon ships a populated access-control matrix with the canonical header `id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink` [addons/account_asset_management/security/ir.model.access.csv:L1]; every net-new model carries at least one access entry [provenance: Project Guide §5.2 "Per-module security CSV"].
+2. **Multi-company record rules.** Each addon declares `company_id`-scoped `ir.rule` records: `asset_security.xml` (4 rule references) [addons/account_asset_management/security/asset_security.xml:L1], `budget_security.xml` (5) [addons/account_budget_management/security/budget_security.xml:L1], `deferred_security.xml` (3) [addons/account_deferred_revenue/security/deferred_security.xml:L1], `followup_security.xml` (4) [addons/account_payment_followup/security/followup_security.xml:L1].
+3. **`sudo()` boundary (R-07).** The **only** `.sudo()` call in production code reads a scalar `ir.config_parameter` threshold and carries an inline justification comment [addons/account_deferred_revenue/models/account_deferred_schedule.py:L380-L388], [addons/account_deferred_revenue/models/account_deferred_schedule.py:L385]. A first-hand `grep` over all four newest addons confirms every other "sudo" occurrence is documentation prose asserting the **absence** of `sudo()` [addons/account_asset_management/models/account_asset.py:L45].
+4. **Groups.** Access rows bind to standard Odoo accounting groups; no custom privilege escalation was introduced [provenance: Project Guide §5.1 R-07].
+
+**Rule semantics:** an ACL gap, an unscoped multi-company rule, or an unjustified `sudo()` would render this phase `BLOCKED` (file:line findings, halt, restart from pre-flight, no carried credit). None was found.
+
+**Phase 2 verdict:** `APPROVED`
+

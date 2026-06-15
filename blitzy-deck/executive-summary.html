@@ -4,6 +4,27 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Blitzy Executive Summary &mdash; Enterprise Accounting for Odoo 19.0 CE</title>
+  <!-- Inline data-URI favicon (brand purple square) -- keeps the deck a single
+       self-contained file and avoids a 404 favicon request; allowed by img-src data:. -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%235B39F3'/%3E%3Crect x='8' y='8' width='16' height='16' rx='3' fill='%2394FAD5'/%3E%3C/svg%3E">
+
+  <!-- Content-Security-Policy (supply-chain hardening, R-7 / deck finding).
+       Restricts script + style to this document (inline) and the pinned jsDelivr
+       CDN, fonts to Google Fonts, and forbids object/base-uri/form-action. This
+       complements Mermaid's securityLevel:'strict' as a defence-in-depth control
+       for CVE-2025-54881 (the Mermaid 11.4.0 pin). 'unsafe-inline' is required
+       because the brand theme and the reveal/Mermaid/Lucide bootstrap are inlined
+       to keep the deck a single self-contained file. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net; base-uri 'none'; object-src 'none'; form-action 'none'">
+
+  <!-- Supply-chain note: CDN versions are PINNED per the Executive Presentation
+       rule (reveal.js 5.1.0, Mermaid 11.4.0, Lucide 0.460.0). Subresource Integrity
+       (SRI) `integrity`/`crossorigin` attributes are recommended additionally and
+       should be generated against the exact served CDN bytes at deployment time
+       (e.g. `curl <cdn-url> | openssl dgst -sha384 -binary | openssl base64 -A`),
+       then added to each <link>/<script> below. They are intentionally not
+       hard-coded here so a hash cannot silently drift from the pinned asset. -->
+
 
   <!-- Google Fonts: Inter (body), Space Grotesk (display), Fira Code (mono/eyebrow) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,13 +38,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css" id="reveal-base-theme">
 
   <style>
-/* ============================================================================
- * BLITZY BRAND THEME -- embedded INLINE (verbatim copy of the canonical file
- * blitzy-deck/references/blitzy-reveal-theme.css) to keep this deck a single,
- * self-contained HTML file. Do NOT <link> to the reference copy at runtime.
- * The :root tokens and component classes below are byte-for-byte identical to
- * the canonical reference (single source of truth -- AAP Sec. 0.10.2).
- * ==========================================================================*/
 /*!
  * ============================================================================
  * Blitzy Reveal.js Brand Theme -- CANONICAL REFERENCE COPY
@@ -400,7 +414,10 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--blitzy-text-muted);
+  /* Small uppercase label: uses the dark brand text token (not --blitzy-text-muted)
+     so it clears WCAG 2.1 AA on the light KPI-card surfaces. Dark slide types
+     override this below with a high-contrast translucent white. */
+  color: var(--blitzy-text);
 }
 
 /* KPI cards placed on dark slide types invert their surface for contrast. */
@@ -507,15 +524,20 @@
 }
 .reveal .slide-number {
   background-color: transparent;
-  color: var(--blitzy-text-muted);
+  /* Dark brand text token (not --blitzy-text-muted) for WCAG 2.1 AA on the
+     light deck surface; reveal renders the number small (c/t format). */
+  color: var(--blitzy-text);
   font-family: var(--ff-mono);
 }
 
-/* ============================================================================
- * DECK-ONLY SUPPLEMENT -- additive helpers the canonical theme intentionally
- * omits. These add NEW classes only; they never redefine a canonical component
- * class, preserving the byte-for-byte token/class consistency above.
- * ==========================================================================*/
+/* ============================================================
+   13. Component helpers -- subtitles, caption notes, inline mono,
+   divider/closing icon tile, badge pills, "OK" KPI accent, and the
+   developer-setup inline-code list. These are PART OF the canonical
+   theme (they only add NEW classes; they never redefine a component
+   class above) and are embedded inline in executive-summary.html
+   identically -- single source of truth (AAP Sec. 0.10.2).
+   ============================================================ */
 
 /* Subtitle (title + closing slides). Colour is inherited from the slide-type p rule. */
 .reveal .subtitle { font-size: 0.82em; line-height: 1.45; max-width: 36ch; margin: 0.2em 0 0; }
@@ -546,8 +568,10 @@
 .reveal .slides section.slide-divider,
 .reveal .slides section.slide-closing { align-items: flex-start; }
 
-/* Small muted caption note under a visual. */
-.reveal .note { font-size: 0.5em; line-height: 1.4; color: var(--blitzy-text-muted); margin: 0.8em 0 0; }
+/* Small caption note under a visual. On light surfaces it uses the dark brand
+   text token (not --blitzy-text-muted) to clear WCAG 2.1 AA at this small size;
+   dark slide types override to a high-contrast translucent white. */
+.reveal .note { font-size: 0.5em; line-height: 1.4; color: var(--blitzy-text); margin: 0.8em 0 0; }
 .reveal .slide-divider .note,
 .reveal .slide-closing .note { color: rgba(255, 255, 255, 0.62); }
 
@@ -583,21 +607,31 @@
 /* Brand lockup on the closing slide (the brand dot is the canonical ::before). */
 .reveal .brand-lockup { margin-block-start: 1.4rem; }
 
-/* Developer-setup inline-code steps (inline Fira Code chips -- never a <pre> block). */
+/* Developer-setup inline-code steps (inline Fira Code chips -- never a <pre> block).
+   The step label uses the dark brand text token for WCAG 2.1 AA at 0.46em. */
 .reveal .setup-list { list-style: none; margin: 0.4em 0 0; padding: 0; }
 .reveal .setup-list > li { margin: 0 0 0.95em; }
 .reveal .setup-list .step-label {
   display: block; font-family: var(--ff-mono); font-size: 0.46em; font-weight: 500;
-  text-transform: uppercase; letter-spacing: 0.14em; color: var(--blitzy-text-muted);
+  text-transform: uppercase; letter-spacing: 0.14em; color: var(--blitzy-text);
   margin: 0 0 0.4em;
 }
 .reveal .setup-list .cmds { display: flex; flex-wrap: wrap; gap: 0.5em; }
 .reveal .setup-list code { font-size: 0.56em; overflow-wrap: anywhere; }
 
-/* Constrain in-slide Mermaid height so diagrams never overflow the artboard. */
+/* ============================================================
+   14. Responsive behaviour -- reveal.js transform scaling
+   The deck is authored on a fixed 1920x1080 artboard; reveal.js's
+   built-in transform scaling (the Reveal.initialize width/height
+   settings) is the APPROVED responsive mechanism. It proportionally
+   scales the entire slide to any viewport, so no per-element @media
+   breakpoints are required for layout fidelity. The two rules below
+   only bound in-slide Mermaid height so a tall diagram never
+   overflows the artboard before reveal applies its scale transform.
+   ============================================================ */
 .reveal .mermaid { max-height: 62vh; }
 .reveal .mermaid svg { max-height: 62vh; }
-  </style>
+</style>
 </head>
 <body>
   <div class="reveal">
@@ -605,7 +639,7 @@
 
       <!-- 1. TITLE (slide-title) -->
       <section class="slide-title">
-        <span class="hero-icon"><i data-lucide="landmark"></i></span>
+        <span class="hero-icon" aria-hidden="true"><i data-lucide="landmark"></i></span>
         <p class="eyebrow">Blitzy Code Archaeology &amp; PR Review</p>
         <h1>Enterprise Accounting<br>for Odoo 19.0 CE</h1>
         <p class="subtitle">Six AGPL-3.0 accounting addons &mdash; what was built, why it matters, and the Segmented PR Review verdict.</p>
@@ -617,15 +651,29 @@
         <p class="eyebrow">At a Glance</p>
         <h2>The Synthetic Change Set</h2>
         <div class="kpi-grid">
-          <div class="kpi-card"><span class="kpi-icon"><i data-lucide="files"></i></span><div class="kpi-value">278</div><div class="kpi-label">Files changed</div></div>
-          <div class="kpi-card"><span class="kpi-icon"><i data-lucide="plus"></i></span><div class="kpi-value">+134,588</div><div class="kpi-label">Lines inserted</div></div>
-          <div class="kpi-card"><span class="kpi-icon"><i data-lucide="boxes"></i></span><div class="kpi-value">6</div><div class="kpi-label">Accounting addons</div></div>
-          <div class="kpi-card"><span class="kpi-icon"><i data-lucide="git-commit-horizontal"></i></span><div class="kpi-value">310</div><div class="kpi-label">Commits (307 agent + 3 merge)</div></div>
+          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="files"></i></span><div class="kpi-value">278</div><div class="kpi-label">Files changed</div></div>
+          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="plus"></i></span><div class="kpi-value">+134,588</div><div class="kpi-label">Lines inserted</div></div>
+          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="boxes"></i></span><div class="kpi-value">6</div><div class="kpi-label">Accounting addons</div></div>
+          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="git-commit-horizontal"></i></span><div class="kpi-value">310</div><div class="kpi-label">Commits (307 agent + 3 merge)</div></div>
         </div>
-        <p class="note">Diff of <span class="mono">origin/pdlc</span> vs base <span class="mono">7bd7718</span>; merge PRs #2, #3, #7.</p>
+        <p class="note">Diff of <span class="mono">origin/pdlc</span> vs base <span class="mono">7bd7718</span>; merge PRs #2 (2026-02-02), #3 (2026-04-17), #7 (2026-06-09, head <span class="mono">13896915095</span>).</p>
       </section>
 
-      <!-- 3. ARCHITECTURE -- module-dependency Mermaid (content) -->
+      <!-- 3. CHANGE SET BY GROUP -- top-level group counts (content) -->
+      <section>
+        <p class="eyebrow">By Group</p>
+        <h2>Five Change Groups, 278 Files</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="boxes"></i></span><div class="kpi-value">206</div><div class="kpi-label">addons/</div></div>
+          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="ticket"></i></span><div class="kpi-value">43</div><div class="kpi-label">tickets/</div></div>
+          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="file-text"></i></span><div class="kpi-value">22</div><div class="kpi-label">blitzy/</div></div>
+          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="database"></i></span><div class="kpi-value">5</div><div class="kpi-label">test_data/</div></div>
+          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="book-open"></i></span><div class="kpi-value">2</div><div class="kpi-label">docs/</div></div>
+        </div>
+        <p class="note">Six addons span 206 files; the rest are specs, Blitzy docs, sample data, and guides.</p>
+      </section>
+
+      <!-- 4. ARCHITECTURE -- module-dependency Mermaid (content) -->
       <section>
         <p class="eyebrow">Architecture</p>
         <h2>All Six Addons Extend Core <span class="mono">account</span></h2>
@@ -643,48 +691,48 @@ graph TD
         <p class="note">No cross-addon coupling; <span class="mono">analytic</span> and <span class="mono">mail</span> are the only extra core dependencies.</p>
       </section>
 
-      <!-- 4. DIVIDER: What Was Built (slide-divider) -->
+      <!-- 5. DIVIDER: What Was Built (slide-divider) -->
       <section class="slide-divider">
-        <span class="divider-icon"><i data-lucide="blocks"></i></span>
+        <span class="divider-icon" aria-hidden="true"><i data-lucide="blocks"></i></span>
         <p class="eyebrow">Section 01</p>
         <h2>What Was Built</h2>
         <span class="accent-bar"></span>
       </section>
 
-      <!-- 5. SIX-ADDON VALUE + file counts (content) -->
+      <!-- 6. SIX-ADDON VALUE + file counts (content) -->
       <section>
         <p class="eyebrow">Product Value</p>
         <h2>Six Addons, Enterprise Parity</h2>
         <div class="icon-row">
-          <span><i data-lucide="file-text"></i></span>
-          <span><i data-lucide="landmark"></i></span>
-          <span><i data-lucide="calculator"></i></span>
-          <span><i data-lucide="calendar-clock"></i></span>
-          <span><i data-lucide="mail"></i></span>
-          <span><i data-lucide="wallet"></i></span>
+          <span aria-hidden="true"><i data-lucide="file-text"></i></span>
+          <span aria-hidden="true"><i data-lucide="landmark"></i></span>
+          <span aria-hidden="true"><i data-lucide="calculator"></i></span>
+          <span aria-hidden="true"><i data-lucide="calendar-clock"></i></span>
+          <span aria-hidden="true"><i data-lucide="mail"></i></span>
+          <span aria-hidden="true"><i data-lucide="wallet"></i></span>
         </div>
         <table>
           <thead><tr><th>Addon</th><th>Capability</th><th>Files</th></tr></thead>
           <tbody>
-            <tr><td><span class="mono">account_financial_report_ce</span></td><td>Balance Sheet, P&amp;L, Cash Flow, GL, Trial Balance</td><td>44</td></tr>
-            <tr><td><span class="mono">account_payment_followup</span></td><td>Multi-level dunning &amp; reminders</td><td>39</td></tr>
-            <tr><td><span class="mono">account_bank_reconciliation_ce</span></td><td>Statement import &amp; matching engine</td><td>35</td></tr>
-            <tr><td><span class="mono">account_budget_management</span></td><td>Budget vs. actual variance analysis</td><td>31</td></tr>
-            <tr><td><span class="mono">account_asset_management</span></td><td>Depreciation, revaluation, impairment, disposal <span class="pill">IAS 16 / 36 &middot; ASC 360</span></td><td>31</td></tr>
-            <tr><td><span class="mono">account_deferred_revenue</span></td><td>Revenue / expense recognition <span class="pill">ASC 606 / IFRS 15</span></td><td>26</td></tr>
+            <tr><td><span class="mono">account_financial_report_ce</span></td><td>Financial statements</td><td>44</td></tr>
+            <tr><td><span class="mono">account_payment_followup</span></td><td>Multi-level dunning</td><td>39</td></tr>
+            <tr><td><span class="mono">account_bank_reconciliation_ce</span></td><td>Statement matching</td><td>35</td></tr>
+            <tr><td><span class="mono">account_budget_management</span></td><td>Variance analysis</td><td>31</td></tr>
+            <tr><td><span class="mono">account_asset_management</span></td><td>Depreciation, IAS 16/36</td><td>31</td></tr>
+            <tr><td><span class="mono">account_deferred_revenue</span></td><td>Recognition, ASC 606</td><td>26</td></tr>
           </tbody>
         </table>
       </section>
 
-      <!-- 6. DIVIDER: What Changed Architecturally (slide-divider) -->
+      <!-- 7. DIVIDER: What Changed Architecturally (slide-divider) -->
       <section class="slide-divider">
-        <span class="divider-icon"><i data-lucide="workflow"></i></span>
+        <span class="divider-icon" aria-hidden="true"><i data-lucide="workflow"></i></span>
         <p class="eyebrow">Section 02</p>
         <h2>What Changed Architecturally</h2>
         <span class="accent-bar"></span>
       </section>
 
-      <!-- 7. DATA-FLOW -- asset depreciation sequence Mermaid (content) -->
+      <!-- 8. DATA-FLOW -- asset depreciation sequence Mermaid (content) -->
       <section>
         <p class="eyebrow">Data Flow</p>
         <h2>Asset Depreciation Posting</h2>
@@ -702,15 +750,15 @@ sequenceDiagram
         <p class="note">One of three unattended <span class="mono">ir.cron</span> jobs (assets daily, budget alert hourly, follow-up daily).</p>
       </section>
 
-      <!-- 8. DIVIDER: How We Reviewed It (slide-divider) -->
+      <!-- 9. DIVIDER: How We Reviewed It (slide-divider) -->
       <section class="slide-divider">
-        <span class="divider-icon"><i data-lucide="shield-check"></i></span>
+        <span class="divider-icon" aria-hidden="true"><i data-lucide="shield-check"></i></span>
         <p class="eyebrow">Section 03</p>
         <h2>How We Reviewed It</h2>
         <span class="accent-bar"></span>
       </section>
 
-      <!-- 9. REVIEW PIPELINE -- Segmented PR Review Mermaid (content) -->
+      <!-- 10. REVIEW PIPELINE -- Segmented PR Review Mermaid (content) -->
       <section>
         <p class="eyebrow">Review Pipeline</p>
         <h2>Segmented PR Review</h2>
@@ -728,85 +776,97 @@ flowchart LR
         <p class="note">Any <span class="mono">BLOCKED</span> halts the pass and restarts from pre-flight with no carried credit.</p>
       </section>
 
-      <!-- 10. PRE-FLIGHT KPIs (content) -->
+      <!-- 11. PRE-FLIGHT KPIs (content) -->
       <section>
         <p class="eyebrow">Pre-Flight Gate</p>
         <h2>Quality Gates Passed</h2>
         <div class="kpi-grid">
-          <div class="kpi-card ok"><span class="kpi-icon"><i data-lucide="circle-check"></i></span><div class="kpi-value">0 / 0</div><div class="kpi-label">Build errors / warnings</div></div>
-          <div class="kpi-card ok"><span class="kpi-icon"><i data-lucide="badge-check"></i></span><div class="kpi-value">619 / 619</div><div class="kpi-label">Tests pass</div></div>
-          <div class="kpi-card ok"><span class="kpi-icon"><i data-lucide="percent"></i></span><div class="kpi-value">&ge; 80%</div><div class="kpi-label">Coverage per module</div></div>
-          <div class="kpi-card ok"><span class="kpi-icon"><i data-lucide="sparkles"></i></span><div class="kpi-value">0</div><div class="kpi-label">Ruff violations</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="circle-check"></i></span><div class="kpi-value">0 / 0</div><div class="kpi-label">Build errors / warnings</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="badge-check"></i></span><div class="kpi-value">619 / 619</div><div class="kpi-label">Tests pass</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="percent"></i></span><div class="kpi-value">&ge; 80%</div><div class="kpi-label">Coverage per module</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="sparkles"></i></span><div class="kpi-value">0</div><div class="kpi-label">Ruff violations</div></div>
         </div>
         <p class="note">Per-module coverage 87&ndash;90%; zero production-path placeholder stubs.</p>
       </section>
 
-      <!-- 11. DIVIDER: Risks & Mitigations (slide-divider) -->
+      <!-- 12. RUNTIME VALIDATION -- installed modules, tables, per-module tests (content) -->
+      <section>
+        <p class="eyebrow">Runtime Validation</p>
+        <h2>Installed &amp; Verified</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="package-check"></i></span><div class="kpi-value">4</div><div class="kpi-label">Modules @ 19.0.1.0.0</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="table-2"></i></span><div class="kpi-value">12</div><div class="kpi-label">Net-new tables</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="badge-check"></i></span><div class="kpi-value">619 / 619</div><div class="kpi-label">Tests passed</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="percent"></i></span><div class="kpi-value">87&ndash;90%</div><div class="kpi-label">Coverage range</div></div>
+        </div>
+        <p class="note">Tests by module &mdash; AM 98, BM 171, DR 37, PF 312; all four install cleanly.</p>
+      </section>
+
+      <!-- 13. DIVIDER: Risks & Mitigations (slide-divider) -->
       <section class="slide-divider">
-        <span class="divider-icon"><i data-lucide="shield-alert"></i></span>
+        <span class="divider-icon" aria-hidden="true"><i data-lucide="shield-alert"></i></span>
         <p class="eyebrow">Section 04</p>
         <h2>Risks &amp; Mitigations</h2>
         <span class="accent-bar"></span>
       </section>
 
-      <!-- 12. RISK TABLE (content) -->
+      <!-- 14. RISK TABLE (content) -->
       <section>
         <p class="eyebrow">Risk Register</p>
-        <h2>Top Risks &mdash; All Non-Blocking</h2>
+        <h2>Top Risks &mdash; Non-Blocking</h2>
         <table>
           <thead><tr><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead>
           <tbody>
-            <tr><td>Mermaid <span class="mono">11.4.0</span> pin vs CVE-2025-54881 (fixed <span class="mono">11.10.0</span>)</td><td><span class="pill low">Low</span></td><td>Static trusted diagrams + <span class="mono">securityLevel:'strict'</span> + CSP; reconcile pin vs CVE</td></tr>
-            <tr><td>Unattended scheduled-job load &mdash; 3 <span class="mono">ir.cron</span> jobs (asset daily, budget hourly, follow-up daily)</td><td><span class="pill med">Medium</span></td><td>Bound batch size; idempotent re-runs; monitor runtime vs cron timeout</td></tr>
-            <tr><td>Per-story coverage 30&ndash;62% vs per-module &ge;80% gate (87/89/87/90)</td><td><span class="pill low">Low</span></td><td>Adopt per-module aggregate as the authoritative gate; optional per-file uplift</td></tr>
-            <tr><td>Production SMTP relay not configured (PF-002)</td><td><span class="pill high">High (env)</span></td><td>Configure SMTP relay before go-live</td></tr>
+            <tr><td>Mermaid <span class="mono">11.4.0</span> pin (CVE-2025-54881)</td><td><span class="pill low">Low</span></td><td>Strict + CSP</td></tr>
+            <tr><td>Three <span class="mono">ir.cron</span> jobs</td><td><span class="pill med">Medium</span></td><td>Bounded, idempotent</td></tr>
+            <tr><td>Per-story vs &ge;80% gate</td><td><span class="pill low">Low</span></td><td>Per-module aggregate</td></tr>
+            <tr><td>SMTP relay (PF-002)</td><td><span class="pill high">High</span></td><td>Configure pre-go-live</td></tr>
           </tbody>
         </table>
-        <p class="note">CVE-2025-54881 is a moderate XSS reachable only via untrusted KaTeX labels &mdash; not this deck's static diagrams.</p>
       </section>
 
-      <!-- 13. DIVIDER: Onboarding & Continuation (slide-divider) -->
+      <!-- 15. DIVIDER: Onboarding & Continuation (slide-divider) -->
       <section class="slide-divider">
-        <span class="divider-icon"><i data-lucide="rocket"></i></span>
+        <span class="divider-icon" aria-hidden="true"><i data-lucide="rocket"></i></span>
         <p class="eyebrow">Section 05</p>
         <h2>Onboarding &amp; Continuation</h2>
         <span class="accent-bar"></span>
       </section>
 
-      <!-- 14. DEV SETUP -- inline Fira Code (content; no fenced blocks) -->
+      <!-- 16. DEV SETUP -- inline Fira Code (content; no fenced blocks) -->
       <section>
         <p class="eyebrow">Developer Setup</p>
         <h2>Install &middot; Build &middot; Lint</h2>
         <div class="icon-row">
-          <span><i data-lucide="terminal"></i></span>
-          <span><i data-lucide="package"></i></span>
-          <span><i data-lucide="database"></i></span>
-          <span><i data-lucide="play"></i></span>
+          <span aria-hidden="true"><i data-lucide="terminal"></i></span>
+          <span aria-hidden="true"><i data-lucide="package"></i></span>
+          <span aria-hidden="true"><i data-lucide="database"></i></span>
+          <span aria-hidden="true"><i data-lucide="play"></i></span>
         </div>
         <ul class="setup-list">
-          <li><span class="step-label">Create &amp; activate venv</span><span class="cmds"><code>python3 -m venv venv</code> <code>source venv/bin/activate</code></span></li>
-          <li><span class="step-label">Install dependencies</span><span class="cmds"><code>pip install -r requirements.txt</code></span></li>
-          <li><span class="step-label">Build (exit 0, &ldquo;Modules loaded&rdquo;)</span><span class="cmds"><code>python odoo-bin -d &lt;db&gt; -i &lt;modules&gt; --stop-after-init --without-demo=True --no-http</code></span></li>
-          <li><span class="step-label">Static analysis</span><span class="cmds"><code>ruff check addons/&lt;module&gt;/</code></span></li>
+          <li><span class="step-label">Virtualenv</span><span class="cmds"><code>python3 -m venv venv</code></span></li>
+          <li><span class="step-label">Dependencies</span><span class="cmds"><code>pip install -r requirements.txt</code></span></li>
+          <li><span class="step-label">Build</span><span class="cmds"><code>odoo-bin -i &lt;modules&gt; --stop-after-init</code></span></li>
+          <li><span class="step-label">Lint</span><span class="cmds"><code>ruff check addons/&lt;module&gt;/</code></span></li>
         </ul>
       </section>
 
-      <!-- 15. VERDICT KPI CARDS (content) -- reflects CODE_REVIEW.md -->
+      <!-- 17. VERDICT KPI CARDS (content) -- reflects CODE_REVIEW.md -->
       <section>
         <p class="eyebrow">Final Verdict</p>
         <h2>Seven Phases, One Verdict</h2>
         <div class="kpi-grid">
-          <div class="kpi-card ok"><span class="kpi-icon"><i data-lucide="shield-check"></i></span><div class="kpi-value">PASS</div><div class="kpi-label">Pre-flight gate</div></div>
-          <div class="kpi-card ok"><span class="kpi-icon"><i data-lucide="badge-check"></i></span><div class="kpi-value">7 / 7</div><div class="kpi-label">Phases APPROVED</div></div>
-          <div class="kpi-card ok"><span class="kpi-icon"><i data-lucide="check-check"></i></span><div class="kpi-value">APPROVED</div><div class="kpi-label">Final verdict</div></div>
-          <div class="kpi-card ok"><span class="kpi-icon"><i data-lucide="layout-grid"></i></span><div class="kpi-value">278 / 278</div><div class="kpi-label">Files partitioned</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="shield-check"></i></span><div class="kpi-value">PASS</div><div class="kpi-label">Pre-flight gate</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="badge-check"></i></span><div class="kpi-value">7 / 7</div><div class="kpi-label">Phases APPROVED</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="check-check"></i></span><div class="kpi-value">APPROVED</div><div class="kpi-label">Final verdict</div></div>
+          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="layout-grid"></i></span><div class="kpi-value">278 / 278</div><div class="kpi-label">Files partitioned</div></div>
         </div>
         <p class="note">Every file mapped to exactly one of seven domains; each verdict token is exactly <span class="mono">APPROVED</span>.</p>
       </section>
 
-      <!-- 16. CLOSING (slide-closing) -->
+      <!-- 18. CLOSING (slide-closing) -->
       <section class="slide-closing">
-        <span class="divider-icon"><i data-lucide="circle-check-big"></i></span>
+        <span class="divider-icon" aria-hidden="true"><i data-lucide="circle-check-big"></i></span>
         <p class="eyebrow">Outcome</p>
         <h2>Merge-Ready, Audit-Ready</h2>
         <p class="subtitle">Enterprise accounting parity for Odoo CE &mdash; reviewed, verified, and approved.</p>

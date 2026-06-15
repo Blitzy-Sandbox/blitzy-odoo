@@ -186,7 +186,7 @@ Three deliverables are produced, each with a defined internal structure. The del
 └── blitzy-deck/
     ├── executive-summary.html                      (CREATE — self-contained reveal.js deck)
     └── references/
-        └── blitzy-reveal-theme.css                 (REFERENCE — platform-provided brand theme)
+        └── blitzy-reveal-theme.css                 (CREATE — in-repo canonical brand theme; byte-for-byte inline in deck)
 ```
 
 **Archaeology report (`blitzy/documentation/Technical Specifications.md`, this file)** — Section 0 (this Agent Action Plan) followed by the archaeology body (Sections 1–7):
@@ -240,7 +240,7 @@ Every documentation file to be created, updated, deleted, or referenced is mappe
 | `blitzy-deck/executive-summary.html` | CREATE | full archaeology + review outcomes | Single self-contained reveal.js deck, 16 slides, Blitzy brand theme inline, Mermaid + Lucide, pinned CDNs |
 | `blitzy/documentation/Technical Specifications.md` | UPDATE (regenerate) | git history (`pdlc` vs base) + `addons/account_*/**` | Archaeology report: Section 0 AAP, methodology, branch topology, synthetic-PR definition, per-addon change manifest, intent reconstruction, architecture diagrams, risk register |
 | `blitzy/documentation/Project Guide.md` | UPDATE (regenerate) | review findings + `addons/account_*/**` | Compliance & Quality Review (review verdict summary), test results, runtime validation, risk assessment, development guide |
-| `blitzy-deck/references/blitzy-reveal-theme.css` | REFERENCE | Executive Presentation rule text | Canonical Blitzy reveal.js theme (platform-provided, not in repo); embedded inline in the deck |
+| `blitzy-deck/references/blitzy-reveal-theme.css` | CREATE | Executive Presentation rule text | Canonical Blitzy reveal.js theme — an **in-repository** brand asset (one of the five deliverables) created this run; must be present, verified, and synchronized **byte-for-byte** with the deck's inline `<style>` theme (verified identical, 20,058 bytes, `diff` → exit 0) |
 | `tickets/EPIC-001-enterprise-accounting.md` | REFERENCE | — | Epic-level requirement traceability for archaeology + Business/Domain review [origin/pdlc:tickets/EPIC-001-enterprise-accounting.md:L1] |
 | `tickets/features/*.md` | REFERENCE | — | Feature-level (FEATURE-001..006) intent and acceptance criteria |
 | `tickets/stories/**/*.md` | REFERENCE | — | Story-level (AM/BM/DR/PF/BR/FR) acceptance criteria and BDD scenarios |
@@ -392,7 +392,7 @@ Coverage gaps to address are precisely the three net-new artifacts (archaeology 
     - `addons/account_financial_report_ce/**`, `addons/account_bank_reconciliation_ce/**` (documented + partitioned, not edited)
     - `tickets/**`, `docs/**`, `test_data/**`, `blitzy/screenshots/**`
 - **Reference assets:**
-    - `blitzy-deck/references/blitzy-reveal-theme.css` (platform-provided brand theme)
+    - `blitzy-deck/references/blitzy-reveal-theme.css` — **in-repository** canonical brand theme (a CREATE deliverable this run); the single auditable source held byte-for-byte consistent with the deck's inline `<style>` theme
     - `tickets/templates/**` (documentation-structure references)
 - **Review methodology scope:** partitioning of all 278 merged files into the seven domains; documentation of the pre-flight gate command set and verification queries.
 
@@ -469,7 +469,7 @@ No attachments were provided with this project. The `review_attachments` inspect
 - **Document/image attachments:** none. No PDFs, images, or other files were supplied; all requirements derive from the user prompt, the two binding rules (§0.10), and repository inspection.
 - **Figma attachments:** none. No Figma frames or URLs were provided; consequently no Figma design analysis and no design-to-system mapping apply, and no design-system component library was named for the subject product (Odoo renders its UI through XML views and OWL/SCSS assets, reviewed under the Frontend domain).
 
-The single externally referenced asset is the platform-provided executive-presentation theme at `blitzy-deck/references/blitzy-reveal-theme.css`, which is not present in the repository and is embedded inline in the executive deck per the Executive Presentation rule (§0.10.2).
+The executive-presentation theme at `blitzy-deck/references/blitzy-reveal-theme.css` is an **in-repository** canonical brand asset — created this run as one of the five deliverables — and is embedded **byte-for-byte inline** in the executive deck per the Executive Presentation rule (§0.10.2). It is the single auditable source of the deck's inline theme and is held synchronized with it (verified identical, 20,058 bytes).
 
 ---
 
@@ -558,6 +558,30 @@ This is the mechanism behind every `[<path>:<locator>]` citation in this report:
 ## 1.4 From Evidence to the Synthetic Change Set
 
 The methodology yields a single, well-bounded object of study: the **synthetic pull request** (defined precisely in §3) — the union of the three `blitzy[bot]` merges diffed against the base. Treating that union as "actively made during this run" lets the Segmented PR Review (§0.10.1) operate on it as one atomic, reviewable change set: 278 files partitioned across seven domains, each owned by exactly one reviewer, each resolving to `APPROVED` or `BLOCKED`.
+
+## 1.5 Canonical Figures — Single Source of Truth
+
+The table below is the **single, authoritative set of canonical figures** for this delivery. Every figure is git-verified against `origin/pdlc` (diffed against base `7bd7718…`) or sourced from the verified runtime/test evidence in `blitzy/documentation/Project Guide.md` §3–§4. **All other deliverables — `CODE_REVIEW.md`, the executive deck, and the Project Guide — derive their figures from this table and MUST match it exactly.** Where a row is a runtime/test result it is labelled `[provenance: Project Guide §3/§4]`; all change-set magnitudes are `[git: origin/pdlc vs 7bd7718]`.
+
+| # | Metric | Canonical value | Source |
+|---|--------|-----------------|--------|
+| 1 | Files changed (synthetic PR) | **278** | [git: `git diff --name-status 7bd7718..origin/pdlc`] |
+| 2 | Insertions | **+134,588** | [git: `git diff --shortstat 7bd7718..origin/pdlc`] |
+| 3 | Commits (base-exclusive) | **310** — 307 `agent@blitzy.com` + 3 `blitzy[bot]` merges | [git: `git log --oneline 7bd7718..origin/pdlc`] |
+| 4 | Base commit | `7bd7718` | [git: merge-base] |
+| 5 | Head / tip commit | `13896915095` (full `1389691509568206594224539d5495f87a310ed1`) | [git: `origin/pdlc` tip] |
+| 6 | Merge PRs | **#2** 2026-02-02 (`2c52c6b3aaf`), **#3** 2026-04-17 (`5a7e83629bc`), **#7** 2026-06-09 (`13896915095`) | [git: `--merges` log] |
+| 7 | Top-level group counts (Σ=278) | addons **206**, tickets **43**, blitzy **22**, test_data **5**, docs **2** | [git: per-path counts] |
+| 8 | Per-addon file counts (Σ=206) | financial_report **44**, payment_followup **39**, bank_recon **35**, budget **31**, asset **31**, deferred **26** | [git: `git ls-tree -r origin/pdlc -- addons/<addon>`] |
+| 9 | Per-extension counts (Σ=278) | .py **128**, .xml **59**, .md **47**, .png **20**, .csv **9**, .scss **7**, .rst **4**, .qif **2**, .ofx **2** | [git: extension tally] |
+| 10 | Net-new models / DB tables | **12** (`budget_budget`, `budget_budget_line`, `budget_budget_period`, `budget_alert`, `account_asset`, `account_asset_category`, `account_asset_depreciation_line`, `account_deferred_schedule`, `account_deferred_line`, `account_followup_level`, `account_followup_line`, `account_followup_history`) | [provenance: Project Guide §4.2] |
+| 11 | Scheduled `ir.cron` jobs | **3** (asset depreciation — daily; budget alert — hourly; follow-up email — daily) | [provenance: Project Guide §4.3] |
+| 12 | Modules installed | **4** newest addons `state='installed'`, `latest_version='19.0.1.0.0'` | [provenance: Project Guide §4.1] |
+| 13 | Tests (combined) | **619 / 619** pass (0 failed / 0 errors) — AM **98**, BM **171**, DR **37**, PF **312** | [provenance: Project Guide §3] |
+| 14 | Coverage (per-module) | AM **87%**, BM **89%**, DR **87%**, PF **90%** (≥ 80%) | [provenance: Project Guide §3] |
+| 15 | Review verdict | **7 / 7** domain phases `APPROVED`; **final `APPROVED`**; **278 / 278** files partitioned | [CODE_REVIEW.md §C–§E] |
+| 16 | Deliverables | **5** — `CODE_REVIEW.md`, `Technical Specifications.md`, `Project Guide.md`, `executive-summary.html`, `blitzy-reveal-theme.css` | [first-hand on review branch] |
+| 17 | CDN pins | reveal.js **5.1.0**, Mermaid **11.4.0**, Lucide **0.460.0** | [Executive Presentation rule §0.10.2] |
 
 # 2. Branch Topology & Provenance
 

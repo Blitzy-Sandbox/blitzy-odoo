@@ -63,7 +63,7 @@ The pre-flight gate **MUST pass in its entirety before Domain Phase 1 opens**. *
 
 | # | Gate condition | Result | Method / evidence |
 |---|----------------|--------|-------------------|
-| 1 | **All AAP deliverables exist at specified paths** | `PASS` | All four AAP deliverables are physically present **on the review branch** at their AAP-specified paths, verified first-hand on the working tree [first-hand: `test -f` / `git ls-files`]: `CODE_REVIEW.md` (repo root, created during this gate), `blitzy/documentation/Technical Specifications.md`, `blitzy/documentation/Project Guide.md`, and `blitzy-deck/executive-summary.html`. The two Markdown deliverables additionally exist on the merged `origin/pdlc` lineage [first-hand: `git cat-file -e origin/pdlc:<path>`]; `CODE_REVIEW.md` and the executive deck are **net-new to this review branch** (absent from `origin/pdlc`, confirmed `git cat-file -e origin/pdlc:<path>` → not found) and are carried in the PR's final commit. See B.2. |
+| 1 | **All AAP deliverables exist at specified paths** | `PASS` | All **five** AAP deliverables are physically present **on the review branch** at their AAP-specified paths, verified first-hand on the working tree [first-hand: `test -f` / `git ls-files`]: `CODE_REVIEW.md` (repo root, created during this gate), `blitzy/documentation/Technical Specifications.md`, `blitzy/documentation/Project Guide.md`, `blitzy-deck/executive-summary.html`, and the canonical brand theme `blitzy-deck/references/blitzy-reveal-theme.css` (in-repository **CREATE**; its tokens/classes are embedded **byte-for-byte inline** in the deck). The two Markdown deliverables additionally exist on the merged `origin/pdlc` lineage [first-hand: `git cat-file -e origin/pdlc:<path>`]; `CODE_REVIEW.md`, the executive deck, and the theme CSS are **net-new to this review branch** (absent from `origin/pdlc`, confirmed `git cat-file -e origin/pdlc:<path>` → not found) and are carried in the PR's final commit. See B.2. |
 | 2 | **Build: zero errors / zero warnings** | `PASS` | Install of the four newest addons exits 0 with "Modules loaded"; 5/5 install scenarios (4 individual + 1 combined) exit 0 [provenance: Project Guide §4.1; §3 "Module install (`--stop-after-init`)" row]. First-hand `python -m py_compile` succeeds for all 47 production `.py` files of the four newest addons [first-hand]. |
 | 3 | **All required tests pass** | `PASS` | 619/619 combined tests pass, 0 failed / 0 errors; per-module AM 98/98, BM 171/171, DR 37/37, PF 312/312; determinism 12/12 identical [provenance: Project Guide §3]. Per-**module** coverage AM 87% / BM 89% / DR 87% / PF 90% (≥ 80%). See coverage nuance in B.3 and Domain Phase 4. |
 | 4 | **Static analysis: zero violations** | `PASS` | `ruff check --no-fix` reports "All checks passed!" for all four modules (one informational removed-rule note `UP038`, which is not a violation) [provenance: Project Guide §3 "Linter" row, §5.3]. `ruff` is not installable in this offline environment, so this gate is recorded from provenance; config is repo-root `ruff.toml` (ruff 0.11.4+, `target-version = "py310"`, `[lint] preview = true`) [ruff.toml:L6-L9]. |
@@ -79,8 +79,9 @@ The pre-flight gate **MUST pass in its entirety before Domain Phase 1 opens**. *
 | Companion guide | `blitzy/documentation/Project Guide.md` | **Present** (regenerated this run; base content + appended §11 review outcome); also on `origin/pdlc` | [first-hand on review branch] + [origin/pdlc:blitzy/documentation/Project Guide.md:L1] |
 | Review artifact | `CODE_REVIEW.md` (repo root) | **Present** (created during this pre-flight gate; net-new — absent from `origin/pdlc`) | this file [first-hand on review branch] |
 | Executive deck | `blitzy-deck/executive-summary.html` | **Present** (authored this run; net-new — absent from `origin/pdlc`) | [blitzy-deck/executive-summary.html:L1, first-hand on review branch] |
+| Canonical brand theme | `blitzy-deck/references/blitzy-reveal-theme.css` | **Present** (created this run, in-repository **CREATE**; net-new — absent from `origin/pdlc`). Embedded **byte-for-byte inline** in the deck `<style>`; verified identical (20,058 bytes; `diff` of the inline block vs this file → exit 0) | [blitzy-deck/references/blitzy-reveal-theme.css:L1, first-hand on review branch] |
 
-> All four deliverables physically exist **on the review branch** at their AAP-specified paths, first-hand verified on the working tree. The two regenerated Markdown deliverables additionally exist on the merged `origin/pdlc` lineage. `CODE_REVIEW.md` and the reveal.js executive deck are net-new to this review branch and are committed into the PR's final commit, satisfying the rule requirement that `CODE_REVIEW.md` be **present in the final commit**. No gate condition relies on a deliverable that is not physically present on the branch under review.
+> All **five** deliverables physically exist **on the review branch** at their AAP-specified paths, first-hand verified on the working tree. The two regenerated Markdown deliverables additionally exist on the merged `origin/pdlc` lineage. `CODE_REVIEW.md`, the reveal.js executive deck, and the canonical theme CSS are net-new to this review branch and are committed into the PR's final commit, satisfying the rule requirement that `CODE_REVIEW.md` be **present in the final commit**. The theme CSS is the single auditable source of the deck's inline brand theme and is held byte-for-byte consistent with it. No gate condition relies on a deliverable that is not physically present on the branch under review.
 
 ### B.3 Coverage-interpretation note (transparency; non-blocking)
 
@@ -161,7 +162,7 @@ git diff --name-only 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc | wc -
 | `account_deferred_revenue` | 8 | 5×.py, 1×.rst, 2×.xml |
 | `account_financial_report_ce` | 8 | 6×.py, 2×.xml |
 | `account_payment_followup` | 10 | 6×.py, 1×.rst, 3×.xml |
-| **Subtotal** | **52** | |
+| **Subtotal** | **52** | **35×.py, 13×.xml, 4×.rst** — manifests, package/hook `__init__`, cron & sequence data, addon READMEs |
 
 #### Domain 2 — Security — 12 files
 
@@ -173,7 +174,7 @@ git diff --name-only 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc | wc -
 | `account_deferred_revenue` | 2 | 1×.csv, 1×.xml |
 | `account_financial_report_ce` | 2 | 1×.csv, 1×.xml |
 | `account_payment_followup` | 2 | 1×.csv, 1×.xml |
-| **Subtotal** | **12** | |
+| **Subtotal** | **12** | **6×.csv, 6×.xml** — one `ir.model.access.csv` and one record-rule/groups security XML per addon |
 
 #### Domain 3 — Backend Architecture — 41 files
 
@@ -185,7 +186,7 @@ git diff --name-only 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc | wc -
 | `account_deferred_revenue` | 6 | 6×.py |
 | `account_financial_report_ce` | 8 | 8×.py |
 | `account_payment_followup` | 7 | 7×.py |
-| **Subtotal** | **41** | |
+| **Subtotal** | **41** | **41×.py** — ORM models (`_name`/`_inherit`) and `TransientModel` wizards across all six addons |
 
 #### Domain 4 — QA/Test Integrity — 52 files
 
@@ -198,7 +199,7 @@ git diff --name-only 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc | wc -
 | `account_financial_report_ce` | 9 | 9×.py |
 | `account_payment_followup` | 11 | 11×.py |
 | `test_data` | 5 | 2×.csv, 1×.ofx, 1×.qif, 1×.xml |
-| **Subtotal** | **52** | |
+| **Subtotal** | **52** | **43×.py, 3×.csv, 2×.ofx, 2×.qif, 2×.xml** — per-story test suites plus bank-statement fixtures & sample data |
 
 #### Domain 5 — Business/Domain — 18 files
 
@@ -208,7 +209,7 @@ git diff --name-only 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc | wc -
 | `account_budget_management` | 1 | 1×.py |
 | `account_financial_report_ce` | 13 | 6×.py, 7×.xml |
 | `account_payment_followup` | 2 | 1×.py, 1×.xml |
-| **Subtotal** | **18** | |
+| **Subtotal** | **18** | **9×.py, 9×.xml** — report-engine models and paired QWeb report templates |
 
 #### Domain 6 — Frontend — 36 files
 
@@ -220,7 +221,7 @@ git diff --name-only 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc | wc -
 | `account_deferred_revenue` | 6 | 1×.scss, 5×.xml |
 | `account_financial_report_ce` | 4 | 2×.scss, 2×.xml |
 | `account_payment_followup` | 7 | 1×.scss, 6×.xml |
-| **Subtotal** | **36** | |
+| **Subtotal** | **36** | **29×.xml, 7×.scss** — form/tree/kanban/graph views, actions & menus plus per-addon SCSS asset bundles |
 
 #### Domain 7 — Other SME — 67 files
 
@@ -229,7 +230,7 @@ git diff --name-only 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc | wc -
 | `blitzy` | 22 | 2×.md, 20×.png |
 | `docs` | 2 | 2×.md |
 | `tickets` | 43 | 43×.md |
-| **Subtotal** | **67** | |
+| **Subtotal** | **67** | **47×.md, 20×.png** — epic/feature/story tickets, Blitzy & user docs, plus committed QA screenshots |
 
 ### C.3 Exhaustive per-file enumeration (all 278 rows)
 
@@ -707,7 +708,7 @@ All seven domain phases resolved to `APPROVED` in sequence. The Final Reviewer (
 
 | Re-verification | Outcome | Evidence |
 |-----------------|---------|----------|
-| Deliverables present at specified paths | Confirmed (4/4) | §B.2 |
+| Deliverables present at specified paths | Confirmed (5/5) — incl. `blitzy-deck/references/blitzy-reveal-theme.css` (in-repo CREATE; inline-in-deck byte-for-byte, `diff` → exit 0) | §B.2 |
 | Build (install) zero errors/warnings | Confirmed — 5/5 install scenarios exit 0; first-hand `py_compile` of all 47 production files OK | §B.1 #2, [first-hand] |
 | Tests pass | Confirmed — 619/619 (0 failed/0 errors); per-module coverage ≥ 80% | §B.1 #3, Phase 4 |
 | Static analysis zero violations | Confirmed — `ruff` "All checks passed!" | §B.1 #4 [provenance: Project Guide §3, §5.3] |

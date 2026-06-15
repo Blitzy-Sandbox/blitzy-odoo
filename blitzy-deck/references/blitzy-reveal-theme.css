@@ -374,7 +374,10 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--blitzy-text-muted);
+  /* Small uppercase label: uses the dark brand text token (not --blitzy-text-muted)
+     so it clears WCAG 2.1 AA on the light KPI-card surfaces. Dark slide types
+     override this below with a high-contrast translucent white. */
+  color: var(--blitzy-text);
 }
 
 /* KPI cards placed on dark slide types invert their surface for contrast. */
@@ -481,6 +484,110 @@
 }
 .reveal .slide-number {
   background-color: transparent;
-  color: var(--blitzy-text-muted);
+  /* Dark brand text token (not --blitzy-text-muted) for WCAG 2.1 AA on the
+     light deck surface; reveal renders the number small (c/t format). */
+  color: var(--blitzy-text);
   font-family: var(--ff-mono);
 }
+
+/* ============================================================
+   13. Component helpers -- subtitles, caption notes, inline mono,
+   divider/closing icon tile, badge pills, "OK" KPI accent, and the
+   developer-setup inline-code list. These are PART OF the canonical
+   theme (they only add NEW classes; they never redefine a component
+   class above) and are embedded inline in executive-summary.html
+   identically -- single source of truth (AAP Sec. 0.10.2).
+   ============================================================ */
+
+/* Subtitle (title + closing slides). Colour is inherited from the slide-type p rule. */
+.reveal .subtitle { font-size: 0.82em; line-height: 1.45; max-width: 36ch; margin: 0.2em 0 0; }
+.reveal .slide-title .subtitle { max-width: 40ch; }
+
+/* Vertically center the dark slide-type content. The canonical base rule sets
+   every section to height:100% (so the gradient/navy background fills the
+   viewport), which top-aligns content and defeats reveal's center:true. A
+   column flex with justify-content:center restores vertical centering without
+   touching the canonical block. Title centers on the cross axis (matching its
+   text-align:center, so the subtitle block + accent bar center too); dividers
+   and closing stay flush-start (matching their text-align:left). */
+/* reveal.js sets an inline `display:block` on the present slide (and hides the
+   rest), and that inline style beats a normal stylesheet rule -- so the flex is
+   scoped to `.present` and marked !important purely to override reveal's inline
+   display on the CURRENT slide. Hidden slides never match `.present`, so they
+   keep reveal's own display handling and stay hidden. */
+.reveal .slides section.slide-title.present,
+.reveal .slides section.slide-divider.present,
+.reveal .slides section.slide-closing.present {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+}
+/* Title centers its children on the cross axis (matches text-align:center, so the
+   subtitle block + accent bar center too); dividers/closing stay flush-start. */
+.reveal .slides section.slide-title { align-items: center; }
+.reveal .slides section.slide-divider,
+.reveal .slides section.slide-closing { align-items: flex-start; }
+
+/* Small caption note under a visual. On light surfaces it uses the dark brand
+   text token (not --blitzy-text-muted) to clear WCAG 2.1 AA at this small size;
+   dark slide types override to a high-contrast translucent white. */
+.reveal .note { font-size: 0.5em; line-height: 1.4; color: var(--blitzy-text); margin: 0.8em 0 0; }
+.reveal .slide-divider .note,
+.reveal .slide-closing .note { color: rgba(255, 255, 255, 0.62); }
+
+/* Lightweight inline monospace (no chip) for inline identifiers inside prose/notes. */
+.reveal .mono { font-family: var(--ff-mono); font-size: 0.92em; }
+
+/* Divider / closing Lucide icon tile (smaller sibling of the title .hero-icon). */
+.reveal .divider-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 104px; height: 104px; margin: 0 0 24px;
+  border-radius: 24px;
+  background: rgba(148, 250, 213, 0.14);
+  border: 1px solid rgba(148, 250, 213, 0.34);
+  color: var(--blitzy-accent-teal);
+}
+.reveal .divider-icon svg,
+.reveal .divider-icon [data-lucide] { width: 52px; height: 52px; stroke-width: 1.6; }
+
+/* Severity / standard badge pills (brand-aligned; no off-palette colours). */
+.reveal .pill {
+  display: inline-block; font-family: var(--ff-mono); font-size: 0.86em; font-weight: 500;
+  padding: 0.1em 0.6em; border-radius: 999px; white-space: nowrap;
+  background: var(--blitzy-accent-teal); color: var(--blitzy-primary-navy);
+}
+.reveal .pill.low  { background: var(--blitzy-accent-teal); color: var(--blitzy-primary-navy); }
+.reveal .pill.med  { background: var(--blitzy-surface-2); color: var(--blitzy-primary-dark); border: 1px solid var(--blitzy-primary-light); }
+.reveal .pill.high { background: var(--blitzy-primary-deep); color: var(--blitzy-text-invert); }
+
+/* "OK" KPI-card accent (teal top edge) for pre-flight + verdict cards. */
+.reveal .kpi-card.ok { border-block-start: 4px solid var(--blitzy-accent-teal); }
+.reveal .kpi-card.ok .kpi-value { color: var(--blitzy-primary); }
+
+/* Brand lockup on the closing slide (the brand dot is the canonical ::before). */
+.reveal .brand-lockup { margin-block-start: 1.4rem; }
+
+/* Developer-setup inline-code steps (inline Fira Code chips -- never a <pre> block).
+   The step label uses the dark brand text token for WCAG 2.1 AA at 0.46em. */
+.reveal .setup-list { list-style: none; margin: 0.4em 0 0; padding: 0; }
+.reveal .setup-list > li { margin: 0 0 0.95em; }
+.reveal .setup-list .step-label {
+  display: block; font-family: var(--ff-mono); font-size: 0.46em; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.14em; color: var(--blitzy-text);
+  margin: 0 0 0.4em;
+}
+.reveal .setup-list .cmds { display: flex; flex-wrap: wrap; gap: 0.5em; }
+.reveal .setup-list code { font-size: 0.56em; overflow-wrap: anywhere; }
+
+/* ============================================================
+   14. Responsive behaviour -- reveal.js transform scaling
+   The deck is authored on a fixed 1920x1080 artboard; reveal.js's
+   built-in transform scaling (the Reveal.initialize width/height
+   settings) is the APPROVED responsive mechanism. It proportionally
+   scales the entire slide to any viewport, so no per-element @media
+   breakpoints are required for layout fidelity. The two rules below
+   only bound in-slide Mermaid height so a tall diagram never
+   overflows the artboard before reveal applies its scale transform.
+   ============================================================ */
+.reveal .mermaid { max-height: 62vh; }
+.reveal .mermaid svg { max-height: 62vh; }

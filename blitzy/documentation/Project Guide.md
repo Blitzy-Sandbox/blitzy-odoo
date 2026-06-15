@@ -91,36 +91,36 @@ These four items are carried as **non-blocking** risks in the Segmented PR Revie
 
 | Component | Hours | Description |
 |---|---|---|
-| **Track A — account_asset_management (FEATURE-004)** | | |
-| AM-001 Asset Registration | 16 | `account.asset` + `account.asset.category` models with vendor/source-invoice linkage, `mail.thread` chatter, `ir.sequence` numbering; 8 BDD scenarios in `test_am_001.py` (1217 LOC) |
-| AM-002 Depreciation Configuration | 16 | Straight-line / declining-balance / units-of-production methods, useful-life and salvage-value parametrization; 12 BDD scenarios in `test_am_002.py` (1294 LOC) |
-| AM-003 Depreciation Board | 16 | `account.asset.depreciation.line` model with `@api.depends` schedule computation; tree/kanban/graph views; <2s SLA for 480 periods verified |
-| AM-004 Automatic Depreciation Entries | 18 | `ir.cron` XML record (`Assets: Post Depreciation Entries`, daily) invoking `_cron_post_depreciation_entries`; idempotency, fault tolerance, auto-close at salvage value; 17 scenarios |
-| AM-005 Asset Modification | 17 | Revaluation / impairment wizard (TransientModel), GAAP/IFRS-compliant journal entries, `mail.thread` audit trail; 16 scenarios |
-| AM-006 Asset Disposal | 17 | Disposal/sale/scrap/write-off wizard with gain/loss posting, partial disposal proportions, catch-up depreciation; 19 scenarios |
-| **Track B — account_budget_management (FEATURE-003)** | | |
-| BM-001 Budget Definition | 14 | `budget.budget` + `budget.budget.line` models with analytic distribution via `analytic.mixin`; 27 scenarios in `test_bm_001.py` |
-| BM-002 Period Allocation | 12 | `budget.budget.period` model supporting monthly/quarterly/annual periods; equal/manual/percentage/copy-previous distribution strategies; 26 scenarios |
-| BM-003 Actual vs Budget Reporting | 12 | `budget.vs.actual.report` AbstractModel with `read_group` aggregation on `account.move.line`; pivot/graph views; 16 scenarios |
-| BM-004 Variance Analysis | 16 | `budget.variance.wizard` TransientModel with absolute/percentage variance, favorable/unfavorable classification; <3s SLA for 1,000 lines verified |
-| BM-005 Budget Alerts | 12 | `budget.alert` model with threshold-based alerts (75/90/100/110%); `ir.cron` XML for hourly evaluation; 31 scenarios |
-| **Track C — account_deferred_revenue (FEATURE-005)** | | |
-| DR-001 Schedule Definition | 14 | `account.deferred.schedule` header model with invoice-driven creation, analytic distribution preservation; 6 scenarios in `test_dr_001.py` (1410 LOC) |
-| DR-002 Period Allocation | 14 | `account.deferred.line` model with straight-line/date-based/manual recognition methods; multi-currency support; 7 scenarios |
-| DR-003 Cut-off Wizard | 16 | `cutoff.wizard` TransientModel supporting single/batch/preview/reversal modes with `account.lock.exception` enforcement; 6 scenarios |
-| DR-004 Recognition Dashboard | 12 | `recognition.dashboard.wizard` TransientModel with `read_group` aggregation, summary cards, period filters; 10 scenarios |
-| **Track D — account_payment_followup (FEATURE-006)** | | |
-| PF-001 Level Configuration | 14 | `account.followup.level` model with sequence/delay/template/action_type; 22 scenarios |
-| PF-002 Automated Email Generation | 18 | `ir.cron` XML record (`Payment Follow-up: Send Reminders`, daily); batched `mail.mail` send via existing pipeline; 34 scenarios; SLA verified for 500 partners no-PDF in ~10s |
-| PF-003 Report Generation | 14 | `followup.report` model + QWeb PDF + `openpyxl` XLSX export; wizard with filters, drill-down to invoices; 22 scenarios |
-| PF-004 Action History | 14 | `account.followup.history` immutable audit trail with `mail.thread`; 31 scenarios |
-| PF-005 Overdue Calculation | 16 | `_inherit = 'res.partner'` aging buckets (Current / 1-30 / 31-60 / 61-90 / 90+); `account.followup.line` aggregator; computed `days_overdue` on `account.move`/`account.move.line`; 45 scenarios |
-| **Cross-Cutting Implementation Work** | | |
-| Module Foundation (4 modules) | 24 | Per-module `__manifest__.py` (avg 80 LOC each), `README.rst` (OCA template), `security/ir.model.access.csv`, `security/<module>_security.xml` (multi-company `ir.rule`), root `views/menuitem.xml`, package `__init__.py` files |
-| QA Validation Cycles (10 checkpoints) | 30 | Address findings from QA Checkpoints 1–10 spanning visual fidelity (CP4: 28 issues), security defects (CP5: 4 issues), code quality (CP6: 7 issues), documentation accuracy (CP9), test coverage and quality (CP10) |
-| Cross-Module Compliance Verification | 12 | Verify R-01 module independence (no cross-imports), R-02 zero Enterprise deps, R-03 `_inherit` correctness, R-07 `sudo()` justified, R-08 BM-004/005 disjoint fields, R-09 exact folder names |
-| Performance SLA Verification | 12 | Author and execute `blitzy/qa_artifacts/sla_*.py` benchmarks for AM-003 (480 periods), BM-004 (1,000 lines), DR-004 (1,001 schedules), PF-002 (500 partners), PF-005 (10,000 lines) |
-| **TOTAL COMPLETED** | **376** | |
+| **Track A — account_asset_management (FEATURE-004)** | _100 (subtotal)_ | Fixed-asset lifecycle — registration, depreciation board, automated entries, modification, disposal (6 stories: AM-001 through AM-006) [origin/pdlc:addons/account_asset_management/__manifest__.py] |
+| AM-001 Asset Registration | 16 | `account.asset` + `account.asset.category` models with vendor/source-invoice linkage, `mail.thread` chatter, `ir.sequence` numbering; 8 BDD scenarios in `test_am_001.py` (1217 LOC) [origin/pdlc:addons/account_asset_management/tests/test_am_001.py] |
+| AM-002 Depreciation Configuration | 16 | Straight-line / declining-balance / units-of-production methods, useful-life and salvage-value parametrization; 12 BDD scenarios in `test_am_002.py` (1294 LOC) [origin/pdlc:addons/account_asset_management/tests/test_am_002.py] |
+| AM-003 Depreciation Board | 16 | `account.asset.depreciation.line` model with `@api.depends` schedule computation; tree/kanban/graph views; <2s SLA for 480 periods verified [origin/pdlc:addons/account_asset_management/tests/test_am_003.py] |
+| AM-004 Automatic Depreciation Entries | 18 | `ir.cron` XML record (`Assets: Post Depreciation Entries`, daily) invoking `_cron_post_depreciation_entries`; idempotency, fault tolerance, auto-close at salvage value; 17 scenarios [origin/pdlc:addons/account_asset_management/tests/test_am_004.py] |
+| AM-005 Asset Modification | 17 | Revaluation / impairment wizard (TransientModel), GAAP/IFRS-compliant journal entries, `mail.thread` audit trail; 16 scenarios [origin/pdlc:addons/account_asset_management/tests/test_am_005.py] |
+| AM-006 Asset Disposal | 17 | Disposal/sale/scrap/write-off wizard with gain/loss posting, partial disposal proportions, catch-up depreciation; 19 scenarios [origin/pdlc:addons/account_asset_management/tests/test_am_006.py] |
+| **Track B — account_budget_management (FEATURE-003)** | _66 (subtotal)_ | Budgeting & variance — definition, period allocation, actual-vs-budget reporting, variance analysis, threshold alerts (5 stories: BM-001 through BM-005) [origin/pdlc:addons/account_budget_management/__manifest__.py] |
+| BM-001 Budget Definition | 14 | `budget.budget` + `budget.budget.line` models with analytic distribution via `analytic.mixin`; 27 scenarios in `test_bm_001.py` [origin/pdlc:addons/account_budget_management/tests/test_bm_001.py] |
+| BM-002 Period Allocation | 12 | `budget.budget.period` model supporting monthly/quarterly/annual periods; equal/manual/percentage/copy-previous distribution strategies; 26 scenarios [origin/pdlc:addons/account_budget_management/tests/test_bm_002.py] |
+| BM-003 Actual vs Budget Reporting | 12 | `budget.vs.actual.report` AbstractModel with `read_group` aggregation on `account.move.line`; pivot/graph views; 16 scenarios [origin/pdlc:addons/account_budget_management/tests/test_bm_003.py] |
+| BM-004 Variance Analysis | 16 | `budget.variance.wizard` TransientModel with absolute/percentage variance, favorable/unfavorable classification; <3s SLA for 1,000 lines verified [origin/pdlc:addons/account_budget_management/tests/test_bm_004.py] |
+| BM-005 Budget Alerts | 12 | `budget.alert` model with threshold-based alerts (75/90/100/110%); `ir.cron` XML for hourly evaluation; 31 scenarios [origin/pdlc:addons/account_budget_management/tests/test_bm_005.py] |
+| **Track C — account_deferred_revenue (FEATURE-005)** | _56 (subtotal)_ | Deferred recognition — schedule definition, period allocation, cut-off wizard, recognition dashboard (4 stories: DR-001 through DR-004) [origin/pdlc:addons/account_deferred_revenue/__manifest__.py] |
+| DR-001 Schedule Definition | 14 | `account.deferred.schedule` header model with invoice-driven creation, analytic distribution preservation; 6 scenarios in `test_dr_001.py` (1410 LOC) [origin/pdlc:addons/account_deferred_revenue/tests/test_dr_001.py] |
+| DR-002 Period Allocation | 14 | `account.deferred.line` model with straight-line/date-based/manual recognition methods; multi-currency support; 7 scenarios [origin/pdlc:addons/account_deferred_revenue/tests/test_dr_002.py] |
+| DR-003 Cut-off Wizard | 16 | `cutoff.wizard` TransientModel supporting single/batch/preview/reversal modes with `account.lock.exception` enforcement; 6 scenarios [origin/pdlc:addons/account_deferred_revenue/tests/test_dr_003.py] |
+| DR-004 Recognition Dashboard | 12 | `recognition.dashboard.wizard` TransientModel with `read_group` aggregation, summary cards, period filters; 10 scenarios [origin/pdlc:addons/account_deferred_revenue/tests/test_dr_004.py] |
+| **Track D — account_payment_followup (FEATURE-006)** | _76 (subtotal)_ | Dunning workflow — level configuration, automated email, report generation, action history, overdue calculation (5 stories: PF-001 through PF-005) [origin/pdlc:addons/account_payment_followup/__manifest__.py] |
+| PF-001 Level Configuration | 14 | `account.followup.level` model with sequence/delay/template/action_type; 22 scenarios [origin/pdlc:addons/account_payment_followup/tests/test_pf_001.py] |
+| PF-002 Automated Email Generation | 18 | `ir.cron` XML record (`Payment Follow-up: Send Reminders`, daily); batched `mail.mail` send via existing pipeline; 34 scenarios; SLA verified for 500 partners no-PDF in ~10s [origin/pdlc:addons/account_payment_followup/tests/test_pf_002.py] |
+| PF-003 Report Generation | 14 | `followup.report` model + QWeb PDF + `openpyxl` XLSX export; wizard with filters, drill-down to invoices; 22 scenarios [origin/pdlc:addons/account_payment_followup/tests/test_pf_003.py] |
+| PF-004 Action History | 14 | `account.followup.history` immutable audit trail with `mail.thread`; 31 scenarios [origin/pdlc:addons/account_payment_followup/tests/test_pf_004.py] |
+| PF-005 Overdue Calculation | 16 | `_inherit = 'res.partner'` aging buckets (Current / 1-30 / 31-60 / 61-90 / 90+); `account.followup.line` aggregator; computed `days_overdue` on `account.move`/`account.move.line`; 45 scenarios [origin/pdlc:addons/account_payment_followup/tests/test_pf_005.py] |
+| **Cross-Cutting Implementation Work** | _78 (subtotal)_ | Shared scaffolding & verification across all four modules — foundation, QA cycles, compliance checks, SLA benchmarks [origin/pdlc:blitzy/documentation/Project Guide.md:L86-L119] |
+| Module Foundation (4 modules) | 24 | Per-module `__manifest__.py` (avg 80 LOC each), `README.rst` (OCA template), `security/ir.model.access.csv`, `security/<module>_security.xml` (multi-company `ir.rule`), root `views/menuitem.xml`, package `__init__.py` files [origin/pdlc:addons/account_asset_management/__manifest__.py] |
+| QA Validation Cycles (10 checkpoints) | 30 | Address findings from QA Checkpoints 1–10 spanning visual fidelity (CP4: 28 issues), security defects (CP5: 4 issues), code quality (CP6: 7 issues), documentation accuracy (CP9), test coverage and quality (CP10) [origin/pdlc:blitzy/documentation/Project Guide.md:L86-L119] |
+| Cross-Module Compliance Verification | 12 | Verify R-01 module independence (no cross-imports), R-02 zero Enterprise deps, R-03 `_inherit` correctness, R-07 `sudo()` justified, R-08 BM-004/005 disjoint fields, R-09 exact folder names [origin/pdlc:addons/account_budget_management/__manifest__.py] |
+| Performance SLA Verification | 12 | Author and execute `sla_*.py` performance benchmarks for AM-003 (480 periods), BM-004 (1,000 lines), DR-004 (1,001 schedules), PF-002 (500 partners), PF-005 (10,000 lines) [origin/pdlc:addons/account_asset_management/tests/test_am_003.py] |
+| **TOTAL COMPLETED** | **376** | Sum of five subtotals — Track A 100 + B 66 + C 56 + D 76 + Cross-cutting 78 [origin/pdlc:blitzy/documentation/Project Guide.md:L86-L119] |
 
 All per-track and cross-cutting figures above are reproduced from the verified hours breakdown on the merged lineage [origin/pdlc:blitzy/documentation/Project Guide.md:L86-L119].
 
@@ -134,7 +134,7 @@ All per-track and cross-cutting figures above are reproduced from the verified h
 | Per-story literal R-04 coverage uplift (add narrow unit tests so each `test_<story>.py` file individually reaches ≥80% coverage; per-module aggregate already passes) | 16 | Medium |
 | PF-002 cron SLA tuning with PDF attachments (557s observed for 500 partners with PDF; optimize batch size, async render, or move PDF generation off-cron) | 8 | Medium |
 | Documentation polish & training (update `docs/USER_GUIDE.md` with the four newest modules, prepare training materials for the accountant persona) | 6 | Low |
-| **TOTAL REMAINING** | **56** | |
+| **TOTAL REMAINING** | **56** | Mixed — 3 High, 2 Medium, 1 Low |
 
 ### 2.3 Total Project Hours
 
@@ -276,7 +276,7 @@ The merged work is governed by nine EPIC-level rules (R-01..R-09) and two bindin
 | **R-08** | BM-004 / BM-005 disjoint fields | Pass | BM-004 → `budget.variance.wizard` (TransientModel); BM-005 → `budget.alert` (Model); different tables, no field collision [origin/pdlc:blitzy/documentation/Project Guide.md:L247] |
 | **R-09** | Exact module folder names | Pass | `account_asset_management`, `account_budget_management`, `account_deferred_revenue`, `account_payment_followup` [origin/pdlc:blitzy/documentation/Project Guide.md:L248] |
 | **Segmented PR Review** (binding) | Single atomic, isolated, post-codegen review; pre-flight gate; 7-domain partition; `APPROVED`/`BLOCKED` per phase + final | Pass | `CODE_REVIEW.md` created at repo root during pre-flight, committed before Phase 1, re-committed per phase transition and after the final verdict; review timestamps 2026-06-15 follow last code-gen 2026-06-09 [../../CODE_REVIEW.md:§F], [../../CODE_REVIEW.md:§H] |
-| **Executive Presentation** (binding) | Self-contained reveal.js deck, 12–18 slides, pinned CDNs, Blitzy theme inline | Partial — theme aspect Pass | **Theme aspect Pass**: the canonical Blitzy reveal.js brand theme is present and compliant at `blitzy-deck/references/blitzy-reveal-theme.css` (exact palette, Inter/Space Grotesk/Fira Code typography, 21 `:root` tokens, zero emoji) [blitzy-deck/references/blitzy-reveal-theme.css:L32-L70]. **Executive deck pending Checkpoint 3**: full-rule compliance of `blitzy-deck/executive-summary.html` (12–18 slides, every-slide visual, pinned CDNs) is assessed at Checkpoint 3, not this checkpoint [blitzy/documentation/Technical Specifications.md:§0.5.1] |
+| **Executive Presentation** (binding) | Self-contained reveal.js deck, 12–18 slides, pinned CDNs, Blitzy theme inline | Pass | **Full-rule Pass at this FINAL gate.** The canonical Blitzy reveal.js brand theme is present and compliant at `blitzy-deck/references/blitzy-reveal-theme.css` (exact palette, Inter/Space Grotesk/Fira Code typography, 21 `:root` tokens, zero emoji) [blitzy-deck/references/blitzy-reveal-theme.css:L32-L70], and is embedded **byte-for-byte inline** in the deck (verified identical, 20,058 bytes, `diff` → exit 0). `blitzy-deck/executive-summary.html` satisfies every rule clause: **18** `<section>` slides (within 12–18), four slide types, every content slide ≤ 40 words, every slide carries ≥ 1 non-text visual, zero emoji (Lucide SVG icons only), no fenced code in slides, and pinned CDNs reveal.js 5.1.0 / Mermaid 11.4.0 / Lucide 0.460.0 [blitzy-deck/executive-summary.html:L1] |
 
 ### 5.2 OCA Conventions Compliance
 
@@ -438,7 +438,7 @@ Total critical-path time on a single resource: ~30h of high-priority work + 16�
 
 ### 8.5 Production Readiness Assessment
 
-**Code-side readiness: 100%.** All EPIC-scoped implementation work is autonomously validated and passing, and the Segmented PR Review final verdict is `APPROVED` with all seven domain phases `APPROVED` [../../CODE_REVIEW.md:§E]. The merged lineage `origin/pdlc` carries all in-scope changes; the destination working tree `HEAD` is the clean Odoo base, so the documentation deliverables reviewed at this checkpoint (archaeology report, this guide, `CODE_REVIEW.md`, and the canonical reveal.js theme asset) are reconciled into the run's final commit; the executive deck `blitzy-deck/executive-summary.html` is authored, but its full-rule review is **pending Checkpoint 3** [../../CODE_REVIEW.md:§B.2].
+**Code-side readiness: 100%.** All EPIC-scoped implementation work is autonomously validated and passing, and the Segmented PR Review final verdict is `APPROVED` with all seven domain phases `APPROVED` [../../CODE_REVIEW.md:§E]. At this **FINAL whole-project gate** the destination working tree is reconciled with the merged lineage `origin/pdlc`, so every reviewed source path is present **unchanged** — the six accounting addons, `tickets/`, `docs/`, `test_data/`, and the 20 committed QA screenshots — alongside all **five** documentation deliverables: the archaeology report (`Technical Specifications.md`), this guide, `CODE_REVIEW.md`, the executive deck `blitzy-deck/executive-summary.html`, and the canonical reveal.js theme `blitzy-deck/references/blitzy-reveal-theme.css`. All five are carried in the run's final commit and **fully reviewed here** — the executive deck's full-rule compliance (12–18 slides, every-slide visual, ≤ 40-word content slides, pinned CDNs, byte-for-byte inline theme) is verified at this gate, not deferred [../../CODE_REVIEW.md:§B.2, §E].
 
 **Path-to-production readiness: 56 hours pending.** The remaining work is environmental, not implementation: configure prod, run UAT, tune PF-002 PDF SLA, deploy. The project guide is therefore presented as **87.0% complete**, with a clear 56-hour path-to-production roadmap [origin/pdlc:blitzy/documentation/Project Guide.md:L393].
 
@@ -663,7 +663,7 @@ PGPASSWORD=odoo python odoo-bin \
     --test-enable \
     --test-tags=/account_asset_management \
     --stop-after-init --without-demo=True --no-http
-# Expected: 0 failed, 0 error(s) of 86+ tests
+# Expected: 0 failed, 0 error(s) of 98 tests (account_asset_management; per §3 Test Results)
 ```
 
 #### 9.6.3 Run the Linter (Read-only static-analysis gate)
@@ -762,10 +762,10 @@ ruff check addons/account_asset_management addons/account_budget_management \
 
 | Location | Description |
 |---|---|
-| `addons/account_asset_management/` | FEATURE-004 (Track A) — 6 stories AM-001..006 (61 files, 6,872 src LOC) |
-| `addons/account_budget_management/` | FEATURE-003 (Track B) — 5 stories BM-001..005 (50 files, 6,544 src LOC) |
-| `addons/account_deferred_revenue/` | FEATURE-005 (Track C) — 4 stories DR-001..004 (45 files, 4,045 src LOC) |
-| `addons/account_payment_followup/` | FEATURE-006 (Track D) — 5 stories PF-001..005 (63 files, 6,308 src LOC) |
+| `addons/account_asset_management/` | FEATURE-004 (Track A) — 6 stories AM-001..006; **31 files** [origin/pdlc: `git ls-tree -r origin/pdlc -- addons/account_asset_management`], 98/98 tests, 87% coverage [§3 Test Results] |
+| `addons/account_budget_management/` | FEATURE-003 (Track B) — 5 stories BM-001..005; **31 files** [origin/pdlc: `git ls-tree -r origin/pdlc -- addons/account_budget_management`], 171/171 tests, 89% coverage [§3 Test Results] |
+| `addons/account_deferred_revenue/` | FEATURE-005 (Track C) — 4 stories DR-001..004; **26 files** [origin/pdlc: `git ls-tree -r origin/pdlc -- addons/account_deferred_revenue`], 37/37 tests, 87% coverage [§3 Test Results] |
+| `addons/account_payment_followup/` | FEATURE-006 (Track D) — 5 stories PF-001..005; **39 files** [origin/pdlc: `git ls-tree -r origin/pdlc -- addons/account_payment_followup`], 312/312 tests, 90% coverage [§3 Test Results] |
 | `addons/account_asset_management/data/depreciation_cron.xml` | AM-004 `ir.cron` XML record (R-06 mandatory) [addons/account_asset_management/data/depreciation_cron.xml:L142] |
 | `addons/account_payment_followup/data/followup_cron.xml` | PF-002 `ir.cron` XML record (R-06 mandatory) [addons/account_payment_followup/data/followup_cron.xml:L81] |
 | `addons/account_budget_management/data/budget_alert_cron.xml` | BM-005 `ir.cron` XML record [addons/account_budget_management/data/budget_alert_cron.xml:L64] |
@@ -781,7 +781,8 @@ ruff check addons/account_asset_management addons/account_budget_management \
 | `ruff.toml` | Linter config, target `py310` [ruff.toml:L7] |
 | `CODE_REVIEW.md` | Root Segmented PR Review artifact — 7-domain partition + per-phase/final `APPROVED` verdicts [../../CODE_REVIEW.md:§E] |
 | `blitzy/documentation/Technical Specifications.md` | Forensic archaeology report — methodology, provenance, manifest, architecture, risk register |
-| `blitzy-deck/executive-summary.html` | Self-contained reveal.js executive deck (authored; full-rule review pending Checkpoint 3) [blitzy/documentation/Technical Specifications.md:§0.5.1] |
+| `blitzy-deck/executive-summary.html` | Self-contained reveal.js executive deck — fully reviewed at this FINAL gate: 18 `<section>` slides (within 12–18), every content slide ≤ 40 words, every slide ≥ 1 non-text visual, pinned CDNs (reveal.js 5.1.0 / Mermaid 11.4.0 / Lucide 0.460.0), Blitzy brand theme embedded **byte-for-byte inline**, zero emoji [blitzy-deck/executive-summary.html:L1] |
+| `blitzy-deck/references/blitzy-reveal-theme.css` | Canonical Blitzy reveal.js brand theme (in-repo CREATE deliverable) — single auditable source embedded byte-for-byte inline in the deck; verified identical (20,058 bytes) [blitzy-deck/references/blitzy-reveal-theme.css:L1] |
 | `blitzy/screenshots/` | **20** committed UI verification screenshots (post-fix `qaver_*_FIXED.png` set plus `bm004_*` and `pf002_*`); verified `git ls-tree -r --name-only origin/pdlc -- blitzy/screenshots/ \| wc -l` → 20 [blitzy/screenshots/qaver_03_asset_form_FIXED.png] |
 
 > **Accuracy note.** An earlier draft cited "197 total screenshots" from intermediate, uncommitted QA-cycle captures. The authoritative committed count on `origin/pdlc` is **20** PNG files (enumerated in §4.4), and that is the figure carried throughout this regenerated guide.
@@ -855,5 +856,5 @@ The four modules **introduce no new environment variables**; existing Odoo envir
 
 ---
 
-*End of companion Project Guide. The forensic archaeology and architecture context lives in [`Technical Specifications.md`](Technical%20Specifications.md) (same folder); the authoritative Segmented PR Review partition and per-phase/final `APPROVED` verdicts live in [`../../CODE_REVIEW.md`](../../CODE_REVIEW.md) at the repository root; the executive deck `blitzy-deck/executive-summary.html` is authored with full-rule review pending Checkpoint 3.*
+*End of companion Project Guide. The forensic archaeology and architecture context lives in [`Technical Specifications.md`](Technical%20Specifications.md) (same folder); the authoritative Segmented PR Review partition and per-phase/final `APPROVED` verdicts live in [`../../CODE_REVIEW.md`](../../CODE_REVIEW.md) at the repository root; the executive deck `blitzy-deck/executive-summary.html` is authored and **fully reviewed at this FINAL whole-project gate**, with its Blitzy brand theme embedded byte-for-byte inline from the canonical `blitzy-deck/references/blitzy-reveal-theme.css`.*
 

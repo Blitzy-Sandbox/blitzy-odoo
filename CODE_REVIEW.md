@@ -677,3 +677,24 @@ The seven domain phases execute **sequentially in the fixed order below**. A lat
 
 **Phase 6 verdict:** `APPROVED`
 
+### Domain Phase 7 — Other SME
+
+- **Owning specialist (review-only):** Requirements-Traceability / Documentation SME.
+- **Files reviewed:** the 67 files in Domain 7 of §C (`tickets/**`, `blitzy/documentation/**`, `blitzy/screenshots/**`, `docs/**`).
+- **Focus:** requirement traceability and documentation accuracy.
+
+**Findings (file:line):**
+
+1. **Requirement tree is complete.** `tickets/` carries the epic, six features, three templates, and 32 stories: `EPIC-001` [tickets/EPIC-001-enterprise-accounting.md:L1]; `FEATURE-001`…`FEATURE-006` [tickets/features/FEATURE-004-asset-management.md:L1]; story sets asset 6 / bank 5 / budget 5 / deferred 4 / financial 7 / payment 5 [tickets/stories/asset-management/AM-001-asset-categories.md:L1] (1 + 6 + 3 + 32 + a `README.md` = 43, reconciling to the Other-SME `tickets` count in §C).
+2. **Traceability to code.** The four newest addons map to FEATURE-003..006 and stories AM/BM/DR/PF; per-story test files and acceptance criteria align with the implemented models/wizards/reports [provenance: Project Guide §5.2; cross-ref §C Domains 3–5].
+3. **Documentation accuracy.** The regenerated Blitzy deliverables `Technical Specifications.md` and `Project Guide.md` are present and internally consistent with the mined evidence used throughout this review [blitzy/documentation/Project Guide.md:L140-L235]. Per-addon `README.rst` files (OCA template) describe overview/features/configuration/usage/changelog [provenance: Project Guide §5.2].
+4. **Onboarding docs.** `docs/SETUP.md` and `docs/USER_GUIDE.md` are present for operator onboarding [docs/SETUP.md:L1], [docs/USER_GUIDE.md:L1].
+5. **Documentation hygiene note (non-blocking).** Earlier QA checkpoints flagged documentation accuracy/hallucination items (CP9) which were resolved prior to handoff [provenance: Project Guide §5.4]; no outstanding documentation defect remains in the reviewed state.
+
+**Rule semantics:** a missing requirement artifact, a broken traceability link, or a materially inaccurate document would render this phase `BLOCKED` (file:line findings, halt, restart from pre-flight, no carried credit). None was found.
+
+**Phase 7 verdict:** `APPROVED`
+
+
+---
+

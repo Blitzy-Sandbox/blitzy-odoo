@@ -568,3 +568,21 @@ The seven domain phases execute **sequentially in the fixed order below**. A lat
 
 > **`BLOCKED` semantics (applies to every phase below).** A `BLOCKED` phase records its findings with **file-and-line specificity**, **halts** the review, **returns** the work item to code-generation, and forces a **full restart from the pre-flight gate** with **no prior findings, approvals, or scope carried forward**. There is no partial credit and no "approved with conditions": each verdict token is **exactly** `APPROVED` or `BLOCKED`.
 
+### Domain Phase 1 — Infrastructure/DevOps
+
+- **Owning specialist (review-only):** DevOps / Module-Packaging SME.
+- **Files reviewed:** the 52 files in Domain 1 of §C (manifests, package `__init__.py`, `hooks`/`data/**` cron + sequence records, addon `README.rst`).
+- **Focus:** manifest correctness, module load order, dependency declarations, cron/sequence data records.
+
+**Findings (file:line):**
+
+1. **Manifest correctness.** All four newest addons declare `version` `19.0.1.0.0`, `license` `AGPL-3`, `installable: True` [addons/account_asset_management/__manifest__.py:L69], [addons/account_asset_management/__manifest__.py:L73], [addons/account_asset_management/__manifest__.py:L75]. Conforms to OCA version/license conventions [provenance: Project Guide §5.2].
+2. **Dependency declarations (R-01/R-02).** `depends` are minimal and Enterprise-free: `['account']` (asset), `['account', 'analytic']` (budget) [addons/account_budget_management/__manifest__.py:L62-L65], `['account']` (deferred), `['account', 'mail']` (followup). No cross-addon (sibling) dependencies appear in any `depends` list — confirmed against the AAP module-independence rule [addons/account_payment_followup/__manifest__.py:L35-L38].
+3. **Scheduled actions are XML-declared (R-06).** Three `ir.cron` records: asset depreciation **daily** (`interval_number=1`, `interval_type='days'`) [addons/account_asset_management/data/depreciation_cron.xml:L147-L148], budget-alert evaluation **hourly** (`interval_type='hours'`) [addons/account_budget_management/data/budget_alert_cron.xml:L69-L70], follow-up reminders **daily** [addons/account_payment_followup/data/followup_cron.xml:L86-L87]. The asset cron binds `account.asset._cron_post_depreciation_entries()` via `model_id` [addons/account_asset_management/data/depreciation_cron.xml:L23-L27]. No Python-level scheduling primitives exist [provenance: Project Guide §4.3].
+4. **Sequence data.** Asset numbering sequence is data-defined [addons/account_asset_management/data/asset_sequence.xml:L1].
+5. **Packaging wiring.** Package, `models/`, `wizard/`, and `tests/` `__init__.py` files are present and import their submodules; per the §C classifier these `__init__.py` files are partitioned to this Infrastructure phase (packaging concern), which is recorded for partition transparency [addons/account_asset_management/__init__.py:L1].
+
+**Rule semantics:** had any infrastructure defect been found (e.g., a missing `depends`, a Python-scheduled cron, a malformed manifest), this phase would be `BLOCKED` with file:line findings, halting the review and forcing a restart from the pre-flight gate with no carried credit. No such defect was found.
+
+**Phase 1 verdict:** `APPROVED`
+

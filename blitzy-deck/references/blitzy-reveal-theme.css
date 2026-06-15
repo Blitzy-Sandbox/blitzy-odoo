@@ -1,0 +1,269 @@
+/*
+ * Blitzy reveal.js Brand Theme — canonical reference
+ * Referenced by the Executive Presentation rule (AAP §0.10.2) at
+ *   blitzy-deck/references/blitzy-reveal-theme.css
+ * The executive deck (blitzy-deck/executive-summary.html) embeds this theme
+ * INLINE in a <style> tag to remain a single self-contained file; this file is
+ * the canonical companion source for that inline copy.
+ *
+ * Palette (brand): #5B39F3 primary, #2D1C77 dark, #1A105F navy,
+ *   #7A6DEC / #4101DB gradient stops, #94FAD5 teal accent.
+ * Neutrals: #333333 #999999 #D9D9D9 #F4EFF6 #F5F5F5 #FFFFFF.
+ * Typography: Inter (body), Space Grotesk (display), Fira Code (mono/eyebrows).
+ */
+
+:root {
+  /* Brand purples */
+  --blitzy-primary:      #5B39F3;
+  --blitzy-primary-dark: #2D1C77;
+  --blitzy-primary-navy: #1A105F;
+  --blitzy-primary-light:#7A6DEC;
+  --blitzy-primary-deep: #4101DB;
+  --blitzy-accent-teal:  #94FAD5;
+
+  /* Neutral surfaces (light to mid) */
+  --blitzy-surface-0: #FFFFFF;
+  --blitzy-surface-1: #F5F5F5;
+  --blitzy-surface-2: #F4EFF6;
+  --blitzy-surface-3: #D9D9D9;
+
+  /* Borders */
+  --blitzy-border:      #D9D9D9;
+  --blitzy-border-soft: #F4EFF6;
+
+  /* Text */
+  --blitzy-text:        #333333;
+  --blitzy-text-muted:  #999999;
+  --blitzy-text-invert: #FFFFFF;
+
+  /* Type families */
+  --ff-body:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --ff-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --ff-mono:    'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Gradients */
+  --gradient-hero:       linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
+  --gradient-divider:    linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%);
+  --gradient-accent-bar: linear-gradient(90deg, #5B39F3 0%, #94FAD5 100%);
+}
+
+/* ---------- Base deck ---------- */
+.reveal {
+  font-family: var(--ff-body);
+  color: var(--blitzy-text);
+  font-size: 30px;
+}
+.reveal .slides { text-align: left; }
+.reveal .slides section { height: 100%; }
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family: var(--ff-display);
+  color: var(--blitzy-primary-navy);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  line-height: 1.1;
+}
+.reveal h1 { font-size: 2.4em; }
+.reveal h2 { font-size: 1.7em; margin-bottom: 0.5em; }
+.reveal h3 { font-size: 1.15em; color: var(--blitzy-primary-dark); }
+.reveal p, .reveal li { color: var(--blitzy-text); }
+.reveal a { color: var(--blitzy-primary); }
+.reveal strong { color: var(--blitzy-primary-dark); }
+.reveal ul { display: inline-block; }
+.reveal section { padding: 0 2.2rem; }
+
+/* Eyebrow label (Fira Code uppercase) */
+.eyebrow {
+  font-family: var(--ff-mono);
+  font-size: 0.5em;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--blitzy-primary);
+  margin: 0 0 0.6rem 0;
+  display: block;
+}
+.slide-title .eyebrow,
+.slide-divider .eyebrow,
+.slide-closing .eyebrow { color: var(--blitzy-accent-teal); }
+
+/* Accent bar */
+.accent-bar {
+  width: 160px; height: 8px; border-radius: 6px;
+  background: var(--gradient-accent-bar);
+  margin: 1.4rem 0;
+}
+.slide-title .accent-bar,
+.slide-divider .accent-bar,
+.slide-closing .accent-bar { margin: 1.6rem 0 0 0; }
+
+/* Inline mono / Fira Code (NO fenced code blocks anywhere) */
+.reveal code, .reveal .mono {
+  font-family: var(--ff-mono);
+  font-size: 0.82em;
+  background: var(--blitzy-surface-2);
+  color: var(--blitzy-primary-deep);
+  padding: 0.1em 0.42em;
+  border-radius: 5px;
+  border: 1px solid var(--blitzy-border-soft);
+}
+
+/* ---------- Title slide ---------- */
+.reveal .slide-title {
+  background: var(--gradient-hero);
+  color: var(--blitzy-text-invert);
+  text-align: left;
+}
+.reveal .slide-title h1,
+.reveal .slide-title h2,
+.reveal .slide-title h3,
+.reveal .slide-title p { color: var(--blitzy-text-invert); }
+.reveal .slide-title .subtitle { font-size: 0.95em; opacity: 0.92; max-width: 30ch; }
+.hero-icon {
+  width: 132px; height: 132px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 28px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.28);
+  margin-bottom: 1.6rem;
+}
+.hero-icon svg { width: 76px; height: 76px; color: var(--blitzy-accent-teal); stroke-width: 1.6; }
+
+/* ---------- Divider slides ---------- */
+.reveal .slide-divider {
+  background: var(--blitzy-primary-dark);
+  background-image: var(--gradient-divider);
+  color: var(--blitzy-text-invert);
+  text-align: left;
+}
+.reveal .slide-divider h2 { color: var(--blitzy-text-invert); font-size: 2.1em; }
+.reveal .slide-divider p { color: rgba(255,255,255,0.85); }
+.divider-icon {
+  width: 104px; height: 104px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 24px;
+  background: rgba(148,250,213,0.14);
+  border: 1px solid rgba(148,250,213,0.34);
+  margin-bottom: 1.4rem;
+}
+.divider-icon svg { width: 56px; height: 56px; color: var(--blitzy-accent-teal); stroke-width: 1.6; }
+
+/* ---------- Closing slide ---------- */
+.reveal .slide-closing {
+  background: var(--blitzy-primary-navy);
+  color: var(--blitzy-text-invert);
+  text-align: left;
+}
+.reveal .slide-closing h2,
+.reveal .slide-closing p { color: var(--blitzy-text-invert); }
+.brand-lockup {
+  display: inline-flex; align-items: center; gap: 0.7rem;
+  font-family: var(--ff-display); font-weight: 700; font-size: 1.5em;
+  color: var(--blitzy-text-invert);
+}
+.brand-lockup .brand-dot {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--gradient-accent-bar); display: inline-block;
+}
+
+/* ---------- KPI cards ---------- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.1rem;
+  margin-top: 0.6rem;
+}
+.kpi-grid.two  { grid-template-columns: repeat(2, 1fr); }
+.kpi-grid.four { grid-template-columns: repeat(4, 1fr); }
+.kpi-card {
+  background: var(--blitzy-surface-0);
+  border: 1px solid var(--blitzy-border);
+  border-top: 4px solid var(--blitzy-primary);
+  border-radius: 14px;
+  padding: 1.1rem 1.2rem;
+  box-shadow: 0 6px 18px rgba(45,28,119,0.06);
+}
+.kpi-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: var(--blitzy-surface-2);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 0.6rem;
+}
+.kpi-icon svg { width: 24px; height: 24px; color: var(--blitzy-primary); stroke-width: 2; }
+.kpi-value {
+  font-family: var(--ff-display);
+  font-size: 1.9em; font-weight: 700; line-height: 1;
+  color: var(--blitzy-primary-dark);
+}
+.kpi-label {
+  font-size: 0.5em; color: var(--blitzy-text-muted);
+  margin-top: 0.4rem; line-height: 1.3;
+}
+.kpi-card.ok { border-top-color: var(--blitzy-accent-teal); }
+.kpi-card.ok .kpi-value { color: var(--blitzy-primary); }
+
+/* ---------- Icon row ---------- */
+.icon-row { display: flex; gap: 1.4rem; margin: 0.8rem 0 0.4rem 0; }
+.icon-row .ico {
+  width: 56px; height: 56px; border-radius: 12px;
+  background: var(--blitzy-surface-2);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.icon-row .ico svg { width: 30px; height: 30px; color: var(--blitzy-primary); stroke-width: 1.8; }
+
+/* ---------- Styled tables ---------- */
+.reveal table.blitzy {
+  width: 100%; border-collapse: collapse; font-size: 0.62em;
+  margin-top: 0.4rem;
+}
+.reveal table.blitzy thead th {
+  background: var(--blitzy-primary-dark);
+  color: var(--blitzy-text-invert);
+  font-family: var(--ff-display); font-weight: 600;
+  text-align: left; padding: 0.6rem 0.8rem;
+}
+.reveal table.blitzy tbody td {
+  padding: 0.5rem 0.8rem;
+  border-bottom: 1px solid var(--blitzy-border);
+  vertical-align: top;
+}
+.reveal table.blitzy tbody tr:nth-child(even) { background: var(--blitzy-surface-2); }
+.reveal table.blitzy .pill {
+  font-family: var(--ff-mono); font-size: 0.86em;
+  padding: 0.06em 0.5em; border-radius: 999px;
+  background: var(--blitzy-accent-teal); color: var(--blitzy-primary-navy);
+  white-space: nowrap;
+}
+.reveal table.blitzy .pill.warn { background: #FFE2B0; color: #7a4a00; }
+.reveal table.blitzy .pill.sev  { background: var(--blitzy-surface-3); color: var(--blitzy-text); }
+
+/* ---------- Command card (inline Fira Code; NOT a fenced block) ---------- */
+.cmd-card {
+  background: var(--blitzy-primary-navy);
+  border: 1px solid var(--blitzy-primary-dark);
+  border-radius: 12px;
+  padding: 1.0rem 1.2rem;
+  margin-top: 0.6rem;
+}
+.cmd-card .cmd-line {
+  display: block; font-family: var(--ff-mono); font-size: 0.6em;
+  color: #E8E3FF; padding: 0.28rem 0; line-height: 1.5;
+}
+.cmd-card .cmd-line .tok { color: var(--blitzy-accent-teal); }
+.cmd-card .cmd-line .cmt { color: #9a8fd6; }
+
+/* ---------- Mermaid container ---------- */
+.reveal .mermaid {
+  background: var(--blitzy-surface-0);
+  border: 1px solid var(--blitzy-border);
+  border-radius: 14px;
+  padding: 1.1rem;
+  display: flex; justify-content: center;
+  box-shadow: 0 6px 18px rgba(45,28,119,0.06);
+}
+.reveal .mermaid svg { max-width: 100%; height: auto; }
+
+/* Helper layout */
+.lead { font-size: 0.8em; color: var(--blitzy-text-muted); margin-bottom: 0.4rem; }
+.center { text-align: center; }
+.note { font-size: 0.52em; color: var(--blitzy-text-muted); margin-top: 0.8rem; }
+.slide-divider .note, .slide-closing .note { color: rgba(255,255,255,0.6); }

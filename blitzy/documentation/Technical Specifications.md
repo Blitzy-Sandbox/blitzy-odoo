@@ -240,7 +240,7 @@ Every documentation file to be created, updated, deleted, or referenced is mappe
 | `blitzy-deck/executive-summary.html` | CREATE | full archaeology + review outcomes | Single self-contained reveal.js deck, 16 slides, Blitzy brand theme inline, Mermaid + Lucide, pinned CDNs |
 | `blitzy/documentation/Technical Specifications.md` | UPDATE (regenerate) | git history (`pdlc` vs base) + `addons/account_*/**` | Archaeology report: Section 0 AAP, methodology, branch topology, synthetic-PR definition, per-addon change manifest, intent reconstruction, architecture diagrams, risk register |
 | `blitzy/documentation/Project Guide.md` | UPDATE (regenerate) | review findings + `addons/account_*/**` | Compliance & Quality Review (review verdict summary), test results, runtime validation, risk assessment, development guide |
-| `blitzy-deck/references/blitzy-reveal-theme.css` | CREATE | Executive Presentation rule text | Canonical Blitzy reveal.js theme — an **in-repository** brand asset (one of the five deliverables) created this run; must be present, verified, and synchronized **byte-for-byte** with the deck's inline `<style>` theme (verified identical, 20,058 bytes, `diff` → exit 0) |
+| `blitzy-deck/references/blitzy-reveal-theme.css` | CREATE | Executive Presentation rule text | Canonical Blitzy reveal.js theme — an **in-repository** brand asset (one of the five deliverables) created this run; must be present, verified, and synchronized **byte-for-byte** with the deck's inline `<style>` theme (verified identical, 20,427 bytes, `diff` → exit 0) |
 | `tickets/EPIC-001-enterprise-accounting.md` | REFERENCE | — | Epic-level requirement traceability for archaeology + Business/Domain review [origin/pdlc:tickets/EPIC-001-enterprise-accounting.md:L1] |
 | `tickets/features/*.md` | REFERENCE | — | Feature-level (FEATURE-001..006) intent and acceptance criteria |
 | `tickets/stories/**/*.md` | REFERENCE | — | Story-level (AM/BM/DR/PF/BR/FR) acceptance criteria and BDD scenarios |
@@ -469,7 +469,7 @@ No attachments were provided with this project. The `review_attachments` inspect
 - **Document/image attachments:** none. No PDFs, images, or other files were supplied; all requirements derive from the user prompt, the two binding rules (§0.10), and repository inspection.
 - **Figma attachments:** none. No Figma frames or URLs were provided; consequently no Figma design analysis and no design-to-system mapping apply, and no design-system component library was named for the subject product (Odoo renders its UI through XML views and OWL/SCSS assets, reviewed under the Frontend domain).
 
-The executive-presentation theme at `blitzy-deck/references/blitzy-reveal-theme.css` is an **in-repository** canonical brand asset — created this run as one of the five deliverables — and is embedded **byte-for-byte inline** in the executive deck per the Executive Presentation rule (§0.10.2). It is the single auditable source of the deck's inline theme and is held synchronized with it (verified identical, 20,058 bytes).
+The executive-presentation theme at `blitzy-deck/references/blitzy-reveal-theme.css` is an **in-repository** canonical brand asset — created this run as one of the five deliverables — and is embedded **byte-for-byte inline** in the executive deck per the Executive Presentation rule (§0.10.2). It is the single auditable source of the deck's inline theme and is held synchronized with it (verified identical, 20,427 bytes).
 
 ---
 

@@ -130,6 +130,22 @@
 .reveal a:hover {
   color: var(--blitzy-primary-deep);
 }
+/* Accessibility: explicit, token-driven focus-visible indicators. Because this
+   theme customizes link and reveal chrome colors, relying on browser/reveal
+   defaults for keyboard focus is fragile; define a high-contrast teal focus
+   ring (brand --blitzy-accent-teal) for links and interactive icon/card/button
+   controls so keyboard users always receive a clearly visible focus indicator. */
+.reveal a:focus-visible {
+  outline: 3px solid var(--blitzy-accent-teal);
+  outline-offset: 4px;
+}
+.reveal button:focus-visible,
+.reveal .controls button:focus-visible,
+.reveal [tabindex]:focus-visible,
+.reveal .kpi-card:focus-visible {
+  outline: 3px solid var(--blitzy-accent-teal);
+  outline-offset: 4px;
+}
 
 .reveal strong,
 .reveal b {

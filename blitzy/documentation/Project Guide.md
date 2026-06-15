@@ -155,7 +155,7 @@ All test results below originate from Blitzy's autonomous validation logs captur
 | `account_payment_followup` — Unit + BDD acceptance | Odoo `TransactionCase` | 312 | 312 | 0 | 90% | 10 test files (5 story-named + 5 descriptive-named per validator notes); 293 `test_*` methods; runtime 146.6s |
 | Combined integration test (all 4 modules in one DB) | Odoo `TransactionCase` | 619 | 619 | 0 | n/a | Verifies absence of cross-module collisions; 0 failed, 0 errors of ~569 post-tests; runtime 306.5s |
 | Determinism / flake check | Same as above | 12 runs (3 per module) | 12 | 0 | n/a | 12 of 12 runs identical; per-module test counts identical across runs |
-| Performance SLAs | Custom `blitzy/qa_artifacts/sla_*.py` | 5 SLAs | 5 | 0 | n/a | AM-003 480 periods, BM-004 1000 lines, DR-004 1001 schedules, PF-005 10,000 lines: all PASS; PF-002 500 partners no-PDF PASS, with-PDF FAIL (see §6) |
+| Performance SLAs | Custom `blitzy/qa_artifacts/sla_*.py` | 5 checks | 4 PASS + 1 WARN | 0 functional failures | n/a | AM-003 480 periods, BM-004 1000 lines, DR-004 1001 schedules, PF-005 10,000 lines: all PASS; PF-002 500 partners no-PDF PASS, with-PDF WARN (see §4.5 and §6) |
 | Anti-pattern audit (N+1, slow queries) | `blitzy/qa_artifacts/anti_pattern_audit.py` | 4 modules | 4 | 0 | n/a | No N+1 query findings; no slow queries flagged |
 | Demo independence | `--without-demo=all` | 4 modules | 4 | 0 | n/a | All modules pass with same test counts when demo data excluded |
 | Module install (`--stop-after-init`) | Odoo CLI | 5 install scenarios (4 individual + 1 combined) | 5 | 0 | n/a | Exit code 0 for each |
@@ -175,7 +175,7 @@ account_payment_followup:  1182 stmts / 122 miss / 90% (account_followup_history
 The per-module statement/miss/percent figures are reproduced from the source coverage block [origin/pdlc:blitzy/documentation/Project Guide.md:L156-L161].
 
 **R-04 Per-Story Coverage Gate (literal interpretation — informational):**
-Per QA Checkpoint 10 documentation, the literal per-story-file interpretation of R-04 returns **30–62%** per individual story file. The autonomous validator declared the **per-module aggregate** coverage (≥80% across all four modules) as the meaningful gate that fully passes [origin/pdlc:blitzy/documentation/Project Guide.md:L165-L166]. Optional uplift work to meet the literal interpretation is captured in §2.2 (16h). The Segmented PR Review records this same gap as a **documented, non-blocking observation** under QA/Test Integrity and risk `R-2`, not as a verdict qualifier [../../CODE_REVIEW.md:§B.3].
+Per QA Checkpoint 10 documentation, the literal per-story-file interpretation of R-04 returns **30–62%** per individual story file. The autonomous validator declared the **per-module aggregate** coverage (≥80% across all four modules) as the meaningful gate that fully passes [origin/pdlc:blitzy/documentation/Project Guide.md:L168]. Optional uplift work to meet the literal interpretation is captured in §2.2 (16h). The Segmented PR Review records this same gap as a **documented, non-blocking observation** under QA/Test Integrity and risk `R-2`, not as a verdict qualifier [../../CODE_REVIEW.md:§B.3].
 
 ---
 
@@ -236,7 +236,7 @@ The PF-002 with-PDF item is a non-blocking performance risk (Business/Domain pha
 
 ### 4.6 API Integration — Not Applicable
 
-The four modules add no HTTP controllers; all interactions route through the Odoo web client and ORM, and no external API integrations are wired in this delivery [origin/pdlc:blitzy/documentation/Project Guide.md:L233].
+The four modules add no HTTP controllers; all interactions route through the Odoo web client and ORM, and no external API integrations are wired in this delivery [origin/pdlc:blitzy/documentation/Project Guide.md:L231].
 
 ---
 
@@ -269,14 +269,14 @@ The merged work is governed by nine EPIC-level rules (R-01..R-09) and two bindin
 | **R-01** | Module independence — no cross-imports between the 4 newest modules | Pass | `depends` lists contain only core Odoo modules; no sibling-module names appear as imports or `depends` entries [addons/account_budget_management/__manifest__.py:L62-L65] |
 | **R-02** | No Odoo Enterprise dependencies | Pass | `depends` = `['account']`, `['account','analytic']`, `['account']`, `['account','mail']`; no Enterprise addon names appear [addons/account_payment_followup/__manifest__.py:L35-L38] |
 | **R-03** | `_inherit` for existing models, `_name` only for net-new | Pass | Extensions to `account.move`/`account.move.line`/`account.analytic.account`/`res.partner` use `_inherit`; 12 net-new models declare `_name` [addons/account_payment_followup/models/res_partner.py:L78] |
-| **R-04** | ≥80% per-story coverage gate | Pass (per-module aggregate); literal per-story-file 30–62% (informational) | Aggregate AM 87% / BM 89% / DR 87% / PF 90% (final post-fix); literal per-story-file gate 30–62% per QA Checkpoint 10 — interpretation gap, optional uplift in §2.2 [origin/pdlc:blitzy/documentation/Project Guide.md:L165-L166], [../../CODE_REVIEW.md:§B.3] |
+| **R-04** | ≥80% per-story coverage gate | Pass (per-module aggregate); literal per-story-file 30–62% (informational) | Aggregate AM 87% / BM 89% / DR 87% / PF 90% (final post-fix); literal per-story-file gate 30–62% per QA Checkpoint 10 — interpretation gap, optional uplift in §2.2 [origin/pdlc:blitzy/documentation/Project Guide.md:L168], [../../CODE_REVIEW.md:§B.3] |
 | **R-05** | No core-field redefinition | Pass | All extensions add NEW computed/relational fields (`days_overdue`, `aging_bucket`, `asset_id`, `deferred_*`, `followup_history_ids`); no existing field redefined [../../CODE_REVIEW.md:§D3] |
 | **R-06** | `ir.cron` via XML for AM-004 + PF-002 | Pass | `data/depreciation_cron.xml` (AM-004) [addons/account_asset_management/data/depreciation_cron.xml:L142], `data/followup_cron.xml` (PF-002) [addons/account_payment_followup/data/followup_cron.xml:L81], `data/budget_alert_cron.xml` (BM-005) [addons/account_budget_management/data/budget_alert_cron.xml:L64]; zero Python scheduling primitives |
 | **R-07** | `sudo()` justified | Pass | Only one `.sudo()` in non-test code reads `ir.config_parameter` with an inline justification comment [addons/account_deferred_revenue/models/account_deferred_schedule.py:L385] |
 | **R-08** | BM-004 / BM-005 disjoint fields | Pass | BM-004 → `budget.variance.wizard` (TransientModel); BM-005 → `budget.alert` (Model); different tables, no field collision [origin/pdlc:blitzy/documentation/Project Guide.md:L247] |
 | **R-09** | Exact module folder names | Pass | `account_asset_management`, `account_budget_management`, `account_deferred_revenue`, `account_payment_followup` [origin/pdlc:blitzy/documentation/Project Guide.md:L248] |
 | **Segmented PR Review** (binding) | Single atomic, isolated, post-codegen review; pre-flight gate; 7-domain partition; `APPROVED`/`BLOCKED` per phase + final | Pass | `CODE_REVIEW.md` created at repo root during pre-flight, committed before Phase 1, re-committed per phase transition and after the final verdict; review timestamps 2026-06-15 follow last code-gen 2026-06-09 [../../CODE_REVIEW.md:§F], [../../CODE_REVIEW.md:§H] |
-| **Executive Presentation** (binding) | Self-contained reveal.js deck, 12–18 slides, pinned CDNs, Blitzy theme inline | Pass | Deck authored this run at `blitzy-deck/executive-summary.html` per AAP §0.5.1 [blitzy/documentation/Technical Specifications.md:§0.5.1] |
+| **Executive Presentation** (binding) | Self-contained reveal.js deck, 12–18 slides, pinned CDNs, Blitzy theme inline | Partial — theme aspect Pass | **Theme aspect Pass**: the canonical Blitzy reveal.js brand theme is present and compliant at `blitzy-deck/references/blitzy-reveal-theme.css` (exact palette, Inter/Space Grotesk/Fira Code typography, 21 `:root` tokens, zero emoji) [blitzy-deck/references/blitzy-reveal-theme.css:L32-L70]. **Executive deck pending Checkpoint 3**: full-rule compliance of `blitzy-deck/executive-summary.html` (12–18 slides, every-slide visual, pinned CDNs) is assessed at Checkpoint 3, not this checkpoint [blitzy/documentation/Technical Specifications.md:§0.5.1] |
 
 ### 5.2 OCA Conventions Compliance
 
@@ -294,12 +294,12 @@ The merged work is governed by nine EPIC-level rules (R-01..R-09) and two bindin
 
 | Quality Check | Status | Evidence |
 |---|---|---|
-| Ruff lint (target `py310`) | Pass | "All checks passed!" across all 4 modules; one informational removed-rule note (`UP038`) [ruff.toml:L7], [origin/pdlc:blitzy/documentation/Project Guide.md:L266] |
+| Ruff lint (target `py310`) | Pass | "All checks passed!" across all 4 modules; one informational removed-rule note (`UP038`) [ruff.toml:L7], [origin/pdlc:blitzy/documentation/Project Guide.md:L267] |
 | Python compile of key model files | Pass | `python -m py_compile` succeeds for `account_asset.py`, `budget_budget.py`, `account_deferred_schedule.py`, `account_followup_level.py`; the review's first-hand scan compiled all 47 production `.py` files of the four newest addons [../../CODE_REVIEW.md:§B.1] |
-| All test files execute | Pass | 619 tests run, 0 failed, 0 errors [origin/pdlc:blitzy/documentation/Project Guide.md:L268] |
-| Determinism (no flaky tests) | Pass | 12 of 12 runs identical (3 per module) [origin/pdlc:blitzy/documentation/Project Guide.md:L269] |
-| Anti-pattern scan (N+1, slow queries) | Pass | `blitzy/qa_artifacts/anti_pattern_audit.json` — 0 N+1 findings, 0 slow queries [origin/pdlc:blitzy/documentation/Project Guide.md:L270] |
-| Demo independence | Pass | All modules pass with `--without-demo=all` [origin/pdlc:blitzy/documentation/Project Guide.md:L271] |
+| All test files execute | Pass | 619 tests run, 0 failed, 0 errors [origin/pdlc:blitzy/documentation/Project Guide.md:L269] |
+| Determinism (no flaky tests) | Pass | 12 of 12 runs identical (3 per module) [origin/pdlc:blitzy/documentation/Project Guide.md:L270] |
+| Anti-pattern scan (N+1, slow queries) | Pass | `blitzy/qa_artifacts/anti_pattern_audit.json` — 0 N+1 findings, 0 slow queries [origin/pdlc:blitzy/documentation/Project Guide.md:L271] |
+| Demo independence | Pass | All modules pass with `--without-demo=all` [origin/pdlc:blitzy/documentation/Project Guide.md:L272] |
 | No production-path placeholder stub | Pass | First-hand scan returns 0 `NotImplementedError`/`TODO`/`FIXME`/`???` markers in non-test code of the four newest addons [../../CODE_REVIEW.md:§B.1] |
 
 ### 5.4 Fixes Applied During Autonomous Validation
@@ -326,7 +326,7 @@ This section **mirrors the archaeology risk register** authored in the companion
 
 | # | Risk | Category | Severity | Likelihood | Mitigation | Status |
 |---|------|----------|----------|-----------|------------|--------|
-| R1 | **Mermaid version vs. CVE tension.** A security-scan lineage bumped **Mermaid to 11.10.0** for **CVE-2025-54881**, while the binding Executive Presentation rule pins **Mermaid 11.4.0** for the deck; the deck would ship a version that does not include the CVE fix | Security / Supply-chain | High | Medium | Resolve the pin-vs-CVE conflict explicitly: re-pin the deck to a patched ≥11.10.0 line after re-validating render behavior, or document an accepted-risk exception with a compensating control — do not silently diverge from the rule | Open — out of scope of this PR (unmerged lineage) [blitzy/documentation/Technical Specifications.md:§7] |
+| R1 | **Mermaid CVE-2025-54881 vs. rule-pinned version.** The binding Executive Presentation rule pins **Mermaid 11.4.0**, which the delivered deck loads via CDN. **11.4.0 is inside the CVE's affected range** — human-readable `>=10.9.0-rc.1` through `<=11.9.0` (npm `>=11.0.0-alpha.1 <11.10.0` **and** `>=10.9.0-rc.1 <10.9.4`) — **fixed in 11.10.0** (and 10.9.4 on the 10.x line). The flaw is a **CWE-79 XSS** (CVSS ~5.3, **Moderate**): with KaTeX enabled, diagram labels reach `innerHTML` via `calculateMathMLDimensions`, exploitable **only with untrusted/user-supplied labels**. The deck renders **static, author-authored** diagrams with no user input and sets `securityLevel:'strict'`, so practical exploitability is **negligible** — but 11.4.0 is **not** patched and must **not** be presented as safe (CVE-2025-54881 / GHSA-7rqq-prvp-x9jh) | Security / Supply-chain | Moderate (CVE); Low (residual for the static deck) | Low | Resolve the pin-vs-CVE tension explicitly — do **not** silently diverge from the rule: either (a) **documented accept-risk** (static trusted diagrams + `securityLevel:'strict'` + a CSP restricting script/connect sources), or (b) obtain a **rule exception** to adopt patched **Mermaid 11.10.0** after re-validating render behavior | Open — out of scope of this PR (unmerged lineage) [blitzy/documentation/Technical Specifications.md:§7.1] |
 | R2 | **Unattended scheduled-job load.** Three `ir.cron` jobs run without supervision — asset depreciation **daily**, budget alert **hourly**, follow-up email **daily** — each performing batch writes (journal entries, alerts, emails); concurrent or long-running runs could contend for locks or exceed the default cron timeout | Operational | Medium | Medium | Review batching/idempotency in cron-invoked methods; bound batch size; monitor runtime against the cron timeout; ensure partial-failure re-run safety [addons/account_payment_followup/data/followup_cron.xml:L86-L87] | Open — tracked |
 | R3 | **Per-story coverage interpretation gap.** A literal per-story-file reading of the ≥80% gate returns **30–62%**, whereas the per-module aggregate passes (asset 87% / budget 89% / deferred 87% / followup 90%) | Test | Medium | High | Adopt the per-module aggregate as the authoritative gate (documented decision) **or** invest ~16h uplift to raise each `test_<story>.py` to ≥80% individually; the chosen interpretation is recorded in `CODE_REVIEW.md` (R-2) | Open — optional uplift [../../CODE_REVIEW.md:§G] |
 | R4 | **Multi-company / record-rule exposure.** Each newest addon is multi-company-aware via `company_id`; a record rule authored without an explicit `groups` set applies globally, which can over- or under-scope access if mis-set | Security | Medium | Low | Security phase verifies every `ir.rule` has the intended `groups`/domain and that multi-company isolation holds across legal entities [addons/account_asset_management/security/asset_security.xml:L1] | Mitigated — Security phase `APPROVED` [../../CODE_REVIEW.md:§D2] |
@@ -419,7 +419,7 @@ The remaining 56 hours (13.0%) are exclusively path-to-production activities tha
 7. Optional R-04 literal uplift — 16h (post-launch enhancement)
 8. Documentation and training — 6h (parallel with deployment)
 
-Total critical-path time on a single resource: ~30h of high-priority work + 16–22h of medium/low priority = 50–60h elapsed, consistent with the 56h estimate [origin/pdlc:blitzy/documentation/Project Guide.md:L372].
+Total critical-path time on a single resource: ~30h of high-priority work + 16–22h of medium/low priority = 50–60h elapsed, consistent with the 56h estimate [origin/pdlc:blitzy/documentation/Project Guide.md:L373].
 
 ### 8.4 Success Metrics
 
@@ -438,7 +438,7 @@ Total critical-path time on a single resource: ~30h of high-priority work + 16�
 
 ### 8.5 Production Readiness Assessment
 
-**Code-side readiness: 100%.** All EPIC-scoped implementation work is autonomously validated and passing, and the Segmented PR Review final verdict is `APPROVED` with all seven domain phases `APPROVED` [../../CODE_REVIEW.md:§E]. The merged lineage `origin/pdlc` carries all in-scope changes; the destination working tree `HEAD` is the clean Odoo base, so the documentation deliverables for this run (archaeology report, this guide, `CODE_REVIEW.md`, the executive deck) are reconciled into the run's final commit [../../CODE_REVIEW.md:§B.2].
+**Code-side readiness: 100%.** All EPIC-scoped implementation work is autonomously validated and passing, and the Segmented PR Review final verdict is `APPROVED` with all seven domain phases `APPROVED` [../../CODE_REVIEW.md:§E]. The merged lineage `origin/pdlc` carries all in-scope changes; the destination working tree `HEAD` is the clean Odoo base, so the documentation deliverables reviewed at this checkpoint (archaeology report, this guide, `CODE_REVIEW.md`, and the canonical reveal.js theme asset) are reconciled into the run's final commit; the executive deck `blitzy-deck/executive-summary.html` is authored, but its full-rule review is **pending Checkpoint 3** [../../CODE_REVIEW.md:§B.2].
 
 **Path-to-production readiness: 56 hours pending.** The remaining work is environmental, not implementation: configure prod, run UAT, tune PF-002 PDF SLA, deploy. The project guide is therefore presented as **87.0% complete**, with a clear 56-hour path-to-production roadmap [origin/pdlc:blitzy/documentation/Project Guide.md:L393].
 
@@ -648,8 +648,8 @@ PGPASSWORD=odoo python odoo-bin \
 #   account_asset_management: 98 tests
 #   account_budget_management: 171 tests
 #   account_deferred_revenue: 37 tests
-#   account_payment_followup: 312 tests (or 313 depending on setup tests)
-#   0 failed, 0 error(s) of 568 (or 569) post-tests when loading database 'phase2_test_combined'
+#   account_payment_followup: 312 tests
+#   combined run: 619 tests, 0 failed, 0 error(s) when loading database 'phase2_test_combined'
 ```
 
 #### 9.6.2 Run Tests for a Single Module
@@ -781,7 +781,7 @@ ruff check addons/account_asset_management addons/account_budget_management \
 | `ruff.toml` | Linter config, target `py310` [ruff.toml:L7] |
 | `CODE_REVIEW.md` | Root Segmented PR Review artifact — 7-domain partition + per-phase/final `APPROVED` verdicts [../../CODE_REVIEW.md:§E] |
 | `blitzy/documentation/Technical Specifications.md` | Forensic archaeology report — methodology, provenance, manifest, architecture, risk register |
-| `blitzy-deck/executive-summary.html` | Self-contained reveal.js executive deck (authored this run) [blitzy/documentation/Technical Specifications.md:§0.5.1] |
+| `blitzy-deck/executive-summary.html` | Self-contained reveal.js executive deck (authored; full-rule review pending Checkpoint 3) [blitzy/documentation/Technical Specifications.md:§0.5.1] |
 | `blitzy/screenshots/` | **20** committed UI verification screenshots (post-fix `qaver_*_FIXED.png` set plus `bm004_*` and `pf002_*`); verified `git ls-tree -r --name-only origin/pdlc -- blitzy/screenshots/ \| wc -l` → 20 [blitzy/screenshots/qaver_03_asset_form_FIXED.png] |
 
 > **Accuracy note.** An earlier draft cited "197 total screenshots" from intermediate, uncommitted QA-cycle captures. The authoritative committed count on `origin/pdlc` is **20** PNG files (enumerated in §4.4), and that is the figure carried throughout this regenerated guide.
@@ -855,5 +855,5 @@ The four modules **introduce no new environment variables**; existing Odoo envir
 
 ---
 
-*End of companion Project Guide. The forensic archaeology and architecture context lives in [`Technical Specifications.md`](Technical%20Specifications.md) (same folder); the authoritative Segmented PR Review partition and per-phase/final `APPROVED` verdicts live in [`../../CODE_REVIEW.md`](../../CODE_REVIEW.md) at the repository root; the executive deck is `blitzy-deck/executive-summary.html`.*
+*End of companion Project Guide. The forensic archaeology and architecture context lives in [`Technical Specifications.md`](Technical%20Specifications.md) (same folder); the authoritative Segmented PR Review partition and per-phase/final `APPROVED` verdicts live in [`../../CODE_REVIEW.md`](../../CODE_REVIEW.md) at the repository root; the executive deck `blitzy-deck/executive-summary.html` is authored with full-rule review pending Checkpoint 3.*
 

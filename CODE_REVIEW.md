@@ -603,3 +603,22 @@ The seven domain phases execute **sequentially in the fixed order below**. A lat
 
 **Phase 2 verdict:** `APPROVED`
 
+### Domain Phase 3 — Backend Architecture
+
+- **Owning specialist (review-only):** Odoo ORM / Backend-Architecture SME.
+- **Files reviewed:** the 41 files in Domain 3 of §C (`models/**.py`, `wizard/**.py` across six addons), with deepest scrutiny on the four newest addons.
+- **Focus:** ORM structure (`_inherit` vs `_name`), fields, compute/onchange/constraints, transient wizard flows.
+
+**Findings (file:line):**
+
+1. **`_name` for net-new models, `_inherit` for extensions (R-03/R-05).** Net-new models correctly declare `_name`: `account.asset` [addons/account_asset_management/models/account_asset.py:L133], `account.asset.depreciation.line` [addons/account_asset_management/models/account_asset_depreciation_line.py:L95], `budget.budget` [addons/account_budget_management/models/budget_budget.py:L74], `budget.alert` [addons/account_budget_management/models/budget_alert.py:L114], `account.deferred.schedule` [addons/account_deferred_revenue/models/account_deferred_schedule.py:L36], `account.followup.level` [addons/account_payment_followup/models/account_followup_level.py:L68]. Core-model extensions use `_inherit` only — e.g. `res.partner` [addons/account_payment_followup/models/res_partner.py:L78] — adding **new** computed/relational fields without redefining core fields (12 net-new models in total) [provenance: Project Guide §4.2, §5.1 R-03/R-05].
+2. **Mixin composition.** Chatter/activity mixins are composed through the `_inherit` list rather than redefinition: `['mail.thread', 'mail.activity.mixin']` [addons/account_asset_management/models/account_asset.py:L134], [addons/account_budget_management/models/budget_budget.py:L76].
+3. **Computes and constraints.** Representative `@api.depends` computes: `_compute_overdue_aging` [addons/account_payment_followup/models/res_partner.py:L214], `_compute_followup_level` [addons/account_payment_followup/models/res_partner.py:L332], `_compute_amounts` [addons/account_deferred_revenue/models/account_deferred_schedule.py:L347], and a company-context-aware `_compute_currency_id` [addons/account_payment_followup/models/account_followup_level.py:L305-L307]. Representative `@api.constrains` validators: depreciation-date integrity [addons/account_asset_management/models/account_asset_depreciation_line.py:L350], budget date range [addons/account_budget_management/models/budget_budget.py:L417], deferred schedule range [addons/account_deferred_revenue/models/account_deferred_schedule.py:L375], and follow-up sequencing [addons/account_payment_followup/models/account_followup_level.py:L257].
+4. **Transient wizard flows.** All six reviewed wizards are substantive `TransientModel` implementations (no stubs): e.g. `asset_disposal_wizard.py` (1,535 LOC) and `asset_modification_wizard.py` (1,531 LOC) [addons/account_asset_management/wizard/asset_disposal_wizard.py:L1], `recognition_dashboard_wizard.py` (1,421 LOC) [addons/account_deferred_revenue/wizard/recognition_dashboard_wizard.py:L1].
+5. **Compile integrity.** First-hand `python -m py_compile` succeeds for all 47 production `.py` files of the four newest addons, and a first-hand stub scan returns zero `NotImplementedError`/`TODO`/`???` markers [first-hand].
+
+**Rule semantics:** a misuse of `_name` on an existing model, a redefined core field, a broken compute dependency, or a stubbed wizard method would render this phase `BLOCKED` (file:line findings, halt, restart from pre-flight, no carried credit). None was found.
+
+**Phase 3 verdict:** `APPROVED`
+
+

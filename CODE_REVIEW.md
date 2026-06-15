@@ -717,20 +717,23 @@ The seven domain phases execute **sequentially in the fixed order below**. A lat
 
 ## E. Final Reviewer Verdict
 
-All seven domain phases resolved to `APPROVED` in sequence. The Final Reviewer (independent of the seven domain specialists; **review-only**) re-verified deliverable presence and functionality, build, tests, and static analysis **against the delivered state**:
+All seven domain phases re-resolved to `APPROVED` in sequence in this fresh atomic pass (§ Domain Phases, re-affirmation note). The Final Reviewer (independent of the seven domain specialists; **review-only**) re-verified deliverable presence and functionality, build, tests, and static analysis **against the delivered state at remediation commit `f10285bdcbf`** (the post-remediation tree), recorded here as the **last commit on the branch**:
 
 | Re-verification | Outcome | Evidence |
 |-----------------|---------|----------|
-| Deliverables present at specified paths | Confirmed (5/5) — incl. `blitzy-deck/references/blitzy-reveal-theme.css` (in-repo CREATE; inline-in-deck byte-for-byte, `diff` → exit 0) | §B.2 |
-| Build (install) zero errors/warnings | Confirmed — 5/5 install scenarios exit 0; first-hand `py_compile` of all 47 production files OK | §B.1 #2, [first-hand] |
-| Tests pass | Confirmed — 619/619 (0 failed/0 errors); per-module coverage ≥ 80% | §B.1 #3, Phase 4 |
-| Static analysis zero violations | Confirmed — `ruff` "All checks passed!" | §B.1 #4 [provenance: Project Guide §3, §5.3] |
-| No production-path stub | Confirmed — first-hand scan, 0 markers | §B.1 #5 [first-hand] |
-| Open risks are non-blocking and mitigated | Confirmed — PF-002 PDF SLA (R-1) and per-story-file coverage (R-2) are documented observations with defined mitigations; neither is a failing build/test/lint condition | §G, Phases 4–5 |
+| Deliverables present at specified paths | Confirmed (5/5) — incl. `blitzy-deck/references/blitzy-reveal-theme.css` (in-repo CREATE; inline-in-deck **byte-for-byte**, `diff` of the deck `<style>` block vs the reference file → exit 0, re-verified first-hand this pass) | §B.2, [first-hand] |
+| Build (install) zero errors/warnings | Confirmed — 5/5 install scenarios exit 0 [provenance]; first-hand `py_compile` of all **79** production `.py` files across the six accounting addons OK (exit 0) this pass | §B.1 #2, [first-hand] |
+| Tests pass | Confirmed — 619/619 (0 failed/0 errors); per-module coverage ≥ 80%. The remediation modified only documentation/deck deliverables (no addon source), so the functional result is unchanged | §B.1 #3, Phase 4 |
+| Static analysis zero violations | Confirmed — `ruff` 0.11.4 `ruff check --no-fix` on the four newest addons → "All checks passed!" (exit 0), re-executed **first-hand** this pass | §B.1 #4, [first-hand] |
+| No production-path stub | Confirmed — first-hand scan, 0 markers | §B.1 #5, [first-hand] |
+| Delivered QA-remediation re-verified | Confirmed — the five deliverables in `f10285bdcbf` re-verified: deck risk slide reproduces the canonical R1–R7 register (identity with Technical Specifications §7 and Project Guide §6); SRI on 6 CDN resources (HTTP 200, 0 console errors); controls 44×44px; 29 Lucide SVGs `aria-hidden`; Project Guide external-evidence provenance corrected; CSS inline/reference parity preserved (`diff` → exit 0) | [first-hand]; deck `blitzy-deck/executive-summary.html`; §B re-run pre-flight |
+| Open risks are non-blocking and mitigated | Confirmed — the §G observations (incl. R-7 Mermaid CVE) remain documented non-blocking risks with defined mitigations; none is a failing build/test/lint condition | §G, Phases 4–5 |
 
-**Rationale.** The pre-flight gate passed on all five conditions; every domain phase passed with file:line-grounded findings and no defects; the two documented nuances are non-blocking risks (not failing gate conditions and not verdict qualifiers). The delivered state therefore satisfies the rule's final re-verification.
+**Rationale.** The re-run pre-flight gate passed on all five conditions against the delivered state; every domain phase re-resolved with file:line-grounded findings and no defects; the QA-driven remediation is re-verified present and correct in `f10285bdcbf`; the documented nuances are non-blocking risks (not failing gate conditions and not verdict qualifiers). The delivered state therefore satisfies the rule's final re-verification. This verdict is recorded in the **final commit on the branch** and is **final for the actual branch state** — no deliverable modification follows it, resolving the prior-pass staleness (in which the superseded final verdict preceded later deliverable commits).
 
 **Final verdict:** `APPROVED`
+
+*Final Reviewer sign-off (UTC):* 2026-06-15T15:25:00Z — re-verified against delivered HEAD `f10285bdcbf`; recorded as the branch's last commit (§F.1 #13).
 
 ---
 

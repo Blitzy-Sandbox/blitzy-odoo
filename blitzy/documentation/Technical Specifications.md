@@ -577,7 +577,7 @@ The table below is the **single, authoritative set of canonical figures** for th
 | 10 | Net-new models / DB tables | **12** (`budget_budget`, `budget_budget_line`, `budget_budget_period`, `budget_alert`, `account_asset`, `account_asset_category`, `account_asset_depreciation_line`, `account_deferred_schedule`, `account_deferred_line`, `account_followup_level`, `account_followup_line`, `account_followup_history`) | [provenance: Project Guide §4.2] |
 | 11 | Scheduled `ir.cron` jobs | **3** (asset depreciation — daily; budget alert — hourly; follow-up email — daily) | [provenance: Project Guide §4.3] |
 | 12 | Modules installed | **4** newest addons `state='installed'`, `latest_version='19.0.1.0.0'` | [provenance: Project Guide §4.1] |
-| 13 | Tests (combined) | **619 / 619** pass (0 failed / 0 errors) — AM **98**, BM **171**, DR **37**, PF **312** | [provenance: Project Guide §3] |
+| 13 | Tests (combined) | **619 / 619** pass (0 failed / 0 errors) — **98 AM + 171 BM + 37 DR + 312 PF + 1 setup = 619** (PF standalone runtime is 313 incl. its setup test, i.e. 98 + 171 + 37 + 313 = 619 equivalently) | [provenance: Project Guide §3] |
 | 14 | Coverage (per-module) | AM **87%**, BM **89%**, DR **87%**, PF **90%** (≥ 80%) | [provenance: Project Guide §3] |
 | 15 | Review verdict | **7 / 7** domain phases `APPROVED`; **final `APPROVED`**; **278 / 278** files partitioned | [CODE_REVIEW.md §C–§E] |
 | 16 | Deliverables | **5** — `CODE_REVIEW.md`, `Technical Specifications.md`, `Project Guide.md`, `executive-summary.html`, `blitzy-reveal-theme.css` | [first-hand on review branch] |

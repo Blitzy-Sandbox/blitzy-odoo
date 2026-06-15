@@ -641,3 +641,22 @@ The seven domain phases execute **sequentially in the fixed order below**. A lat
 
 **Phase 4 verdict:** `APPROVED`
 
+### Domain Phase 5 — Business/Domain
+
+- **Owning specialist (review-only):** Accounting Domain SME (IAS 16 / IAS 36 / ASC 360 fixed assets; ASC 606 / IFRS 15 revenue; budgeting variance; dunning).
+- **Files reviewed:** the 18 files in Domain 5 of §C (`report/**` `.py` + `.xml`), cross-referenced against the calculation methods in the asset/budget/deferred/followup/reconciliation models and the `tickets/` acceptance criteria.
+- **Focus:** depreciation, variance, recognition, matching, and dunning correctness vs the cited standards and story acceptance criteria.
+
+**Findings (file:line):**
+
+1. **Depreciation (IAS 16 / ASC 360).** The asset model implements straight-line, declining-balance, and units-of-production schedules with an optional switch-to-straight-line, governed by `useful_life_*`, `declining_factor`, and `switch_to_straight_line` fields and validated by `_check_declining_factor` [addons/account_asset_management/models/account_asset.py:L68-L86], [addons/account_asset_management/models/account_asset.py:L11]. Depreciation lines post journal entries via the daily cron path (AM-004) [addons/account_asset_management/data/depreciation_cron.xml:L23-L27]. SLA: depreciation board < 2s for 480 periods (compute 1066 ms) [provenance: Project Guide §4.5].
+2. **Budget variance.** `budget_vs_actual_report.py` computes budget-vs-actual variance for the budget family [addons/account_budget_management/report/budget_vs_actual_report.py:L1]; the BM-004 variance report meets < 3s for 1,000 lines (cold 2.7s) [provenance: Project Guide §4.5].
+3. **Deferred recognition (ASC 606 / IFRS 15).** `account.deferred.schedule` offers straight-line and other recognition methods with amount computation `_compute_amounts` and date-range constraints [addons/account_deferred_revenue/models/account_deferred_schedule.py:L180-L185], [addons/account_deferred_revenue/models/account_deferred_schedule.py:L347], [addons/account_deferred_revenue/models/account_deferred_schedule.py:L375]; recognition dashboard < 2s for 1,001 schedules [provenance: Project Guide §4.5].
+4. **Dunning / follow-up.** Follow-up levels drive the QWeb follow-up report and the daily reminder cron (PF-002/PF-003); aging is computed on the partner [addons/account_payment_followup/report/followup_report.py:L1], [addons/account_payment_followup/models/res_partner.py:L214]. Aging for 10,000 receivable lines computes in tens of milliseconds [provenance: Project Guide §4.5].
+5. **Performance observation (non-blocking).** The PF-002 follow-up email cron with PDF attachments for a 500-partner batch was measured at **556.7s vs a < 60s target**; the no-PDF variant completes in 9.86s and the 500-partner batch cap is honored [provenance: Project Guide §4.5, §6]. This is a documented **performance risk** with a defined mitigation (batch sizing / async PDF), recorded in §G (R-1); it is **not** a correctness defect or a failing functional test, so it does **not** block this phase and is **not** a verdict qualifier.
+
+**Rule semantics:** an incorrect depreciation/variance/recognition/dunning calculation versus the cited standards or the `tickets/` acceptance criteria would render this phase `BLOCKED` (file:line findings, halt, restart from pre-flight, no carried credit). Calculations match the standards and the story acceptance criteria; the PF-002 PDF throughput item is a non-blocking performance risk.
+
+**Phase 5 verdict:** `APPROVED`
+
+

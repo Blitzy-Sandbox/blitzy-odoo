@@ -475,6 +475,14 @@
 .reveal .controls {
   color: var(--blitzy-primary);
 }
+/* WCAG 2.5.5 / 2.5.8 target size: reveal's control arrows default to 3.6em at the
+   10px control font-size (= 36x36px). Enlarge the clickable/tappable hit area to
+   4.4em (= 44x44px) without changing the drawn glyph; keyboard arrow navigation
+   remains the primary, fully-supported control. */
+.reveal .controls .controls-arrow {
+  width: 4.4em;
+  height: 4.4em;
+}
 .reveal .progress {
   color: var(--blitzy-primary);
   height: 4px;

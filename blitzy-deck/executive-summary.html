@@ -8,7 +8,7 @@
        self-contained file and avoids a 404 favicon request; allowed by img-src data:. -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%235B39F3'/%3E%3Crect x='8' y='8' width='16' height='16' rx='3' fill='%2394FAD5'/%3E%3C/svg%3E">
 
-  <!-- Content-Security-Policy (supply-chain hardening, R-7 / deck finding).
+  <!-- Content-Security-Policy (supply-chain hardening, R1 / deck finding).
        Restricts script + style to this document (inline) and the pinned jsDelivr
        CDN, fonts to Google Fonts, and forbids object/base-uri/form-action. This
        complements Mermaid's securityLevel:'strict' as a defence-in-depth control
@@ -19,11 +19,14 @@
 
   <!-- Supply-chain note: CDN versions are PINNED per the Executive Presentation
        rule (reveal.js 5.1.0, Mermaid 11.4.0, Lucide 0.460.0). Subresource Integrity
-       (SRI) `integrity`/`crossorigin` attributes are recommended additionally and
-       should be generated against the exact served CDN bytes at deployment time
-       (e.g. `curl <cdn-url> | openssl dgst -sha384 -binary | openssl base64 -A`),
-       then added to each <link>/<script> below. They are intentionally not
-       hard-coded here so a hash cannot silently drift from the pinned asset. -->
+       (SRI) sha384 `integrity` + `crossorigin="anonymous"` attributes ARE applied to
+       every pinned jsDelivr <link>/<script> below; each hash was generated against the
+       exact served CDN bytes for the pinned version
+       (`curl <cdn-url> | openssl dgst -sha384 -binary | openssl base64 -A`), so a
+       tampered or drifted asset is rejected by the browser before it executes.
+       SRI is intentionally NOT applied to the Google Fonts stylesheet: its CSS is
+       generated per user-agent and therefore has no stable hash to pin; it is
+       constrained instead by the style-src / font-src directives in the CSP above. -->
 
 
   <!-- Google Fonts: Inter (body), Space Grotesk (display), Fira Code (mono/eyebrow) -->
@@ -32,10 +35,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- reveal.js 5.1.0 core (pinned per Executive Presentation rule). The Blitzy brand
-       theme is embedded inline below; white.css supplies reveal's --r-* variable base. -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css" id="reveal-base-theme">
+       theme is embedded inline below; white.css is RETAINED on purpose because it
+       supplies reveal's --r-* variable base AND the base line-height (1.3) that the
+       inline theme's tables, KPI cards, pills, lists and section content inherit
+       (verified: disabling white.css collapses those line-heights to 1.0). white.css
+       also @imports Source Sans Pro, a font the Blitzy theme never uses (all
+       font-family is overridden to Inter / Space Grotesk / Fira Code), so a few
+       low-priority Source Sans requests may appear pending; they are unused by design,
+       never render-blocking, and harmless. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css" integrity="sha384-AJKv9Ui5SfA0VsFksFI9GuA1ztX9Ca3CLP6HGfX4YY/tYSVodC+PUszaQZFIlkuy" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" integrity="sha384-YgvgKeZJykuztG+iQPoZHNZENTFZvOcOJ/uRzmJTje6GHYN9zAw+y5rx/L8MQKA/" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css" id="reveal-base-theme" integrity="sha384-/TZMdZeq0ZGi4iePTHhOMXOkyv2f72ZcwmhAtOmSZlPkx+5qCOfyc/U1kjd5Su6S" crossorigin="anonymous">
 
   <style>
 /*!
@@ -515,6 +525,14 @@
 .reveal .controls {
   color: var(--blitzy-primary);
 }
+/* WCAG 2.5.5 / 2.5.8 target size: reveal's control arrows default to 3.6em at the
+   10px control font-size (= 36x36px). Enlarge the clickable/tappable hit area to
+   4.4em (= 44x44px) without changing the drawn glyph; keyboard arrow navigation
+   remains the primary, fully-supported control. */
+.reveal .controls .controls-arrow {
+  width: 4.4em;
+  height: 4.4em;
+}
 .reveal .progress {
   color: var(--blitzy-primary);
   height: 4px;
@@ -786,14 +804,17 @@ flowchart LR
       <!-- 12. RISK TABLE (content) -->
       <section>
         <p class="eyebrow">Risk Register</p>
-        <h2>Top Risks &mdash; Non-Blocking</h2>
+        <h2>Seven Non-Blocking Risks (R1&ndash;R7)</h2>
         <table>
-          <thead><tr><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead>
+          <thead><tr><th>#</th><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead>
           <tbody>
-            <tr><td>Mermaid <span class="mono">11.4.0</span> pin (CVE-2025-54881)</td><td><span class="pill low">Low</span></td><td>Strict + CSP</td></tr>
-            <tr><td>Three <span class="mono">ir.cron</span> jobs</td><td><span class="pill med">Medium</span></td><td>Bounded, idempotent</td></tr>
-            <tr><td>Per-story vs &ge;80% gate</td><td><span class="pill med">Medium</span></td><td>Per-module aggregate</td></tr>
-            <tr><td>SMTP relay (PF-002)</td><td><span class="pill high">High</span></td><td>Configure pre-go-live</td></tr>
+            <tr><td>R1</td><td>Mermaid <span class="mono">11.4.0</span> (CVE-2025-54881 et al.)</td><td><span class="pill low">Low</span></td><td>Strict + CSP</td></tr>
+            <tr><td>R2</td><td>Three <span class="mono">ir.cron</span> jobs</td><td><span class="pill med">Medium</span></td><td>Bounded, idempotent</td></tr>
+            <tr><td>R3</td><td>Per-story vs &ge;80% gate</td><td><span class="pill med">Medium</span></td><td>Per-module aggregate</td></tr>
+            <tr><td>R4</td><td>Multi-company record rules</td><td><span class="pill med">Medium</span></td><td>Verified groups/domains</td></tr>
+            <tr><td>R5</td><td><span class="mono">sudo()</span> boundaries</td><td><span class="pill med">Medium</span></td><td>Single justified use</td></tr>
+            <tr><td>R6</td><td>Demo-data vs UAT readiness</td><td><span class="pill low">Low</span></td><td>Optional UAT dataset</td></tr>
+            <tr><td>R7</td><td><span class="mono">account.move</span> extension</td><td><span class="pill med">Medium</span></td><td>Additive; combined test</td></tr>
           </tbody>
         </table>
       </section>
@@ -852,11 +873,11 @@ flowchart LR
   </div>
 
   <!-- reveal.js 5.1.0 (pinned) -->
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js" integrity="sha384-M/JtqCVlLcK9lwVnBnMXP0V577CBULkjodKsR/PITOe4MSKNbbwqCemEyluOw0+5" crossorigin="anonymous"></script>
   <!-- Mermaid 11.4.0 (pinned per Executive Presentation rule; UMD build exposes global `mermaid`) -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js" integrity="sha384-Wm9qzEgq4j1jEnuFK2FxKTlwuhbV2QqtGhcchvjDoKxeJ7WWAW7fysBq+1s6myfX" crossorigin="anonymous"></script>
   <!-- Lucide 0.460.0 (SVG icons only; zero emoji anywhere in this deck) -->
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js" integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge" crossorigin="anonymous"></script>
 
   <script>
     // Mermaid: do NOT auto-run on load; rendering is driven from the reveal.js lifecycle
@@ -864,7 +885,7 @@ flowchart LR
     // display:none slide returns 0 and collapses every node onto one point).
     mermaid.initialize({
       startOnLoad: false,
-      securityLevel: 'strict',           // compensating control for CVE-2025-54881 (R-7)
+      securityLevel: 'strict',           // compensating control for CVE-2025-54881 (R1)
       theme: 'base',
       // Render node labels as native SVG <text> (htmlLabels:false at BOTH the top
       // level and per-diagram) so they are measured and painted with identical SVG
@@ -888,6 +909,14 @@ flowchart LR
     function renderVisuals() {
       if (window.lucide && typeof lucide.createIcons === 'function') {
         lucide.createIcons();
+        // Lucide replaces each <i data-lucide> placeholder with an <svg class="lucide …">.
+        // The icons are purely decorative (their wrapper carries aria-hidden), so mark the
+        // GENERATED SVGs hidden from assistive technology and non-focusable as well, so the
+        // hidden semantics survive the placeholder->SVG replacement (WCAG 1.1.1 / 4.1.2).
+        document.querySelectorAll('svg.lucide').forEach(function (svg) {
+          svg.setAttribute('aria-hidden', 'true');
+          svg.setAttribute('focusable', 'false');
+        });
       }
       if (window.mermaid && typeof mermaid.run === 'function') {
         var current = (typeof Reveal !== 'undefined' && Reveal.getCurrentSlide)

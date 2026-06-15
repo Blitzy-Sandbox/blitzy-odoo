@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 OCA, [contributor]
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <!--
+        Menu structure for account_budget_management.
+
+        MUST LOAD LAST in views directory: every child menu references an
+        action defined in an earlier view file.
+    -->
+
+    <!-- Root menu: Budget Management, under Accounting app -->
+    <menuitem id="menu_budget_management_root"
+              name="Budget Management"
+              parent="account.menu_finance"
+              groups="account.group_account_user,account.group_account_manager"
+              sequence="80"/>
+
+    <!-- BM-001: Budgets list -->
+    <menuitem id="menu_budget_budget"
+              name="Budgets"
+              parent="menu_budget_management_root"
+              action="action_budget_budget"
+              sequence="10"/>
+
+    <!-- BM-002: Budget Periods -->
+    <menuitem id="menu_budget_period"
+              name="Budget Periods"
+              parent="menu_budget_management_root"
+              action="action_budget_period"
+              sequence="20"/>
+
+    <!-- BM-003: Actual vs Budget report -->
+    <menuitem id="menu_budget_vs_actual"
+              name="Actual vs Budget"
+              parent="menu_budget_management_root"
+              action="action_budget_vs_actual_report"
+              sequence="30"/>
+
+    <!-- BM-004: Variance Analysis -->
+    <menuitem id="menu_budget_variance"
+              name="Variance Analysis"
+              parent="menu_budget_management_root"
+              action="action_budget_variance_analysis"
+              sequence="40"/>
+
+    <!-- BM-004: Variance Analysis Wizard (interactive parameter selection) -->
+    <menuitem id="menu_budget_variance_wizard"
+              name="Variance Analysis Wizard"
+              parent="menu_budget_management_root"
+              action="action_budget_variance_wizard"
+              sequence="45"/>
+
+    <!-- BM-005: Alerts dashboard -->
+    <menuitem id="menu_budget_alert"
+              name="Alerts"
+              parent="menu_budget_management_root"
+              action="action_budget_alert"
+              sequence="50"/>
+
+</odoo>

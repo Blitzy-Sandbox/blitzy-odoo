@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 OCA, Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    PF-002 - Payment Follow-up: Automated Email Generation
+    ======================================================
+    Scheduled action (ir.cron) that runs daily at 02:00 AM to process
+    payment follow-up emails for customers whose invoices are overdue
+    based on their configured follow-up level thresholds (PF-001 levels
+    with sequence 10/20/30/40, delay 7/14/21/30 days).
+
+    The cron invokes ``model.process_followup_emails()`` on the
+    ``account.followup.level`` model. The method is declared in
+    ``models/account_followup_level.py`` as::
+
+        @api.model
+        def process_followup_emails(self, batch_size=500):
+
+    Per AAP Rule R-06 (MUST — ir.cron via XML), this record is a
+    declarative XML ``<record model="ir.cron">`` rather than a
+    Python-level scheduling primitive (no ``threading.Timer``,
+    ``APScheduler``, or ``sched`` allowed anywhere in the module).
+
+    Per AAP §0.5.3 performance target:
+      * Batch size ``500`` partners per run fits within the default
+        cron execution timeout. The ``batch_size=500`` argument is
+        the default in the method signature, so the cron body just
+        calls ``model.process_followup_emails()`` without arguments.
+
+    Gate 13 (Registration-Invocation Pairing) requires this cron to be:
+      1. Visible at Settings → Technical → Automation → Scheduled Actions
+         with the display name "Payment Follow-up: Send Reminders".
+      2. Manually invokable via the "Run Manually" action on the cron
+         form view, executing ``process_followup_emails()`` without
+         raising an exception against a clean install database.
+      3. Resolvable by external ID:
+         ``env.ref('account_payment_followup.ir_cron_payment_followup')``.
+
+    Precedent: Modelled after ``addons/account/data/service_cron.xml``
+    which also places ``ir.cron`` records directly inside ``<odoo>``
+    (no ``<data noupdate="1">`` wrapper). Cron records may be adjusted
+    in production without ``noupdate="1"`` protection because Odoo's
+    cron executor reads current field values at runtime, and admins
+    may want to tune intervals / toggle active state without editing
+    the module XML.
+
+    Field notes (Odoo 19.0 ``ir.cron`` model):
+      * ``ir.cron`` uses ``_inherits = {'ir.actions.server': ...}``,
+        so ``name``, ``model_id``, ``state``, and ``code`` are
+        delegated fields from ``ir.actions.server``.
+      * ``user_id``, ``active``, ``interval_number``, ``interval_type``,
+        ``nextcall`` are direct fields on ``ir.cron``.
+      * The legacy ``numbercall`` field has been REMOVED from
+        ``ir.cron`` in Odoo 19.0 (verified against
+        ``odoo/addons/base/models/ir_cron.py`` and the ``ir_cron``
+        PostgreSQL table schema). Including ``<field name="numbercall">``
+        would cause module install to fail with a missing-field error.
+        Cron repetition is now controlled solely by the ``active``
+        boolean; unlimited runs are implicit while ``active=True``.
+
+    Rules Compliance (AAP Section 0.7):
+      * R-01 (Module Independence): no references to sibling new
+        modules in the four-track feature delivery.
+      * R-02 (No Enterprise Dependencies): no references to Odoo
+        Enterprise follow-up / accountant / reports addons.
+      * R-03 (N/A): this is data, not model code.
+      * R-06 (MUST — ir.cron via XML): cron is declared here in XML,
+        not via Python scheduling primitives. Compliance verified.
+      * R-07 (MUST NOT — elevated-privilege escalation without
+        justification): the cron runs as ``base.user_root``
+        (superuser context), so ``process_followup_emails()``
+        does not require any privilege-elevation wrappers inside
+        the method body. This XML file contains no Python code
+        at all, so the rule is trivially satisfied here.
+      * R-09 (Exact folder name): file resides in
+        ``addons/account_payment_followup/data/``.
+-->
+<odoo>
+    <record id="ir_cron_payment_followup" model="ir.cron">
+        <field name="name">Payment Follow-up: Send Reminders</field>
+        <field name="model_id" ref="model_account_followup_level"/>
+        <field name="state">code</field>
+        <field name="code">model.process_followup_emails()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.now().replace(hour=2, minute=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

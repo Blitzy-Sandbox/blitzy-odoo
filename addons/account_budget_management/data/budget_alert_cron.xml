@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2024 Enterprise Accounting Team
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<!--
+    BM-005 — Budget Alert Threshold Evaluation Cron (R-06)
+    ======================================================
+
+    Declares the ``ir.cron`` scheduled action that periodically
+    evaluates every confirmed budget line's consumption against the
+    configured threshold percentages (75 %, 90 %, 100 %, 110 %) and
+    creates ``budget.alert`` records for newly-crossed thresholds.
+
+    R-06 Compliance
+    ===============
+    The scheduled evaluation is declared here as a data-file XML
+    ``ir.cron`` record (NOT via a Python-level scheduler such as
+    ``threading.Timer`` or ``APScheduler``). This is the canonical
+    Odoo pattern and is mandated by AAP Rule R-06. This record is the
+    SOLE scheduling mechanism for BM-005 — no Python-level scheduler
+    appears anywhere in the ``account_budget_management`` module.
+
+    Contract With ``budget.alert._cron_evaluate_thresholds``
+    ========================================================
+    The ``code`` field invokes ``model._cron_evaluate_thresholds()``.
+    The method name MUST match exactly the ``@api.model`` method
+    defined on ``budget.alert`` in
+    ``models/budget_alert.py`` (see its schema ``members_exposed``
+    list). Renaming one side of this contract without renaming the
+    other will cause the cron run to fail with ``AttributeError`` at
+    invocation time.
+
+    Schedule
+    ========
+    Hourly evaluation (``interval_number=1``,
+    ``interval_type='hours'``) satisfies BM-005 constraint C-012:
+    notification delivery within 1 hour of a threshold breach. A
+    daily cadence would violate this SLA.
+
+    Precedent
+    =========
+    Pattern mirrors ``addons/mail/data/ir_cron_data.xml`` (OCA
+    preferred ``<data noupdate="1">`` wrapper so administrator
+    customizations of the cron schedule are preserved across module
+    upgrades) with the ``state='code'`` + ``model._method()``
+    invocation style observed in
+    ``addons/account/data/service_cron.xml``.
+
+    Execution Context
+    =================
+    The ``user_id`` is set to ``base.user_root`` so the cron runs
+    with superuser context across every company's budgets. The
+    multi-company ``ir.rule`` records in
+    ``security/budget_security.xml`` would otherwise scope the search
+    to the executing user's company list, preventing the cron from
+    evaluating every confirmed budget system-wide. This is the
+    standard pattern for system-level crons observed in both
+    ``addons/mail/data/ir_cron_data.xml`` and
+    ``addons/account/data/service_cron.xml``.
+-->
+<odoo>
+    <data noupdate="1">
+
+        <record id="ir_cron_budget_alert_evaluation" model="ir.cron">
+            <field name="name">Budget Alert Threshold Evaluation</field>
+            <field name="model_id" ref="model_budget_alert"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_evaluate_thresholds()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="nextcall"
+                   eval="(DateTime.now().replace(minute=0, second=0) + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="active" eval="True"/>
+            <field name="priority">5</field>
+        </record>
+
+    </data>
+</odoo>

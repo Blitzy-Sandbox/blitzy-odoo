@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    FEATURE-004 Asset Management - Asset Category Views (AM-001 AC3)
+
+    Defines views for account.asset.category - the template model holding
+    default depreciation configuration and account assignments for new
+    assets. Manager-only by convention (see menuitem.xml groups).
+
+    View types: list, form, search.
+    Window action: action_account_asset_category.
+-->
+<odoo>
+
+    <!-- ==================================================================
+         LIST VIEW
+         ================================================================== -->
+    <record id="view_account_asset_category_list" model="ir.ui.view">
+        <field name="name">account.asset.category.list</field>
+        <field name="model">account.asset.category</field>
+        <field name="arch" type="xml">
+            <list string="Asset Categories"
+                  default_order="sequence, name"
+                  decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code" optional="show"/>
+                <field name="depreciation_method" string="Method"/>
+                <field name="useful_life_unit" optional="hide" string="Unit"/>
+                <field name="useful_life_years"
+                       optional="show"
+                       string="Useful Life (yr)"/>
+                <field name="useful_life_months"
+                       optional="hide"
+                       string="Useful Life (mo)"/>
+                <field name="salvage_percent"
+                       widget="percentage"
+                       optional="hide"
+                       string="Salvage %"/>
+                <field name="auto_post_depreciation"
+                       widget="boolean_toggle"
+                       optional="show"
+                       string="Auto-Post"/>
+                <field name="asset_count" string="# Assets"/>
+                <field name="company_id"
+                       groups="base.group_multi_company"
+                       optional="hide"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ==================================================================
+         FORM VIEW
+         ================================================================== -->
+    <record id="view_account_asset_category_form" model="ir.ui.view">
+        <field name="name">account.asset.category.form</field>
+        <field name="model">account.asset.category</field>
+        <field name="arch" type="xml">
+            <form string="Asset Category">
+                <sheet>
+                    <!-- Smart button: number of assets in this category -->
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button"
+                                type="action"
+                                name="%(action_account_asset)d"
+                                icon="fa-cubes"
+                                context="{'search_default_category_id': id}"
+                                invisible="asset_count == 0">
+                            <field name="asset_count"
+                                   widget="statinfo"
+                                   string="Assets"/>
+                        </button>
+                    </div>
+
+                    <!-- Archived banner -->
+                    <widget name="web_ribbon" title="Archived"
+                            bg_color="text-bg-danger"
+                            invisible="active"/>
+
+                    <!-- Title block -->
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1>
+                            <field name="name"
+                                   placeholder="e.g., IT Equipment, Vehicles, Office Furniture..."/>
+                        </h1>
+                    </div>
+
+                    <!-- Basic info group -->
+                    <group>
+                        <group name="basic" string="Basic Information">
+                            <field name="code"
+                                   placeholder="e.g., IT, VEH, FURN"/>
+                            <field name="sequence"/>
+                            <field name="active" invisible="1"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"/>
+                        </group>
+                        <group name="description_group" string="Description">
+                            <field name="description" nolabel="1"
+                                   placeholder="Optional description of the category and its depreciation policy rationale..."/>
+                        </group>
+                    </group>
+
+                    <!-- Notebook: Defaults / Accounts / Automation -->
+                    <notebook>
+                        <!-- TAB 1: Depreciation Defaults (AM-002 templates) -->
+                        <page name="defaults" string="Depreciation Defaults">
+                            <group>
+                                <group name="method" string="Method &amp; Useful Life">
+                                    <field name="depreciation_method"/>
+                                    <field name="useful_life_unit"
+                                           invisible="depreciation_method == 'units_of_production'"/>
+                                    <field name="useful_life_years"
+                                           invisible="useful_life_unit != 'years' or depreciation_method == 'units_of_production'"/>
+                                    <field name="useful_life_months"
+                                           invisible="useful_life_unit != 'months' or depreciation_method == 'units_of_production'"/>
+                                    <field name="declining_factor"
+                                           invisible="depreciation_method != 'declining_balance'"/>
+                                    <field name="switch_to_straight_line"
+                                           invisible="depreciation_method != 'declining_balance'"/>
+                                    <field name="units_production_total"
+                                           invisible="depreciation_method != 'units_of_production'"/>
+                                </group>
+                                <group name="start_and_salvage" string="Start Date &amp; Salvage">
+                                    <field name="start_date_option"/>
+                                    <field name="salvage_percent" widget="percentage"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- TAB 2: Default Accounts (AM-001 AC6) -->
+                        <page name="accounts" string="Default Accounts">
+                            <group>
+                                <field name="asset_account_id"
+                                       options="{'no_create': True}"/>
+                                <field name="expense_account_id"
+                                       options="{'no_create': True}"/>
+                                <field name="accumulated_depreciation_account_id"
+                                       options="{'no_create': True}"/>
+                                <field name="journal_id"
+                                       options="{'no_create': True}"/>
+                            </group>
+                        </page>
+
+                        <!-- TAB 3: Automation (AM-004 cron control) -->
+                        <page name="automation" string="Automation">
+                            <group>
+                                <field name="auto_post_depreciation"/>
+                                <p class="text-muted"
+                                   invisible="not auto_post_depreciation">
+                                    When enabled, depreciation entries for assets in this
+                                    category will be automatically POSTED by the daily
+                                    Scheduled Action (AM-004). When disabled, entries are
+                                    created in DRAFT state for manual review.
+                                </p>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ==================================================================
+         SEARCH VIEW
+         ================================================================== -->
+    <record id="view_account_asset_category_search" model="ir.ui.view">
+        <field name="name">account.asset.category.search</field>
+        <field name="model">account.asset.category</field>
+        <field name="arch" type="xml">
+            <search string="Asset Categories">
+                <field name="name"/>
+                <field name="code"/>
+
+                <!-- Method filters -->
+                <separator/>
+                <filter name="filter_straight_line"
+                        string="Straight-Line"
+                        domain="[('depreciation_method', '=', 'straight_line')]"/>
+                <filter name="filter_declining_balance"
+                        string="Declining Balance"
+                        domain="[('depreciation_method', '=', 'declining_balance')]"/>
+                <filter name="filter_units_of_production"
+                        string="Units of Production"
+                        domain="[('depreciation_method', '=', 'units_of_production')]"/>
+
+                <!-- Automation filters -->
+                <separator/>
+                <filter name="filter_auto_post"
+                        string="Auto-Post Enabled"
+                        domain="[('auto_post_depreciation', '=', True)]"/>
+
+                <!-- Archived -->
+                <separator/>
+                <filter name="filter_archived"
+                        string="Archived"
+                        domain="[('active', '=', False)]"/>
+
+                <!-- Group-by -->
+                <separator/>
+                <group>
+                    <filter name="groupby_method"
+                            string="Depreciation Method"
+                            context="{'group_by': 'depreciation_method'}"/>
+                    <filter name="groupby_company"
+                            string="Company"
+                            context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ==================================================================
+         WINDOW ACTION
+         ================================================================== -->
+    <record id="action_account_asset_category" model="ir.actions.act_window">
+        <field name="name">Asset Categories</field>
+        <field name="res_model">account.asset.category</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_account_asset_category_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first asset category
+            </p>
+            <p>
+                Categories are templates that hold default depreciation settings
+                and account assignments. When you create a new asset and select
+                a category, the asset inherits all category defaults - which you
+                can still override per-asset if needed.
+            </p>
+            <p>
+                <strong>Example categories:</strong> IT Equipment (3-year straight-line),
+                Vehicles (5-year declining balance), Buildings (40-year straight-line).
+            </p>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 OCA, Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Follow-up Level Views — account_payment_followup Module (PF-001)
+    ================================================================
+
+    List, form, search, and window action definitions for
+    `account.followup.level` — the configuration model that defines
+    escalation levels for overdue customer follow-ups.
+
+    Implements:
+      - PF-001: Follow-up level configuration (sequence, delay,
+                action type, email template, triggers, minimum amount,
+                multi-company scoping, archive toggle).
+
+    External IDs defined (referenced by menuitem.xml and downstream
+    modules in this module):
+      - view_account_followup_level_list
+      - view_account_followup_level_form
+      - view_account_followup_level_search
+      - action_account_followup_level   (referenced by
+        `views/menuitem.xml` line 129 on `menu_account_followup_level`)
+
+    Odoo 19.0 XML conventions:
+      - `invisible` attribute (not `attrs`)
+      - `column_invisible` for hidden list columns
+      - `optional="hidden"` / `optional="show"` for toggleable columns
+      - 4-space indentation
+      - `widget="handle"` for drag-reorder on sequence
+      - `widget="boolean_toggle"` for quick activate/archive on list
+      - `widget="web_ribbon"` for archived state indicator on form
+      - `widget="monetary"` with `options="{'currency_field': 'currency_id'}"`
+        for min_amount; currency_id must be present (invisible) so the
+        monetary widget can resolve the currency.
+
+    Rules Compliance (AAP §0.7):
+      - R-01: No cross-module imports — zero references to
+              `account_asset_management`, `account_budget_management`,
+              or `account_deferred_revenue` External IDs.
+      - R-02: No Enterprise references — no `account_followup`,
+              `account_reports`, `account_accountant` references.
+      - R-03: Defines views for the NET-NEW model
+              `account.followup.level` (no `inherit_id`).
+      - R-05: N/A — does not touch `account.move` /
+              `account.move.line` / `res.partner` fields.
+
+    Model-Side Method Reference:
+      The form's "Email Template" smart button calls
+      `action_view_email_template`, which is defined on
+      `account.followup.level` (see
+      `models/account_followup_level.py` around line 674). The method
+      opens the linked `mail.template` record in a form view; it
+      returns `False` when no template is set, so the button itself is
+      hidden (`invisible="not email_template_id"`) to avoid a no-op
+      click.
+
+    Access Control (per `security/ir.model.access.csv`):
+      - account.group_account_user:    read-only (1,0,0,0)
+      - account.group_account_manager: full      (1,1,1,1)
+      Creation/editing of follow-up levels is restricted to accounting
+      managers; all accountants can read configuration to understand
+      the escalation workflow.
+
+    Email Template Domain:
+      The `email_template_id` Many2one uses
+      `domain="[('model', '=', 'res.partner')]"` because
+      `data/mail_template_data.xml` seeds all four default templates
+      targeting `res.partner` (the follow-up cron iterates partners).
+      Restricting the dropdown prevents users from selecting a template
+      bound to a different model whose placeholders would fail to
+      render.
+-->
+<odoo>
+    <data>
+
+        <!-- ============================================================ -->
+        <!-- LIST (TREE) VIEW                                             -->
+        <!-- ============================================================ -->
+        <!--
+            Primary list view used by the Configuration > Follow-up
+            Levels menu. Sorted by (sequence, delay) so levels display
+            in the order they fire. The `handle` widget on `sequence`
+            enables drag-reorder; the `boolean_toggle` on `active`
+            allows one-click archive/restore.
+
+            Multi-company column is hidden by default and only visible
+            to users with `base.group_multi_company`; single-company
+            installations therefore see a clean four-column view.
+
+            The `currency_id` field is required (as `column_invisible`)
+            so the monetary widget on `min_amount` can resolve the
+            currency symbol; the column itself is never rendered.
+        -->
+        <record id="view_account_followup_level_list" model="ir.ui.view">
+            <field name="name">account.followup.level.list</field>
+            <field name="model">account.followup.level</field>
+            <field name="arch" type="xml">
+                <list string="Follow-up Levels"
+                      default_order="sequence, delay"
+                      decoration-muted="not active">
+                    <!--
+                        Issue #21 fix: shortened "Days After Due" to
+                        "Delay (days)" so the list column header fits
+                        at 1280px without truncation.
+                    -->
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="delay"
+                           string="Delay (days)"/>
+                    <field name="action_type" string="Action"/>
+                    <field name="email_template_id"
+                           string="Email Template"
+                           optional="show"/>
+                    <field name="min_amount"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           optional="hidden"/>
+                    <field name="currency_id"
+                           column_invisible="True"/>
+                    <field name="trigger_block_sales"
+                           optional="hidden"/>
+                    <field name="trigger_collection_list"
+                           optional="hidden"/>
+                    <field name="trigger_notify_sales_rep"
+                           optional="hidden"/>
+                    <field name="trigger_update_trust"
+                           optional="hidden"/>
+                    <field name="attach_invoices"
+                           optional="hidden"/>
+                    <field name="company_id"
+                           groups="base.group_multi_company"
+                           optional="hidden"/>
+                    <field name="active"
+                           widget="boolean_toggle"
+                           optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- FORM VIEW                                                    -->
+        <!-- ============================================================ -->
+        <!--
+            Detail form for creating/editing a follow-up level.
+
+            Structure:
+              - Smart button bar: "Email Template" opens the linked
+                mail.template form; hidden when no template is set.
+              - Web ribbon: visual indicator when the level is archived
+                (active == False).
+              - Title: `name` placeholder "e.g. First Reminder".
+              - Two-column group:
+                  Left  — Basic Information (sequence, delay, description,
+                          hidden active field for ribbon data binding).
+                  Right — Action Configuration (action_type,
+                          email_template_id, attach_invoices,
+                          min_amount with monetary widget).
+              - Notebook:
+                  Page "Additional Actions" (trigger_*).
+                  Page "Multi-Company" (company_id, visible only to
+                                        users with multi-company group).
+
+            Conditional visibility (Odoo 19 uses `invisible` attribute):
+              * email_template_id — visible & required when
+                action_type in ('automatic', 'email').
+              * attach_invoices — visible when
+                action_type in ('automatic', 'email'); silently
+                ignored by the cron otherwise.
+        -->
+        <record id="view_account_followup_level_form" model="ir.ui.view">
+            <field name="name">account.followup.level.form</field>
+            <field name="model">account.followup.level</field>
+            <field name="arch" type="xml">
+                <form string="Follow-up Level">
+                    <sheet>
+                        <!-- Smart button bar.
+                             The "Email Template" stat button calls the
+                             model's `action_view_email_template`
+                             method (models/account_followup_level.py
+                             line 674) which returns an
+                             `ir.actions.act_window` on the linked
+                             mail.template. Hidden when no template is
+                             configured to avoid a no-op click.
+                        -->
+                        <div name="button_box" class="oe_button_box">
+                            <button name="action_view_email_template"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-envelope-o"
+                                    invisible="not email_template_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">Email</span>
+                                    <span class="o_stat_text">Template</span>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Archive indicator ribbon. Visible when
+                             active is False; the corresponding boolean
+                             field is rendered invisible in the form
+                             body so toggling must happen via the list
+                             boolean_toggle or the Action > Archive
+                             menu (driven by ir.actions.server).
+                        -->
+                        <widget name="web_ribbon"
+                                title="Archived"
+                                bg_color="bg-danger"
+                                invisible="active"/>
+
+                        <!-- Title block -->
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1>
+                                <field name="name"
+                                       placeholder="e.g. First Reminder"/>
+                            </h1>
+                        </div>
+
+                        <!-- Primary configuration: two-column group -->
+                        <group>
+                            <group string="Basic Information"
+                                   name="basic_info_group">
+                                <field name="sequence"/>
+                                <field name="delay"
+                                       string="Days After Due Date"/>
+                                <field name="description"
+                                       placeholder="Internal description (visible to accountants only)"/>
+                                <!-- `active` is rendered invisible: the
+                                     web_ribbon above uses its value for
+                                     display, while toggling is done from
+                                     the list view or the chatter's Archive
+                                     action. Keeping the field bound in
+                                     the form preserves two-way data
+                                     flow for the ribbon's reactive
+                                     visibility expression.
+                                -->
+                                <field name="active" invisible="1"/>
+                            </group>
+                            <group string="Action Configuration"
+                                   name="action_config_group">
+                                <field name="action_type"/>
+                                <field name="email_template_id"
+                                       domain="[('model', '=', 'res.partner')]"
+                                       invisible="action_type not in ('automatic', 'email')"
+                                       required="action_type in ('automatic', 'email')"
+                                       options="{'no_create': True}"/>
+                                <field name="attach_invoices"
+                                       invisible="action_type not in ('automatic', 'email')"/>
+                                <field name="min_amount"
+                                       widget="monetary"
+                                       options="{'currency_field': 'currency_id'}"/>
+                                <!-- `currency_id` must be present
+                                     (invisible) in the form for the
+                                     monetary widget on `min_amount` to
+                                     render a currency symbol. It is
+                                     computed from `company_id` on the
+                                     model; users never edit it
+                                     directly.
+                                -->
+                                <field name="currency_id" invisible="1"/>
+                            </group>
+                        </group>
+
+                        <!-- Secondary configuration: notebook -->
+                        <notebook>
+                            <page name="triggers"
+                                  string="Additional Actions">
+                                <p class="text-muted">
+                                    When this level fires, the following
+                                    additional actions are executed on
+                                    the partner. Each option is
+                                    independent and may be combined with
+                                    any <em>Action Type</em>.
+                                </p>
+                                <group>
+                                    <group>
+                                        <field name="trigger_block_sales"/>
+                                        <field name="trigger_collection_list"/>
+                                    </group>
+                                    <group>
+                                        <field name="trigger_notify_sales_rep"/>
+                                        <field name="trigger_update_trust"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page name="multi_company"
+                                  string="Multi-Company"
+                                  groups="base.group_multi_company">
+                                <group>
+                                    <field name="company_id"
+                                           options="{'no_create': True}"/>
+                                </group>
+                                <p class="text-muted">
+                                    Follow-up levels are scoped per
+                                    company. Users only see levels
+                                    belonging to the companies they
+                                    have access to. The
+                                    <code>(sequence, company_id)</code>
+                                    pair is unique — two levels in the
+                                    same company cannot share the same
+                                    sequence number.
+                                </p>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- SEARCH VIEW                                                  -->
+        <!-- ============================================================ -->
+        <!--
+            Search view powering the Follow-up Levels list. The
+            `active_levels` filter is applied by default via the window
+            action context, so users initially see only active levels.
+
+            Filter groupings (separated by `<separator/>` elements):
+              1. Active / Archived status
+              2. Action type filters (one per Selection value)
+              3. Group By options (action type, company)
+        -->
+        <record id="view_account_followup_level_search" model="ir.ui.view">
+            <field name="name">account.followup.level.search</field>
+            <field name="model">account.followup.level</field>
+            <field name="arch" type="xml">
+                <search string="Follow-up Levels">
+                    <!-- Autocomplete fields -->
+                    <field name="name"/>
+                    <field name="action_type"/>
+                    <field name="email_template_id"/>
+
+                    <separator/>
+
+                    <!-- Active / Archived status -->
+                    <filter name="active_levels"
+                            string="Active"
+                            domain="[('active', '=', True)]"/>
+                    <filter name="archived"
+                            string="Archived"
+                            domain="[('active', '=', False)]"/>
+
+                    <separator/>
+
+                    <!-- Action type filters: one per Selection value -->
+                    <filter name="automatic"
+                            string="Automatic"
+                            domain="[('action_type', '=', 'automatic')]"/>
+                    <filter name="manual"
+                            string="Manual"
+                            domain="[('action_type', '=', 'manual')]"/>
+                    <filter name="email_only"
+                            string="Email Only"
+                            domain="[('action_type', '=', 'email')]"/>
+                    <filter name="letter_only"
+                            string="Letter Only"
+                            domain="[('action_type', '=', 'letter')]"/>
+                    <filter name="phone_call"
+                            string="Phone Call"
+                            domain="[('action_type', '=', 'phone')]"/>
+                    <filter name="legal"
+                            string="Legal Action"
+                            domain="[('action_type', '=', 'lawyer')]"/>
+
+                    <!-- Group By options. The `<group>` element inside
+                         a `<search>` view in Odoo 19 does not accept
+                         `expand`/`string` attributes; collapsed-by-
+                         default is the runtime default and the label
+                         is rendered by the Group By menu itself.
+                    -->
+                    <group>
+                        <filter name="group_action_type"
+                                string="Action Type"
+                                context="{'group_by': 'action_type'}"/>
+                        <filter name="group_company"
+                                string="Company"
+                                context="{'group_by': 'company_id'}"
+                                groups="base.group_multi_company"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- WINDOW ACTION                                                -->
+        <!-- ============================================================ -->
+        <!--
+            External ID `action_account_followup_level` is referenced
+            by `views/menuitem.xml` (line 129) on the
+            `menu_account_followup_level` menu item.
+
+            Context:
+              * search_default_active_levels: 1 — hides archived
+                levels on initial load, matching the expectation that
+                configuration users want to see live escalation rules.
+        -->
+        <record id="action_account_followup_level" model="ir.actions.act_window">
+            <field name="name">Follow-up Levels</field>
+            <field name="res_model">account.followup.level</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_account_followup_level_search"/>
+            <field name="context">{'search_default_active_levels': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Configure your first follow-up level
+                </p>
+                <p>
+                    Follow-up levels define the escalation sequence for
+                    customers who have overdue invoices. Each level
+                    specifies how many days after the invoice due date
+                    it triggers (<em>delay</em>), what action is
+                    performed (<em>action type</em> — automatic email,
+                    manual, phone call, letter, or legal action), and
+                    which email template is used when the follow-up
+                    cron fires.
+                </p>
+                <p>
+                    Additional per-level options include attaching
+                    invoice PDFs to reminder emails, blocking new sales
+                    orders, adding the partner to a collection list,
+                    notifying the salesperson, and updating the
+                    partner's trust classification.
+                </p>
+                <p>
+                    The (<em>sequence</em>, <em>company</em>) pair is
+                    unique: two levels within the same company cannot
+                    share the same sequence number.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

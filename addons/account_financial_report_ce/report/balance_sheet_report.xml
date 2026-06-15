@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Balance Sheet Report Template (FR-001)
+    Implements GAAP/IFRS compliant balance sheet with:
+    - Hierarchical Assets, Liabilities, Equity sections with level-based indentation
+    - Comparative period columns with variance analysis (absolute and percentage)
+    - Drill-down links on account names and amount cells to source journal entries
+    - Accounting equation validation badge (Assets = Liabilities + Equity)
+    - Multi-format support: rendered via QWeb for PDF and screen display
+
+    Field References (from account.balance.sheet.report and .line models):
+    - doc.is_balanced / doc.balance_difference: Equation validation from model
+    - doc.compare_period: Boolean toggle for comparative period display
+    - line.level: Hierarchy depth (0=section, 1=sub-section, 2=detail)
+    - line.is_group: True for section/group header lines (bold, non-drillable)
+    - line.amount / line.comparison_amount: Current and prior period balances
+    - line.variance_absolute / line.variance_percentage: Computed variance data
+    - line.account_ids: Linked accounts for drill-down navigation
+-->
+<odoo>
+    <template id="report_balance_sheet">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page o_financial_report">
+
+                        <!-- ============================================================ -->
+                        <!-- Report Header                                                 -->
+                        <!-- ============================================================ -->
+                        <div class="text-center report-header">
+                            <h2>Balance Sheet</h2>
+                            <p>
+                                <strong>As of: </strong>
+                                <span t-field="doc.date_to"/>
+                                <t t-if="doc.compare_period">
+                                    <span> vs </span>
+                                    <span t-field="doc.compare_date_to"/>
+                                </t>
+                            </p>
+                            <p t-if="doc.company_id">
+                                <span t-field="doc.company_id.name"/>
+                            </p>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- Report Parameters                                             -->
+                        <!-- ============================================================ -->
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Target Moves:</strong></td>
+                                        <td>
+                                            <t t-if="doc.target_move == 'posted'">Posted Entries Only</t>
+                                            <t t-else="">All Entries</t>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="doc.account_ids">
+                                        <td><strong>Filtered Accounts:</strong></td>
+                                        <td><span t-esc="len(doc.account_ids)"/> accounts selected</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- Drill-down domain helper: state filter fragment               -->
+                        <!-- Appended to per-line domain when target_move is 'posted'      -->
+                        <!-- ============================================================ -->
+                        <t t-set="posted_domain_fragment"
+                           t-value="doc.target_move == 'posted' and &quot;,('parent_state','=','posted')&quot; or ''"/>
+
+                        <!-- Dynamic column count for colspan on full-width rows -->
+                        <t t-set="col_count" t-value="5 if doc.compare_period else 2"/>
+
+                        <!-- ============================================================ -->
+                        <!-- Balance Sheet Table                                           -->
+                        <!-- Uses a single loop over doc.line_ids (ordered by sequence).   -->
+                        <!-- Lines carry level, is_group, and variance fields from model.  -->
+                        <!-- ============================================================ -->
+                        <table class="table table-sm report-table">
+                            <thead>
+                                <tr class="bg-primary text-white">
+                                    <!-- Account column: wider when no comparison -->
+                                    <th t-att-style="doc.compare_period and 'width: 36%' or 'width: 60%'">
+                                        Account
+                                    </th>
+                                    <!-- Current period / Balance column -->
+                                    <th class="text-end"
+                                        t-att-style="doc.compare_period and 'width: 16%' or 'width: 40%'">
+                                        <t t-if="doc.compare_period">Current Period</t>
+                                        <t t-else="">Balance</t>
+                                    </th>
+                                    <!-- Comparison-only columns: Prior, Variance, Variance % -->
+                                    <t t-if="doc.compare_period">
+                                        <th class="text-end" style="width: 16%">Prior Period</th>
+                                        <th class="text-end" style="width: 16%">Variance</th>
+                                        <th class="text-end" style="width: 16%">Variance %</th>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="doc.line_ids" t-as="line">
+
+                                    <!-- ================================================ -->
+                                    <!-- Grand-total separator: thick border before the    -->
+                                    <!-- final TOTAL LIABILITIES AND EQUITY row.           -->
+                                    <!-- ================================================ -->
+                                    <t t-if="line_last">
+                                        <tr class="o_bs_separator_row">
+                                            <td t-att-colspan="col_count"
+                                                class="border-top border-2 border-dark p-0"
+                                                style="height: 4px;"/>
+                                        </tr>
+                                    </t>
+
+                                    <!-- ================================================ -->
+                                    <!-- Compute row-level CSS class based on hierarchy    -->
+                                    <!--   Level 0 + is_group (not last): section header   -->
+                                    <!--     e.g. ASSETS, LIABILITIES, EQUITY              -->
+                                    <!--   Level 0 + last: grand total row                 -->
+                                    <!--   Level 1 + is_group: sub-section header          -->
+                                    <!--     e.g. Current Assets, Non-Current Assets        -->
+                                    <!--   Other: regular detail row                       -->
+                                    <!-- ================================================ -->
+                                    <t t-set="row_class"
+                                       t-value="line_last and 'table-primary fw-bold'
+                                                or (line.level == 0 and line.is_group and 'table-secondary fw-bold')
+                                                or (line.level == 1 and line.is_group and 'table-light fw-bold')
+                                                or ''"/>
+                                    <tr t-att-class="row_class">
+
+                                        <!-- ============================================ -->
+                                        <!-- Account Name Cell                             -->
+                                        <!-- Indentation via Bootstrap ps-* utilities      -->
+                                        <!-- based on line.level (0=none, 1=ps-3, 2=ps-5)  -->
+                                        <!-- Group lines render bold; detail lines render   -->
+                                        <!-- as drill-down links when account_ids present.  -->
+                                        <!-- ============================================ -->
+                                        <td>
+                                            <div t-att-class="line.level == 0 and ''
+                                                              or line.level == 1 and 'ps-3'
+                                                              or 'ps-5'">
+                                                <t t-if="line.is_group">
+                                                    <strong t-esc="line.name"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <!-- Drill-down link: navigate to journal entries for this account -->
+                                                    <a t-if="line.account_ids"
+                                                       t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','in',{{ line.account_ids.ids }}),('date','&lt;=','{{ doc.date_to }}'){{ posted_domain_fragment }}]"
+                                                       class="text-primary drilldown">
+                                                        <span t-esc="line.name"/>
+                                                    </a>
+                                                    <span t-else="" t-esc="line.name"/>
+                                                </t>
+                                            </div>
+                                        </td>
+
+                                        <!-- ============================================ -->
+                                        <!-- Current Period Amount Cell                    -->
+                                        <!-- For detail lines with accounts, the entire    -->
+                                        <!-- cell is a clickable drill-down link per AAP.  -->
+                                        <!-- For group/total lines, bold monetary display. -->
+                                        <!-- ============================================ -->
+                                        <td class="text-end">
+                                            <t t-if="not line.is_group and line.account_ids">
+                                                <!-- Entire amount cell clickable for drill-down -->
+                                                <a t-attf-href="/web#model=account.move.line&amp;view_type=list&amp;domain=[('account_id','in',{{ line.account_ids.ids }}),('date','&lt;=','{{ doc.date_to }}'){{ posted_domain_fragment }}]"
+                                                   class="text-dark drilldown d-block">
+                                                    <span t-esc="line.amount"
+                                                          t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </a>
+                                            </t>
+                                            <t t-elif="line.is_group">
+                                                <strong>
+                                                    <span t-esc="line.amount"
+                                                          t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </strong>
+                                            </t>
+                                            <t t-else="">
+                                                <span t-esc="line.amount"
+                                                      t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            </t>
+                                        </td>
+
+                                        <!-- ============================================ -->
+                                        <!-- Comparison Columns (visible when              -->
+                                        <!-- doc.compare_period is True)                   -->
+                                        <!-- ============================================ -->
+                                        <t t-if="doc.compare_period">
+
+                                            <!-- Prior Period Amount -->
+                                            <td class="text-end">
+                                                <t t-if="line.is_group">
+                                                    <strong>
+                                                        <span t-esc="line.comparison_amount"
+                                                              t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    </strong>
+                                                </t>
+                                                <t t-else="">
+                                                    <span t-esc="line.comparison_amount"
+                                                          t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </t>
+                                            </td>
+
+                                            <!-- Variance (Absolute): green for positive, red for negative -->
+                                            <t t-set="var_abs_val" t-value="line.variance_absolute or 0"/>
+                                            <td t-att-class="'text-end'
+                                                             + (var_abs_val > 0 and ' text-success' or '')
+                                                             + (var_abs_val &lt; 0 and ' text-danger' or '')">
+                                                <t t-if="line.is_group">
+                                                    <strong>
+                                                        <span t-esc="line.variance_absolute"
+                                                              t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                    </strong>
+                                                </t>
+                                                <t t-else="">
+                                                    <span t-esc="line.variance_absolute"
+                                                          t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                                </t>
+                                            </td>
+
+                                            <!-- Variance Percentage: green for positive, red for negative -->
+                                            <t t-set="var_pct_val" t-value="line.variance_percentage or 0"/>
+                                            <td t-att-class="'text-end'
+                                                             + (var_pct_val > 0 and ' text-success' or '')
+                                                             + (var_pct_val &lt; 0 and ' text-danger' or '')">
+                                                <t t-if="line.is_group">
+                                                    <strong>
+                                                        <span t-esc="'%+.1f%%' % var_pct_val"/>
+                                                    </strong>
+                                                </t>
+                                                <t t-else="">
+                                                    <span t-esc="'%+.1f%%' % var_pct_val"/>
+                                                </t>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- ============================================================ -->
+                        <!-- Accounting Equation Validation Badge                           -->
+                        <!-- Uses doc.is_balanced computed field from the model rather      -->
+                        <!-- than recalculating in the template. Shows doc.balance_         -->
+                        <!-- difference only when out of balance. Prominent icon badge.     -->
+                        <!-- ============================================================ -->
+                        <div class="mt-4">
+                            <t t-if="doc.is_balanced">
+                                <div class="alert alert-success d-flex align-items-center balance-verification balanced"
+                                     role="alert">
+                                    <i class="fa fa-check-circle fa-2x me-3"
+                                       aria-hidden="true"/>
+                                    <div>
+                                        <strong>Balance Sheet is in balance</strong>
+                                        <br/>
+                                        <small>
+                                            Assets = Liabilities + Equity
+                                            — The fundamental accounting equation is satisfied.
+                                        </small>
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-danger d-flex align-items-center balance-verification unbalanced"
+                                     role="alert">
+                                    <i class="fa fa-exclamation-triangle fa-2x me-3"
+                                       aria-hidden="true"/>
+                                    <div>
+                                        <strong>Balance Sheet is OUT OF BALANCE</strong>
+                                        <br/>
+                                        <small>
+                                            Difference:
+                                            <span t-esc="doc.balance_difference"
+                                                  t-options="{'widget': 'monetary', 'display_currency': doc.company_id.currency_id}"/>
+                                            <br/>
+                                            Assets ≠ Liabilities + Equity — Please review journal entries for errors.
+                                        </small>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- Report Footer                                                 -->
+                        <!-- context_timestamp is provided by Odoo's QWeb report context   -->
+                        <!-- (ir.actions.report injects it via ir_qweb_field_datetime).    -->
+                        <!-- ============================================================ -->
+                        <div class="mt-4 text-muted small report-footer">
+                            <p>
+                                Generated on: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/>
+                                <br/>
+                                Report ID: <span t-field="doc.id"/>
+                            </p>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

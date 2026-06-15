@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Default Configuration Data for Deferred Revenue
+
+    This file defines sensible out-of-box defaults for the Community Edition
+    deferred revenue module (FEATURE-005):
+
+      1. ir.sequence record - provides unique reference numbers for
+         account.deferred.schedule records (prefix: DEF-YYYY-NNNNN).
+
+      2. ir.config_parameter records - administrator-tunable defaults:
+         - default_recognition_method: the preselected recognition method
+           when creating a new schedule (straight_line / date_based / manual).
+         - max_months_warning: the threshold in months above which the UI
+           displays a warning (DR-001 Scenario 5 specifies 60 months).
+
+    All records are wrapped in <data noupdate="1"> so that any user edits
+    to the sequence prefix or config parameter values survive subsequent
+    module upgrades.
+
+    NOTE: This module deliberately defines NO ir.cron records. The cut-off
+    entry generation (DR-003) is a user-initiated TransientModel wizard,
+    not a scheduled job. R-06 (XML ir.cron mandate) applies only to
+    AM-004 (asset depreciation) and PF-002 (payment follow-up email),
+    neither of which belongs to this module.
+-->
+<odoo>
+
+    <data noupdate="1">
+
+        <!-- =================================================================
+             SECTION 1: ir.sequence - Deferral Schedule Numbering
+             =================================================================
+             Provides unique reference numbers for account.deferred.schedule
+             records.  Referenced by the model's CRUD override via
+             self.env['ir.sequence'].next_by_code('account.deferred.schedule')
+             in addons/account_deferred_revenue/models/account_deferred_schedule.py.
+
+             Format: DEF-YYYY-NNNNN (e.g. DEF-2024-00001)
+
+             The %(year)s placeholder is interpolated by Odoo's ir.sequence
+             implementation at generation time to the current year.
+
+             company_id is eval="False" - the sequence is global; individual
+             companies may override by creating company-scoped sequences
+             through the standard Odoo Sequences configuration UI if needed.
+        -->
+        <record id="seq_account_deferred_schedule" model="ir.sequence">
+            <field name="name">Deferred Revenue Schedule</field>
+            <field name="code">account.deferred.schedule</field>
+            <field name="prefix">DEF-%(year)s-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- =================================================================
+             SECTION 2: ir.config_parameter - Default Recognition Method
+             =================================================================
+             Administrator-tunable default for the recognition method selected
+             when creating a new account.deferred.schedule record.  Valid
+             values (matching the Selection field on the model):
+               - straight_line : equal amounts per period (default)
+               - date_based    : prorated by calendar days in each period
+               - manual        : user-entered per period
+
+             Changing this value via Settings -> Technical -> Parameters ->
+             System Parameters will influence the default on new schedules
+             without requiring a code change.
+        -->
+        <record id="default_recognition_method" model="ir.config_parameter">
+            <field name="key">account_deferred_revenue.default_recognition_method</field>
+            <field name="value">straight_line</field>
+        </record>
+
+        <!-- =================================================================
+             SECTION 3: ir.config_parameter - Max Months Warning Threshold
+             =================================================================
+             DR-001 Scenario 5: "I should receive a warning for recognition
+             periods over 60 months".  This parameter exposes the threshold
+             as administrator-tunable without a code change.  Value is a
+             positive integer representing months.  The schedule form's
+             @api.onchange or @api.constrains handler reads this parameter
+             and emits a warning when the period span exceeds it.
+
+             Python read pattern (note: cast to int since ORM stores string):
+               int(self.env['ir.config_parameter'].sudo().get_param(
+                   'account_deferred_revenue.max_months_warning',
+                   default='60'))
+        -->
+        <record id="default_max_months_warning" model="ir.config_parameter">
+            <field name="key">account_deferred_revenue.max_months_warning</field>
+            <field name="value">60</field>
+        </record>
+
+    </data>
+
+</odoo>

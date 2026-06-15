@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_account_deferred_schedule_user,account.deferred.schedule.user,model_account_deferred_schedule,group_deferred_revenue_user,1,1,1,0
+access_account_deferred_line_user,account.deferred.line.user,model_account_deferred_line,group_deferred_revenue_user,1,1,1,0
+
+access_account_deferred_schedule_manager,account.deferred.schedule.manager,model_account_deferred_schedule,group_deferred_revenue_manager,1,1,1,1
+access_account_deferred_line_manager,account.deferred.line.manager,model_account_deferred_line,group_deferred_revenue_manager,1,1,1,1
+
+access_account_deferred_cutoff_wizard_user,account.deferred.cutoff.wizard.user,model_account_deferred_cutoff_wizard,group_deferred_revenue_user,1,1,1,1
+access_account_deferred_recognition_dashboard_wizard_user,account.deferred.recognition.dashboard.wizard.user,model_account_deferred_recognition_dashboard_wizard,group_deferred_revenue_user,1,1,1,1
+
+access_account_move_deferred_user,account.move.deferred.user,account.model_account_move,group_deferred_revenue_user,1,0,0,0
+access_account_move_line_deferred_user,account.move.line.deferred.user,account.model_account_move_line,group_deferred_revenue_user,1,0,0,0
+access_account_account_deferred_user,account.account.deferred.user,account.model_account_account,group_deferred_revenue_user,1,0,0,0
+access_res_partner_deferred_user,res.partner.deferred.user,base.model_res_partner,group_deferred_revenue_user,1,0,0,0
+access_account_journal_deferred_user,account.journal.deferred.user,account.model_account_journal,group_deferred_revenue_user,1,0,0,0

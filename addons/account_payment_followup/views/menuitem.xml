@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 OCA, Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Menu Structure — account_payment_followup Module
+    =================================================
+
+    Navigation hierarchy for customer payment follow-up workflows and
+    configuration.  Integrates into the core Accounting app under
+    `account.menu_finance_entries` (Accounting), with a separate
+    Configuration section gated by the accounting manager group.
+
+    Loaded LAST in the manifest `data` list because menu items
+    reference actions defined in the preceding view files:
+      - action_account_followup_line   (account_followup_line_views.xml)
+      - action_account_followup_history (account_followup_history_views.xml)
+      - action_followup_report_wizard  (followup_report_views.xml)
+      - action_account_followup_level  (account_followup_level_views.xml)
+
+    Group gating strategy (Community Edition safe):
+      - Workflow menus:    `account.group_account_readonly`
+                           (populated on CE install)
+      - Configuration:     `account.group_account_manager`
+                           (populated on CE install)
+      - `account.group_account_user` is EMPTY on CE 19.0 — not used.
+
+    Sequence strategy:
+      - Root sequence=30 under account.menu_finance_entries — sits after
+        `Transactions` (seq 0) and `Closing` (seq 20) sub-menus defined
+        by core `account` module. Matches the precedent established by
+        `account_bank_reconciliation_ce/views/menuitem.xml` at seq=30.
+      - Operations sub-menu seq=10 (shown first) and Configuration
+        sub-menu seq=100 (shown last) give a clear visual separation
+        between day-to-day workflow and administrative configuration.
+-->
+<odoo>
+
+    <!-- ============================================================
+         Root Menu: Follow-ups
+         ============================================================
+         Top-level entry under the Accounting menu (account.menu_finance_entries).
+         Positioned at sequence 30, after existing core Accounting
+         sub-menus (Transactions at seq 0, Closing at seq 20) and
+         alongside the Bank Reconciliation module which also uses
+         sequence=30 in the same parent.
+
+         Visibility gated by `account.group_account_readonly` — populated
+         on CE install and broad enough that all accounting users see
+         the Follow-ups menu.  The Operations sub-menu inherits this
+         gating; the Configuration sub-menu overrides to the manager
+         group (see below).
+         ============================================================ -->
+    <menuitem id="menu_account_followup_root"
+              name="Follow-ups"
+              parent="account.menu_finance_entries"
+              sequence="30"
+              groups="account.group_account_readonly"/>
+
+    <!-- ============================================================
+         Workflow Sub-Menus (Operations)
+         ============================================================
+         Day-to-day operational menu items for browsing overdue
+         customers, reviewing follow-up action history, and generating
+         aged-receivables reports.  Inherits `account.group_account_readonly`
+         visibility from the root menu so all accounting users see
+         these entries.
+         ============================================================ -->
+    <menuitem id="menu_account_followup_operations"
+              name="Follow-up Operations"
+              parent="menu_account_followup_root"
+              sequence="10"/>
+
+    <!-- Overdue Customers: Opens the per-partner overdue line list (PF-005).
+         Displays partners with outstanding overdue invoices, aging bucket
+         summaries (Current / 1-30 / 31-60 / 61-90 / 90+), and current
+         follow-up level assignment. -->
+    <menuitem id="menu_account_followup_line"
+              name="Overdue Customers"
+              action="action_account_followup_line"
+              parent="menu_account_followup_operations"
+              sequence="10"/>
+
+    <!-- Action History: Opens the immutable follow-up action audit trail (PF-004).
+         Lists all recorded follow-up actions (email sent, phone call, letter,
+         meeting, payment promise, status change, note, SMS) with timestamps,
+         user attribution, and optional attachments. Records are read-only
+         after creation to preserve audit-trail integrity. -->
+    <menuitem id="menu_account_followup_history"
+              name="Action History"
+              action="action_account_followup_history"
+              parent="menu_account_followup_operations"
+              sequence="20"/>
+
+    <!-- Follow-up Report: Opens the aged-receivables report wizard (PF-003).
+         Allows filtering by follow-up level, partner, aging bucket, and date
+         range, with output to PDF (QWeb) or Excel (openpyxl).  Targets
+         `new` for modal display. -->
+    <menuitem id="menu_account_followup_report"
+              name="Follow-up Report"
+              action="action_followup_report_wizard"
+              parent="menu_account_followup_operations"
+              sequence="30"/>
+
+    <!-- ============================================================
+         Configuration Sub-Menus
+         ============================================================
+         Administrative menu items for configuring follow-up levels,
+         their escalation delays, associated email templates, and
+         threshold amounts.  Restricted to accounting managers
+         (`account.group_account_manager`) — a CE-populated group
+         that raises the visibility bar above the read-only root menu.
+         ============================================================ -->
+    <menuitem id="menu_account_followup_config"
+              name="Configuration"
+              parent="menu_account_followup_root"
+              sequence="100"
+              groups="account.group_account_manager"/>
+
+    <!-- Follow-up Levels: Opens the account.followup.level list (PF-001).
+         Allows managers to create and edit escalation levels with
+         configurable delay days, associated mail.template records,
+         action types (email / phone / letter / meeting / manual), and
+         minimum amount thresholds. Default levels seeded via
+         data/followup_data.xml are: First Reminder (7d), Second
+         Reminder (14d), Warning (21d), Final Notice (30d). -->
+    <menuitem id="menu_account_followup_level"
+              name="Follow-up Levels"
+              action="action_account_followup_level"
+              parent="menu_account_followup_config"
+              sequence="10"/>
+
+</odoo>

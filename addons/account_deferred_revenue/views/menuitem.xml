@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    Menu Items for Deferred Revenue (FEATURE-005, Track C)
+    ======================================================
+
+    Registers the backend navigation for the account_deferred_revenue addon,
+    making DR-001 through DR-004 user stories discoverable under:
+
+        Accounting > Deferred Revenue
+
+    This file is loaded LAST among the module's view XML files because it
+    references ir.actions.act_window xmlids defined in the preceding view
+    files:
+      - action_account_deferred_schedule       (DR-001)
+      - action_account_deferred_line           (DR-002)
+      - action_deferred_cutoff_wizard          (DR-003)
+      - action_deferred_recognition_dashboard  (DR-004)
+
+    Visibility is restricted to members of account.group_account_user so
+    that only users with accounting rights see the Deferred Revenue menu.
+-->
+<odoo>
+
+    <!-- ==================================================================
+         ROOT MENU: Deferred Revenue
+         Placed under Accounting (account.menu_finance) at sequence 40,
+         after Reporting (sequence 20) and before Configuration (100).
+         Restricted to users with Accounting > User rights.
+         ================================================================== -->
+    <menuitem id="menu_deferred_revenue_root"
+              name="Deferred Revenue"
+              parent="account.menu_finance"
+              sequence="40"
+              groups="account.group_account_user"/>
+
+    <!-- ==================================================================
+         CHILD MENUS
+         Sequence values are spaced by 10 to leave room for future insertions.
+         Groups are inherited from the root menu — no need to repeat on each
+         child item.
+         ================================================================== -->
+
+    <!-- Deferred Schedules — DR-001 primary entry point -->
+    <menuitem id="menu_deferred_schedule"
+              name="Deferred Schedules"
+              parent="menu_deferred_revenue_root"
+              action="action_account_deferred_schedule"
+              sequence="10"/>
+
+    <!-- Recognition Lines — DR-002 browse all period allocations -->
+    <menuitem id="menu_deferred_line"
+              name="Recognition Lines"
+              parent="menu_deferred_revenue_root"
+              action="action_account_deferred_line"
+              sequence="20"/>
+
+    <!-- Recognition Dashboard — DR-004 at-a-glance portfolio view -->
+    <menuitem id="menu_deferred_recognition_dashboard"
+              name="Recognition Dashboard"
+              parent="menu_deferred_revenue_root"
+              action="action_deferred_recognition_dashboard"
+              sequence="30"/>
+
+    <!-- Cut-off Entries — DR-003 wizard for period-end adjustments -->
+    <menuitem id="menu_deferred_cutoff_wizard"
+              name="Cut-off Entries"
+              parent="menu_deferred_revenue_root"
+              action="action_deferred_cutoff_wizard"
+              sequence="40"/>
+
+</odoo>

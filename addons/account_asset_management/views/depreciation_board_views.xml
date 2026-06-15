@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    ==================================================================
+    FEATURE-004 Asset Management: AM-003 Depreciation Board Views
+    ==================================================================
+
+    Read-only depreciation schedule visualization for the
+    ``account.asset.depreciation.line`` model. Provides list, kanban,
+    graph, pivot, and search views plus a top-level window action
+    ("Depreciation Board") wired into the asset management menu.
+
+    PERFORMANCE TARGET (per AAP)
+    ============================
+    Full-schedule render of 480 periods (40 years x 12 months) in
+    under 2 seconds. Compensating controls:
+
+      * ``limit="80"`` on the list view paginates the initial render.
+      * The model's ``cumulative_depreciation`` and ``net_book_value``
+        fields are stored ``@api.depends`` computations (defined in
+        ``models/account_asset_depreciation_line.py``), so board
+        rendering is a pure read with no recomputation on every fetch.
+      * The model's ``asset_id`` foreign key is indexed; the
+        ``company_id`` related field is ``store=True, index=True``,
+        making multi-company ``ir.rule`` filters execute as indexed
+        equality checks.
+      * The window action sets ``search_default_filter_due_today=1``
+        so the initial dataset is pre-filtered to lines that are due
+        today or in the past, keeping the first page small.
+
+    ACCESS PATHS
+    ============
+    * Top-level menu: Accounting > Assets > Depreciation Board
+      (wired in ``views/menuitem.xml`` via the action defined below).
+    * Drill-down from the asset form's "View Depreciation Board"
+      button (the asset model method ``action_view_depreciation_lines``
+      returns an ``ir.actions.act_window`` targeting this same model).
+    * Embedded read-only list on the asset form is defined inline in
+      ``views/account_asset_views.xml`` (not this file); the list view
+      below is used only for the standalone board.
+
+    AAP RULE COMPLIANCE
+    ===================
+    * R-01 (Module Independence): No references to any sibling new
+      module (``account_budget_management``, ``account_deferred_revenue``,
+      ``account_payment_followup``) or to FEATURE-001/002 CE modules.
+    * R-02 (No Enterprise Deps): No references to Odoo Enterprise
+      addons (``account_asset``, ``account_accountant``, etc.).
+    * R-03 (_inherit / _name): Views target a net-new model
+      (``account.asset.depreciation.line``); no view inheritance via
+      ``inherit_id``.
+    * R-05 (No Core View Modification): No ``inherit_id`` on any
+      ``<record>``; no extension of any core or FEATURE-001/002 view.
+    * R-07 (No sudo): Not applicable, XML only.
+    * R-09 (Module Folder Names): File lives under exactly
+      ``addons/account_asset_management/views/``.
+
+    ODOO 19.0 CONVENTIONS
+    =====================
+    * ``<list>`` element (Odoo 17+ canonical name) is used instead of
+      the legacy ``<tree>`` alias.
+    * ``column_invisible="1"`` (list context) is used for
+      ``currency_id`` (needed by the Monetary widget but not displayed).
+    * ``optional="show"`` / ``optional="hide"`` toggle user-visible
+      default state of optional columns.
+    * ``invisible="..."`` / ``readonly="..."`` / ``required="..."``
+      expressions replace the legacy ``attrs`` attribute.
+    * ``groups="base.group_multi_company"`` guards multi-company
+      fields and filters.
+    * XML relational operators are escaped: ``&gt;``, ``&lt;``.
+    * Indentation is 4 spaces.
+-->
+<odoo>
+
+    <!-- ==================================================================
+         LIST VIEW (EXPORT: view_account_asset_depreciation_line_list)
+
+         This is the declared export of this file. It powers the list
+         (tree) rendering on the Depreciation Board action and is the
+         first view in the action's ``view_mode``.
+
+         * ``default_order`` matches the model's ``_order`` so the
+           ORM and view agree on ordering.
+         * Row-level decorations mirror the badge color coding so
+           users get visual state cues when scanning many periods.
+         * ``create="false"`` / ``delete="false"`` enforce the AM-003
+           requirement that the board is READ-ONLY from the user's
+           perspective: schedule lines are generated automatically
+           when an asset is confirmed.
+         * ``limit="80"`` is the performance-critical pagination cap.
+         ================================================================== -->
+    <record id="view_account_asset_depreciation_line_list" model="ir.ui.view">
+        <field name="name">account.asset.depreciation.line.list</field>
+        <field name="model">account.asset.depreciation.line</field>
+        <field name="arch" type="xml">
+            <list string="Depreciation Schedule"
+                  default_order="asset_id, sequence, depreciation_date"
+                  decoration-success="state == 'posted'"
+                  decoration-muted="state == 'skipped'"
+                  decoration-info="state == 'draft'"
+                  create="false"
+                  delete="false"
+                  limit="80">
+                <!--
+                    Column width strategy (Issue #4 fix):
+
+                    Without explicit width hints the browser auto-sized
+                    ``asset_id`` (a long Many2one) to ~556px and the
+                    optional ``move_id`` to ~423px on a 1920px viewport,
+                    leaving 99-114px for the date and amount headers and
+                    forcing them to truncate to "Depreciatio..." and
+                    "Cumulative D...".
+
+                    The fix marks ``move_id`` as ``optional="hide"`` so
+                    it does not consume space by default (users can
+                    re-enable from the column picker), and gives every
+                    visible column an explicit ``width`` so the table
+                    fits at 1280px and 1920px without truncation. The
+                    asset reference column is capped at 25% so it cannot
+                    monopolise the viewport.
+                -->
+                <field name="asset_id"
+                       optional="show"
+                       width="25%"/>
+                <field name="sequence"
+                       string="Period"
+                       width="80px"/>
+                <field name="depreciation_date"
+                       width="130px"/>
+                <field name="depreciation_amount"
+                       sum="Total Depreciation"
+                       width="160px"/>
+                <field name="cumulative_depreciation"
+                       width="180px"/>
+                <field name="net_book_value"
+                       width="150px"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'posted'"
+                       decoration-muted="state == 'skipped'"
+                       decoration-info="state == 'draft'"
+                       width="90px"/>
+                <field name="move_id"
+                       optional="hide"/>
+                <field name="company_id"
+                       groups="base.group_multi_company"
+                       optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ==================================================================
+         KANBAN VIEW
+
+         Groups schedule lines by ``state`` so users can see, at a
+         glance, how many periods are still pending vs posted vs
+         skipped. The ``label_selection`` widget on the ``state``
+         field renders a color-coded label inside each card.
+
+         * ``default_group_by="state"`` places draft / posted /
+           skipped into separate columns.
+         * ``create="false"`` / ``delete="false"`` preserve the
+           read-only posture from the list view.
+         * ``o_kanban_small_column`` keeps columns compact so many
+           periods fit in the viewport.
+
+         Uses the Odoo 19 ``<t t-name="card">`` template standard.
+         The legacy ``<t t-name="kanban-box">`` pattern (Odoo <=17)
+         has been superseded and triggers an OwlError "Missing 'card'
+         template" if used in 19.0.
+         ================================================================== -->
+    <record id="view_account_asset_depreciation_line_kanban" model="ir.ui.view">
+        <field name="name">account.asset.depreciation.line.kanban</field>
+        <field name="model">account.asset.depreciation.line</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state"
+                    create="false"
+                    delete="false"
+                    class="o_kanban_small_column">
+                <field name="state"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click o_kanban_card_compact">
+                            <div class="o_kanban_record_top mb-2">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="asset_id"/>
+                                    </strong>
+                                    <div class="o_kanban_record_subtitle">
+                                        <span class="text-muted">Period </span>
+                                        <field name="sequence"/>
+                                    </div>
+                                </div>
+                                <field name="state" widget="label_selection"
+                                       options="{'classes': {'posted': 'success', 'skipped': 'default', 'draft': 'info'}}"/>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <div>
+                                    <span class="text-muted">Date:</span>
+                                    <field name="depreciation_date" widget="date"/>
+                                </div>
+                                <div>
+                                    <span class="text-muted">Amount:</span>
+                                    <field name="depreciation_amount" widget="monetary"/>
+                                </div>
+                                <div>
+                                    <span class="text-muted">NBV:</span>
+                                    <field name="net_book_value" widget="monetary"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ==================================================================
+         GRAPH VIEW
+
+         Time-series chart of monthly depreciation expense and the
+         rising cumulative-depreciation curve. Two measures overlayed
+         on a line chart gives users a quick visual read on both
+         periodic expense pattern and the running total.
+
+         * ``type="line"`` is appropriate for time-based progression.
+         * ``sample="1"`` shows illustrative placeholder data when
+           the dataset is empty, preserving chart affordance.
+         * ``interval="month"`` on ``depreciation_date`` aggregates
+           monthly, the natural cadence for most depreciation
+           schedules.
+         ================================================================== -->
+    <record id="view_account_asset_depreciation_line_graph" model="ir.ui.view">
+        <field name="name">account.asset.depreciation.line.graph</field>
+        <field name="model">account.asset.depreciation.line</field>
+        <field name="arch" type="xml">
+            <graph string="Depreciation Trend" type="line" sample="1">
+                <field name="depreciation_date" interval="month" type="row"/>
+                <field name="depreciation_amount" type="measure"/>
+                <field name="cumulative_depreciation" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ==================================================================
+         PIVOT VIEW
+
+         Rows = asset, columns = year, value = depreciation amount.
+         Gives finance users a natural matrix for cross-asset annual
+         depreciation comparison, with native drill-up / drill-down
+         on the year axis.
+
+         * ``interval="year"`` on the column axis is the most
+           commonly requested aggregation for multi-asset reporting.
+         * Users can switch to month / quarter at runtime via the
+           pivot view controls if a finer cadence is needed.
+         ================================================================== -->
+    <record id="view_account_asset_depreciation_line_pivot" model="ir.ui.view">
+        <field name="name">account.asset.depreciation.line.pivot</field>
+        <field name="model">account.asset.depreciation.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Depreciation Schedule" sample="1">
+                <field name="asset_id" type="row"/>
+                <field name="depreciation_date" interval="year" type="col"/>
+                <field name="depreciation_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- ==================================================================
+         SEARCH VIEW
+
+         Implements the AM-003 acceptance criteria for filtering,
+         sorting, and grouping the depreciation schedule:
+
+           * AC4: State filters (pending / posted / skipped)
+           * AC5: Date-range filters (due today or past, this year,
+                  next year) using ``context_today()`` and
+                  ``relativedelta`` expressions evaluated by the
+                  Odoo ORM search domain compiler.
+
+         Date-filter domains use escaped ``&gt;=`` and ``&lt;=``
+         because XML does not permit raw ``>`` and ``<`` inside
+         attribute values.
+
+         Group-by options align to the three most useful aggregation
+         dimensions: by asset (one asset, many periods), by state
+         (pending / posted / skipped buckets), and by time (month,
+         year). The multi-company group-by is guarded so it only
+         appears for users in multi-company databases.
+         ================================================================== -->
+    <record id="view_account_asset_depreciation_line_search" model="ir.ui.view">
+        <field name="name">account.asset.depreciation.line.search</field>
+        <field name="model">account.asset.depreciation.line</field>
+        <field name="arch" type="xml">
+            <search string="Depreciation Schedule">
+                <!-- Primary search fields (AM-003 AC5 / AC6) -->
+                <field name="asset_id"/>
+                <field name="move_id"/>
+                <field name="depreciation_date"/>
+
+                <!-- State filters (AM-003 AC4) -->
+                <separator/>
+                <filter name="filter_draft"
+                        string="Pending"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_posted"
+                        string="Posted"
+                        domain="[('state', '=', 'posted')]"/>
+                <filter name="filter_skipped"
+                        string="Skipped"
+                        domain="[('state', '=', 'skipped')]"/>
+
+                <!-- Date filters (AM-003 AC5) -->
+                <separator/>
+                <filter name="filter_due_today"
+                        string="Due Today or Past"
+                        domain="[('depreciation_date', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_this_year"
+                        string="This Year"
+                        domain="[
+                            ('depreciation_date', '&gt;=', (context_today() + relativedelta(month=1, day=1)).strftime('%Y-%m-%d')),
+                            ('depreciation_date', '&lt;=', (context_today() + relativedelta(month=12, day=31)).strftime('%Y-%m-%d'))
+                        ]"/>
+                <filter name="filter_next_year"
+                        string="Next Year"
+                        domain="[
+                            ('depreciation_date', '&gt;=', (context_today() + relativedelta(years=1, month=1, day=1)).strftime('%Y-%m-%d')),
+                            ('depreciation_date', '&lt;=', (context_today() + relativedelta(years=1, month=12, day=31)).strftime('%Y-%m-%d'))
+                        ]"/>
+
+                <!-- Group-by options -->
+                <separator/>
+                <group>
+                    <filter name="groupby_asset"
+                            string="Asset"
+                            context="{'group_by': 'asset_id'}"/>
+                    <filter name="groupby_state"
+                            string="Status"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="groupby_month"
+                            string="Month"
+                            context="{'group_by': 'depreciation_date:month'}"/>
+                    <filter name="groupby_year"
+                            string="Year"
+                            context="{'group_by': 'depreciation_date:year'}"/>
+                    <filter name="groupby_company"
+                            string="Company"
+                            context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ==================================================================
+         WINDOW ACTION (top-level "Depreciation Board" menu entry)
+
+         Presents the four rendering modes (list, kanban, graph,
+         pivot) with the search view above, and auto-activates the
+         "Due Today or Past" filter on open so the first page is
+         scoped to actionable lines. This is the performance-critical
+         default: without it, opening the board on a company with
+         many assets could render tens of thousands of future periods
+         before the user has had a chance to filter.
+
+         The help text guides users who open the board on an empty
+         database to the asset creation workflow, since schedule
+         lines are generated from confirmed assets rather than
+         directly created here.
+         ================================================================== -->
+    <record id="action_account_asset_depreciation_line" model="ir.actions.act_window">
+        <field name="name">Depreciation Board</field>
+        <field name="res_model">account.asset.depreciation.line</field>
+        <field name="view_mode">list,kanban,graph,pivot</field>
+        <field name="search_view_id" ref="view_account_asset_depreciation_line_search"/>
+        <field name="context">{'search_default_filter_due_today': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No depreciation lines yet.
+            </p>
+            <p>
+                Depreciation schedule lines are generated automatically when an asset is confirmed.
+                Create and confirm an asset first, and the system will pre-compute the complete
+                depreciation schedule based on the asset's method, useful life, and salvage value.
+            </p>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 OCA, Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    PF-001 - Payment Follow-up: Default Follow-up Levels
+    ====================================================
+    Seeds four default account.followup.level records representing the
+    standard escalation path for overdue customer invoices, per PF-001
+    Scenario 2 "Configure Default Follow-up Levels":
+
+      Level 1 (First Reminder):  sequence=10, delay=7  days, automatic,
+                                 friendly tone, no attachments.
+      Level 2 (Second Reminder): sequence=20, delay=14 days, automatic,
+                                 firmer tone, notifies sales rep.
+      Level 3 (Warning):         sequence=30, delay=21 days, automatic,
+                                 urgent tone, adds partner to collection
+                                 list. PDF attachments OPT-IN (see note
+                                 below).
+      Level 4 (Final Notice):    sequence=40, delay=30 days, automatic,
+                                 final/formal tone, blocks new sales,
+                                 adds partner to collection list,
+                                 notifies sales rep. PDF attachments
+                                 OPT-IN (see note below).
+
+    PF-002 SLA / wkhtmltopdf NOTE — invoice PDF attachments default OFF
+    ==================================================================
+    Background: Odoo 19's default cron real-time limit (configured via
+    the `limit-time-real-cron` config option) falls back to
+    `limit-time-real=120` (120 seconds). The PF-002 cron MUST process
+    up to ``batch_size=500`` partners within that budget per AAP
+    section 0.1.2. Synchronous wkhtmltopdf rendering of one invoice
+    PDF per partner with the unpatched-QT wkhtmltopdf binary commonly
+    shipped on Linux distributions costs ~1.0 to 1.1 seconds per
+    invoice; the QA report measured a 500-partner run with
+    attach_invoices=True on Levels 3 and 4 at 556.78 seconds, which is
+    4.6x over the default cron timeout. The unpatched-QT binary
+    cannot render multiple documents per invocation (it raises
+    UserError "Tried to convert multiple documents in wkhtmltopdf
+    using unpatched QT"), so the batched render path in
+    account_followup_level._batch_render_invoice_attachments cannot
+    recover this cost.
+
+    Resolution: ship attach_invoices=False on every default level.
+    Operators who want PDF copies attached to follow-up emails can
+    opt in per level (the noupdate="1" wrapper preserves their
+    customisation across upgrades) after sizing their cron timeout
+    accordingly:
+
+      * Patched-QT wkhtmltopdf builds (Odoo's odoofin/wkhtmltox PPA,
+        wkhtmltopdf 0.12.5 with the Odoo patches): the batched render
+        path engages and 500 partners can fit within the 120 s default.
+      * Unpatched wkhtmltopdf (e.g. Ubuntu's ``wkhtmltopdf`` 0.12.6):
+        raise the cron real-time limit to ~600 s OR reduce the cron's
+        batch size OR keep attach_invoices=False.
+
+    The email body's QWeb t-foreach iteration over the partner's
+    overdue invoices already lists every invoice with its number,
+    issue date, due date and amount; recipients have all the
+    information needed to identify which invoices are overdue without
+    PDF attachments. See README.rst section "Performance & SLA"
+    for the full operator guide.
+
+    Each level references a mail.template provided by
+    data/mail_template_data.xml (external IDs email_template_followup_level_1
+    through _level_4). Per __manifest__.py load ordering, mail_template_data.xml
+    MUST be listed before followup_data.xml so template external IDs resolve.
+
+    Records are wrapped in <data noupdate="1"> so end-user customisations
+    (modifying delays, disabling specific levels, changing action types,
+    adjusting minimum amount thresholds) are preserved across module
+    upgrades. This mirrors the OCA/Odoo "factory defaults that users may
+    modify" pattern, with precedent in:
+      - addons/account_bank_reconciliation_ce/data/reconciliation_data.xml
+      - addons/account/data/mail_template_data.xml
+
+    Rules Compliance (AAP Section 0.7):
+      - R-01 (Module Independence): no refs to sibling new modules
+        (account_asset_management, account_budget_management,
+        account_deferred_revenue).
+      - R-02 (No Enterprise Dependencies): no refs to Enterprise addons
+        (account_followup, account_accountant, account_reports).
+      - R-03 (N/A): this is data, not model code.
+      - R-07 (N/A): this is data, not Python; no sudo() to justify.
+      - R-09 (Exact folder name): file resides in
+        addons/account_payment_followup/data/.
+
+    SQL Constraint Compliance (models/account_followup_level.py):
+      - UNIQUE(sequence, company_id):  sequences 10, 20, 30, 40 are unique.
+      - CHECK(delay >= 0):             all delays are non-negative (7, 14, 21, 30).
+      - CHECK(min_amount >= 0):        all min_amounts are 0.0.
+
+    action_type value validation:
+      The sibling model defines action_type as a Selection field with
+      exactly six valid values: 'automatic', 'manual', 'email', 'letter',
+      'phone', 'lawyer'. All four default levels use 'automatic' so that
+      the PF-002 cron (data/followup_cron.xml) processes them without
+      requiring manual intervention. Administrators may switch individual
+      levels to 'manual' post-install if human review is desired; the
+      noupdate="1" wrapper preserves such customisations.
+-->
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            ================================================================
+            Level 1 of 4 - First Reminder (sequence=10, delay=7 days)
+            ================================================================
+            Tone: Friendly. Assumes the non-payment is an oversight on the
+            customer's part. No side-effect actions are triggered at this
+            level; the goal is to re-establish contact and prompt payment
+            without damaging the customer relationship.
+        -->
+        <record id="followup_level_first_reminder" model="account.followup.level">
+            <field name="name">First Reminder</field>
+            <field name="sequence">10</field>
+            <field name="delay">7</field>
+            <field name="action_type">automatic</field>
+            <field name="email_template_id" ref="email_template_followup_level_1"/>
+            <field name="description">First friendly payment reminder sent 7 days past due date. Assumes oversight on the customer's part and thanks the customer for prompt payment. No invoice attachments; no side-effect actions triggered.</field>
+            <field name="active" eval="True"/>
+            <field name="attach_invoices" eval="False"/>
+            <field name="trigger_block_sales" eval="False"/>
+            <field name="trigger_collection_list" eval="False"/>
+            <field name="trigger_notify_sales_rep" eval="False"/>
+            <field name="min_amount">0.0</field>
+        </record>
+
+        <!--
+            ================================================================
+            Level 2 of 4 - Second Reminder (sequence=20, delay=14 days)
+            ================================================================
+            Tone: Firmer. Acknowledges the prior contact and requests prompt
+            payment. First level at which the sales representative is
+            notified so that they can apply relationship pressure in
+            parallel with the automated email. Still no sales block, no
+            collection list, no invoice attachments.
+        -->
+        <record id="followup_level_second_reminder" model="account.followup.level">
+            <field name="name">Second Reminder</field>
+            <field name="sequence">20</field>
+            <field name="delay">14</field>
+            <field name="action_type">automatic</field>
+            <field name="email_template_id" ref="email_template_followup_level_2"/>
+            <field name="description">Second payment reminder sent 14 days past due date. Firmer tone requesting prompt payment and referencing the previous reminder. Notifies the assigned salesperson so that relationship-level follow-up can run in parallel with automated email.</field>
+            <field name="active" eval="True"/>
+            <field name="attach_invoices" eval="False"/>
+            <field name="trigger_block_sales" eval="False"/>
+            <field name="trigger_collection_list" eval="False"/>
+            <field name="trigger_notify_sales_rep" eval="True"/>
+            <field name="min_amount">0.0</field>
+        </record>
+
+        <!--
+            ================================================================
+            Level 3 of 4 - Warning (sequence=30, delay=21 days)
+            ================================================================
+            Tone: Urgent. Emphasises the seriousness of the overdue status
+            and outlines potential consequences. Partner is added to the
+            collection list and sales rep is notified. Sales orders are
+            NOT yet blocked - collections pressure only.
+
+            attach_invoices defaults to False so that the PF-002 cron
+            stays within Odoo 19's default cron real-time limit (120s)
+            on the unpatched-QT wkhtmltopdf binary commonly shipped on
+            Linux distributions; see the file header for the full
+            rationale. Operators who want PDF copies attached can flip
+            this flag in Settings > Technical > Followup Levels after
+            sizing their cron timeout accordingly. The email body's
+            QWeb t-foreach already lists every overdue invoice's number,
+            date, due date and amount — recipients have full identifying
+            information without the PDF.
+        -->
+        <record id="followup_level_warning" model="account.followup.level">
+            <field name="name">Warning</field>
+            <field name="sequence">30</field>
+            <field name="delay">21</field>
+            <field name="action_type">automatic</field>
+            <field name="email_template_id" ref="email_template_followup_level_3"/>
+            <field name="description">Formal payment warning sent 21 days past due date. Urgent tone emphasising the seriousness of the overdue status. Adds the partner to the collection list and notifies the assigned salesperson. Sales are not yet blocked at this level. PDF invoice attachments are opt-in per level for SLA reasons (see README.rst Performance section).</field>
+            <field name="active" eval="True"/>
+            <field name="attach_invoices" eval="False"/>
+            <field name="trigger_block_sales" eval="False"/>
+            <field name="trigger_collection_list" eval="True"/>
+            <field name="trigger_notify_sales_rep" eval="True"/>
+            <field name="min_amount">0.0</field>
+        </record>
+
+        <!--
+            ================================================================
+            Level 4 of 4 - Final Notice (sequence=40, delay=30 days)
+            ================================================================
+            Tone: Formal / legal. Last automated step before escalation to
+            collections or legal action. ALL side-effect actions
+            triggered: blocks new sales, adds partner to collection list,
+            notifies sales rep. Administrators who prefer human review
+            for final notices can switch action_type to 'manual'
+            post-install; the noupdate="1" wrapper will preserve the
+            customisation across upgrades.
+
+            attach_invoices defaults to False so that the PF-002 cron
+            stays within Odoo 19's default cron real-time limit (120s)
+            on the unpatched-QT wkhtmltopdf binary commonly shipped on
+            Linux distributions; see the file header for the full
+            rationale. Operators who want PDF copies attached can flip
+            this flag in Settings > Technical > Followup Levels after
+            sizing their cron timeout accordingly. The email body's
+            QWeb t-foreach already lists every overdue invoice's number,
+            date, due date and amount — recipients have full identifying
+            information without the PDF.
+        -->
+        <record id="followup_level_final_notice" model="account.followup.level">
+            <field name="name">Final Notice</field>
+            <field name="sequence">40</field>
+            <field name="delay">30</field>
+            <field name="action_type">automatic</field>
+            <field name="email_template_id" ref="email_template_followup_level_4"/>
+            <field name="description">Final notice sent 30 days past due date before escalation to collections or legal action. Formal tone with clear consequences outlined. Blocks new sales, adds partner to collection list, and notifies the assigned salesperson. PDF invoice attachments are opt-in per level for SLA reasons (see README.rst Performance section).</field>
+            <field name="active" eval="True"/>
+            <field name="attach_invoices" eval="False"/>
+            <field name="trigger_block_sales" eval="True"/>
+            <field name="trigger_collection_list" eval="True"/>
+            <field name="trigger_notify_sales_rep" eval="True"/>
+            <field name="min_amount">0.0</field>
+        </record>
+
+    </data>
+</odoo>

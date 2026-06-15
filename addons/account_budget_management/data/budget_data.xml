@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright 2024 Enterprise Accounting Team
+    License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+    BM-001 / BM-005 — Core Module Data
+    ==================================
+
+    Seeds foundational records required by the ``account_budget_management``
+    Odoo 19.0 Community Edition addon:
+
+      1. ``ir.sequence`` (code='budget.budget') — consumed by
+         ``budget.budget``'s ``create()`` override to auto-generate per-company
+         unique references in the form ``BUD/00001``.  Without this sequence,
+         the ``create()`` override's call to
+         ``self.env['ir.sequence'].with_company(company_id).next_by_code('budget.budget')``
+         returns ``False`` and every new budget receives the placeholder
+         literal ``'New'`` — violating the BM-001 acceptance criterion that
+         "Budget reference is unique per company".
+
+      2. ``ir.config_parameter`` records — administrator-tunable defaults
+         for the BM-005 alert cron.  Two parameters are seeded:
+
+           * ``account_budget_management.default_thresholds`` — the
+             comma-separated list of threshold percentages checked by the
+             cron (default: 75,90,100,110 matching the THRESHOLDS tuple
+             in ``models/budget_alert.py``).
+
+           * ``account_budget_management.alert_cron_batch_size`` — the
+             maximum number of budget lines the cron processes per
+             invocation (default: 500, chosen to meet the BM-005
+             performance SLA of "<15 minutes for 1,000 budgets").
+
+    All records are wrapped in ``<data noupdate="1">`` so administrator
+    customisations (sequence prefix/padding, parameter values) are
+    preserved across module upgrades.  The two ``ir.config_parameter``
+    records carry ``forcecreate="True"`` so they are re-created if
+    accidentally deleted post-install.
+
+    Compliance:
+      * R-01 — No sibling new-module XML IDs referenced.  All identifiers
+        are namespaced under ``account_budget_management.*`` or ``budget.*``.
+      * R-02 — No Odoo Enterprise module references.
+      * R-06 — No ``ir.cron`` records here (the BM-005 cron lives in
+        ``data/budget_alert_cron.xml``).
+      * R-09 — File path is exactly
+        ``addons/account_budget_management/data/budget_data.xml``.
+-->
+<odoo>
+    <data noupdate="1">
+
+        <!-- ==========================================================
+             ir.sequence — Budget reference auto-numbering (BM-001)
+             ==========================================================
+             Template sequence shared across companies.  The ``create()``
+             override in ``models/budget_budget.py`` invokes
+             ``.with_company(company_id).next_by_code('budget.budget')``
+             at runtime; Odoo auto-creates per-company counter state on
+             first use, ensuring each company's budget references advance
+             independently while all companies draw from this single
+             sequence definition.
+
+             Field choices:
+               * ``code='budget.budget'`` — MUST match EXACTLY the literal
+                 string used in ``budget_budget.py``'s ``create()`` override
+                 at the ``next_by_code(...)`` call site.  Any mismatch
+                 causes the ORM to return False and every new budget to
+                 receive the placeholder literal ``'New'``.
+               * ``prefix='BUD/'`` — human-readable prefix (with OCA
+                 trailing-slash convention) producing references like
+                 ``BUD/00001``.
+               * ``padding=5`` — counter is zero-padded to 5 digits
+                 (``00001``...``99999``).  Padding is a minimum width,
+                 not a hard maximum: after ``99999`` the counter
+                 continues as ``100000``.
+               * ``implementation='no_gap'`` — guarantees contiguous
+                 numbering by serialising sequence advancement inside
+                 each transaction.  This is the OCA-preferred setting
+                 for accounting references because it eliminates
+                 audit gaps from rolled-back transactions.
+               * ``use_date_range=False`` — the budget reference does
+                 not recycle per fiscal year; the budget record itself
+                 carries its ``date_from``/``date_to`` fields.
+               * ``company_id=False`` — the sequence is a shared
+                 template; per-company counter state is materialised
+                 by Odoo on first ``.with_company(...)`` invocation.
+             ========================================================== -->
+        <record id="seq_budget_budget" model="ir.sequence">
+            <field name="name">Budget Reference</field>
+            <field name="code">budget.budget</field>
+            <field name="prefix">BUD/</field>
+            <field name="padding">5</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">no_gap</field>
+            <field name="use_date_range" eval="False"/>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- ==========================================================
+             ir.config_parameter — Tunable BM-005 alert cron defaults
+             ==========================================================
+             Two administrator-tunable parameters that drive the BM-005
+             cron behaviour.  Both carry ``forcecreate="True"`` so they
+             self-heal if accidentally deleted post-install; combined
+             with the enclosing ``noupdate="1"`` wrapper this means:
+
+               * If the record is MISSING at upgrade time, Odoo
+                 recreates it with the default value below.
+               * If the record EXISTS with an admin-modified value,
+                 Odoo preserves the admin value (no overwrite).
+
+             The ``account_budget_management.*`` key namespace prevents
+             collision with sibling modules (R-01 implicit) and with
+             core Odoo parameters.
+             ========================================================== -->
+
+        <!-- Default threshold percentages evaluated by the BM-005 cron.
+             Format: comma-separated integers with NO spaces and NO
+             trailing comma.  The cron splits on ``,`` and iterates.
+             This default matches the ``THRESHOLDS`` class attribute in
+             ``models/budget_alert.py`` (tuple of strings).  Administrators
+             can override to add/remove thresholds (for example, add
+             ``50`` for early-warning alerts) via Settings → Technical →
+             Parameters → System Parameters without code changes. -->
+        <record id="param_default_thresholds" model="ir.config_parameter" forcecreate="True">
+            <field name="key">account_budget_management.default_thresholds</field>
+            <field name="value">75,90,100,110</field>
+        </record>
+
+        <!-- Maximum number of budget lines processed per BM-005 cron
+             invocation.  Prevents the cron from stalling under large
+             datasets and keeps a single run within the BM-005 SLA of
+             "<15 minutes for 1,000 budgets".  The cron body pages
+             through confirmed budget lines in chunks of this size,
+             committing after each chunk so partial progress is
+             preserved on error. -->
+        <record id="param_alert_cron_batch_size" model="ir.config_parameter" forcecreate="True">
+            <field name="key">account_budget_management.alert_cron_batch_size</field>
+            <field name="value">500</field>
+        </record>
+
+    </data>
+</odoo>

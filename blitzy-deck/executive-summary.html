@@ -656,24 +656,10 @@
           <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="boxes"></i></span><div class="kpi-value">6</div><div class="kpi-label">Accounting addons</div></div>
           <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="git-commit-horizontal"></i></span><div class="kpi-value">310</div><div class="kpi-label">Commits (307 agent + 3 merge)</div></div>
         </div>
-        <p class="note"><span class="mono">origin/pdlc</span> vs <span class="mono">7bd7718</span>; merge PRs #2 2026-02-02, #3 2026-04-17, #7 2026-06-09; head <span class="mono">13896915095</span>.</p>
+        <p class="note"><span class="mono">origin/pdlc</span> vs <span class="mono">7bd7718</span>: 206 <span class="mono">addons/</span>, 43 <span class="mono">tickets/</span>, 22 <span class="mono">blitzy/</span>, 5 <span class="mono">test_data/</span>, 2 <span class="mono">docs/</span>.</p>
       </section>
 
-      <!-- 3. CHANGE SET BY GROUP -- top-level group counts (content) -->
-      <section>
-        <p class="eyebrow">By Group</p>
-        <h2>Five Change Groups, 278 Files</h2>
-        <div class="kpi-grid">
-          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="boxes"></i></span><div class="kpi-value">206</div><div class="kpi-label">addons/</div></div>
-          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="ticket"></i></span><div class="kpi-value">43</div><div class="kpi-label">tickets/</div></div>
-          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="file-text"></i></span><div class="kpi-value">22</div><div class="kpi-label">blitzy/</div></div>
-          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="database"></i></span><div class="kpi-value">5</div><div class="kpi-label">test_data/</div></div>
-          <div class="kpi-card"><span class="kpi-icon" aria-hidden="true"><i data-lucide="book-open"></i></span><div class="kpi-value">2</div><div class="kpi-label">docs/</div></div>
-        </div>
-        <p class="note">Six addons span 206 files; the rest are specs, Blitzy docs, sample data, and guides.</p>
-      </section>
-
-      <!-- 4. ARCHITECTURE -- module-dependency Mermaid (content) -->
+      <!-- 3. ARCHITECTURE -- module-dependency Mermaid (content) -->
       <section>
         <p class="eyebrow">Architecture</p>
         <h2>All Six Addons Extend Core <span class="mono">account</span></h2>
@@ -691,7 +677,7 @@ graph TD
         <p class="note">No cross-addon coupling; <span class="mono">analytic</span> and <span class="mono">mail</span> are the only extra core dependencies.</p>
       </section>
 
-      <!-- 5. DIVIDER: What Was Built (slide-divider) -->
+      <!-- 4. DIVIDER: What Was Built (slide-divider) -->
       <section class="slide-divider">
         <span class="divider-icon" aria-hidden="true"><i data-lucide="blocks"></i></span>
         <p class="eyebrow">Section 01</p>
@@ -699,7 +685,7 @@ graph TD
         <span class="accent-bar"></span>
       </section>
 
-      <!-- 6. SIX-ADDON VALUE + file counts (content) -->
+      <!-- 5. SIX-ADDON VALUE + file counts (content) -->
       <section>
         <p class="eyebrow">Product Value</p>
         <h2>Six Addons, Enterprise Parity</h2>
@@ -724,7 +710,7 @@ graph TD
         </table>
       </section>
 
-      <!-- 7. DIVIDER: What Changed Architecturally (slide-divider) -->
+      <!-- 6. DIVIDER: What Changed Architecturally (slide-divider) -->
       <section class="slide-divider">
         <span class="divider-icon" aria-hidden="true"><i data-lucide="workflow"></i></span>
         <p class="eyebrow">Section 02</p>
@@ -732,7 +718,7 @@ graph TD
         <span class="accent-bar"></span>
       </section>
 
-      <!-- 8. DATA-FLOW -- asset depreciation sequence Mermaid (content) -->
+      <!-- 7. DATA-FLOW -- asset depreciation sequence Mermaid (content) -->
       <section>
         <p class="eyebrow">Data Flow</p>
         <h2>Asset Depreciation Posting</h2>
@@ -750,7 +736,7 @@ sequenceDiagram
         <p class="note">One of three unattended <span class="mono">ir.cron</span> jobs (assets daily, budget alert hourly, follow-up daily).</p>
       </section>
 
-      <!-- 9. DIVIDER: How We Reviewed It (slide-divider) -->
+      <!-- 8. DIVIDER: How We Reviewed It (slide-divider) -->
       <section class="slide-divider">
         <span class="divider-icon" aria-hidden="true"><i data-lucide="shield-check"></i></span>
         <p class="eyebrow">Section 03</p>
@@ -758,7 +744,7 @@ sequenceDiagram
         <span class="accent-bar"></span>
       </section>
 
-      <!-- 10. REVIEW PIPELINE -- Segmented PR Review Mermaid (content) -->
+      <!-- 9. REVIEW PIPELINE -- Segmented PR Review Mermaid (content) -->
       <section>
         <p class="eyebrow">Review Pipeline</p>
         <h2>Segmented PR Review</h2>
@@ -776,7 +762,7 @@ flowchart LR
         <p class="note">Any <span class="mono">BLOCKED</span> halts the pass and restarts from pre-flight with no carried credit.</p>
       </section>
 
-      <!-- 11. PRE-FLIGHT KPIs (content) -->
+      <!-- 10. PRE-FLIGHT KPIs (content) -->
       <section>
         <p class="eyebrow">Pre-Flight Gate</p>
         <h2>Quality Gates Passed</h2>
@@ -786,23 +772,10 @@ flowchart LR
           <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="percent"></i></span><div class="kpi-value">&ge; 80%</div><div class="kpi-label">Coverage per module</div></div>
           <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="sparkles"></i></span><div class="kpi-value">0</div><div class="kpi-label">Ruff violations</div></div>
         </div>
-        <p class="note">Per-module coverage 87&ndash;90%; zero production-path placeholder stubs.</p>
+        <p class="note">Four modules install; 12 net-new tables; coverage 87&ndash;90%; zero placeholder stubs.</p>
       </section>
 
-      <!-- 12. RUNTIME VALIDATION -- installed modules, tables, per-module tests (content) -->
-      <section>
-        <p class="eyebrow">Runtime Validation</p>
-        <h2>Installed &amp; Verified</h2>
-        <div class="kpi-grid">
-          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="package-check"></i></span><div class="kpi-value">4</div><div class="kpi-label">Modules @ 19.0.1.0.0</div></div>
-          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="table-2"></i></span><div class="kpi-value">12</div><div class="kpi-label">Net-new tables</div></div>
-          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="badge-check"></i></span><div class="kpi-value">619 / 619</div><div class="kpi-label">Tests passed</div></div>
-          <div class="kpi-card ok"><span class="kpi-icon" aria-hidden="true"><i data-lucide="percent"></i></span><div class="kpi-value">87&ndash;90%</div><div class="kpi-label">Coverage range</div></div>
-        </div>
-        <p class="note">Tests by module &mdash; AM 98, BM 171, DR 37, PF 312; all four install cleanly.</p>
-      </section>
-
-      <!-- 13. DIVIDER: Risks & Mitigations (slide-divider) -->
+      <!-- 11. DIVIDER: Risks & Mitigations (slide-divider) -->
       <section class="slide-divider">
         <span class="divider-icon" aria-hidden="true"><i data-lucide="shield-alert"></i></span>
         <p class="eyebrow">Section 04</p>
@@ -810,7 +783,7 @@ flowchart LR
         <span class="accent-bar"></span>
       </section>
 
-      <!-- 14. RISK TABLE (content) -->
+      <!-- 12. RISK TABLE (content) -->
       <section>
         <p class="eyebrow">Risk Register</p>
         <h2>Top Risks &mdash; Non-Blocking</h2>
@@ -819,13 +792,13 @@ flowchart LR
           <tbody>
             <tr><td>Mermaid <span class="mono">11.4.0</span> pin (CVE-2025-54881)</td><td><span class="pill low">Low</span></td><td>Strict + CSP</td></tr>
             <tr><td>Three <span class="mono">ir.cron</span> jobs</td><td><span class="pill med">Medium</span></td><td>Bounded, idempotent</td></tr>
-            <tr><td>Per-story vs &ge;80% gate</td><td><span class="pill low">Low</span></td><td>Per-module aggregate</td></tr>
+            <tr><td>Per-story vs &ge;80% gate</td><td><span class="pill med">Medium</span></td><td>Per-module aggregate</td></tr>
             <tr><td>SMTP relay (PF-002)</td><td><span class="pill high">High</span></td><td>Configure pre-go-live</td></tr>
           </tbody>
         </table>
       </section>
 
-      <!-- 15. DIVIDER: Onboarding & Continuation (slide-divider) -->
+      <!-- 13. DIVIDER: Onboarding & Continuation (slide-divider) -->
       <section class="slide-divider">
         <span class="divider-icon" aria-hidden="true"><i data-lucide="rocket"></i></span>
         <p class="eyebrow">Section 05</p>
@@ -833,7 +806,7 @@ flowchart LR
         <span class="accent-bar"></span>
       </section>
 
-      <!-- 16. DEV SETUP -- inline Fira Code (content; no fenced blocks) -->
+      <!-- 14. DEV SETUP -- inline Fira Code (content; no fenced blocks) -->
       <section>
         <p class="eyebrow">Developer Setup</p>
         <h2>Install &middot; Build &middot; Lint</h2>
@@ -851,7 +824,7 @@ flowchart LR
         </ul>
       </section>
 
-      <!-- 17. VERDICT KPI CARDS (content) -- reflects CODE_REVIEW.md -->
+      <!-- 15. VERDICT KPI CARDS (content) -- reflects CODE_REVIEW.md -->
       <section>
         <p class="eyebrow">Final Verdict</p>
         <h2>Seven Phases, One Verdict</h2>
@@ -864,7 +837,7 @@ flowchart LR
         <p class="note">Every file mapped to exactly one of seven domains; each verdict token is exactly <span class="mono">APPROVED</span>.</p>
       </section>
 
-      <!-- 18. CLOSING (slide-closing) -->
+      <!-- 16. CLOSING (slide-closing) -->
       <section class="slide-closing">
         <span class="divider-icon" aria-hidden="true"><i data-lucide="circle-check-big"></i></span>
         <p class="eyebrow">Outcome</p>

@@ -660,3 +660,20 @@ The seven domain phases execute **sequentially in the fixed order below**. A lat
 **Phase 5 verdict:** `APPROVED`
 
 
+### Domain Phase 6 — Frontend
+
+- **Owning specialist (review-only):** Odoo Views / OWL / SCSS SME.
+- **Files reviewed:** the 36 files in Domain 6 of §C (`views/**.xml`, wizard-located `*_views.xml`, `static/src/scss/**`).
+- **Focus:** view validity, action/menu wiring, OWL/SCSS assets, UX/responsiveness.
+
+**Findings (file:line):**
+
+1. **View validity & wiring.** Each of the four newest addons ships its form/tree/kanban/graph views plus actions and menus; views load during install (5/5 install scenarios exit 0, which would fail on any malformed `<record model="ir.ui.view">`) [provenance: Project Guide §4.1, §4.4]. Wizard transient UIs are wired through `*_views.xml` partitioned to this phase [addons/account_payment_followup/wizard/followup_report_wizard.py:L1].
+2. **Asset visualisations.** Depreciation board tree/kanban/graph views render at 1280 / mobile 375 / desktop 1920 breakpoints [provenance: Project Guide §4.4].
+3. **SCSS assets.** Each addon contributes one SCSS asset bundle (financial-report addon contributes two) under `static/src/scss/**`, partitioned to this phase per §C; assets register without build errors during install [provenance: Project Guide §4.4].
+4. **UX verification.** UI verification screenshots (stored under `blitzy/screenshots/`) cover asset/budget/deferred/follow-up forms, kanbans, wizards, and the cron forms reachable from Settings → Technical → Automation; visual-fidelity issues found in QA Checkpoints 4 and 6 were resolved before production-ready status [provenance: Project Guide §4.4].
+
+**Rule semantics:** a malformed view, a broken action/menu reference, or an asset that fails to compile would render this phase `BLOCKED` (file:line findings, halt, restart from pre-flight, no carried credit). None was found.
+
+**Phase 6 verdict:** `APPROVED`
+

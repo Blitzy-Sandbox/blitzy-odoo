@@ -315,7 +315,7 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
 
 **Reviewer observations (non-blocking):** (a) the **PF-002** follow-up cron renders 500-partner batches **with** PDF attachments in ~557s vs a <60s target; the no-PDF path completes in ~9.86s and a 500-partner batch cap is honored — a performance-tuning item, not a correctness defect [blitzy/documentation/Project Guide.md:L225]. (b) **AM-003** depreciation-board performance is verified only up to 480 periods (40 years monthly), beyond typical useful life [blitzy/documentation/Project Guide.md:L221]. Both are routed to the risk register; neither is a build/test/correctness failure and neither meets the `BLOCKED` threshold.
 
-**Verdict — Phase 5 (Business / Domain): PENDING**
+**Verdict — Phase 5 (Business / Domain): APPROVED**
 
 ---
 

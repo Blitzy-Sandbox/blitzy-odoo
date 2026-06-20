@@ -654,3 +654,21 @@ Per-domain subtotals below reconcile **exactly** to the §C.2 matrix column tota
 **Verdict — Phase 4 (QA / Test Integrity): APPROVED**
 
 ---
+
+### Phase 5 — Business / Domain  ·  Reviewer: Accounting Domain SME (IFRS / US-GAAP) (review-only)
+
+**Files reviewed:** the 18 files in the Business/Domain column of §C.2 (`report/**` `.py` + `.xml`), cross-referenced with the accounting calculation methods in the asset/budget/deferred/followup models and the `tickets/` acceptance criteria.
+
+**Findings (file:line):**
+
+1. **Depreciation correctness (IAS 16 / IAS 36 / ASC 360).** Asset management supports straight-line, declining-balance (with optional switch to straight-line), and units-of-production methods, with salvage value, mid-period proration, IAS 16 revaluation, IAS 36 / ASC 360 impairment and reversal, and disposal gain/loss against net book value — implemented in the depreciation schedule compute [addons/account_asset_management/models/account_asset.py:L1578] and documented per story AM-001..006 in the manifest [addons/account_asset_management/__manifest__.py:L41].
+2. **Budget variance correctness.** Variance is computed per budget line against posted actuals [addons/account_budget_management/models/budget_budget_line.py:L447] and surfaced through the budget-vs-actual report [addons/account_budget_management/report/budget_vs_actual_report.py:L71]; the BM-004 variance report meets its <3s/1,000-line SLA [blitzy/documentation/Project Guide.md:L222].
+3. **Revenue recognition (ASC 606 / IFRS 15).** Deferred schedules generate recognition lines by straight-line/date-based/manual allocation with fiscal-year boundary handling and lock-date-enforced cut-off entries [addons/account_deferred_revenue/models/account_deferred_schedule.py:L580], with the DR-003 cut-off wizard integrating Odoo 19.0's `account.lock_exception` [addons/account_deferred_revenue/__manifest__.py:L36].
+4. **Dunning / overdue correctness.** Per-partner aging buckets and `days_overdue` drive multi-level follow-up; aging is computed on the partner [addons/account_payment_followup/models/res_partner.py:L214] and per move line [addons/account_payment_followup/models/account_move_line.py:L104], and rendered through the QWeb follow-up report [addons/account_payment_followup/report/followup_report.xml:L87].
+5. **Traceability.** Each calculation traces to a `tickets/` story (AM/BM/DR/PF) and the financial-report family (13 templates) is documented and partitioned under `account_financial_report_ce` [addons/account_financial_report_ce/report/report_templates.xml:L1].
+
+**Reviewer observations (non-blocking):** (a) the **PF-002** follow-up cron renders 500-partner batches **with** PDF attachments in ~557s vs a <60s target; the no-PDF path completes in ~9.86s and a 500-partner batch cap is honored — a performance-tuning item, not a correctness defect [blitzy/documentation/Project Guide.md:L225]. (b) **AM-003** depreciation-board performance is verified only up to 480 periods (40 years monthly), beyond typical useful life [blitzy/documentation/Project Guide.md:L221]. Both are routed to the risk register; neither is a build/test/correctness failure and neither meets the `BLOCKED` threshold.
+
+**Verdict — Phase 5 (Business / Domain): APPROVED**
+
+---

@@ -807,7 +807,7 @@ This section authors the canonical Mermaid diagrams **once**; the executive deck
 
 ## 6.1 Module-Dependency Graph
 
-All six addons hang directly off Odoo's `account` core; only two carry a second core dependency (`account_budget_management` → `analytic`, `account_payment_followup` → `mail`). There are **no cross-addon dependencies**, which is the structural expression of the module-independence intent (§5.4) [origin/pdlc:addons/account_payment_followup/__manifest__.py:L151].
+All six addons hang directly off Odoo's `account` core; three carry a second core dependency (`account_financial_report_ce` → `analytic`, `account_budget_management` → `analytic`, `account_payment_followup` → `mail`) — every one of which is an Odoo **core** Community module, never a sibling addon. There are **no cross-addon dependencies**, which is the structural expression of the module-independence intent (§5.4) [origin/pdlc:addons/account_financial_report_ce/__manifest__.py:L23] [origin/pdlc:addons/account_payment_followup/__manifest__.py:L151].
 
 ```mermaid
 graph TD
@@ -818,6 +818,7 @@ graph TD
     ACC --> APF[account_payment_followup]
     ACC --> ABM[account_budget_management]
     ANALYTIC[analytic] --> ABM
+    ANALYTIC --> AFR
     MAIL[mail] --> APF
 ```
 

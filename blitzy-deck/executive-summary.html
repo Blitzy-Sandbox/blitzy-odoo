@@ -883,7 +883,7 @@ graph LR
       <section>
         <span class="eyebrow">What Was Built</span>
         <h2>Module Architecture</h2>
-        <pre class="mermaid" role="img" aria-label="Module dependency graph: all six addons inherit Odoo account core; account_budget_management also depends on analytic and account_payment_followup on mail.">
+        <pre class="mermaid" role="img" aria-label="Module dependency graph: all six addons inherit Odoo account core; account_financial_report_ce and account_budget_management also depend on analytic, and account_payment_followup on mail.">
 graph TD
     ACC[account core] --> AFR[account_financial_report_ce]
     ACC --> ABR[account_bank_reconciliation_ce]
@@ -892,6 +892,7 @@ graph TD
     ACC --> APF[account_payment_followup]
     ACC --> ABM[account_budget_management]
     ANALYTIC[analytic] --> ABM
+    ANALYTIC --> AFR
     MAIL[mail] --> APF
         </pre>
       </section>

@@ -690,3 +690,20 @@ Per-domain subtotals below reconcile **exactly** to the §C.2 matrix column tota
 **Verdict — Phase 6 (Frontend): APPROVED**
 
 ---
+
+### Phase 7 — Other SME  ·  Reviewer: Requirements & Documentation SME (review-only)
+
+**Files reviewed:** the 67 files in the Other SME column of §C.2 — `tickets/**` (43), `blitzy/**` (22), and `docs/**` (2).
+
+**Findings (file:line):**
+
+1. **Requirement traceability.** The requirement tree is complete and hierarchical — `EPIC-001` → six feature specs `FEATURE-001`..`FEATURE-006` → 32 stories across six tracks (financial-reporting 7, asset-management 6, bank-reconciliation 5, budget-management 5, payment-followups 5, deferred-revenue 4) → 3 templates [tickets/EPIC-001-enterprise-accounting.md:L1]. Each feature maps one-to-one to a delivered addon, and each story maps to a `test_<story_id>.py` module (Phase 4).
+2. **Blitzy deliverables.** `blitzy/documentation/` carries the regenerated Technical Specifications (archaeology report) and Project Guide; `blitzy/screenshots/` holds the 20 packaged UI captures referenced by the runtime-validation evidence [blitzy/documentation/Project Guide.md:L205].
+3. **End-user documentation.** `docs/SETUP.md` and `docs/USER_GUIDE.md` provide onboarding/runbook content consistent with the development guide in the Project Guide §9 [blitzy/documentation/Project Guide.md:L397].
+4. **Documentation accuracy.** Documentation-accuracy and hallucination fixes were applied at QA Checkpoint 9 prior to the passing state, and citations in the regenerated specs resolve against `origin/pdlc` paths [blitzy/documentation/Project Guide.md:L284].
+
+**Reviewer observations (non-blocking):** a cross-cutting supply-chain note surfaced during documentation review — a security-scan branch bumped Mermaid to **11.10.0** for **CVE-2025-54881**, whereas the binding Executive Presentation rule pins Mermaid **11.4.0**. This bump lives on an **unmerged** branch and is **not part of the 278-file synthetic change set**, so it is not a file under review in any phase; it is recorded in the risk register for reconciliation when the executive deck is finalized. Not blocking.
+
+**Verdict — Phase 7 (Other SME): APPROVED**
+
+---

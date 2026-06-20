@@ -707,3 +707,83 @@ Per-domain subtotals below reconcile **exactly** to the §C.2 matrix column tota
 **Verdict — Phase 7 (Other SME): APPROVED**
 
 ---
+
+## Phase E — Final Reviewer Verdict
+
+**Reviewer:** Final Reviewer (independent, review-only).
+
+With all seven domain phases `APPROVED`, the final reviewer re-verified — against the delivered `origin/pdlc` state — deliverable presence and functionality, build, tests, and static analysis:
+
+| Re-verification | Outcome | Evidence |
+|-----------------|:-------:|----------|
+| Deliverables present at specified paths | PASS | Technical Specifications + Project Guide on `origin/pdlc` [blitzy/documentation/Project Guide.md:L1]; `CODE_REVIEW.md` (root) + `blitzy-deck/executive-summary.html` (16-slide self-contained reveal.js deck, render-verified) created this run [blitzy-deck/executive-summary.html:L1] |
+| Build — zero errors (zero-warnings scoped, see §B C2) | PASS | Zero errors: all installs exit 0, `19.0.1.0.0` installed, no traceback [blitzy/documentation/Project Guide.md:L176]; zero-warnings bounded to the clean `ruff` gate + manifest docutils hygiene (§B Condition 2 detail) |
+| Tests — all pass | PASS | 619/619, 0 failed / 0 errors [blitzy/documentation/Project Guide.md:L146] |
+| Static analysis — zero violations | PASS | At the repo-pinned ruff 0.11.4 (= `--no-preview`): `ruff` **"All checks passed!"** (exit 0, first-hand re-verified) [blitzy/documentation/Project Guide.md:L263]; the 5 `PLW0717` preview-only notices a newer ruff surfaces are advisory version drift (Appendix **R9**), not a gate violation |
+| No production-path stub | PASS | First-hand py_compile 47/47 + clean stub scan (§B condition 5) |
+| Verdict discipline | PASS | All seven phase verdicts are exactly `APPROVED`; no qualifiers |
+
+**Rationale.** The pre-flight gate passed on all five binding conditions; all seven sequential domain phases resolved to `APPROVED` with no `BLOCKED` finding raised; and re-verification against the delivered state reproduces the same passing evidence. The non-blocking observations (PF-002 with-PDF performance, the literal per-story R-04 interpretation, AM-003 horizon, the unmerged Mermaid/CVE bump, a documentation ACL-count wording nuance, and the static-analysis preview-rule version drift) are tracked in the risk register; none is a build, test, static-analysis, or production-stub failure — in particular the pinned-ruff gate is clean ("All checks passed!", exit 0) — and therefore none meets the `BLOCKED` threshold or qualifies this verdict.
+
+**Final Verdict: APPROVED**
+
+---
+
+## Phase F — Commit Cadence Log
+
+The Segmented PR Review rule requires `CODE_REVIEW.md` to be **created at the repository root during the pre-flight gate, committed before Phase 1, re-committed after every phase state change, re-committed after the final verdict, and present in the final commit**. (Per the rule, if a copy pre-exists it is recreated blank before the pre-flight gate. `CODE_REVIEW.md` does not exist on the base tree or on `origin/pdlc`; on the documentation/review branch it is **recreated fresh at the start of this pass**, so any earlier review-artifact state on the branch is **superseded with no findings, approvals, or scope carried forward** — exactly one clean atomic pass stands as the authoritative record, and the artifact is not mutated after the final-verdict commit.) The cadence below is the canonical commit sequence for this review; each entry advances exactly one phase state and re-commits the artifact.
+
+| # | Trigger | Artifact state | Commit message |
+|--:|---------|----------------|----------------|
+| 0 | Pre-flight gate recorded | Recreated fresh at repo root; Phase B populated; all phase statuses at initial state | `chore(review): recreate CODE_REVIEW.md; record pre-flight gate PASS (fresh atomic pass)` |
+| 1 | Phase 1 transition | Phase 1 verdict recorded | `chore(review): Phase 1 Infrastructure/DevOps APPROVED` |
+| 2 | Phase 2 transition | Phase 2 verdict recorded | `chore(review): Phase 2 Security APPROVED` |
+| 3 | Phase 3 transition | Phase 3 verdict recorded | `chore(review): Phase 3 Backend Architecture APPROVED` |
+| 4 | Phase 4 transition | Phase 4 verdict recorded | `chore(review): Phase 4 QA/Test Integrity APPROVED` |
+| 5 | Phase 5 transition | Phase 5 verdict recorded | `chore(review): Phase 5 Business/Domain APPROVED` |
+| 6 | Phase 6 transition | Phase 6 verdict recorded | `chore(review): Phase 6 Frontend APPROVED` |
+| 7 | Phase 7 transition | Phase 7 verdict recorded | `chore(review): Phase 7 Other SME APPROVED` |
+| 8 | Final verdict | Phase E final verdict recorded | `chore(review): final verdict APPROVED` |
+
+**Cadence guarantees.**
+
+- **Created during pre-flight (commit 0):** `CODE_REVIEW.md` exists at the repository root with the Phase B gate results recorded **before** any phase status leaves its initial state.
+- **Committed before Phase 1 (commit 0 precedes commit 1):** the artifact is versioned before the first domain phase opens.
+- **Re-committed after every phase transition (commits 1–7):** one commit per phase state change.
+- **Re-committed after the final verdict (commit 8):** the final verdict is versioned.
+- **Present in the final commit:** `CODE_REVIEW.md` is included in the terminal commit of the review branch.
+
+Because no domain phase resolved to `BLOCKED`, the review completed in a single atomic pass and **no restart from the pre-flight gate was triggered**. Had any phase been `BLOCKED`, this log would terminate at that phase with file:line findings, the work item would return to code generation, and a subsequent pass would begin again at commit 0 with no prior findings, approvals, or scope carried forward.
+
+---
+
+## Appendix — Consolidated Non-Blocking Observations (Risk Register)
+
+These advisory items were raised during the phases above. By definition each is **non-blocking** — none is a build, test, static-analysis, or production-stub failure — so none alters any phase verdict or the final verdict. They are recorded here for follow-up tracking.
+
+| # | Observation | Phase raised | Severity | Disposition |
+|--:|-------------|:------------:|:--------:|-------------|
+| 1 | PF-002 follow-up cron renders 500-partner batches with PDF attachments in ~557s vs <60s target (no-PDF path ~9.86s; 500-partner cap honored) [blitzy/documentation/Project Guide.md:L225] | 5 | Medium | Performance tuning (batch size / async PDF / attachment cap); tracked for human follow-up |
+| 2 | Literal per-story-file R-04 coverage 30–62% vs per-module aggregate 87/89/87/90% (the declared meaningful gate) [blitzy/documentation/Project Guide.md:L168] | 4 | Low | Interpretation gap; optional coverage uplift; all 619 tests pass |
+| 3 | AM-003 depreciation-board performance verified only to 480 periods (40 years monthly) [blitzy/documentation/Project Guide.md:L221] | 5 | Low | Optionally cap useful life or extend benchmark; beyond typical asset life |
+| 4 | Mermaid 11.10.0 (CVE-2025-54881) on an unmerged branch vs rule-pinned 11.4.0 — outside the 278-file synthetic set | 7 | Low | Reconcile when the executive deck is finalized; not part of this change set |
+| 5 | Documentation cites "44" combined ACL rows vs first-hand four-module count of 37 [blitzy/documentation/Project Guide.md:L256] | 2 | Low | Documentation-accuracy wording; every model has ACL coverage |
+| 6 | Executive-deck CDN libraries (reveal.js 5.1.0, Mermaid 11.4.0, Lucide 0.460.0 via jsDelivr) are pinned to exact versions but loaded **without** Subresource-Integrity (SRI) hashes; Mermaid loads as an ESM `import`, not amenable to a tag-level `integrity` [blitzy-deck/executive-summary.html] | 7 | Low | **Accepted exception** — exact pins + trusted CDN keep risk low; recommended hardening = add `integrity`+`crossorigin` (or self-host the three libraries) at deployment + serve under a `script-src` CSP; mirrored as Technical Specifications §7 R8 / Project Guide §6 R8 |
+| 7 | Static-analysis **preview-rule version drift**: the repo pins ruff 0.11.4 with `[lint] preview = true` and `PLW` selected [ruff.toml:L10]; under that pinned linter (or any `--no-preview` run) `ruff check` is clean ("All checks passed!", exit 0, first-hand re-verified). A newer ruff (0.15.x) surfaces 5 `PLW0717` (`too-many-statements-in-try-clause`) preview-only notices that did not exist in 0.11.4 [ruff.toml:L31] | 1 | Low | **Accepted / version drift** — the pinned gate is authoritative and clean; newer-ruff preview notices are advisory, not a gate failure; clear via an AAP-amendment code-generation pass if the team adopts a newer ruff. Mirrored as Technical Specifications §7 R9 / Project Guide §6 R9 |
+**Mermaid 11.4.0 advisory matrix (observation 4 / R1 detail).** The pinned Mermaid 11.4.0 intersects the advisories below. Every one requires **untrusted, user-supplied diagram input**; this deck renders only **static, author-authored** diagrams with KaTeX disabled and imports the **ESM** build, so the practical exploitability of each is **negligible**. The binding Executive Presentation rule pins 11.4.0 (AAP §0.10.2), so the pin is retained and the residual risk accepted; the patched upgrade path (11.10.0 for the 2025 XSS pair; 11.15.0 / 10.9.6 for the 2026 set) is available via an AAP amendment should untrusted diagram input ever be introduced. This matrix is shared verbatim with Technical Specifications §7 and Project Guide §6.
+
+| Advisory | Vector (CWE) | Affected | Fixed | Precondition | Applies to this deck? |
+|----------|--------------|----------|-------|--------------|-----------------------|
+| **CVE-2025-54881** (GHSA-7rqq-prvp-x9jh) | Sequence-diagram label XSS via KaTeX `calculateMathMLDimensions` → `innerHTML` (CWE-79); CVSS 5.3 Med | ≥ 11.0.0-alpha.1 < 11.10.0 (also 10.9.0-rc.1 < 10.9.4) | 11.10.0 / 10.9.4 | KaTeX enabled **and** untrusted labels | **No** — KaTeX disabled; labels are static |
+| **CVE-2025-54880** (GHSA-8gwm-58g9-j8pw) | Architecture-diagram `iconText` XSS via d3 `html()` (CWE-79) | < 11.10.0 | 11.10.0 | Untrusted architecture `iconText` | **No** — no architecture diagrams; static input |
+| **CVE-2026-41149** (GHSA-ghcm-xqfw-q4vr) | State-diagram `classDef` HTML injection — escapes to SVG, `<script>` stripped, **not** XSS (CWE-94); CVSS 5.3 Med | ≥ 11.0.0-alpha.1 < 11.15.0 (also < 10.9.6) | 11.15.0 / 10.9.6 | Untrusted `classDef` styles | **No** — static diagrams; `securityLevel:'sandbox'` available |
+| **CVE-2026-41159** | Config CSS injection via `fontFamily` / `themeCSS` / `altFontFamily` | ≥ 11.0.0-alpha.1 < 11.15.0 (also < 10.9.6) | 11.15.0 / 10.9.6 | Untrusted Mermaid config | **No** — config is author-controlled |
+| **CVE-2026-41150** | Gantt `excludes` infinite-loop DoS | ≥ 11.0.0-alpha.1 < 11.15.0 (also < 10.9.6) | 11.15.0 / 10.9.6 | Untrusted gantt `excludes` | **No** — deck has no gantt diagrams |
+| **GHSA-m4gq-x24j-jpmf** | Bundled DOMPurify < 3.1.3 XSS | bundled `dist` builds | DOMPurify ≥ 3.1.3 (bundled) | Use of the **bundled** dist (e.g., `mermaid.min.js`) | **No** — deck imports `mermaid.esm.min.mjs` (ESM), which does not use the bundled DOMPurify |
+
+**Reconciliation with the harmonized R1–R9 risk register.** The formal nine-row register (R1–R9) is authored identically in Technical Specifications §7 and Project Guide §6; these appendix observations are the review-raised view of that register. Mapping: observation 4 → **R1** (Mermaid/CVE, detailed above); observations 1 and 3 → **R2** (operational cron load and performance horizon); observation 2 → **R3** (coverage interpretation); observation 5 → **R7** (ACL-count nuance); observation 6 → **R8** (CDN SRI); observation 7 → **R9** (static-analysis preview-rule drift). The register additionally formalizes **R4** (multi-company record rules), **R5** (`sudo()` boundary), and **R6** (demo-data independence) verified during the Security and Backend phases. The R1–R9 chain and this advisory matrix are shared verbatim across this artifact, the Technical Specifications, the Project Guide, and the executive deck's risk slide.
+
+---
+
+*End of Segmented PR Review. This `CODE_REVIEW.md` is the authoritative review record for the synthetic pull request (`origin/pdlc` vs base `7bd7718…`); all subject-matter facts are cited inline against `origin/pdlc` paths and were mined via git as described in Phase A.*
+

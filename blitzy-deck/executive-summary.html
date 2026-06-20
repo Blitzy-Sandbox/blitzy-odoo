@@ -676,6 +676,62 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
+
+/* ------------------------------------------------------------------
+   Slide 2 ("Headline Findings") compact layout — scoped to .slide-headline
+   ONLY, so the other 15 slides (all of which already fit the 1080px canvas
+   exactly) are untouched. Without these rules the slide's intrinsic height is
+   1147px: with reveal's center:false (top-aligned) + overflow:hidden, the
+   bottom 67px — the source-citation footnote and the lowest Mermaid row — are
+   clipped below the fold at the deck's native 1920x1080 design resolution.
+   These rules trim the KPI grid/card whitespace and the heading/footnote
+   margins, and cap the supplementary scope diagram's height (preserving its
+   aspect ratio via width:auto), bringing the slide to ~984px tall — every
+   element (4 KPI cards, the full scope diagram incl. the extension-breakdown
+   row, and the footnote) fully visible with comfortable bottom margin. The
+   canonical Blitzy theme above is left byte-for-byte intact. */
+.reveal .slide-headline h2 { margin-bottom: 0.3em; }
+.reveal .slide-headline .kpi-grid { margin: 16px 0; }
+.reveal .slide-headline .kpi-card { padding: 22px 24px; }
+.reveal .slide-headline .mermaid { margin: 10px auto; }
+.reveal .slide-headline .mermaid svg { max-height: 540px; width: auto; }
+.reveal .slide-headline .footnote { margin-top: 0.7em; }
+
+/* ------------------------------------------------------------------
+   reveal.js slide-number control (F-02) — the framework-generated link is
+   display:inline / 49.2x16px, below the 24x24px touch-target minimum
+   (WCAG 2.5.8 / Lighthouse "target-size"). Two coordinated, additive changes to
+   the framework chrome (the canonical ".reveal .slide-number" rule above is left
+   byte-for-byte intact; no brand token, colour, or the 436 verbatim theme lines
+   are changed):
+     1. Enlarge the <a> to a >=24px inline-flex box (centres the "N / 16" glyphs;
+        background stays transparent per the canonical rule, so the visible text
+        is unchanged — only the clickable target grows).
+     2. Re-anchor the slide-number to bottom-CENTRE. reveal.js otherwise clusters
+        the slide-number and the prev/next arrow controls ~9px apart in the
+        bottom-right corner; once the link is >=24px tall it overlaps the
+        next-arrow and — because the slide-number layer sits above the controls
+        (z-index 31 > 11) — intercepts the arrow's centre click, breaking primary
+        navigation. Centring the slide-number cleanly separates it from the
+        right-corner arrows AND from the bottom-left source-citation footnotes, so
+        every control retains a clear >=24px target with zero click interception.
+   reveal.js does not constrain slide-number position, and centring is consistent
+   with the deck's centred title/divider/closing slides. */
+.reveal .slide-number {
+  bottom: 8px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+.reveal .slide-number a {
+  align-items: center;
+  box-sizing: border-box;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 4px 8px;
+}
 /* ===== END DECK-ONLY EXTENSIONS ===== */
   </style>
 </head>
@@ -703,8 +759,13 @@
       <!-- =================================================================
            Slide 2 / 16 — Headline KPI summary (default content)
            Non-text visual: KPI cards with Lucide icons.
+           The "slide-headline" class scopes the compact-layout rules in the
+           deck-only extensions block (kpi-grid / Mermaid / footnote tightening)
+           so the KPI cards, the supplementary scope diagram, AND the
+           source-citation footnote all fit within the 1080px canvas at the
+           deck's native design resolution (no content clipped below the fold).
            ================================================================= -->
-      <section>
+      <section class="slide-headline">
         <span class="eyebrow">By The Numbers</span>
         <h2>Headline Findings</h2>
         <div class="kpi-grid">

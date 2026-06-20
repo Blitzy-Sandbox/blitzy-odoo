@@ -678,7 +678,7 @@
 }
 
 /* ------------------------------------------------------------------
-   Slide 2 ("Headline Findings") compact layout — scoped to .slide-headline
+   Slide 2 ("Headline Findings") compact layout — scoped to .headline-layout
    ONLY, so the other 15 slides (all of which already fit the 1080px canvas
    exactly) are untouched. Without these rules the slide's intrinsic height is
    1147px: with reveal's center:false (top-aligned) + overflow:hidden, the
@@ -690,12 +690,12 @@
    element (4 KPI cards, the full scope diagram incl. the extension-breakdown
    row, and the footnote) fully visible with comfortable bottom margin. The
    canonical Blitzy theme above is left byte-for-byte intact. */
-.reveal .slide-headline h2 { margin-bottom: 0.3em; }
-.reveal .slide-headline .kpi-grid { margin: 16px 0; }
-.reveal .slide-headline .kpi-card { padding: 22px 24px; }
-.reveal .slide-headline .mermaid { margin: 10px auto; }
-.reveal .slide-headline .mermaid svg { max-height: 540px; width: auto; }
-.reveal .slide-headline .footnote { margin-top: 0.7em; }
+.reveal .headline-layout h2 { margin-bottom: 0.3em; }
+.reveal .headline-layout .kpi-grid { margin: 16px 0; }
+.reveal .headline-layout .kpi-card { padding: 22px 24px; }
+.reveal .headline-layout .mermaid { margin: 10px auto; }
+.reveal .headline-layout .mermaid svg { max-height: 540px; width: auto; }
+.reveal .headline-layout .footnote { margin-top: 0.7em; }
 
 /* ------------------------------------------------------------------
    reveal.js slide-number control (F-02) — the framework-generated link is
@@ -732,6 +732,72 @@
   min-width: 28px;
   padding: 4px 8px;
 }
+/* ------------------------------------------------------------------
+   Issue 9 - base document typography & colour. reveal.js themes only
+   .reveal; the bare <html>/<body> otherwise fall back to the UA default
+   (Times New Roman / black). Brand the document root so a computed-style
+   spot-check of document.body reports Inter / #333333, and so any pre-mount
+   flash inherits the brand surface. Per-slide backgrounds (title / divider /
+   closing) remain driven by the canonical slide-type rules above. */
+html, body {
+  font-family: var(--ff-body);
+  color: var(--blitzy-text);
+  background: var(--blitzy-surface-0);
+  /* Narrow-viewport safety: the fixed 1920px deck never paints a horizontal
+     scrollbar once Reveal scales it down (see minScale in the init script). */
+  overflow-x: hidden;
+}
+
+/* reveal.js relocates the `reveal-viewport` class onto <body>, and reveal.css
+   declares `.reveal-viewport { color: #000 }` (specificity 0,1,0) which outranks
+   the element-level `html, body` rule above. Re-assert the brand text colour at
+   matching+ specificity (body.reveal-viewport = 0,1,1) so a computed-style check
+   of document.body reports Inter / #333333 (Issue 9). The viewport background is
+   left to reveal's white, which already equals --blitzy-surface-0. */
+body.reveal-viewport {
+  color: var(--blitzy-text);
+  font-family: var(--ff-body);
+}
+
+/* ------------------------------------------------------------------
+   Issue 10 - high-contrast keyboard focus indicator. The framework's
+   default focus outline is faint against the deck chrome. Apply a thick
+   teal-accent ring (brand --blitzy-accent-teal) with offset to every
+   keyboard-focusable control - the slide-number link, the prev/next/play
+   controls, and in-slide links - so the focused element is unmistakable on
+   both the light content slides and the dark divider/closing slides.
+   :focus-visible keeps the ring keyboard-only (no mouse-click halo); a
+   :focus fallback covers engines without :focus-visible. */
+.reveal .slide-number a:focus-visible,
+.reveal .controls button:focus-visible,
+.reveal .slides a:focus-visible {
+  outline: 3px solid var(--blitzy-accent-teal);
+  outline-offset: 3px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 5px rgba(45, 28, 119, 0.55);
+}
+.reveal .slide-number a:focus,
+.reveal .controls button:focus {
+  outline: 3px solid var(--blitzy-accent-teal);
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------
+   Issue 8 (responsive clipping) - the fixed 1920px slides use content-box
+   with 64px padding, so each section's real box is 2048px wide. reveal.js
+   scales the deck with `zoom` computed from the configured 1920px width, which
+   leaves the 128px of horizontal padding to overflow: 2048 * 0.1875 = 384px on
+   a 375px phone, clipping ~4-5px off each edge of the divider band. At narrow
+   viewports only, make the sections border-box so the 1920px width INCLUDES the
+   padding (box = 1920px -> 360px zoomed, fits within 375px with no clipping).
+   Desktop and tablet (>768px) keep their existing, QA-approved content-box
+   layout completely untouched. The overflow-x:hidden on html/body above is the
+   final backstop so no horizontal scrollbar can ever appear. */
+@media (max-width: 768px) {
+  .reveal .slides > section {
+    box-sizing: border-box;
+  }
+}
 /* ===== END DECK-ONLY EXTENSIONS ===== */
   </style>
 </head>
@@ -759,13 +825,13 @@
       <!-- =================================================================
            Slide 2 / 16 — Headline KPI summary (default content)
            Non-text visual: KPI cards with Lucide icons.
-           The "slide-headline" class scopes the compact-layout rules in the
+           The "headline-layout" class scopes the compact-layout rules in the
            deck-only extensions block (kpi-grid / Mermaid / footnote tightening)
            so the KPI cards, the supplementary scope diagram, AND the
            source-citation footnote all fit within the 1080px canvas at the
            deck's native design resolution (no content clipped below the fold).
            ================================================================= -->
-      <section class="slide-headline">
+      <section class="headline-layout">
         <span class="eyebrow">By The Numbers</span>
         <h2>Headline Findings</h2>
         <div class="kpi-grid">
@@ -794,7 +860,7 @@
             <div class="kpi-sub">307 agent &middot; 3 PRs</div>
           </div>
         </div>
-        <pre class="mermaid" aria-label="Canonical scope figures: the 278-file synthetic change set by top-level group (addons 206, tickets 43, blitzy 22, test_data 5, docs 2) and by file extension (py 128, xml 59, md 47, png 20, csv 9, scss 7, rst 4, qif 2, ofx 2).">
+        <pre class="mermaid" role="img" aria-label="Canonical scope figures: the 278-file synthetic change set by top-level group (addons 206, tickets 43, blitzy 22, test_data 5, docs 2) and by file extension (py 128, xml 59, md 47, png 20, csv 9, scss 7, rst 4, qif 2, ofx 2).">
 graph LR
     T["Synthetic PR vs base 7bd7718: 278 files, +134,588 insertions"]
     T --> A["addons/: 206 (74.1%)"]
@@ -817,7 +883,7 @@ graph LR
       <section>
         <span class="eyebrow">What Was Built</span>
         <h2>Module Architecture</h2>
-        <pre class="mermaid" aria-label="Module dependency graph: all six addons inherit Odoo account core; account_budget_management also depends on analytic and account_payment_followup on mail.">
+        <pre class="mermaid" role="img" aria-label="Module dependency graph: all six addons inherit Odoo account core; account_budget_management also depends on analytic and account_payment_followup on mail.">
 graph TD
     ACC[account core] --> AFR[account_financial_report_ce]
     ACC --> ABR[account_bank_reconciliation_ce]
@@ -887,7 +953,7 @@ graph TD
       <section>
         <span class="eyebrow">Representative Data Flow</span>
         <h2>Asset Depreciation Posting</h2>
-        <pre class="mermaid" aria-label="Sequence diagram: the daily ir.cron computes due depreciation on account.asset, which generates a depreciation line that creates and posts an account.move journal entry linked back to the asset.">
+        <pre class="mermaid" role="img" aria-label="Sequence diagram: the daily ir.cron computes due depreciation on account.asset, which generates a depreciation line that creates and posts an account.move journal entry linked back to the asset.">
 sequenceDiagram
     participant Cron as ir.cron (daily)
     participant Asset as account.asset
@@ -919,7 +985,7 @@ sequenceDiagram
       <section>
         <span class="eyebrow">Review Workflow</span>
         <h2>Seven-Phase Segmented Pipeline</h2>
-        <pre class="mermaid" aria-label="Flowchart: the pre-flight gate passes into seven sequential review phases ending in a final verdict; any Blocked phase returns the work item to code generation.">
+        <pre class="mermaid" role="img" aria-label="Flowchart: the pre-flight gate passes into seven sequential review phases ending in a final verdict; any Blocked phase returns the work item to code generation.">
 flowchart LR
     PF[Pre-Flight Gate] -->|pass| P1[1 Infra/DevOps]
     PF -->|fail| RG[Return to Code-Gen]
@@ -962,7 +1028,7 @@ flowchart LR
             <i class="kpi-icon" data-lucide="shield-check" aria-hidden="true"></i>
             <div class="kpi-value">0</div>
             <div class="kpi-label">Ruff Violations</div>
-            <div class="kpi-sub">ruff clean</div>
+            <div class="kpi-sub">pinned ruff 0.11.4</div>
           </div>
         </div>
         <p class="footnote">
@@ -989,20 +1055,25 @@ flowchart LR
       <section>
         <span class="eyebrow">Risk Register</span>
         <h2>Tracked Risks, All Mitigated</h2>
-        <pre class="mermaid" aria-label="Risk register: R1 Mermaid pin versus CVE-2025-54881 (Medium); R2 scheduled-job load (Medium); R3 coverage interpretation (Low). CVE-2025-54881 is CWE-79 XSS, CVSS 5.3 Medium; affected Mermaid from 10.9.0-rc.1 through 11.9.0 inclusive, so the pinned 11.4.0 is affected; fixed in 11.10.0 and 10.9.4; the deck renders only static author-authored diagrams with KaTeX disabled and no untrusted input, so practical exploitability is negligible; disposition accepted exception per Technical Specifications Section 7 R1.">
-graph LR
-    RR["Risk Register - all non-blocking, all mitigated"]
-    RR --> R1["R1: Mermaid pin vs CVE-2025-54881 (Medium)"]
-    RR --> R2["R2: Scheduled-job load (Medium)"]
-    RR --> R3["R3: Coverage interpretation (Low)"]
-    R1 --> R1a["CVE-2025-54881 - CWE-79 XSS - CVSS 5.3 (Medium)"]
-    R1a --> R1b["Affected from 10.9.0-rc.1 through 11.9.0 inclusive - pinned 11.4.0 IS affected"]
-    R1b --> R1c["Fixed in 11.10.0 / 10.9.4 - static author-authored diagrams, KaTeX off, exploitability negligible - ACCEPTED (Tech Specs Sec 7 R1)"]
-    R2 --> R2a["asset daily / budget hourly / follow-up daily - idempotent, batched, caps 500/run + monitoring"]
-    R3 --> R3a["per-story 30-62% vs per-module 80%+ (87/89/87/90) - adopt per-module gate"]
+        <pre class="mermaid" role="img" aria-label="Risk register R1 through R9, all non-blocking and all mitigated, grouped as Security and supply-chain (R1 Mermaid 11.4.0 advisories accepted, R4 multi-company record rules verified, R5 single audited sudo call, R8 CDN Subresource-Integrity absent accepted exception), Operational and test (R2 scheduled-job load capped and monitored, R3 per-module coverage gate, R9 ruff preview-rule drift), and Documentation (R6 demo-data independence verified, R7 ACL count 37 vs 44 corrected). R1 covers six Mermaid advisories affecting 11.4.0 - CVE-2025-54881 and CVE-2025-54880 fixed in 11.10.0; CVE-2026-41149, CVE-2026-41150 and CVE-2026-41159 fixed in 11.15.0 and 10.9.6; and the bundled-DOMPurify advisory GHSA-m4gq which the ESM build does not use - all of which require untrusted diagram input, whereas this deck renders only static author-authored diagrams with KaTeX disabled, so the accepted residual risk is negligible. R9 notes the ruff PLW0717 finding is a preview-only rule absent from the pinned ruff 0.11.4, so the static-analysis gate is clean at the pinned version and under --no-preview. Full register: Technical Specifications Section 7 and Project Guide Section 6.">
+graph TD
+    RR["Risk Register R1-R9: all non-blocking, all mitigated"]
+    RR --> SEC["Security and Supply-chain"]
+    RR --> OPS["Operational and Test"]
+    RR --> DOC["Documentation"]
+    SEC --> R1["R1: Mermaid 11.4.0 - 6 advisories - ACCEPTED"]
+    SEC --> R4["R4: Multi-company rules - verified"]
+    SEC --> R5["R5: sudo() - 1 audited read"]
+    SEC --> R8["R8: CDN SRI absent - accepted"]
+    OPS --> R2["R2: Cron load - capped and monitored"]
+    OPS --> R3["R3: Coverage interp - per-module gate"]
+    OPS --> R9["R9: ruff preview drift - clean at pinned 0.11.4"]
+    DOC --> R6["R6: Demo independence - verified"]
+    DOC --> R7["R7: ACL count 37 vs 44 - corrected"]
+    R1 --> MX["CVE-2025-54881 / 54880 (fix 11.10.0); CVE-2026-41149 / 41150 / 41159 (fix 11.15.0, 10.9.6); GHSA-m4gq DOMPurify (ESM unaffected)"]
         </pre>
         <p class="footnote">
-          <span class="tag">Full register</span> <code>Technical Specifications.md</code> Section 7
+          <span class="tag">Full register</span> <code>Technical Specifications.md</code> &sect;7 &middot; <code>Project Guide.md</code> &sect;6
         </p>
       </section>
 
@@ -1133,7 +1204,7 @@ graph LR
        Library runtimes (pinned CDN). CDN assets carry EXACT version pins and
        crossorigin="anonymous" (SRI-ready), but no Subresource-Integrity hash:
        this is a documented, ACCEPTED EXCEPTION (Technical Specifications Sec 7
-       R7 / Project Guide Sec 6 R8 / CODE_REVIEW.md observation 6). Recommended
+       R8 / Project Guide Sec 6 R8 / CODE_REVIEW.md observation 6). Recommended
        hardening at deployment: add an integrity hash (or self-host the three
        libraries) and serve under a script-src Content-Security-Policy.
        reveal.js 5.1.0 (UMD) + Lucide 0.460.0 (UMD).
@@ -1193,6 +1264,23 @@ graph LR
       height: 1080,
       margin: 0.04,
       center: false,
+      // Issue 8 (responsive): allow the fixed 1920x1080 deck to scale
+      // BELOW reveal's default 0.2 floor on narrow viewports. At 375px the
+      // required scale is ~0.195; the 0.2 floor would render the slide 384px
+      // wide and clip its left edge. minScale 0.1 lets the full slide fit any
+      // phone width (no horizontal clipping); maxScale pinned at the default.
+      minScale: 0.1,
+      maxScale: 2.0,
+      // Issue 8 (responsive + a11y): disable reveal's AUTOMATIC scroll view.
+      // reveal's default scrollActivationWidth (435px) silently switches the
+      // deck into scroll view below that width, stacking EVERY slide in a
+      // scroll container. That both mis-sizes the fixed 1920x1080 slides (the
+      // ~4-5px left-edge clip seen at 375px) and exposes every slide's text and
+      // raw Mermaid source in the accessibility tree. null keeps the normal
+      // scaled single-slide view at all widths, so exactly one slide is present
+      // and the rest remain aria-hidden; combined with minScale 0.1 the full
+      // slide scales to fit a 375px viewport with no horizontal clipping.
+      scrollActivationWidth: null,
       slideNumber: 'c/t'
     });
 

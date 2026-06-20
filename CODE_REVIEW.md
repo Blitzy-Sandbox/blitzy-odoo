@@ -199,6 +199,35 @@ Counts are produced by applying §C.1 to the 278-file list. Every row total equa
 
 **Per-domain summary (sums to 278):** Infrastructure/DevOps **52** + Security **12** + Backend Architecture **41** + QA/Test Integrity **52** + Business/Domain **18** + Frontend **36** + Other SME **67** = **278**.
 
+**Canonical scope figures** — identical across all four content deliverables (Technical Specifications §4, Project Guide §1.1, this artifact, and the executive deck). Derived from `git diff --name-only 7bd7718 origin/pdlc` over the synthetic change set (**278 files / +134,588 insertions**):
+
+| Top-level group | Files | Share |
+|-----------------|------:|------:|
+| `addons/` | 206 | 74.1% |
+| `tickets/` | 43 | 15.5% |
+| `blitzy/` | 22 | 7.9% |
+| `test_data/` | 5 | 1.8% |
+| `docs/` | 2 | 0.7% |
+| **Total** | **278** | **100%** |
+
+| Addon | FEATURE | Files |
+|-------|---------|------:|
+| `account_financial_report_ce` | FEATURE-001 | 44 |
+| `account_payment_followup` | FEATURE-006 | 39 |
+| `account_bank_reconciliation_ce` | FEATURE-002 | 35 |
+| `account_budget_management` | FEATURE-003 | 31 |
+| `account_asset_management` | FEATURE-004 | 31 |
+| `account_deferred_revenue` | FEATURE-005 | 26 |
+| **Total** | FEATURE-001..006 | **206** |
+
+| Extension | Files | Extension | Files |
+|-----------|------:|-----------|------:|
+| `.py` | 128 | `.scss` | 7 |
+| `.xml` | 59 | `.rst` | 4 |
+| `.md` | 47 | `.qif` | 2 |
+| `.png` | 20 | `.ofx` | 2 |
+| `.csv` | 9 | **Total (9 extensions)** | **278** |
+
 ### C.3 Representative file enumeration per domain
 
 The matrix above is exhaustive; the following lists anchor each domain to concrete, verifiable paths (the four newest addons shown explicitly; the two prior addons follow the identical layout).
@@ -210,6 +239,331 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
 - **5 Business/Domain (18):** `report/**` — e.g. `[addons/account_budget_management/report/budget_vs_actual_report.py:L71]`, `[addons/account_payment_followup/report/followup_report.xml:L87]`, plus the 13 financial-report templates under `[addons/account_financial_report_ce/report/report_templates.xml:L1]`.
 - **6 Frontend (36):** `views/**.xml` + `wizard/*_views.xml` + `static/src/scss/**` — e.g. `[addons/account_asset_management/views/account_asset_views.xml:L46]`, `[addons/account_asset_management/static/src/scss/asset_management.scss:L1]`.
 - **7 Other SME (67):** `tickets/**` (EPIC-001 + README + 6 features + 32 stories + 3 templates = 43), `blitzy/**` (2 documentation + 20 screenshots = 22), `docs/**` (`SETUP.md`, `USER_GUIDE.md` = 2).
+
+### C.4 Exhaustive per-file partition (all 278 paths → exactly one domain)
+
+Every changed path is listed below **exactly once**, grouped under the single domain assigned by the §C.1 classifier. The list is generated reproducibly from the synthetic-PR boundary:
+
+```bash
+git diff --name-only 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc   # -> 278 paths
+```
+
+Per-domain subtotals below reconcile **exactly** to the §C.2 matrix column totals; their sum is **278** and no path appears in more than one subtable, so the partition is provably exhaustive and non-overlapping.
+
+#### Domain 1 Infrastructure / DevOps — 52 files
+
+| # | File path |
+|--:|-----------|
+| 1 | `addons/account_asset_management/README.rst` |
+| 2 | `addons/account_asset_management/__init__.py` |
+| 3 | `addons/account_asset_management/__manifest__.py` |
+| 4 | `addons/account_asset_management/data/asset_sequence.xml` |
+| 5 | `addons/account_asset_management/data/depreciation_cron.xml` |
+| 6 | `addons/account_asset_management/models/__init__.py` |
+| 7 | `addons/account_asset_management/tests/__init__.py` |
+| 8 | `addons/account_asset_management/wizard/__init__.py` |
+| 9 | `addons/account_bank_reconciliation_ce/__init__.py` |
+| 10 | `addons/account_bank_reconciliation_ce/__manifest__.py` |
+| 11 | `addons/account_bank_reconciliation_ce/data/reconciliation_data.xml` |
+| 12 | `addons/account_bank_reconciliation_ce/demo/demo_data.xml` |
+| 13 | `addons/account_bank_reconciliation_ce/hooks.py` |
+| 14 | `addons/account_bank_reconciliation_ce/models/__init__.py` |
+| 15 | `addons/account_bank_reconciliation_ce/report/__init__.py` |
+| 16 | `addons/account_bank_reconciliation_ce/tests/__init__.py` |
+| 17 | `addons/account_bank_reconciliation_ce/wizard/__init__.py` |
+| 18 | `addons/account_budget_management/README.rst` |
+| 19 | `addons/account_budget_management/__init__.py` |
+| 20 | `addons/account_budget_management/__manifest__.py` |
+| 21 | `addons/account_budget_management/data/budget_alert_cron.xml` |
+| 22 | `addons/account_budget_management/data/budget_data.xml` |
+| 23 | `addons/account_budget_management/models/__init__.py` |
+| 24 | `addons/account_budget_management/report/__init__.py` |
+| 25 | `addons/account_budget_management/tests/__init__.py` |
+| 26 | `addons/account_budget_management/wizard/__init__.py` |
+| 27 | `addons/account_deferred_revenue/README.rst` |
+| 28 | `addons/account_deferred_revenue/__init__.py` |
+| 29 | `addons/account_deferred_revenue/__manifest__.py` |
+| 30 | `addons/account_deferred_revenue/data/deferred_data.xml` |
+| 31 | `addons/account_deferred_revenue/data/recognition_dashboard_report.xml` |
+| 32 | `addons/account_deferred_revenue/models/__init__.py` |
+| 33 | `addons/account_deferred_revenue/tests/__init__.py` |
+| 34 | `addons/account_deferred_revenue/wizard/__init__.py` |
+| 35 | `addons/account_financial_report_ce/__init__.py` |
+| 36 | `addons/account_financial_report_ce/__manifest__.py` |
+| 37 | `addons/account_financial_report_ce/data/report_paperformat.xml` |
+| 38 | `addons/account_financial_report_ce/demo/demo_data.xml` |
+| 39 | `addons/account_financial_report_ce/models/__init__.py` |
+| 40 | `addons/account_financial_report_ce/report/__init__.py` |
+| 41 | `addons/account_financial_report_ce/tests/__init__.py` |
+| 42 | `addons/account_financial_report_ce/wizard/__init__.py` |
+| 43 | `addons/account_payment_followup/README.rst` |
+| 44 | `addons/account_payment_followup/__init__.py` |
+| 45 | `addons/account_payment_followup/__manifest__.py` |
+| 46 | `addons/account_payment_followup/data/followup_cron.xml` |
+| 47 | `addons/account_payment_followup/data/followup_data.xml` |
+| 48 | `addons/account_payment_followup/data/mail_template_data.xml` |
+| 49 | `addons/account_payment_followup/models/__init__.py` |
+| 50 | `addons/account_payment_followup/report/__init__.py` |
+| 51 | `addons/account_payment_followup/tests/__init__.py` |
+| 52 | `addons/account_payment_followup/wizard/__init__.py` |
+
+#### Domain 2 Security — 12 files
+
+| # | File path |
+|--:|-----------|
+| 1 | `addons/account_asset_management/security/asset_security.xml` |
+| 2 | `addons/account_asset_management/security/ir.model.access.csv` |
+| 3 | `addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml` |
+| 4 | `addons/account_bank_reconciliation_ce/security/ir.model.access.csv` |
+| 5 | `addons/account_budget_management/security/budget_security.xml` |
+| 6 | `addons/account_budget_management/security/ir.model.access.csv` |
+| 7 | `addons/account_deferred_revenue/security/deferred_security.xml` |
+| 8 | `addons/account_deferred_revenue/security/ir.model.access.csv` |
+| 9 | `addons/account_financial_report_ce/security/account_financial_report_security.xml` |
+| 10 | `addons/account_financial_report_ce/security/ir.model.access.csv` |
+| 11 | `addons/account_payment_followup/security/followup_security.xml` |
+| 12 | `addons/account_payment_followup/security/ir.model.access.csv` |
+
+#### Domain 3 Backend Architecture — 41 files
+
+| # | File path |
+|--:|-----------|
+| 1 | `addons/account_asset_management/models/account_asset.py` |
+| 2 | `addons/account_asset_management/models/account_asset_category.py` |
+| 3 | `addons/account_asset_management/models/account_asset_depreciation_line.py` |
+| 4 | `addons/account_asset_management/models/account_move.py` |
+| 5 | `addons/account_asset_management/models/account_move_line.py` |
+| 6 | `addons/account_asset_management/wizard/asset_disposal_wizard.py` |
+| 7 | `addons/account_asset_management/wizard/asset_modification_wizard.py` |
+| 8 | `addons/account_bank_reconciliation_ce/models/bank_statement_import.py` |
+| 9 | `addons/account_bank_reconciliation_ce/models/partial_reconcile_ext.py` |
+| 10 | `addons/account_bank_reconciliation_ce/models/reconciliation_matching_engine.py` |
+| 11 | `addons/account_bank_reconciliation_ce/models/reconciliation_rule.py` |
+| 12 | `addons/account_bank_reconciliation_ce/wizard/bank_statement_import_wizard.py` |
+| 13 | `addons/account_bank_reconciliation_ce/wizard/reconciliation_wizard.py` |
+| 14 | `addons/account_budget_management/models/account_analytic_account.py` |
+| 15 | `addons/account_budget_management/models/account_move.py` |
+| 16 | `addons/account_budget_management/models/budget_alert.py` |
+| 17 | `addons/account_budget_management/models/budget_budget.py` |
+| 18 | `addons/account_budget_management/models/budget_budget_line.py` |
+| 19 | `addons/account_budget_management/models/budget_period.py` |
+| 20 | `addons/account_budget_management/wizard/budget_variance_wizard.py` |
+| 21 | `addons/account_deferred_revenue/models/account_deferred_line.py` |
+| 22 | `addons/account_deferred_revenue/models/account_deferred_schedule.py` |
+| 23 | `addons/account_deferred_revenue/models/account_move.py` |
+| 24 | `addons/account_deferred_revenue/models/account_move_line.py` |
+| 25 | `addons/account_deferred_revenue/wizard/cutoff_wizard.py` |
+| 26 | `addons/account_deferred_revenue/wizard/recognition_dashboard_wizard.py` |
+| 27 | `addons/account_financial_report_ce/models/aged_partner_balance.py` |
+| 28 | `addons/account_financial_report_ce/models/balance_sheet.py` |
+| 29 | `addons/account_financial_report_ce/models/cash_flow.py` |
+| 30 | `addons/account_financial_report_ce/models/financial_report.py` |
+| 31 | `addons/account_financial_report_ce/models/general_ledger.py` |
+| 32 | `addons/account_financial_report_ce/models/profit_loss.py` |
+| 33 | `addons/account_financial_report_ce/models/trial_balance.py` |
+| 34 | `addons/account_financial_report_ce/wizard/financial_report_wizard.py` |
+| 35 | `addons/account_payment_followup/models/account_followup_history.py` |
+| 36 | `addons/account_payment_followup/models/account_followup_level.py` |
+| 37 | `addons/account_payment_followup/models/account_followup_line.py` |
+| 38 | `addons/account_payment_followup/models/account_move.py` |
+| 39 | `addons/account_payment_followup/models/account_move_line.py` |
+| 40 | `addons/account_payment_followup/models/res_partner.py` |
+| 41 | `addons/account_payment_followup/wizard/followup_report_wizard.py` |
+
+#### Domain 4 QA / Test Integrity — 52 files
+
+| # | File path |
+|--:|-----------|
+| 1 | `addons/account_asset_management/tests/common.py` |
+| 2 | `addons/account_asset_management/tests/test_am_001.py` |
+| 3 | `addons/account_asset_management/tests/test_am_002.py` |
+| 4 | `addons/account_asset_management/tests/test_am_003.py` |
+| 5 | `addons/account_asset_management/tests/test_am_004.py` |
+| 6 | `addons/account_asset_management/tests/test_am_005.py` |
+| 7 | `addons/account_asset_management/tests/test_am_006.py` |
+| 8 | `addons/account_bank_reconciliation_ce/tests/common.py` |
+| 9 | `addons/account_bank_reconciliation_ce/tests/test_candidate_date_window.py` |
+| 10 | `addons/account_bank_reconciliation_ce/tests/test_files/sample.csv` |
+| 11 | `addons/account_bank_reconciliation_ce/tests/test_files/sample.ofx` |
+| 12 | `addons/account_bank_reconciliation_ce/tests/test_files/sample.qif` |
+| 13 | `addons/account_bank_reconciliation_ce/tests/test_files/sample_camt053.xml` |
+| 14 | `addons/account_bank_reconciliation_ce/tests/test_manual_reconciliation.py` |
+| 15 | `addons/account_bank_reconciliation_ce/tests/test_matching_engine.py` |
+| 16 | `addons/account_bank_reconciliation_ce/tests/test_partial_reconciliation.py` |
+| 17 | `addons/account_bank_reconciliation_ce/tests/test_reconciliation_rules.py` |
+| 18 | `addons/account_bank_reconciliation_ce/tests/test_statement_import.py` |
+| 19 | `addons/account_budget_management/tests/test_bm_001.py` |
+| 20 | `addons/account_budget_management/tests/test_bm_002.py` |
+| 21 | `addons/account_budget_management/tests/test_bm_003.py` |
+| 22 | `addons/account_budget_management/tests/test_bm_004.py` |
+| 23 | `addons/account_budget_management/tests/test_bm_005.py` |
+| 24 | `addons/account_deferred_revenue/tests/test_dr_001.py` |
+| 25 | `addons/account_deferred_revenue/tests/test_dr_002.py` |
+| 26 | `addons/account_deferred_revenue/tests/test_dr_003.py` |
+| 27 | `addons/account_deferred_revenue/tests/test_dr_004.py` |
+| 28 | `addons/account_financial_report_ce/tests/test_aged_partner.py` |
+| 29 | `addons/account_financial_report_ce/tests/test_aging_bucket_wizard.py` |
+| 30 | `addons/account_financial_report_ce/tests/test_balance_sheet.py` |
+| 31 | `addons/account_financial_report_ce/tests/test_cash_flow.py` |
+| 32 | `addons/account_financial_report_ce/tests/test_export.py` |
+| 33 | `addons/account_financial_report_ce/tests/test_financial_reports.py` |
+| 34 | `addons/account_financial_report_ce/tests/test_general_ledger.py` |
+| 35 | `addons/account_financial_report_ce/tests/test_profit_loss.py` |
+| 36 | `addons/account_financial_report_ce/tests/test_trial_balance.py` |
+| 37 | `addons/account_payment_followup/tests/common.py` |
+| 38 | `addons/account_payment_followup/tests/test_action_history.py` |
+| 39 | `addons/account_payment_followup/tests/test_email_generation.py` |
+| 40 | `addons/account_payment_followup/tests/test_followup_level.py` |
+| 41 | `addons/account_payment_followup/tests/test_followup_report.py` |
+| 42 | `addons/account_payment_followup/tests/test_overdue_calculation.py` |
+| 43 | `addons/account_payment_followup/tests/test_pf_001.py` |
+| 44 | `addons/account_payment_followup/tests/test_pf_002.py` |
+| 45 | `addons/account_payment_followup/tests/test_pf_003.py` |
+| 46 | `addons/account_payment_followup/tests/test_pf_004.py` |
+| 47 | `addons/account_payment_followup/tests/test_pf_005.py` |
+| 48 | `test_data/bank_statements/sample.csv` |
+| 49 | `test_data/bank_statements/sample.ofx` |
+| 50 | `test_data/bank_statements/sample.qif` |
+| 51 | `test_data/bank_statements/sample.xml` |
+| 52 | `test_data/financial_reports/sample_journal_entries.csv` |
+
+#### Domain 5 Business / Domain — 18 files
+
+| # | File path |
+|--:|-----------|
+| 1 | `addons/account_bank_reconciliation_ce/report/reconciliation_report.py` |
+| 2 | `addons/account_bank_reconciliation_ce/report/reconciliation_report.xml` |
+| 3 | `addons/account_budget_management/report/budget_vs_actual_report.py` |
+| 4 | `addons/account_financial_report_ce/report/aged_partner_balance_report.xml` |
+| 5 | `addons/account_financial_report_ce/report/balance_sheet_report.xml` |
+| 6 | `addons/account_financial_report_ce/report/cash_flow_report.xml` |
+| 7 | `addons/account_financial_report_ce/report/general_ledger_report.xml` |
+| 8 | `addons/account_financial_report_ce/report/profit_loss_report.xml` |
+| 9 | `addons/account_financial_report_ce/report/report_aged_partner_balance.py` |
+| 10 | `addons/account_financial_report_ce/report/report_balance_sheet.py` |
+| 11 | `addons/account_financial_report_ce/report/report_cash_flow.py` |
+| 12 | `addons/account_financial_report_ce/report/report_general_ledger.py` |
+| 13 | `addons/account_financial_report_ce/report/report_profit_loss.py` |
+| 14 | `addons/account_financial_report_ce/report/report_templates.xml` |
+| 15 | `addons/account_financial_report_ce/report/report_trial_balance.py` |
+| 16 | `addons/account_financial_report_ce/report/trial_balance_report.xml` |
+| 17 | `addons/account_payment_followup/report/followup_report.py` |
+| 18 | `addons/account_payment_followup/report/followup_report.xml` |
+
+#### Domain 6 Frontend — 36 files
+
+| # | File path |
+|--:|-----------|
+| 1 | `addons/account_asset_management/static/src/scss/asset_management.scss` |
+| 2 | `addons/account_asset_management/views/account_asset_category_views.xml` |
+| 3 | `addons/account_asset_management/views/account_asset_views.xml` |
+| 4 | `addons/account_asset_management/views/asset_disposal_views.xml` |
+| 5 | `addons/account_asset_management/views/asset_modification_views.xml` |
+| 6 | `addons/account_asset_management/views/depreciation_board_views.xml` |
+| 7 | `addons/account_asset_management/views/menuitem.xml` |
+| 8 | `addons/account_bank_reconciliation_ce/static/src/scss/reconciliation.scss` |
+| 9 | `addons/account_bank_reconciliation_ce/views/bank_reconciliation_views.xml` |
+| 10 | `addons/account_bank_reconciliation_ce/views/menuitem.xml` |
+| 11 | `addons/account_bank_reconciliation_ce/wizard/bank_statement_import_wizard_views.xml` |
+| 12 | `addons/account_bank_reconciliation_ce/wizard/reconciliation_wizard_views.xml` |
+| 13 | `addons/account_budget_management/static/src/scss/budget_management.scss` |
+| 14 | `addons/account_budget_management/views/budget_alert_views.xml` |
+| 15 | `addons/account_budget_management/views/budget_period_views.xml` |
+| 16 | `addons/account_budget_management/views/budget_variance_views.xml` |
+| 17 | `addons/account_budget_management/views/budget_variance_wizard_views.xml` |
+| 18 | `addons/account_budget_management/views/budget_views.xml` |
+| 19 | `addons/account_budget_management/views/menuitem.xml` |
+| 20 | `addons/account_deferred_revenue/static/src/scss/deferred_revenue.scss` |
+| 21 | `addons/account_deferred_revenue/views/account_deferred_line_views.xml` |
+| 22 | `addons/account_deferred_revenue/views/account_deferred_schedule_views.xml` |
+| 23 | `addons/account_deferred_revenue/views/cutoff_wizard_views.xml` |
+| 24 | `addons/account_deferred_revenue/views/menuitem.xml` |
+| 25 | `addons/account_deferred_revenue/views/recognition_dashboard_views.xml` |
+| 26 | `addons/account_financial_report_ce/static/src/scss/report.scss` |
+| 27 | `addons/account_financial_report_ce/static/src/scss/report_print.scss` |
+| 28 | `addons/account_financial_report_ce/views/menuitem.xml` |
+| 29 | `addons/account_financial_report_ce/wizard/financial_report_wizard_views.xml` |
+| 30 | `addons/account_payment_followup/static/src/scss/payment_followup.scss` |
+| 31 | `addons/account_payment_followup/views/account_followup_history_views.xml` |
+| 32 | `addons/account_payment_followup/views/account_followup_level_views.xml` |
+| 33 | `addons/account_payment_followup/views/account_followup_line_views.xml` |
+| 34 | `addons/account_payment_followup/views/followup_report_views.xml` |
+| 35 | `addons/account_payment_followup/views/menuitem.xml` |
+| 36 | `addons/account_payment_followup/views/res_partner_views.xml` |
+
+#### Domain 7 Other SME — 67 files
+
+| # | File path |
+|--:|-----------|
+| 1 | `blitzy/documentation/Project Guide.md` |
+| 2 | `blitzy/documentation/Technical Specifications.md` |
+| 3 | `blitzy/screenshots/bm004_budgets_list_post_fix_4136_to_4136pct.png` |
+| 4 | `blitzy/screenshots/pf002_final_notice_attach_invoices_false_default.png` |
+| 5 | `blitzy/screenshots/qaver_01_asset_main_kanban_FIXED.png` |
+| 6 | `blitzy/screenshots/qaver_02_depboard_kanban_FIXED.png` |
+| 7 | `blitzy/screenshots/qaver_03_asset_form_FIXED.png` |
+| 8 | `blitzy/screenshots/qaver_05_modify_wizard_FIXED.png` |
+| 9 | `blitzy/screenshots/qaver_07_actual_vs_budget_pivot_FIXED.png` |
+| 10 | `blitzy/screenshots/qaver_08_actual_vs_budget_graph_FIXED.png` |
+| 11 | `blitzy/screenshots/qaver_09_variance_analysis_pivot_FIXED.png` |
+| 12 | `blitzy/screenshots/qaver_10_variance_wizard_FIXED.png` |
+| 13 | `blitzy/screenshots/qaver_12_budget_form_negative_red_FIXED.png` |
+| 14 | `blitzy/screenshots/qaver_15_cutoff_wizard_preview_FIXED.png` |
+| 15 | `blitzy/screenshots/qaver_16_17_18_recognition_dashboard_FIXED.png` |
+| 16 | `blitzy/screenshots/qaver_16_17_18_recognition_dashboard_FULLPAGE_FIXED.png` |
+| 17 | `blitzy/screenshots/qaver_20_followup_level_form_FIXED.png` |
+| 18 | `blitzy/screenshots/qaver_22_23_25_overdue_customers_FIXED.png` |
+| 19 | `blitzy/screenshots/qaver_23_followup_line_form_aging_red_FIXED.png` |
+| 20 | `blitzy/screenshots/qaver_24_25_partner_form_aging_FIXED.png` |
+| 21 | `blitzy/screenshots/qaver_26_history_form_FIXED.png` |
+| 22 | `blitzy/screenshots/qaver_27_28_followup_wizard_FIXED.png` |
+| 23 | `docs/SETUP.md` |
+| 24 | `docs/USER_GUIDE.md` |
+| 25 | `tickets/EPIC-001-enterprise-accounting.md` |
+| 26 | `tickets/README.md` |
+| 27 | `tickets/features/FEATURE-001-financial-reporting.md` |
+| 28 | `tickets/features/FEATURE-002-bank-reconciliation.md` |
+| 29 | `tickets/features/FEATURE-003-budget-management.md` |
+| 30 | `tickets/features/FEATURE-004-asset-management.md` |
+| 31 | `tickets/features/FEATURE-005-deferred-revenue.md` |
+| 32 | `tickets/features/FEATURE-006-payment-followups.md` |
+| 33 | `tickets/stories/asset-management/AM-001-asset-registration.md` |
+| 34 | `tickets/stories/asset-management/AM-002-depreciation-configuration.md` |
+| 35 | `tickets/stories/asset-management/AM-003-depreciation-board.md` |
+| 36 | `tickets/stories/asset-management/AM-004-automatic-depreciation-entries.md` |
+| 37 | `tickets/stories/asset-management/AM-005-asset-modification.md` |
+| 38 | `tickets/stories/asset-management/AM-006-asset-disposal.md` |
+| 39 | `tickets/stories/bank-reconciliation/BR-001-statement-import.md` |
+| 40 | `tickets/stories/bank-reconciliation/BR-002-algorithmic-matching.md` |
+| 41 | `tickets/stories/bank-reconciliation/BR-003-manual-reconciliation.md` |
+| 42 | `tickets/stories/bank-reconciliation/BR-004-reconciliation-rules.md` |
+| 43 | `tickets/stories/bank-reconciliation/BR-005-partial-reconciliation.md` |
+| 44 | `tickets/stories/budget-management/BM-001-budget-definition.md` |
+| 45 | `tickets/stories/budget-management/BM-002-budget-period-allocation.md` |
+| 46 | `tickets/stories/budget-management/BM-003-actual-vs-budget-reporting.md` |
+| 47 | `tickets/stories/budget-management/BM-004-variance-analysis.md` |
+| 48 | `tickets/stories/budget-management/BM-005-budget-alerts.md` |
+| 49 | `tickets/stories/deferred-revenue/DR-001-deferral-schedule-definition.md` |
+| 50 | `tickets/stories/deferred-revenue/DR-002-automatic-period-allocation.md` |
+| 51 | `tickets/stories/deferred-revenue/DR-003-cutoff-entry-generation.md` |
+| 52 | `tickets/stories/deferred-revenue/DR-004-recognition-dashboard.md` |
+| 53 | `tickets/stories/financial-reporting/FR-001-balance-sheet-report.md` |
+| 54 | `tickets/stories/financial-reporting/FR-002-profit-loss-statement.md` |
+| 55 | `tickets/stories/financial-reporting/FR-003-cash-flow-statement.md` |
+| 56 | `tickets/stories/financial-reporting/FR-004-general-ledger-report.md` |
+| 57 | `tickets/stories/financial-reporting/FR-005-trial-balance-report.md` |
+| 58 | `tickets/stories/financial-reporting/FR-006-aged-reports.md` |
+| 59 | `tickets/stories/financial-reporting/FR-007-report-export-drilldown.md` |
+| 60 | `tickets/stories/payment-followups/PF-001-followup-level-configuration.md` |
+| 61 | `tickets/stories/payment-followups/PF-002-automated-email-generation.md` |
+| 62 | `tickets/stories/payment-followups/PF-003-followup-report-generation.md` |
+| 63 | `tickets/stories/payment-followups/PF-004-action-history-tracking.md` |
+| 64 | `tickets/stories/payment-followups/PF-005-overdue-calculation.md` |
+| 65 | `tickets/templates/epic-template.md` |
+| 66 | `tickets/templates/feature-template.md` |
+| 67 | `tickets/templates/story-template.md` |
+
+**§C.4 reconciliation:** 52 + 12 + 41 + 52 + 18 + 36 + 67 = **278** paths enumerated, each in exactly one domain — identical to the §C.2 column totals and the `git diff --name-only` count.
 
 ---
 
@@ -414,6 +768,7 @@ These advisory items were raised during the phases above. By definition each is 
 | 3 | AM-003 depreciation-board performance verified only to 480 periods (40 years monthly) [blitzy/documentation/Project Guide.md:L221] | 5 | Low | Optionally cap useful life or extend benchmark; beyond typical asset life |
 | 4 | Mermaid 11.10.0 (CVE-2025-54881) on an unmerged branch vs rule-pinned 11.4.0 — outside the 278-file synthetic set | 7 | Low | Reconcile when the executive deck is finalized; not part of this change set |
 | 5 | Documentation cites "44" combined ACL rows vs first-hand four-module count of 37 [blitzy/documentation/Project Guide.md:L256] | 2 | Low | Documentation-accuracy wording; every model has ACL coverage |
+| 6 | Executive-deck CDN libraries (reveal.js 5.1.0, Mermaid 11.4.0, Lucide 0.460.0 via jsDelivr) are pinned to exact versions but loaded **without** Subresource-Integrity (SRI) hashes; Mermaid loads as an ESM `import`, not amenable to a tag-level `integrity` [blitzy-deck/executive-summary.html] | 7 | Low | **Accepted exception** — exact pins + trusted CDN keep risk low; recommended hardening = add `integrity`+`crossorigin` (or self-host the three libraries) at deployment + serve under a `script-src` CSP; mirrored as Technical Specifications §7 R7 / Project Guide §6 R8 |
 
 ---
 

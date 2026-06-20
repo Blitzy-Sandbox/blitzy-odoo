@@ -18,657 +18,665 @@
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 
   <!-- reveal.js 5.1.0 core CSS (pinned, CDN-only; theme is inline below) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" crossorigin="anonymous">
 
   <style>
-    /* ============================================================================
-       Blitzy Reveal.js Brand Theme — embedded INLINE (single self-contained file).
-       The :root design tokens and component / slide-type classes below are kept
-       byte-for-byte consistent with the canonical reference copy at
-       blitzy-deck/references/blitzy-reveal-theme.css (single source of truth —
-       AAP Sec. 0.10.2). The deck does NOT <link> to that file at runtime.
-       ============================================================================ */
+  /* ============================================================================
+     Blitzy Reveal.js Brand Theme — embedded INLINE (single self-contained file).
 
-    /* ============================================================
-       1. Design tokens -- :root custom properties (AAP Sec. 0.10.2)
-       ============================================================ */
-    :root {
-      /* Brand purples */
-      --blitzy-primary: #5B39F3;
-      --blitzy-primary-dark: #2D1C77;
-      --blitzy-primary-navy: #1A105F;
-      --blitzy-primary-deep: #4101DB;
-      --blitzy-primary-light: #7A6DEC;
+     STRUCTURE — two clearly separated blocks:
+       1. CANONICAL THEME — reproduced BYTE-FOR-BYTE from the single source of
+          truth at blitzy-deck/references/blitzy-reveal-theme.css (AAP Sec.
+          0.10.2). The bytes between the BEGIN/END CANONICAL THEME markers below
+          are an exact, verbatim copy of that file and diff clean against it.
+       2. DECK-ONLY EXTENSIONS — additive presentation rules used only by this
+          deck (e.g. .lead, .closing-hero, KPI refinements). They introduce NEW
+          selectors only, never redefine a canonical selector, so the canonical
+          block above stays parity-pure.
 
-      /* Accent */
-      --blitzy-accent-teal: #94FAD5;
+     The deck does NOT <link> to the canonical file at runtime; it remains a
+     single self-contained HTML file.
+     ============================================================================ */
 
-      /* Neutral surface ramp (light -> grey) */
-      --blitzy-surface-0: #FFFFFF;
-      --blitzy-surface-1: #F5F5F5;
-      --blitzy-surface-2: #F4EFF6;
-      --blitzy-surface-3: #D9D9D9;
+/* ===== BEGIN CANONICAL THEME (byte-for-byte: blitzy-deck/references/blitzy-reveal-theme.css) ===== */
+/*!
+ * ============================================================================
+ * Blitzy Reveal.js Brand Theme -- CANONICAL REFERENCE COPY
+ * ----------------------------------------------------------------------------
+ * Path:    blitzy-deck/references/blitzy-reveal-theme.css
+ * Purpose: The single, auditable, canonical source of the Blitzy executive-
+ *          presentation theme. Its :root design tokens and component / slide-
+ *          type classes are embedded INLINE (inside a <style> block) in
+ *          blitzy-deck/executive-summary.html. That deck stays a single
+ *          self-contained HTML file and therefore does NOT <link> to this
+ *          stylesheet at runtime; however, the deck's inline copy and this
+ *          file MUST remain byte-for-byte consistent in their tokens and
+ *          classes (single source of truth -- AAP Sec. 0.10.2).
+ *
+ * Runtime: reveal.js 5.1.0 (framework-agnostic overrides).
+ * Fonts:   Inter / Space Grotesk / Fira Code are loaded by the host deck via
+ *          Google Fonts; this file references them ONLY through the --ff-*
+ *          tokens (no stylesheet imports / no font hosting here).
+ *
+ * NOTE:    Mermaid DIAGRAM theming (Mermaid JS theme settings) and reveal.js
+ *          library configuration live in the deck's JavaScript, NOT here. This
+ *          file only styles the .mermaid CONTAINER.
+ *
+ * Brand:   Palette, typography and gradients per AAP Sec. 0.10.2.
+ * License: Documentation/presentation asset (Blitzy). Do not modify source.
+ * ============================================================================
+ */
 
-      /* Borders */
-      --blitzy-border: #D9D9D9;
-      --blitzy-border-soft: #F4EFF6;
+/* ============================================================
+   1. Design tokens -- :root custom properties (AAP Sec. 0.10.2)
+   ============================================================ */
+:root {
+  /* Brand purples */
+  --blitzy-primary: #5B39F3;
+  --blitzy-primary-dark: #2D1C77;
+  --blitzy-primary-navy: #1A105F;
+  --blitzy-primary-deep: #4101DB;
+  --blitzy-primary-light: #7A6DEC;
 
-      /* Text */
-      --blitzy-text: #333333;
-      --blitzy-text-muted: #999999;
-      --blitzy-text-invert: #FFFFFF;
+  /* Accent */
+  --blitzy-accent-teal: #94FAD5;
 
-      /* Font families (loaded by the host deck via Google Fonts) */
-      --ff-body: 'Inter', system-ui, sans-serif;
-      --ff-display: 'Space Grotesk', sans-serif;
-      --ff-mono: 'Fira Code', monospace;
+  /* Neutral surface ramp (light -> grey) */
+  --blitzy-surface-0: #FFFFFF;
+  --blitzy-surface-1: #F5F5F5;
+  --blitzy-surface-2: #F4EFF6;
+  --blitzy-surface-3: #D9D9D9;
 
-      /* Gradients */
-      --gradient-hero: linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
-      --gradient-divider: linear-gradient(135deg, #2D1C77, #1A105F);
-      --gradient-accent-bar: linear-gradient(90deg, #5B39F3, #94FAD5);
-    }
+  /* Borders */
+  --blitzy-border: #D9D9D9;
+  --blitzy-border-soft: #F4EFF6;
 
-    /* ============================================================
-       2. Base typography & reveal.js light surface (AAP Sec. 0.10.2)
-       Body -> Inter, headings -> Space Grotesk, code/eyebrow -> Fira Code.
-       Default content slides sit on a light surface with --blitzy-text.
-       ============================================================ */
-    .reveal {
-      font-family: var(--ff-body);
-      font-weight: 400;
-      font-size: 34px;
-      color: var(--blitzy-text);
-      background: var(--blitzy-surface-0);
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
+  /* Text */
+  --blitzy-text: #333333;
+  --blitzy-text-muted: #999999;
+  --blitzy-text-invert: #FFFFFF;
 
-    .reveal .slides {
-      text-align: left;
-    }
+  /* Font families (loaded by the host deck via Google Fonts) */
+  --ff-body: 'Inter', system-ui, sans-serif;
+  --ff-display: 'Space Grotesk', sans-serif;
+  --ff-mono: 'Fira Code', monospace;
 
-    /* Default (content) slides: light surface, brand text, comfortable padding. */
-    .reveal .slides > section,
-    .reveal .slides > section > section {
-      background-color: var(--blitzy-surface-0);
-      color: var(--blitzy-text);
-      padding: 48px 64px;
-      box-sizing: border-box;
-      height: 100%;
-    }
+  /* Gradients */
+  --gradient-hero: linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
+  --gradient-divider: linear-gradient(135deg, #2D1C77, #1A105F);
+  --gradient-accent-bar: linear-gradient(90deg, #5B39F3, #94FAD5);
+}
 
-    /* Headings use the display family. */
-    .reveal h1,
-    .reveal h2,
-    .reveal h3,
-    .reveal h4,
-    .reveal h5,
-    .reveal h6 {
-      font-family: var(--ff-display);
-      color: var(--blitzy-primary-dark);
-      font-weight: 600;
-      line-height: 1.12;
-      letter-spacing: -0.01em;
-      margin: 0 0 0.45em;
-      text-transform: none;
-      text-shadow: none;
-    }
+/* ============================================================
+   2. Base typography & reveal.js light surface (AAP Sec. 0.10.2)
+   Body -> Inter, headings -> Space Grotesk, code/eyebrow -> Fira Code.
+   Default content slides sit on a light surface with --blitzy-text.
+   ============================================================ */
+.reveal {
+  font-family: var(--ff-body);
+  font-weight: 400;
+  font-size: 34px;
+  color: var(--blitzy-text);
+  background: var(--blitzy-surface-0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-    .reveal h1 { font-size: 2.10em; }
-    .reveal h2 { font-size: 1.50em; }
-    .reveal h3 { font-size: 1.15em; color: var(--blitzy-primary); }
-    .reveal h4 { font-size: 1.00em; color: var(--blitzy-primary); }
+.reveal .slides {
+  text-align: left;
+}
 
-    .reveal p {
-      line-height: 1.4;
-      margin: 0 0 0.6em;
-    }
+/* Default (content) slides: light surface, brand text, comfortable padding. */
+.reveal .slides > section,
+.reveal .slides > section > section {
+  background-color: var(--blitzy-surface-0);
+  color: var(--blitzy-text);
+  padding: 48px 64px;
+  box-sizing: border-box;
+  height: 100%;
+}
 
-    .reveal a {
-      color: var(--blitzy-primary);
-      text-decoration: none;
-      transition: color 0.15s ease;
-    }
-    .reveal a:hover {
-      color: var(--blitzy-primary-deep);
-    }
+/* Headings use the display family. */
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+  font-family: var(--ff-display);
+  color: var(--blitzy-primary-dark);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.45em;
+  text-transform: none;
+  text-shadow: none;
+}
 
-    .reveal strong,
-    .reveal b {
-      color: var(--blitzy-primary-dark);
-      font-weight: 600;
-    }
+.reveal h1 { font-size: 2.10em; }
+.reveal h2 { font-size: 1.50em; }
+.reveal h3 { font-size: 1.15em; color: var(--blitzy-primary); }
+.reveal h4 { font-size: 1.00em; color: var(--blitzy-primary); }
 
-    .reveal em,
-    .reveal i {
-      color: inherit;
-    }
+.reveal p {
+  line-height: 1.4;
+  margin: 0 0 0.6em;
+}
 
-    /* Lists -- keep tight to respect the 4-bullet content rule. */
-    .reveal ul,
-    .reveal ol {
-      display: block;
-      margin: 0 0 0.6em 1.1em;
-    }
-    .reveal li {
-      line-height: 1.4;
-      margin: 0 0 0.35em;
-    }
-    .reveal ul li::marker {
-      color: var(--blitzy-primary);
-    }
-    .reveal ol li::marker {
-      color: var(--blitzy-primary);
-      font-family: var(--ff-mono);
-    }
+.reveal a {
+  color: var(--blitzy-primary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.reveal a:hover {
+  color: var(--blitzy-primary-deep);
+}
 
-    /* Inline code / commands -- Fira Code chips (no fenced blocks inside slides). */
-    .reveal code {
-      font-family: var(--ff-mono);
-      font-size: 0.82em;
-      background: var(--blitzy-surface-2);
-      color: var(--blitzy-primary-deep);
-      border: 1px solid var(--blitzy-border-soft);
-      border-radius: 6px;
-      padding: 0.12em 0.45em;
-    }
+.reveal strong,
+.reveal b {
+  color: var(--blitzy-primary-dark);
+  font-weight: 600;
+}
 
-    /* ============================================================
-       3. Eyebrow label -- Fira Code, uppercase, letter-spacing
-       ============================================================ */
-    .reveal .eyebrow {
-      display: block;
-      font-family: var(--ff-mono);
-      font-weight: 500;
-      font-size: 0.5em;
-      text-transform: uppercase;
-      letter-spacing: 0.22em;
-      color: var(--blitzy-primary);
-      margin: 0 0 1.1em;
-    }
+.reveal em,
+.reveal i {
+  color: inherit;
+}
 
-    /* On dark slide types the eyebrow uses the teal accent for contrast. */
-    .reveal .slide-title .eyebrow,
-    .reveal .slide-divider .eyebrow,
-    .reveal .slide-closing .eyebrow {
-      color: var(--blitzy-accent-teal);
-    }
+/* Lists -- keep tight to respect the 4-bullet content rule. */
+.reveal ul,
+.reveal ol {
+  display: block;
+  margin: 0 0 0.6em 1.1em;
+}
+.reveal li {
+  line-height: 1.4;
+  margin: 0 0 0.35em;
+}
+.reveal ul li::marker {
+  color: var(--blitzy-primary);
+}
+.reveal ol li::marker {
+  color: var(--blitzy-primary);
+  font-family: var(--ff-mono);
+}
 
-    /* ============================================================
-       4. Slide type -- TITLE (hero gradient, inverted text, hero icon)
-       ============================================================ */
-    .reveal .slides section.slide-title {
-      background: var(--gradient-hero);
-      color: var(--blitzy-text-invert);
-      text-align: center;
-      padding: 64px;
-    }
-    .reveal section.slide-title h1,
-    .reveal section.slide-title h2,
-    .reveal section.slide-title h3 {
-      color: var(--blitzy-text-invert);
-    }
-    .reveal section.slide-title h1 {
-      font-size: 2.4em;
-    }
-    .reveal section.slide-title p {
-      color: rgba(255, 255, 255, 0.86);
-    }
+/* Inline code / commands -- Fira Code chips (no fenced blocks inside slides). */
+.reveal code {
+  font-family: var(--ff-mono);
+  font-size: 0.82em;
+  background: var(--blitzy-surface-2);
+  color: var(--blitzy-primary-deep);
+  border: 1px solid var(--blitzy-border-soft);
+  border-radius: 6px;
+  padding: 0.12em 0.45em;
+}
 
-    /* Large Lucide hero icon on the title slide. */
-    .reveal .hero-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 132px;
-      height: 132px;
-      margin: 0 0 28px;
-      border-radius: 28px;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.28);
-      color: var(--blitzy-accent-teal);
-    }
-    .reveal .hero-icon svg,
-    .reveal .hero-icon [data-lucide] {
-      width: 68px;
-      height: 68px;
-      stroke-width: 1.5;
-    }
+/* ============================================================
+   3. Eyebrow label -- Fira Code, uppercase, letter-spacing
+   ============================================================ */
+.reveal .eyebrow {
+  display: block;
+  font-family: var(--ff-mono);
+  font-weight: 500;
+  font-size: 0.5em;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--blitzy-primary);
+  margin: 0 0 1.1em;
+}
 
-    /* ============================================================
-       5. Slide type -- DIVIDER (dark #2D1C77 / gradient, inverted text)
-       ============================================================ */
-    .reveal .slides section.slide-divider {
-      background-color: var(--blitzy-primary-dark);
-      background-image: var(--gradient-divider);
-      color: var(--blitzy-text-invert);
-      text-align: left;
-      padding: 64px;
-    }
-    .reveal section.slide-divider h1,
-    .reveal section.slide-divider h2,
-    .reveal section.slide-divider h3 {
-      color: var(--blitzy-text-invert);
-    }
-    .reveal section.slide-divider h1 {
-      font-size: 2.2em;
-    }
-    .reveal section.slide-divider p {
-      color: rgba(255, 255, 255, 0.82);
-    }
+/* On dark slide types the eyebrow uses the teal accent for contrast. */
+.reveal .slide-title .eyebrow,
+.reveal .slide-divider .eyebrow,
+.reveal .slide-closing .eyebrow {
+  color: var(--blitzy-accent-teal);
+}
 
-    /* ============================================================
-       6. Slide type -- CLOSING (navy #1A105F, inverted text, lockup + bar)
-       ============================================================ */
-    .reveal .slides section.slide-closing {
-      background-color: var(--blitzy-primary-navy);
-      color: var(--blitzy-text-invert);
-      text-align: left;
-      padding: 64px;
-    }
-    .reveal section.slide-closing h1,
-    .reveal section.slide-closing h2,
-    .reveal section.slide-closing h3 {
-      color: var(--blitzy-text-invert);
-    }
-    .reveal section.slide-closing p {
-      color: rgba(255, 255, 255, 0.82);
-    }
+/* ============================================================
+   4. Slide type -- TITLE (hero gradient, inverted text, hero icon)
+   ============================================================ */
+.reveal .slides section.slide-title {
+  background: var(--gradient-hero);
+  color: var(--blitzy-text-invert);
+  text-align: center;
+  padding: 64px;
+}
+.reveal section.slide-title h1,
+.reveal section.slide-title h2,
+.reveal section.slide-title h3 {
+  color: var(--blitzy-text-invert);
+}
+.reveal section.slide-title h1 {
+  font-size: 2.4em;
+}
+.reveal section.slide-title p {
+  color: rgba(255, 255, 255, 0.86);
+}
 
-    /* ============================================================
-       7. Brand lockup (Blitzy wordmark) + accent bar
-       ============================================================ */
-    .reveal .brand-lockup {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4em;
-      font-family: var(--ff-display);
-      font-weight: 700;
-      font-size: 1.6em;
-      letter-spacing: -0.02em;
-      color: var(--blitzy-text-invert);
-    }
-    .reveal .brand-lockup::before {
-      content: "";
-      display: inline-block;
-      width: 0.55em;
-      height: 0.55em;
-      border-radius: 4px;
-      background: var(--gradient-accent-bar);
-    }
+/* Large Lucide hero icon on the title slide. */
+.reveal .hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  margin: 0 0 28px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: var(--blitzy-accent-teal);
+}
+.reveal .hero-icon svg,
+.reveal .hero-icon [data-lucide] {
+  width: 68px;
+  height: 68px;
+  stroke-width: 1.5;
+}
 
-    /* Thin gradient accent bar (used on closing + section dividers). */
-    .reveal .accent-bar {
-      display: block;
-      width: 120px;
-      height: 6px;
-      border: 0;
-      border-radius: 999px;
-      background: var(--gradient-accent-bar);
-      margin: 24px 0;
-    }
+/* ============================================================
+   5. Slide type -- DIVIDER (dark #2D1C77 / gradient, inverted text)
+   ============================================================ */
+.reveal .slides section.slide-divider {
+  background-color: var(--blitzy-primary-dark);
+  background-image: var(--gradient-divider);
+  color: var(--blitzy-text-invert);
+  text-align: left;
+  padding: 64px;
+}
+.reveal section.slide-divider h1,
+.reveal section.slide-divider h2,
+.reveal section.slide-divider h3 {
+  color: var(--blitzy-text-invert);
+}
+.reveal section.slide-divider h1 {
+  font-size: 2.2em;
+}
+.reveal section.slide-divider p {
+  color: rgba(255, 255, 255, 0.82);
+}
 
-    /* ============================================================
-       8. KPI grid + cards
-       ============================================================ */
-    .reveal .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 28px;
-      width: 100%;
-      margin: 24px 0;
-    }
-    .reveal .kpi-card {
-      background: var(--blitzy-surface-1);
-      border: 1px solid var(--blitzy-border-soft);
-      border-radius: 16px;
-      padding: 28px 26px;
-      text-align: left;
-      box-shadow: 0 1px 2px rgba(45, 28, 119, 0.06);
-    }
+/* ============================================================
+   6. Slide type -- CLOSING (navy #1A105F, inverted text, lockup + bar)
+   ============================================================ */
+.reveal .slides section.slide-closing {
+  background-color: var(--blitzy-primary-navy);
+  color: var(--blitzy-text-invert);
+  text-align: left;
+  padding: 64px;
+}
+.reveal section.slide-closing h1,
+.reveal section.slide-closing h2,
+.reveal section.slide-closing h3 {
+  color: var(--blitzy-text-invert);
+}
+.reveal section.slide-closing p {
+  color: rgba(255, 255, 255, 0.82);
+}
 
-    /* Lucide icon wrapper inside a KPI card. */
-    .reveal .kpi-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 52px;
-      height: 52px;
-      margin: 0 0 16px;
-      border-radius: 12px;
-      background: var(--blitzy-surface-2);
-      color: var(--blitzy-primary);
-    }
-    .reveal .kpi-icon svg,
-    .reveal .kpi-icon [data-lucide] {
-      width: 28px;
-      height: 28px;
-      stroke-width: 1.75;
-    }
+/* ============================================================
+   7. Brand lockup (Blitzy wordmark) + accent bar
+   ============================================================ */
+.reveal .brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: 1.6em;
+  letter-spacing: -0.02em;
+  color: var(--blitzy-text-invert);
+}
+.reveal .brand-lockup::before {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 4px;
+  background: var(--gradient-accent-bar);
+}
 
-    .reveal .kpi-value {
-      font-family: var(--ff-display);
-      font-weight: 700;
-      font-size: 2.1em;
-      line-height: 1;
-      color: var(--blitzy-primary-dark);
-      margin: 0 0 8px;
-    }
-    .reveal .kpi-label {
-      font-family: var(--ff-body);
-      font-size: 0.46em;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--blitzy-text-muted);
-    }
+/* Thin gradient accent bar (used on closing + section dividers). */
+.reveal .accent-bar {
+  display: block;
+  width: 120px;
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gradient-accent-bar);
+  margin: 24px 0;
+}
 
-    /* KPI cards placed on dark slide types invert their surface for contrast. */
-    .reveal .slide-divider .kpi-card,
-    .reveal .slide-closing .kpi-card {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.16);
-    }
-    .reveal .slide-divider .kpi-value,
-    .reveal .slide-closing .kpi-value {
-      color: var(--blitzy-text-invert);
-    }
-    .reveal .slide-divider .kpi-label,
-    .reveal .slide-closing .kpi-label {
-      color: rgba(255, 255, 255, 0.7);
-    }
-    .reveal .slide-divider .kpi-icon,
-    .reveal .slide-closing .kpi-icon {
-      background: rgba(255, 255, 255, 0.12);
-      color: var(--blitzy-accent-teal);
-    }
+/* ============================================================
+   8. KPI grid + cards
+   ============================================================ */
+.reveal .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 28px;
+  width: 100%;
+  margin: 24px 0;
+}
+.reveal .kpi-card {
+  background: var(--blitzy-surface-1);
+  border: 1px solid var(--blitzy-border-soft);
+  border-radius: 16px;
+  padding: 28px 26px;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(45, 28, 119, 0.06);
+}
 
-    /* ============================================================
-       9. Icon row (horizontal Lucide row)
-       ============================================================ */
-    .reveal .icon-row {
-      display: flex;
-      align-items: center;
-      gap: 22px;
-      margin: 20px 0;
-    }
-    .reveal .icon-row svg,
-    .reveal .icon-row [data-lucide] {
-      width: 40px;
-      height: 40px;
-      color: var(--blitzy-primary);
-      stroke-width: 1.6;
-    }
-    .reveal .slide-divider .icon-row svg,
-    .reveal .slide-divider .icon-row [data-lucide],
-    .reveal .slide-closing .icon-row svg,
-    .reveal .slide-closing .icon-row [data-lucide] {
-      color: var(--blitzy-accent-teal);
-    }
+/* Lucide icon wrapper inside a KPI card. */
+.reveal .kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 0 16px;
+  border-radius: 12px;
+  background: var(--blitzy-surface-2);
+  color: var(--blitzy-primary);
+}
+.reveal .kpi-icon svg,
+.reveal .kpi-icon [data-lucide] {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.75;
+}
 
-    /* ============================================================
-       10. Styled tables (risk table, six-addon value, etc.)
-       ============================================================ */
-    .reveal table {
-      width: 100%;
-      margin: 16px 0;
-      border-collapse: collapse;
-      font-size: 0.6em;
-    }
-    .reveal table th {
-      font-family: var(--ff-display);
-      font-weight: 600;
-      text-align: left;
-      background: var(--blitzy-primary-dark);
-      color: var(--blitzy-text-invert);
-      padding: 12px 16px;
-      border: 0;
-    }
-    .reveal table td {
-      padding: 11px 16px;
-      border-bottom: 1px solid var(--blitzy-border);
-      color: var(--blitzy-text);
-      vertical-align: top;
-    }
-    .reveal table tr:nth-child(even) td {
-      background: var(--blitzy-surface-2);
-    }
+.reveal .kpi-value {
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: 2.1em;
+  line-height: 1;
+  color: var(--blitzy-primary-dark);
+  margin: 0 0 8px;
+}
+.reveal .kpi-label {
+  font-family: var(--ff-body);
+  font-size: 0.46em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--blitzy-text-muted);
+}
 
-    /* ============================================================
-       11. Mermaid container -- centered, transparent bg, max-width
-       (Diagram colours come from the deck's Mermaid JS theme settings.)
-       ============================================================ */
-    .reveal .mermaid {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      max-width: 100%;
-      margin: 12px auto;
-      background: transparent;
-      text-align: center;
-    }
-    .reveal .mermaid svg {
-      max-width: 100%;
-      height: auto;
-    }
+/* KPI cards placed on dark slide types invert their surface for contrast. */
+.reveal .slide-divider .kpi-card,
+.reveal .slide-closing .kpi-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.reveal .slide-divider .kpi-value,
+.reveal .slide-closing .kpi-value {
+  color: var(--blitzy-text-invert);
+}
+.reveal .slide-divider .kpi-label,
+.reveal .slide-closing .kpi-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+.reveal .slide-divider .kpi-icon,
+.reveal .slide-closing .kpi-icon {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--blitzy-accent-teal);
+}
 
-    /* ============================================================
-       12. Reveal.js chrome tint (controls / progress)
-       ============================================================ */
-    .reveal .controls {
-      color: var(--blitzy-primary);
-    }
-    .reveal .progress {
-      color: var(--blitzy-primary);
-      height: 4px;
-    }
-    .reveal .progress span {
-      background: var(--gradient-accent-bar);
-    }
-    .reveal .slide-number {
-      background-color: transparent;
-      color: var(--blitzy-text-muted);
-      font-family: var(--ff-mono);
-    }
+/* ============================================================
+   9. Icon row (horizontal Lucide row)
+   ============================================================ */
+.reveal .icon-row {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin: 20px 0;
+}
+.reveal .icon-row svg,
+.reveal .icon-row [data-lucide] {
+  width: 40px;
+  height: 40px;
+  color: var(--blitzy-primary);
+  stroke-width: 1.6;
+}
+.reveal .slide-divider .icon-row svg,
+.reveal .slide-divider .icon-row [data-lucide],
+.reveal .slide-closing .icon-row svg,
+.reveal .slide-closing .icon-row [data-lucide] {
+  color: var(--blitzy-accent-teal);
+}
 
-    /* ============================================================
-       13. Deck-specific layout helpers
-       These EXTEND (never override) the canonical tokens / classes above.
-       They compose the canonical primitives for this deck's slides and do
-       not redefine any canonical :root token or component class.
-       ============================================================ */
+/* ============================================================
+   10. Styled tables (risk table, six-addon value, etc.)
+   ============================================================ */
+.reveal table {
+  width: 100%;
+  margin: 16px 0;
+  border-collapse: collapse;
+  font-size: 0.6em;
+}
+.reveal table th {
+  font-family: var(--ff-display);
+  font-weight: 600;
+  text-align: left;
+  background: var(--blitzy-primary-dark);
+  color: var(--blitzy-text-invert);
+  padding: 12px 16px;
+  border: 0;
+}
+.reveal table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--blitzy-border);
+  color: var(--blitzy-text);
+  vertical-align: top;
+}
+.reveal table tr:nth-child(even) td {
+  background: var(--blitzy-surface-2);
+}
 
-    /* Subtitle / lead paragraph under a heading. */
-    .reveal .lead {
-      font-size: 0.62em;
-      color: var(--blitzy-text-muted);
-      margin: 0 0 1em;
-      max-width: 40ch;
-      line-height: 1.45;
-    }
-    .reveal .slide-title .lead,
-    .reveal .slide-divider .lead,
-    .reveal .slide-closing .lead {
-      color: rgba(255, 255, 255, 0.82);
-      max-width: 46ch;
-    }
+/* ============================================================
+   11. Mermaid container -- centered, transparent bg, max-width
+   (Diagram colours come from the deck's Mermaid JS theme settings.)
+   ============================================================ */
+.reveal .mermaid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  margin: 12px auto;
+  background: transparent;
+  text-align: center;
+}
+.reveal .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
 
-    /* Small descriptive sub-line beneath a KPI label. */
-    .reveal .kpi-sub {
-      font-family: var(--ff-body);
-      font-size: 0.4em;
-      color: var(--blitzy-text-muted);
-      margin-top: 8px;
-      line-height: 1.35;
-    }
-    .reveal .slide-divider .kpi-sub,
-    .reveal .slide-closing .kpi-sub {
-      color: rgba(255, 255, 255, 0.6);
-    }
+/* ============================================================
+   12. Reveal.js chrome tint (controls / progress)
+   ============================================================ */
+.reveal .controls {
+  color: var(--blitzy-primary);
+}
+.reveal .progress {
+  color: var(--blitzy-primary);
+  height: 4px;
+}
+.reveal .progress span {
+  background: var(--gradient-accent-bar);
+}
+.reveal .slide-number {
+  background-color: transparent;
+  color: var(--blitzy-text-muted);
+  font-family: var(--ff-mono);
+}
+/* ===== END CANONICAL THEME ===== */
 
-    /* Inline suffix appended to a KPI value (e.g. "/ 619"). */
-    .reveal .kpi-suffix {
-      font-family: var(--ff-display);
-      font-weight: 500;
-      font-size: 0.5em;
-      color: var(--blitzy-text-muted);
-      margin-left: 0.25em;
-    }
-    .reveal .slide-divider .kpi-suffix,
-    .reveal .slide-closing .kpi-suffix {
-      color: rgba(255, 255, 255, 0.6);
-    }
-
-    /* Title-slide meta row (audience / date / review id). */
-    .reveal .title-meta {
-      display: flex;
-      justify-content: center;
-      gap: 2.4em;
-      margin-top: 1.6em;
-    }
-    .reveal .title-meta span {
-      font-family: var(--ff-mono);
-      font-size: 0.42em;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.78);
-    }
-    .reveal .title-meta strong {
-      color: var(--blitzy-accent-teal);
-      font-weight: 500;
-    }
-
-    /* Two-column content layout (table beside supporting visual). */
-    .reveal .two-col {
-      display: grid;
-      grid-template-columns: 1.35fr 1fr;
-      gap: 40px;
-      align-items: start;
-    }
-
-    /* Icon + label cell used inside styled tables. */
-    .reveal .domain-cell {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.55em;
-      font-weight: 600;
-      color: var(--blitzy-primary-dark);
-    }
-    .reveal .domain-cell svg,
-    .reveal .domain-cell [data-lucide] {
-      width: 1.15em;
-      height: 1.15em;
-      color: var(--blitzy-primary);
-      stroke-width: 1.75;
-      flex: 0 0 auto;
-    }
-
-    /* Chips placed inside an icon-row (label + small Lucide glyph). */
-    .reveal .icon-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5em;
-      font-family: var(--ff-mono);
-      font-size: 0.42em;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--blitzy-text-muted);
-      background: var(--blitzy-surface-2);
-      border: 1px solid var(--blitzy-border-soft);
-      border-radius: 999px;
-      padding: 0.5em 0.9em;
-    }
-    .reveal .icon-chip svg,
-    .reveal .icon-chip [data-lucide] {
-      width: 1.2em;
-      height: 1.2em;
-      color: var(--blitzy-primary);
-      stroke-width: 1.75;
-    }
-    .reveal .slide-closing .icon-chip {
-      color: rgba(255, 255, 255, 0.82);
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.16);
-    }
-    .reveal .slide-closing .icon-chip svg,
-    .reveal .slide-closing .icon-chip [data-lucide] {
-      color: var(--blitzy-accent-teal);
-    }
-
-    /* Severity chip used in the risk table. */
-    .reveal .severity-chip {
-      display: inline-block;
-      font-family: var(--ff-mono);
-      font-size: 0.92em;
-      font-weight: 500;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      border-radius: 6px;
-      padding: 0.2em 0.7em;
-    }
-    .reveal .severity-chip.medium {
-      color: var(--blitzy-primary-deep);
-      background: var(--blitzy-surface-2);
-      border: 1px solid var(--blitzy-primary-light);
-    }
-    .reveal .severity-chip.low {
-      color: #1f7a54;
-      background: rgba(148, 250, 213, 0.32);
-      border: 1px solid var(--blitzy-accent-teal);
-    }
-
-    /* Footnote / source-citation line. */
-    .reveal .footnote {
-      font-family: var(--ff-body);
-      font-size: 0.42em;
-      color: var(--blitzy-text-muted);
-      margin-top: 1.2em;
-    }
-    .reveal .footnote .tag {
-      font-family: var(--ff-mono);
-      font-size: 0.88em;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--blitzy-primary);
-      margin-right: 0.3em;
-    }
-
-    /* Closing-slide layout: takeaway column beside a hero glyph. */
-    .reveal .closing-layout {
-      display: grid;
-      grid-template-columns: 1.5fr 1fr;
-      gap: 48px;
-      align-items: center;
-    }
-    .reveal .closing-hero {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 18px;
-    }
-    .reveal .hero-caption {
-      font-family: var(--ff-mono);
-      font-size: 0.42em;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--blitzy-accent-teal);
-    }
-    .reveal .brand-row {
-      display: flex;
-      align-items: center;
-      gap: 1.2em;
-      margin-top: 1.4em;
-    }
-    .reveal .brand-tagline {
-      font-family: var(--ff-mono);
-      font-size: 0.4em;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.6);
-    }
+/* ===== BEGIN DECK-ONLY EXTENSIONS (additive; new selectors only; not part of the canonical theme) ===== */
+.reveal .lead {
+  color: var(--blitzy-text-muted);
+  font-size: 0.62em;
+  line-height: 1.45;
+  margin: 0 0 1em;
+  max-width: 40ch;
+}
+.reveal .slide-title .lead, .reveal .slide-divider .lead, .reveal .slide-closing .lead {
+  color: rgba(255, 255, 255, 0.82);
+  max-width: 46ch;
+}
+.reveal .kpi-sub {
+  color: var(--blitzy-text-muted);
+  font-family: var(--ff-body);
+  font-size: 0.4em;
+  line-height: 1.35;
+  margin-top: 8px;
+}
+.reveal .slide-divider .kpi-sub, .reveal .slide-closing .kpi-sub {
+  color: rgba(255, 255, 255, 0.6);
+}
+.reveal .kpi-suffix {
+  color: var(--blitzy-text-muted);
+  font-family: var(--ff-display);
+  font-size: 0.5em;
+  font-weight: 500;
+  margin-left: 0.25em;
+}
+.reveal .slide-divider .kpi-suffix, .reveal .slide-closing .kpi-suffix {
+  color: rgba(255, 255, 255, 0.6);
+}
+.reveal .title-meta {
+  display: flex;
+  gap: 2.4em;
+  justify-content: center;
+  margin-top: 1.6em;
+}
+.reveal .title-meta span {
+  color: rgba(255, 255, 255, 0.78);
+  font-family: var(--ff-mono);
+  font-size: 0.42em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.reveal .title-meta strong {
+  color: var(--blitzy-accent-teal);
+  font-weight: 500;
+}
+.reveal .two-col {
+  align-items: start;
+  display: grid;
+  gap: 40px;
+  grid-template-columns: 1.35fr 1fr;
+}
+.reveal .domain-cell {
+  align-items: center;
+  color: var(--blitzy-primary-dark);
+  display: inline-flex;
+  font-weight: 600;
+  gap: 0.55em;
+}
+.reveal .domain-cell svg, .reveal .domain-cell [data-lucide] {
+  color: var(--blitzy-primary);
+  flex: 0 0 auto;
+  height: 1.15em;
+  stroke-width: 1.75;
+  width: 1.15em;
+}
+.reveal .icon-chip {
+  align-items: center;
+  background: var(--blitzy-surface-2);
+  border-radius: 999px;
+  border: 1px solid var(--blitzy-border-soft);
+  color: var(--blitzy-text-muted);
+  display: inline-flex;
+  font-family: var(--ff-mono);
+  font-size: 0.42em;
+  gap: 0.5em;
+  letter-spacing: 0.06em;
+  padding: 0.5em 0.9em;
+  text-transform: uppercase;
+}
+.reveal .icon-chip svg, .reveal .icon-chip [data-lucide] {
+  color: var(--blitzy-primary);
+  height: 1.2em;
+  stroke-width: 1.75;
+  width: 1.2em;
+}
+.reveal .slide-closing .icon-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.82);
+}
+.reveal .slide-closing .icon-chip svg, .reveal .slide-closing .icon-chip [data-lucide] {
+  color: var(--blitzy-accent-teal);
+}
+.reveal .severity-chip {
+  border-radius: 6px;
+  display: inline-block;
+  font-family: var(--ff-mono);
+  font-size: 0.92em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 0.2em 0.7em;
+  text-transform: uppercase;
+}
+.reveal .severity-chip.medium {
+  background: var(--blitzy-surface-2);
+  border: 1px solid var(--blitzy-primary-light);
+  color: var(--blitzy-primary-deep);
+}
+.reveal .severity-chip.low {
+  background: rgba(148, 250, 213, 0.32);
+  border: 1px solid var(--blitzy-accent-teal);
+  color: #1f7a54;
+}
+.reveal .footnote {
+  color: var(--blitzy-text-muted);
+  font-family: var(--ff-body);
+  font-size: 0.42em;
+  margin-top: 1.2em;
+}
+.reveal .footnote .tag {
+  color: var(--blitzy-primary);
+  font-family: var(--ff-mono);
+  font-size: 0.88em;
+  letter-spacing: 0.08em;
+  margin-right: 0.3em;
+  text-transform: uppercase;
+}
+.reveal .closing-layout {
+  align-items: center;
+  display: grid;
+  gap: 48px;
+  grid-template-columns: 1.5fr 1fr;
+}
+.reveal .closing-hero {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  justify-content: center;
+}
+.reveal .hero-caption {
+  color: var(--blitzy-accent-teal);
+  font-family: var(--ff-mono);
+  font-size: 0.42em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.reveal .brand-row {
+  align-items: center;
+  display: flex;
+  gap: 1.2em;
+  margin-top: 1.4em;
+}
+.reveal .brand-tagline {
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--ff-mono);
+  font-size: 0.4em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+/* ===== END DECK-ONLY EXTENSIONS ===== */
   </style>
 </head>
 <body>
@@ -704,27 +712,38 @@
             <i class="kpi-icon" data-lucide="files" aria-hidden="true"></i>
             <div class="kpi-value">278</div>
             <div class="kpi-label">Files Changed</div>
-            <div class="kpi-sub">Synthetic change set vs base 7bd7718</div>
+            <div class="kpi-sub">vs base 7bd7718</div>
           </div>
           <div class="kpi-card">
             <i class="kpi-icon" data-lucide="trending-up" aria-hidden="true"></i>
             <div class="kpi-value">+134,588</div>
             <div class="kpi-label">Insertions</div>
-            <div class="kpi-sub">Lines added across the suite</div>
+            <div class="kpi-sub">across the suite</div>
           </div>
           <div class="kpi-card">
             <i class="kpi-icon" data-lucide="package" aria-hidden="true"></i>
             <div class="kpi-value">6</div>
             <div class="kpi-label">Accounting Addons</div>
-            <div class="kpi-sub">Six AGPL-3.0 Odoo modules</div>
+            <div class="kpi-sub">AGPL-3.0 Odoo</div>
           </div>
           <div class="kpi-card">
             <i class="kpi-icon" data-lucide="git-merge" aria-hidden="true"></i>
             <div class="kpi-value">310</div>
             <div class="kpi-label">Commits</div>
-            <div class="kpi-sub">307 agent &middot; 3 merge PRs</div>
+            <div class="kpi-sub">307 agent &middot; 3 PRs</div>
           </div>
         </div>
+        <pre class="mermaid" aria-label="Canonical scope figures: the 278-file synthetic change set by top-level group (addons 206, tickets 43, blitzy 22, test_data 5, docs 2) and by file extension (py 128, xml 59, md 47, png 20, csv 9, scss 7, rst 4, qif 2, ofx 2).">
+graph LR
+    T["Synthetic PR vs base 7bd7718: 278 files, +134,588 insertions"]
+    T --> A["addons/: 206 (74.1%)"]
+    T --> K["tickets/: 43 (15.5%)"]
+    T --> B["blitzy/: 22 (7.9%)"]
+    T --> D["test_data/: 5 (1.8%)"]
+    T --> C["docs/: 2 (0.7%)"]
+    X["By file extension"] --> X1[".py 128 / .xml 59 / .md 47 / .png 20 / .csv 9"]
+    X --> X2[".scss 7 / .rst 4 / .qif 2 / .ofx 2"]
+        </pre>
         <p class="footnote">
           <span class="tag">Source</span> <code>git diff 7bd7718 origin/pdlc</code>
         </p>
@@ -771,15 +790,15 @@ graph TD
         <h2>Six Addons, 206 Module Files</h2>
         <table>
           <thead>
-            <tr><th>Addon</th><th>Files</th><th>Business Value</th></tr>
+            <tr><th>Addon</th><th>Files</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="domain-cell"><i data-lucide="file-text" aria-hidden="true"></i> Financial Reports</span></td><td>44</td><td>Balance sheet, P&amp;L, general ledger, trial balance</td></tr>
-            <tr><td><span class="domain-cell"><i data-lucide="receipt" aria-hidden="true"></i> Payment Follow-up</span></td><td>39</td><td>Multi-level dunning and reminders</td></tr>
-            <tr><td><span class="domain-cell"><i data-lucide="banknote" aria-hidden="true"></i> Bank Reconciliation</span></td><td>35</td><td>Statement import and matching</td></tr>
-            <tr><td><span class="domain-cell"><i data-lucide="wallet" aria-hidden="true"></i> Budget Management</span></td><td>31</td><td>Budgets, variance, alerts</td></tr>
-            <tr><td><span class="domain-cell"><i data-lucide="landmark" aria-hidden="true"></i> Asset Management</span></td><td>31</td><td>Fixed assets, depreciation, disposal</td></tr>
-            <tr><td><span class="domain-cell"><i data-lucide="calendar-clock" aria-hidden="true"></i> Deferred Revenue</span></td><td>26</td><td>Recognition schedules and cutoff</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="file-text" aria-hidden="true"></i> Financial Reports</span></td><td>44</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="receipt" aria-hidden="true"></i> Payment Follow-up</span></td><td>39</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="banknote" aria-hidden="true"></i> Bank Reconciliation</span></td><td>35</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="wallet" aria-hidden="true"></i> Budget Management</span></td><td>31</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="landmark" aria-hidden="true"></i> Asset Management</span></td><td>31</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="calendar-clock" aria-hidden="true"></i> Deferred Revenue</span></td><td>26</td></tr>
           </tbody>
         </table>
         <div class="icon-row">
@@ -858,19 +877,19 @@ flowchart LR
            ================================================================= -->
       <section>
         <span class="eyebrow">Pre-Flight Gate</span>
-        <h2>Gate Passed Before Phase One</h2>
+        <h2>Gate Passed</h2>
         <div class="kpi-grid">
           <div class="kpi-card">
             <i class="kpi-icon" data-lucide="hammer" aria-hidden="true"></i>
             <div class="kpi-value">0 / 0</div>
             <div class="kpi-label">Build Errors / Warnings</div>
-            <div class="kpi-sub">state &#61; installed</div>
+            <div class="kpi-sub">installed</div>
           </div>
           <div class="kpi-card">
             <i class="kpi-icon" data-lucide="circle-check-big" aria-hidden="true"></i>
             <div class="kpi-value">619<span class="kpi-suffix">/ 619</span></div>
             <div class="kpi-label">Tests Pass</div>
-            <div class="kpi-sub">0 failed &middot; 0 errors</div>
+            <div class="kpi-sub">all green</div>
           </div>
           <div class="kpi-card">
             <i class="kpi-icon" data-lucide="gauge" aria-hidden="true"></i>
@@ -882,7 +901,7 @@ flowchart LR
             <i class="kpi-icon" data-lucide="shield-check" aria-hidden="true"></i>
             <div class="kpi-value">0</div>
             <div class="kpi-label">Ruff Violations</div>
-            <div class="kpi-sub">Static-analysis gate clean</div>
+            <div class="kpi-sub">ruff clean</div>
           </div>
         </div>
         <p class="footnote">
@@ -909,32 +928,18 @@ flowchart LR
       <section>
         <span class="eyebrow">Risk Register</span>
         <h2>Tracked Risks, All Mitigated</h2>
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 32%;">Risk</th>
-              <th style="width: 14%;">Severity</th>
-              <th style="width: 54%;">Mitigation</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><span class="domain-cell"><i data-lucide="triangle-alert" aria-hidden="true"></i> Mermaid version conflict</span></td>
-              <td><span class="severity-chip medium">Medium</span></td>
-              <td>An unmerged security-scan branch bumped Mermaid to 11.10.0 for CVE-2025-54881; the binding rule pins 11.4.0. Diagrams are author-authored with no untrusted input. Mitigation: reconcile the pin against the CVE before release.</td>
-            </tr>
-            <tr>
-              <td><span class="domain-cell"><i data-lucide="clock" aria-hidden="true"></i> Scheduled-job load</span></td>
-              <td><span class="severity-chip medium">Medium</span></td>
-              <td>Three <code>ir.cron</code> jobs run unattended — asset depreciation daily, budget alert hourly, follow-up email daily. Mitigation: idempotent, batched logic (follow-up caps &le;500 partners/run) plus monitoring.</td>
-            </tr>
-            <tr>
-              <td><span class="domain-cell"><i data-lucide="gauge" aria-hidden="true"></i> Coverage interpretation</span></td>
-              <td><span class="severity-chip low">Low</span></td>
-              <td>Literal per-story coverage reads 30&ndash;62% versus the per-module &ge;80% gate. Mitigation: adopt the per-module aggregate gate — 87 / 89 / 87 / 90 percent, all passing.</td>
-            </tr>
-          </tbody>
-        </table>
+        <pre class="mermaid" aria-label="Risk register: R1 Mermaid pin versus CVE-2025-54881 (Medium); R2 scheduled-job load (Medium); R3 coverage interpretation (Low). CVE-2025-54881 is CWE-79 XSS, CVSS 5.3 Medium; affected Mermaid from 10.9.0-rc.1 through 11.9.0 inclusive, so the pinned 11.4.0 is affected; fixed in 11.10.0 and 10.9.4; the deck renders only static author-authored diagrams with KaTeX disabled and no untrusted input, so practical exploitability is negligible; disposition accepted exception per Technical Specifications Section 7 R1.">
+graph LR
+    RR["Risk Register - all non-blocking, all mitigated"]
+    RR --> R1["R1: Mermaid pin vs CVE-2025-54881 (Medium)"]
+    RR --> R2["R2: Scheduled-job load (Medium)"]
+    RR --> R3["R3: Coverage interpretation (Low)"]
+    R1 --> R1a["CVE-2025-54881 - CWE-79 XSS - CVSS 5.3 (Medium)"]
+    R1a --> R1b["Affected from 10.9.0-rc.1 through 11.9.0 inclusive - pinned 11.4.0 IS affected"]
+    R1b --> R1c["Fixed in 11.10.0 / 10.9.4 - static author-authored diagrams, KaTeX off, exploitability negligible - ACCEPTED (Tech Specs Sec 7 R1)"]
+    R2 --> R2a["asset daily / budget hourly / follow-up daily - idempotent, batched, caps 500/run + monitoring"]
+    R3 --> R3a["per-story 30-62% vs per-module 80%+ (87/89/87/90) - adopt per-module gate"]
+        </pre>
         <p class="footnote">
           <span class="tag">Full register</span> <code>Technical Specifications.md</code> Section 7
         </p>
@@ -998,14 +1003,14 @@ flowchart LR
            Non-text visual: KPI cards with Lucide icons.
            ================================================================= -->
       <section>
-        <span class="eyebrow">Segmented PR Review Outcome</span>
+        <span class="eyebrow">Review Outcome</span>
         <h2>Approved Across Every Phase</h2>
         <div class="kpi-grid">
           <div class="kpi-card">
             <i class="kpi-icon" data-lucide="badge-check" aria-hidden="true"></i>
             <div class="kpi-value">PASS</div>
             <div class="kpi-label">Pre-Flight Gate</div>
-            <div class="kpi-sub">All five conditions pass</div>
+            <div class="kpi-sub">Five conditions</div>
           </div>
           <div class="kpi-card">
             <i class="kpi-icon" data-lucide="circle-check-big" aria-hidden="true"></i>
@@ -1017,7 +1022,7 @@ flowchart LR
             <i class="kpi-icon" data-lucide="shield-check" aria-hidden="true"></i>
             <div class="kpi-value">APPROVED</div>
             <div class="kpi-label">Final Verdict</div>
-            <div class="kpi-sub">Single atomic review pass</div>
+            <div class="kpi-sub">Atomic pass</div>
           </div>
           <div class="kpi-card">
             <i class="kpi-icon" data-lucide="circle-check" aria-hidden="true"></i>
@@ -1028,7 +1033,7 @@ flowchart LR
         </div>
         <p class="footnote">
           <span class="tag">Record</span> <code>CODE_REVIEW.md</code> &middot;
-          <span class="tag">Window</span> after last code-gen 2026-06-09
+          <span class="tag">Window</span> after 2026-06-09
         </p>
       </section>
 
@@ -1064,14 +1069,21 @@ flowchart LR
   </div><!-- /.reveal -->
 
   <!-- ===================================================================
-       Library runtimes (pinned CDN; no SRI so the deck always loads).
+       Library runtimes (pinned CDN). CDN assets carry EXACT version pins and
+       crossorigin="anonymous" (SRI-ready), but no Subresource-Integrity hash:
+       this is a documented, ACCEPTED EXCEPTION (Technical Specifications Sec 7
+       R7 / Project Guide Sec 6 R8 / CODE_REVIEW.md observation 6). Recommended
+       hardening at deployment: add an integrity hash (or self-host the three
+       libraries) and serve under a script-src Content-Security-Policy.
        reveal.js 5.1.0 (UMD) + Lucide 0.460.0 (UMD).
        =================================================================== -->
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
 
   <!-- ===================================================================
-       Mermaid 11.4.0 (ESM) + library initialization.
+       Mermaid 11.4.0 (ESM) + library initialization. Loaded as an ESM import,
+       which is not amenable to a tag-level integrity attribute (see the
+       accepted-exception note above and the risk registers).
        =================================================================== -->
   <script type="module">
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';

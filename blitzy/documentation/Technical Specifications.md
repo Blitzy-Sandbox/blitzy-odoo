@@ -12,7 +12,7 @@ The user's request, preserved verbatim:
 
 > **User Request:** "Perform an archaeology report on all merged changes made to this repository by Blitzy Agents. Treat all of the identified changes as if they were changes that were actively made during this run. Once all changes are identified, perform an in depth PR review using the Segmented PR Review rule definition to assess and remediate issues."
 
-Repository forensics confirm that the merged Blitzy work resides on the `origin/pdlc` branch, which is the clean upstream Odoo base commit `7bd7718bcd4c5d232779e8eab0340169461af14e` plus three `blitzy[bot]` merge pull requests (#2 on 2026-02-02, #3 on 2026-04-17, #7 on 2026-06-09). The cumulative diff is **278 files changed / +134,588 insertions** [origin/pdlc:diff vs 7bd7718], comprising six Odoo accounting addons plus supporting ticket, specification, and sample-data deliverables.
+Repository forensics confirm that the merged Blitzy work resides on the `origin/pdlc` branch, which is the clean upstream Odoo base commit `7bd7718bcd4c5d232779e8eab0340169461af14e` plus three `blitzy[bot]` merge pull requests (#2 on 2026-02-02, #3 on 2026-04-17, #7 on 2026-06-09). The cumulative diff is **278 files changed / +134,588 insertions** (per `git diff --shortstat 7bd7718 origin/pdlc`; see the verified outputs in §1.3), comprising six Odoo accounting addons plus supporting ticket, specification, and sample-data deliverables.
 
 **Request Classification**
 
@@ -81,7 +81,7 @@ Surfacing implicit requirements not explicitly stated but necessary for complete
 Repository analysis reveals **two distinct documentation surfaces on separate branch lineages**, a distinction that governs where the new deliverables are authored.
 
 - **Code lineage (`origin/pdlc`)** — where the merged Blitzy feature work lives — has **no MkDocs generator**. `git cat-file -e origin/pdlc:mkdocs.yml` returns not-found. The documentation present is hand-authored Markdown: the Blitzy deliverables `blitzy/documentation/Technical Specifications.md` and `blitzy/documentation/Project Guide.md`, the user docs `docs/SETUP.md` and `docs/USER_GUIDE.md`, the `tickets/` requirement tree, a `README.rst` inside each newer addon, and Odoo's stock `README.md`, `CONTRIBUTING.md`, and `LICENSE` [origin/pdlc:README.md:L1].
-- **Config/catalog lineage (`origin/19.0`)** — NOT merged into `pdlc` — *does* carry a MkDocs site: `mkdocs.yml`, `doc/index.md`, `doc/project-guide.md`, `doc/technical-specifications.md`, `docs/index.md`, and `catalog-info.yaml` [origin/19.0:diff vs 7bd7718]. This is a Backstage/MkDocs scaffold added by the config branches and is independent of the code under review.
+- **Config/catalog lineage (`origin/19.0`)** — NOT merged into `pdlc` — *does* carry a MkDocs site: `mkdocs.yml`, `doc/index.md`, `doc/project-guide.md`, `doc/technical-specifications.md`, `docs/index.md`, and `catalog-info.yaml` (per `git diff --name-only 7bd7718 origin/19.0`). This is a Backstage/MkDocs scaffold added by the config branches and is independent of the code under review.
 
 Conclusion: the archaeology report, `CODE_REVIEW.md`, and executive deck target the `pdlc` lineage where the code resides. MkDocs is noted as an existing (separate-branch) generator; surfacing the new artifacts through it is out of scope unless explicitly requested (§0.8.2).
 
@@ -96,7 +96,7 @@ Conclusion: the archaeology report, `CODE_REVIEW.md`, and executive deck target 
 
 ### 0.2.2 Repository Code Analysis for Documentation
 
-The subject of the archaeology is six Odoo accounting addons under `addons/`, all introduced by the merged PRs. The merged diff groups as follows [origin/pdlc:diff vs 7bd7718]:
+The subject of the archaeology is six Odoo accounting addons under `addons/`, all introduced by the merged PRs. The merged diff groups as follows (per `git diff --name-status 7bd7718 origin/pdlc`; see §1.3):
 
 | Group | Files | Notes |
 |-------|------:|-------|
@@ -481,7 +481,7 @@ The forensic boundary is the cumulative difference between the clean upstream Od
 - **Base (sandbox):** `7bd7718bcd4c5d232779e8eab0340169461af14e` — the upstream Odoo 19.0 commit that contains **no `blitzy/` tree** and none of the six accounting addons.
 - **Head (merged feature lineage):** `origin/pdlc` at `13896915095` — the tip after the third merge pull request.
 
-Diffing these endpoints yields the synthetic change set treated throughout this report as "actively made during this run": **278 files changed / +134,588 insertions** [origin/pdlc:diff vs 7bd7718].
+Diffing these endpoints yields the synthetic change set treated throughout this report as "actively made during this run": **278 files changed / +134,588 insertions** (per `git diff --shortstat 7bd7718 origin/pdlc`; verified output in §1.3).
 
 ## 1.3 Git Mining Command Set
 
@@ -538,6 +538,31 @@ git show "origin/pdlc:addons/account_asset_management/__manifest__.py"
 
 The `git show "origin/pdlc:<path>"` form is the canonical read used for every `[origin/pdlc:<path>:<locator>]` citation in this report; the base commit holds none of these paths, so all subject facts are necessarily sourced from the merged `pdlc` tree.
 
+**Verified command outputs (captured during this run; re-derivable by anyone with the two endpoints):**
+
+```text
+$ git diff --shortstat 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc
+ 278 files changed, 134588 insertions(+)
+
+$ git log --format='%an <%ae>' 7bd7718bcd4c5d232779e8eab0340169461af14e..origin/pdlc | sort | uniq -c
+    307 Blitzy Agent <agent@blitzy.com>
+      3 blitzy[bot] <191547922+blitzy[bot]@users.noreply.github.com>
+
+$ git log --merges --format='%h %ad %s' --date=short 7bd7718bcd4c5d232779e8eab0340169461af14e..origin/pdlc
+13896915095 2026-06-09 Merge pull request #7
+5a7e83629bc 2026-04-17 Merge pull request #3
+2c52c6b3aaf 2026-02-02 Merge pull request #2
+
+$ git diff --name-only 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc | awk -F/ '{print $1}' | sort | uniq -c
+    206 addons
+     22 blitzy
+      2 docs
+      5 test_data
+     43 tickets
+```
+
+These captured outputs are the evidence for every git-statistic claim in this report: the change-set magnitude (278 files / +134,588 insertions), authorship (307 `agent@blitzy.com` commits + 3 `blitzy[bot]` merges), the three merge pull requests and their dates, and the top-level group counts cited throughout §§2–§7.
+
 ---
 
 # 2. Branch Topology and Provenance
@@ -560,7 +585,7 @@ The Blitzy platform understands the repository to carry **four distinct branch l
 
 ## 2.2 Provenance — Authorship and Merge Cadence
 
-Mining `7bd7718…..origin/pdlc` yields **310 commits**, partitioned by author as **307 commits by `Blitzy Agent <agent@blitzy.com>` + 3 commits by `blitzy[bot]`** (the merges) [origin/pdlc:git log vs 7bd7718]. The three `blitzy[bot]` commits are the merge points of the three pull requests:
+Mining `7bd7718…..origin/pdlc` yields **310 commits**, partitioned by author as **307 commits by `Blitzy Agent <agent@blitzy.com>` + 3 commits by `blitzy[bot]`** (the merges) (per `git log --format='%an <%ae>' 7bd7718..origin/pdlc | sort | uniq -c`; see §1.3). The three `blitzy[bot]` commits are the merge points of the three pull requests:
 
 | Merge PR | Commit | Date | Significance |
 |----------|--------|------|--------------|
@@ -568,7 +593,7 @@ Mining `7bd7718…..origin/pdlc` yields **310 commits**, partitioned by author a
 | PR #3 | `5a7e83629bc` | 2026-04-17 | Second merge — extends the accounting suite |
 | PR #7 | `13896915095` | 2026-06-09 | Third merge — **head/tip**; the last code-generation commit |
 
-The merge-commit bodies are minimal API merge markers ("Merged via API by user with ID …") [origin/pdlc:git log --merges], so PR intent is reconstructed from the file content rather than the merge messages. Critically, **the last code-generation commit is the PR #7 merge dated 2026-06-09**; per the Segmented PR Review rule (§0.10.1), any review or run activity referenced by `CODE_REVIEW.md` MUST carry a timestamp *after* 2026-06-09 to satisfy the "review begins only after code generation has fully completed" constraint.
+The merge-commit bodies are minimal API merge markers ("Merged via API by user with ID …") (per `git log --merges 7bd7718..origin/pdlc`), so PR intent is reconstructed from the file content rather than the merge messages. Critically, **the last code-generation commit is the PR #7 merge dated 2026-06-09**; per the Segmented PR Review rule (§0.10.1), any review or run activity referenced by `CODE_REVIEW.md` MUST carry a timestamp *after* 2026-06-09 to satisfy the "review begins only after code generation has fully completed" constraint.
 
 ## 2.3 Branch-Topology Graph
 
@@ -619,7 +644,7 @@ Concretely:
 | Insertions | +134,588 |
 | Deletions | 0 (all additions — net-new addons + docs + tickets + sample data) |
 
-The change set is **purely additive**: the diff is +134,588 insertions with no deletions, consistent with six self-contained addons and their supporting documentation being introduced on top of an untouched Odoo core [origin/pdlc:diff vs 7bd7718].
+The change set is **purely additive**: the diff is +134,588 insertions with no deletions, consistent with six self-contained addons and their supporting documentation being introduced on top of an untouched Odoo core (per `git diff --shortstat 7bd7718 origin/pdlc`, +134,588/-0).
 
 ## 3.2 What Is Excluded From the Boundary, and Why
 
@@ -640,7 +665,7 @@ The Agent Action Plan reproduced in Section 0 is the **referencing AAP** for thi
 
 ## 4.1 Top-Level Group Inventory (278 files)
 
-The synthetic change set partitions cleanly across five top-level groups [origin/pdlc:diff vs 7bd7718]:
+The synthetic change set partitions cleanly across five top-level groups (per `git diff --name-only 7bd7718 origin/pdlc | awk -F/ '{print $1}' | sort | uniq -c`; see §1.3):
 
 | Top-level group | Files | Share | Contents |
 |-----------------|------:|------:|----------|
@@ -649,7 +674,7 @@ The synthetic change set partitions cleanly across five top-level groups [origin
 | `blitzy/` | 22 | 7.9% | Technical Specifications, Project Guide, screenshots |
 | `test_data/` | 5 | 1.8% | Sample bank statements + journal entries (`.qif`, `.ofx`, `.csv`) |
 | `docs/` | 2 | 0.7% | `SETUP.md`, `USER_GUIDE.md` |
-| **Total** | **278** | **100%** | |
+| **Total** | **278** | **100%** | All five top-level groups |
 
 ## 4.2 Per-Addon Inventory (206 files under `addons/`)
 
@@ -663,11 +688,11 @@ The 206 addon files distribute across the six modules; the two largest are the p
 | `account_budget_management` | FEATURE-003 | 31 | `19.0.1.0.0` [origin/pdlc:addons/account_budget_management/__manifest__.py:L44] | AGPL-3 [origin/pdlc:addons/account_budget_management/__manifest__.py:L48] | New (this suite) |
 | `account_asset_management` | FEATURE-004 | 31 | `19.0.1.0.0` [origin/pdlc:addons/account_asset_management/__manifest__.py:L69] | AGPL-3 [origin/pdlc:addons/account_asset_management/__manifest__.py:L73] | New (this suite) |
 | `account_deferred_revenue` | FEATURE-005 | 26 | `19.0.1.0.0` [origin/pdlc:addons/account_deferred_revenue/__manifest__.py:L50] | AGPL-3 [origin/pdlc:addons/account_deferred_revenue/__manifest__.py:L54] | New (this suite) |
-| **Total** | | **206** | | | |
+| **Total** | FEATURE-001..006 | **206** | 19.0.x series | AGPL-3 (all) | 2 prior + 4 new |
 
 ## 4.3 File-Extension Inventory (278 files)
 
-By extension, the change set is dominated by Python (models, wizards, reports, tests) and XML (views, security, data, QWeb reports) [origin/pdlc:diff vs 7bd7718]:
+By extension, the change set is dominated by Python (models, wizards, reports, tests) and XML (views, security, data, QWeb reports) (per `git diff --name-only 7bd7718 origin/pdlc` grouped by extension):
 
 | Extension | Files | Role |
 |-----------|------:|------|
@@ -680,7 +705,7 @@ By extension, the change set is dominated by Python (models, wizards, reports, t
 | `.rst` | 4 | Per-addon `README.rst` (the four newest addons) |
 | `.qif` | 2 | Sample QIF bank statements (`test_data/`) |
 | `.ofx` | 2 | Sample OFX bank statements (`test_data/`) |
-| **Total** | **278** | |
+| **Total** | **278** | All file roles (aggregate) |
 
 ## 4.4 Module-Area Breakdown (one row per module area)
 
@@ -739,7 +764,7 @@ The merged `tickets/` tree is the requirement source-of-truth: a single epic, si
 | FEATURE-004 | Asset Management | `account_asset_management` | `tickets/stories/asset-management/` (AM-001..006) | 6 |
 | FEATURE-005 | Deferred Revenue | `account_deferred_revenue` | `tickets/stories/deferred-revenue/` (DR-001..004) | 4 |
 | FEATURE-006 | Payment Follow-ups | `account_payment_followup` | `tickets/stories/payment-followups/` (PF-001..005) | 5 |
-| **Total** | | **6 addons** | | **32** |
+| **Total** | All six features | **6 addons** | tickets/stories/** | **32** |
 
 The 32 stories aggregate to the EPIC-001 "Enterprise Accounting Capabilities" deliverable [origin/pdlc:tickets/EPIC-001-enterprise-accounting.md], with six feature briefs at `tickets/features/FEATURE-00X-*.md` and three structural templates at `tickets/templates/` [origin/pdlc:tickets/features/]. The 43 `tickets/` files (§4.1) are: 1 epic + 6 feature briefs + 32 story files + 3 templates + 1 index/glossary.
 
@@ -798,7 +823,7 @@ graph TD
 
 ## 6.2 Entity-Relationship Diagram (net-new model families)
 
-The four newest addons introduce twelve net-new `_name` models organised into four family clusters. The ERD below captures their principal relations and a representative attribute set, derived from the model field definitions [origin/pdlc:addons/account_asset_management/models/account_asset.py:L280; origin/pdlc:addons/account_asset_management/models/account_asset_depreciation_line.py:L104,L114].
+The four newest addons introduce twelve net-new `_name` models organised into four family clusters. The ERD below captures their principal relations and a representative attribute set, derived from the model field definitions [origin/pdlc:addons/account_asset_management/models/account_asset.py:L280] [origin/pdlc:addons/account_asset_management/models/account_asset_depreciation_line.py:L104] [origin/pdlc:addons/account_asset_management/models/account_asset_depreciation_line.py:L114].
 
 ```mermaid
 erDiagram
@@ -908,13 +933,14 @@ The archaeology surfaces the following cross-cutting risks. Each carries a sever
 
 | # | Risk | Severity | Likelihood | Evidence `[path:locator]` | Mitigation |
 |--:|------|----------|------------|---------------------------|------------|
-| R1 | **Mermaid version-vs-CVE tension.** The binding Executive Presentation rule pins **Mermaid 11.4.0**, which lies inside the affected range of **CVE-2025-54881** — improper sanitization of sequence-diagram labels leading to XSS (**CWE-79**) via `calculateMathMLDimensions` passing unsanitized input to `innerHTML` when KaTeX is enabled. **Affected: ≥ 10.9.0-rc.1 through ≤ 11.9.0** (so the pinned 11.4.0 is affected); **patched in 11.10.0** (and the **10.9.4** backport line). **CVSS v4.0 5.3 (Medium)**. A security-scan branch had bumped Mermaid to **11.10.0** to remediate the CVE, but that bump was reverted to satisfy the AAP-literal pin and lives only on an **unmerged** branch. | Medium | Low | Rule pin 11.4.0 [origin/pdlc:blitzy/documentation/Technical Specifications.md:§0.10.2,§0.6.1]; CVE affected-range / fixed version / CWE-79 / CVSS 5.3 [NVD:CVE-2025-54881; GitHub Advisory GHSA-7rqq-prvp-x9jh]; reverted 11.10.0/CVE-2025-54881 bump on the separate security-scan branch [origin/blitzy-4fd1447b…:security-scan/config-b/decision-log.md:L120-127] | The CVE requires KaTeX/MathML delimiters in **untrusted, user-supplied** diagram labels; this deck renders only **static, author-authored** diagrams with no user input and does not enable KaTeX, so **practical exploitability is negligible** — not a guaranteed-zero library state. Disposition: accept the residual risk on that rationale; optionally apply a `script-src`/`style-src` Content-Security-Policy when the deck is hosted; and define an AAP-amendment re-approval path to upgrade to a patched release (`11.10.0+`/`10.9.4`) if the pin policy changes or untrusted diagram input is ever introduced. |
+| R1 | **Mermaid version-vs-CVE tension.** The binding Executive Presentation rule pins **Mermaid 11.4.0**, which lies inside the affected range of **CVE-2025-54881** — improper sanitization of sequence-diagram labels leading to XSS (**CWE-79**) via `calculateMathMLDimensions` passing unsanitized input to `innerHTML` when KaTeX is enabled. **Affected: ≥ 10.9.0-rc.1 through ≤ 11.9.0** (so the pinned 11.4.0 is affected); **patched in 11.10.0** (and the **10.9.4** backport line). **CVSS v4.0 5.3 (Medium)**. A security-scan branch had bumped Mermaid to **11.10.0** to remediate the CVE, but that bump was reverted to satisfy the AAP-literal pin and lives only on an **unmerged** branch. | Medium | Low | Rule pins 11.4.0 per the Executive Presentation rule (§0.10.2) and dependency inventory (§0.6.1) of this specification; CVE affected-range / fixed version / CWE-79 / CVSS 5.3 per the NVD entry for CVE-2025-54881 and GitHub Advisory GHSA-7rqq-prvp-x9jh; reverted 11.10.0/CVE-2025-54881 bump on the separate security-scan branch (documented on a separate, unmerged security-scan branch outside the 278-file synthetic set) | The CVE requires KaTeX/MathML delimiters in **untrusted, user-supplied** diagram labels; this deck renders only **static, author-authored** diagrams with no user input and does not enable KaTeX, so **practical exploitability is negligible** — not a guaranteed-zero library state. Disposition: accept the residual risk on that rationale; optionally apply a `script-src`/`style-src` Content-Security-Policy when the deck is hosted; and define an AAP-amendment re-approval path to upgrade to a patched release (`11.10.0+`/`10.9.4`) if the pin policy changes or untrusted diagram input is ever introduced. |
 | R2 | **Unattended scheduled-job load.** Three `ir.cron` jobs run without supervision: asset depreciation **daily**, budget alert **hourly** (the most frequent), follow-up email **daily**. A failing or slow job could silently skip postings, flood alerts, or exceed the cron timeout. | Medium | Medium | depreciation cron daily [origin/pdlc:addons/account_asset_management/data/depreciation_cron.xml:L147]; budget alert hourly [origin/pdlc:addons/account_budget_management/data/budget_alert_cron.xml:L69]; follow-up email daily [origin/pdlc:addons/account_payment_followup/data/followup_cron.xml:L86] | Confirm idempotent batch logic, per-run record caps (the follow-up batch targets ≤500 partners/run), and failure isolation; verify all three are reachable under Settings → Technical → Automation after install. |
 | R3 | **Per-story coverage interpretation gap.** A literal per-story-file reading of the ≥80% coverage gate returns only **30–62%** per individual story file, even though the **per-module aggregate** comfortably passes (AAM 87% / ABM 89% / ADR 87% / APF 90%). | Low | Certain (documented) | Per-story literal 30–62% [origin/pdlc:blitzy/documentation/Project Guide.md:L167]; per-module aggregate AAM/ABM/ADR/APF [origin/pdlc:blitzy/documentation/Project Guide.md:L161] | Treat the per-module aggregate as the meaningful gate (already passing) and schedule optional uplift adding focused unit tests so each `test_<story>.py` independently reaches ≥80%; record the interpretation explicitly so reviewers do not mis-`BLOCK`. |
 | R4 | **Multi-company / record-rule exposure.** Net-new models add their own `ir.rule` multi-company rules; an incomplete or overly broad rule could leak records across companies or block legitimate access. | Medium | Low | `account_asset_multi_company_rule` using `company_id in company_ids` [origin/pdlc:addons/account_asset_management/security/asset_security.xml:L57]; per-addon `*_security.xml` (one per addon, §4.4) | Security phase audits each `*_security.xml` for a `company_id`-scoped rule on every net-new model and confirms ACL coverage in `ir.model.access.csv`. |
 | R5 | **`sudo()` boundary breadth.** A raw text search for the token `sudo(` returns many hits across the newest addons, but those counts include **docstrings, comments, XML, and test code** and do **not** measure privilege elevation. Restricting to **executable, non-test production Python**, the four newest addons contain **exactly one** `.sudo()` call — an audited scalar `ir.config_parameter` read carrying an inline justification comment — so the real record-rule-bypass surface is a single configuration read, not a broad elevation. | Low | Low | Executable production `.sudo(` (excluding `tests/`, comments, docstrings, and XML): **1** call [origin/pdlc:addons/account_deferred_revenue/models/account_deferred_schedule.py:L385]. The raw `grep "sudo("` token tallies (APF/AAM/ADR/ABM) are commentary/test/XML occurrences and are non-security-relevant. | Security phase confirms the single production `.sudo()` is a configuration read (not a permission-sensitive write) and is correctly scoped; any future `.sudo()` introduced in cron/report paths must carry a documented justification or be flagged as a file-and-line `BLOCKED` finding. |
 | R6 | **Demo-data independence.** The four newest addons ship **no** `demo/` directory (only the two prior addons do), so any test or view that implicitly assumed demo records would fail under `--without-demo=True`. | Low | Low | newest addons carry zero `demo/` files (§4.4 matrix: demo row 0 for AAM/ABM/ADR/APF); demo present only on prior addons [origin/pdlc:addons/account_bank_reconciliation_ce/demo/demo_data.xml] | Confirm each module installs cleanly with `--without-demo=True` and that `tests/` build their own fixtures (Odoo `TransactionCase`), so the modules are demo-data independent by construction. |
+| R7 | **Executive-deck CDN libraries lack Subresource-Integrity (SRI) hashes.** The deck loads reveal.js 5.1.0, Mermaid 11.4.0, and Lucide 0.460.0 from jsDelivr with exact version pins but no `integrity`/`crossorigin` attributes; Mermaid is loaded as an ESM `import`, which is not amenable to a tag-level `integrity`. A tampered CDN response would therefore not be detected by the browser. | Low | Low | The three pinned `<script>`/`import` tags in `blitzy-deck/executive-summary.html` carry exact version pins but no `integrity` attribute; the libraries are served from the trusted jsDelivr CDN. | **Accepted exception** — exact version pins plus a trusted CDN keep the residual risk low for an internally distributed deck. Recommended hardening: add `integrity` + `crossorigin` (or self-host the three libraries) at deployment, and/or serve the deck under a `script-src` Content-Security-Policy. |
 
 ## 7.1 Risk Summary
 
-The risk surface is dominated by **operational** concerns (R2 scheduled-job load) and **policy/interpretation** concerns (R1 Mermaid pin-vs-CVE, R3 coverage gate), rather than by correctness defects in the merged accounting logic; the `sudo()` surface (R5) reduces on inspection to a single audited configuration read. None of the six findings requires a source-code change *by the reviewer*; each is either accepted-with-rationale (R1, R3, R6), verified-during-review (R4, R5), or operationally monitored (R2). Should any finding rise to a file-and-line `BLOCKED` verdict during the Segmented PR Review, the work item returns to code generation and the next review pass restarts from the pre-flight gate with no carried credit, exactly as the binding rule prescribes (§0.10.1).
+The risk surface is dominated by **operational** concerns (R2 scheduled-job load) and **policy/interpretation** concerns (R1 Mermaid pin-vs-CVE, R3 coverage gate), rather than by correctness defects in the merged accounting logic; the `sudo()` surface (R5) reduces on inspection to a single audited configuration read. None of the seven findings requires a source-code change *by the reviewer*; each is either accepted-with-rationale (R1, R3, R6, R7), verified-during-review (R4, R5), or operationally monitored (R2). Should any finding rise to a file-and-line `BLOCKED` verdict during the Segmented PR Review, the work item returns to code generation and the next review pass restarts from the pre-flight gate with no carried credit, exactly as the binding rule prescribes (§0.10.1).

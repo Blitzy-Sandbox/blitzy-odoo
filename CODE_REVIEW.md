@@ -597,3 +597,20 @@ Per-domain subtotals below reconcile **exactly** to the §C.2 matrix column tota
 **Verdict — Phase 1 (Infrastructure / DevOps): APPROVED**
 
 ---
+
+### Phase 2 — Security  ·  Reviewer: Application Security SME (review-only)
+
+**Files reviewed:** the 12 files in the Security column of §C.2 — each addon's `security/ir.model.access.csv` and `security/<name>_security.xml`.
+
+**Findings (file:line):**
+
+1. **ACL completeness.** The four newest modules contribute **37** access-control rows — `account_asset_management` 8, `account_budget_management` 10, `account_deferred_revenue` 11, `account_payment_followup` 8 — and every model carries at least one access entry [addons/account_asset_management/security/ir.model.access.csv:L2]. ACL rows split read/write privileges across the accounting user vs. manager groups rather than granting blanket access.
+2. **Multi-company record rules.** Each `*_security.xml` declares `company_id`-based `ir.rule` records using the reserved `company_ids` runtime context variable for per-company isolation: `account_asset_management` (3 rules) [addons/account_asset_management/security/asset_security.xml:L57,L80,L97]; `account_budget_management` (4 rules) [addons/account_budget_management/security/budget_security.xml:L66,L88,L111,L143]; `account_deferred_revenue` (2 rules, including a relational rule that walks `schedule_id.company_id` for child lines) [addons/account_deferred_revenue/security/deferred_security.xml:L100,L108]; `account_payment_followup` (3 rules) [addons/account_payment_followup/security/followup_security.xml:L29,L39,L50].
+3. **`sudo()` boundary (R-07).** Exactly **one** non-test `.sudo()` call exists in the four modules — a scalar `ir.config_parameter` read carrying an inline justification comment; it is a configuration read, not a permission-sensitive write, and is correctly scoped [addons/account_deferred_revenue/models/account_deferred_schedule.py:L385].
+4. **No core field redefinition (R-05).** Extensions to `account.move`, `account.move.line`, `account.analytic.account`, and `res.partner` add only **new** computed/relational fields (e.g. `days_overdue`, `aging_bucket`, `asset_id`, `deferred_*`, `followup_history_ids`); no existing core field is redefined [addons/account_payment_followup/models/res_partner.py:L78].
+
+**Reviewer observations (non-blocking):** the validator's documentation cites a combined "44 access-control rows" figure that aggregates differently from this reviewer's first-hand four-module count of 37 [blitzy/documentation/Project Guide.md:L256]; the discrepancy is a counting-scope difference (not a missing-ACL gap) — every model has coverage. Routed to the risk register as a documentation-accuracy note; not blocking.
+
+**Verdict — Phase 2 (Security): APPROVED**
+
+---

@@ -109,7 +109,7 @@ Observed (verified pdlc evidence): `account_asset_management` 98/98 (87%), `acco
 ruff check addons/<module>/        # config: repo-root ruff.toml (ruff 0.11.4+, py310, preview=true)
 ```
 
-Observed: "All checks passed!" for all four modules; the only emitted notice is a removed-rule advisory for `UP038`, which is itself in the `ruff.toml` ignore list [ruff.toml:L62] and therefore not a violation [blitzy/documentation/Project Guide.md:L263].
+Observed: "All checks passed!" for all four modules; the only emitted notice is a removed-rule advisory for `UP038`, which is itself in the `ruff.toml` ignore list [ruff.toml:L71] and therefore not a violation [blitzy/documentation/Project Guide.md:L263].
 
 **Condition 5 — No production-path placeholder stub.** Executed first-hand against `/tmp/pdlc-review`:
 

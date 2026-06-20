@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Executive Summary deck for the Odoo 19.0 Community Edition Enterprise Accounting suite — archaeology of all merged Blitzy changes (278 files across six AGPL-3 accounting addons) and the seven-phase Segmented PR Review.">
+  <title>Enterprise Accounting for Odoo 19.0 CE — Archaeology &amp; Segmented PR Review — Executive Summary</title>
+
+  <!-- Google Fonts: Inter (body), Space Grotesk (display), Fira Code (mono) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- reveal.js 5.1.0 core CSS (pinned with SRI integrity per review finding #9) -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css"
+        integrity="sha384-YgvgKeZJykuztG+iQPoZHNZENTFZvOcOJ/uRzmJTje6GHYN9zAw+y5rx/L8MQKA/"
+        crossorigin="anonymous">
+
+  <style>
+    /* ==========================================================================
+       Blitzy Executive Presentation Theme
+       Scope: Enterprise Accounting for Odoo 19.0 CE — Archaeology (278 files / 6 addons) & 7-phase Segmented PR Review
+       Palette, typography, and gradients reproduced verbatim from AAP §0.9.9.
+       ========================================================================== */
+    :root {
+      --blitzy-primary: #5B39F3;
+      --blitzy-primary-dark: #2D1C77;
+      --blitzy-primary-navy: #1A105F;
+      --blitzy-primary-light: #7A6DEC;
+      --blitzy-primary-deep: #4101DB;
+      --blitzy-accent-teal: #94FAD5;
+      --blitzy-surface-0: #FFFFFF;
+      --blitzy-surface-1: #F4EFF6;
+      --blitzy-surface-2: #F2F0FE;
+      --blitzy-surface-3: #F5F5F5;
+      --blitzy-border: #D9D9D9;
+      --blitzy-border-soft: rgba(91, 57, 243, 0.18);
+      --blitzy-text: #333333;
+      --blitzy-text-muted: #999999;
+      --blitzy-text-invert: #FFFFFF;
+      --ff-body: 'Inter', system-ui, sans-serif;
+      --ff-display: 'Space Grotesk', 'Inter', sans-serif;
+      --ff-mono: 'Fira Code', 'Courier New', monospace;
+      --gradient-hero: linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
+      --gradient-divider: linear-gradient(135deg, #2D1C77 0%, #5B39F3 100%);
+      --gradient-accent-bar: linear-gradient(90deg, #5B39F3 0%, #94FAD5 100%);
+    }
+
+    /* -------------------------------------------------------------------------
+       Global reset + base typography
+       ------------------------------------------------------------------------- */
+    html, body {
+      background-color: var(--blitzy-surface-3);
+    }
+
+    .reveal {
+      font-family: var(--ff-body);
+      color: var(--blitzy-text);
+      background: var(--blitzy-surface-0);
+      font-size: 28px;
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    .reveal .slides {
+      text-align: left;
+    }
+
+    .reveal .slides > section,
+    .reveal .slides > section > section {
+      padding: 3.5rem 5rem;
+      height: 100%;
+      box-sizing: border-box;
+    }
+
+    .reveal h1,
+    .reveal h2,
+    .reveal h3,
+    .reveal h4 {
+      font-family: var(--ff-display);
+      color: var(--blitzy-text);
+      text-transform: none;
+      letter-spacing: -0.01em;
+      font-weight: 600;
+      line-height: 1.1;
+      margin: 0 0 1rem 0;
+    }
+
+    .reveal h1 { font-size: 3.75rem; }
+    .reveal h2 { font-size: 2.75rem; }
+    .reveal h3 { font-size: 1.85rem; color: var(--blitzy-primary-dark); }
+    .reveal h4 { font-size: 1.35rem; color: var(--blitzy-primary); }
+
+    .reveal p {
+      line-height: 1.5;
+      margin: 0 0 1rem 0;
+      color: var(--blitzy-text);
+    }
+
+    .reveal ul,
+    .reveal ol {
+      margin: 1rem 0 1rem 1.5rem;
+      line-height: 1.55;
+    }
+
+    .reveal li {
+      margin: 0.4rem 0;
+    }
+
+    .reveal li::marker {
+      color: var(--blitzy-primary);
+    }
+
+    .reveal a {
+      color: var(--blitzy-primary);
+      text-decoration: none;
+      border-bottom: 1px dashed var(--blitzy-border-soft);
+    }
+
+    .reveal a:hover {
+      color: var(--blitzy-primary-dark);
+      border-bottom-color: var(--blitzy-primary-dark);
+    }
+
+    .reveal code {
+      font-family: var(--ff-mono);
+      font-size: 0.92em;
+      background: var(--blitzy-surface-2);
+      color: var(--blitzy-primary-dark);
+      padding: 0.1em 0.4em;
+      border-radius: 4px;
+      border: 1px solid var(--blitzy-border-soft);
+    }
+
+    .reveal .eyebrow {
+      font-family: var(--ff-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--blitzy-primary);
+      margin: 0 0 1rem 0;
+      display: block;
+      font-weight: 500;
+    }
+
+    .reveal .lead {
+      font-size: 1.15rem;
+      color: var(--blitzy-text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    /* -------------------------------------------------------------------------
+       Slide types — Title
+       ------------------------------------------------------------------------- */
+    .reveal .slides section.slide-title {
+      background: var(--gradient-hero);
+      color: var(--blitzy-text-invert);
+      text-align: left;
+      padding: 5rem 6rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .reveal .slides section.slide-title::before {
+      content: "";
+      position: absolute;
+      top: -20%;
+      right: -10%;
+      width: 900px;
+      height: 900px;
+      background: radial-gradient(circle, rgba(148, 250, 213, 0.25) 0%, rgba(148, 250, 213, 0) 60%);
+      pointer-events: none;
+    }
+
+    .reveal .slides section.slide-title::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 12px;
+      background: var(--gradient-accent-bar);
+    }
+
+    .reveal .slides section.slide-title h1,
+    .reveal .slides section.slide-title h2,
+    .reveal .slides section.slide-title h3,
+    .reveal .slides section.slide-title p {
+      color: var(--blitzy-text-invert);
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-title .eyebrow {
+      color: var(--blitzy-accent-teal);
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-title h1 {
+      font-size: 4.5rem;
+      max-width: 1500px;
+      letter-spacing: -0.02em;
+    }
+
+    .reveal .slides section.slide-title h2 {
+      font-size: 1.75rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.88);
+      max-width: 1300px;
+      margin-top: 1rem;
+    }
+
+    .reveal .slides section.slide-title .title-meta {
+      margin-top: 3rem;
+      display: flex;
+      gap: 3rem;
+      align-items: baseline;
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-title .title-meta span {
+      font-family: var(--ff-mono);
+      font-size: 0.95rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .reveal .slides section.slide-title .title-meta strong {
+      color: var(--blitzy-accent-teal);
+      font-weight: 500;
+    }
+
+    /* Title-slide hero icon — satisfies Rule R-1 visual-constraint
+       closed-list requirement (at least one Mermaid / KPI / table /
+       Lucide SVG per slide).  Decorative: aria-hidden applied inline. */
+    .reveal .slides section.slide-title .hero-icon {
+      width: 96px;
+      height: 96px;
+      color: var(--blitzy-accent-teal);
+      stroke-width: 1.4;
+      margin: 0 0 1.5rem 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* -------------------------------------------------------------------------
+       Slide types — Divider
+       ------------------------------------------------------------------------- */
+    .reveal .slides section.slide-divider {
+      background: var(--gradient-divider);
+      color: var(--blitzy-text-invert);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .reveal .slides section.slide-divider::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 120%, rgba(148, 250, 213, 0.20) 0%, rgba(148, 250, 213, 0) 55%);
+      pointer-events: none;
+    }
+
+    .reveal .slides section.slide-divider h2 {
+      color: var(--blitzy-text-invert);
+      font-size: 4rem;
+      margin: 1.5rem 0 0.5rem 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-divider .eyebrow {
+      color: var(--blitzy-accent-teal);
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-divider p {
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 1.25rem;
+      max-width: 900px;
+      margin: 0.5rem auto 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-divider .hero-icon {
+      width: 180px;
+      height: 180px;
+      color: var(--blitzy-accent-teal);
+      margin-bottom: 1.5rem;
+      stroke-width: 1.4;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* -------------------------------------------------------------------------
+       Slide types — Closing
+       ------------------------------------------------------------------------- */
+    .reveal .slides section.slide-closing {
+      background: var(--blitzy-primary-navy);
+      color: var(--blitzy-text-invert);
+      padding: 5rem 6rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .reveal .slides section.slide-closing::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: -15%;
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(91, 57, 243, 0.35) 0%, rgba(91, 57, 243, 0) 60%);
+      pointer-events: none;
+    }
+
+    .reveal .slides section.slide-closing .accent-bar {
+      height: 10px;
+      background: var(--gradient-accent-bar);
+      margin: 0 0 2.5rem 0;
+      border-radius: 6px;
+      width: 220px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-closing h1 {
+      color: var(--blitzy-text-invert);
+      font-size: 4rem;
+      max-width: 1300px;
+      margin: 0 0 1.5rem 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-closing .eyebrow {
+      color: var(--blitzy-accent-teal);
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-closing ul {
+      list-style: none;
+      margin: 1.5rem 0 2rem 0;
+      padding: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-closing ul li {
+      position: relative;
+      padding: 0.6rem 0 0.6rem 2.25rem;
+      color: rgba(255, 255, 255, 0.92);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 1.05rem;
+    }
+
+    .reveal .slides section.slide-closing ul li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 10px;
+      height: 10px;
+      background: var(--blitzy-accent-teal);
+      border-radius: 2px;
+    }
+
+    .reveal .slides section.slide-closing a {
+      color: var(--blitzy-accent-teal);
+      border-bottom-color: rgba(148, 250, 213, 0.4);
+    }
+
+    .reveal .slides section.slide-closing a:hover {
+      color: #FFFFFF;
+      border-bottom-color: #FFFFFF;
+    }
+
+    .reveal .slides section.slide-closing code {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--blitzy-accent-teal);
+      border-color: rgba(148, 250, 213, 0.25);
+    }
+
+    .reveal .slides section.slide-closing .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-closing .brand-lockup .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: var(--gradient-accent-bar);
+      color: var(--blitzy-primary-navy);
+    }
+
+    .reveal .slides section.slide-closing .brand-lockup .brand-mark i {
+      width: 22px;
+      height: 22px;
+      stroke-width: 2.5;
+    }
+
+    .reveal .slides section.slide-closing .brand-lockup .brand-mark--wordmark {
+      font-family: var(--ff-display);
+      font-weight: 700;
+      font-size: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .reveal .slides section.slide-closing .brand-lockup .brand-name {
+      font-family: var(--ff-display);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--blitzy-text-invert);
+      letter-spacing: -0.01em;
+    }
+
+    .reveal .slides section.slide-closing .brand-lockup .brand-tagline {
+      font-family: var(--ff-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--blitzy-text-muted);
+      margin-left: auto;
+    }
+
+    .reveal .slides section.slide-closing .closing-layout {
+      display: grid;
+      grid-template-columns: 3fr 2fr;
+      gap: 4rem;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .reveal .slides section.slide-closing .closing-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .reveal .slides section.slide-closing .closing-hero .hero-icon {
+      width: 160px;
+      height: 160px;
+      color: var(--blitzy-accent-teal);
+      stroke-width: 1.4;
+      margin-bottom: 1rem;
+    }
+
+    .reveal .slides section.slide-closing .closing-hero .hero-caption {
+      font-family: var(--ff-mono);
+      font-size: 0.85rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--blitzy-accent-teal);
+    }
+
+    /* -------------------------------------------------------------------------
+       KPI Cards
+       ------------------------------------------------------------------------- */
+    .reveal .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+      margin: 1.5rem 0;
+    }
+
+    .reveal .kpi-card {
+      background: var(--blitzy-surface-2);
+      border: 1px solid var(--blitzy-border-soft);
+      border-radius: 18px;
+      padding: 1.75rem;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s ease;
+    }
+
+    .reveal .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--gradient-accent-bar);
+    }
+
+    .reveal .kpi-card .kpi-icon {
+      width: 44px;
+      height: 44px;
+      color: var(--blitzy-primary);
+      margin-bottom: 1rem;
+      stroke-width: 1.75;
+    }
+
+    .reveal .kpi-card .kpi-value {
+      font-family: var(--ff-display);
+      font-size: 2.9rem;
+      font-weight: 700;
+      color: var(--blitzy-primary-dark);
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .reveal .kpi-card .kpi-suffix {
+      font-family: var(--ff-display);
+      font-size: 1.15rem;
+      font-weight: 500;
+      color: var(--blitzy-primary);
+      margin-left: 0.25rem;
+    }
+
+    .reveal .kpi-card .kpi-label {
+      font-family: var(--ff-mono);
+      font-size: 0.8rem;
+      color: var(--blitzy-text-muted);
+      margin-top: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .reveal .kpi-card .kpi-sub {
+      font-size: 0.95rem;
+      color: var(--blitzy-text);
+      margin-top: 0.35rem;
+      font-weight: 500;
+    }
+
+    /* -------------------------------------------------------------------------
+       Tables
+       ------------------------------------------------------------------------- */
+    .reveal table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 1rem;
+      margin: 1rem 0;
+      background: var(--blitzy-surface-0);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--blitzy-border);
+    }
+
+    .reveal table th {
+      background: var(--blitzy-surface-2);
+      color: var(--blitzy-primary-dark);
+      font-family: var(--ff-display);
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-align: left;
+      padding: 0.95rem 1.1rem;
+      border-bottom: 2px solid var(--blitzy-primary);
+      letter-spacing: -0.005em;
+    }
+
+    .reveal table td {
+      padding: 0.8rem 1.1rem;
+      border-bottom: 1px solid var(--blitzy-border);
+      color: var(--blitzy-text);
+      vertical-align: middle;
+    }
+
+    .reveal table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .reveal table tr:nth-child(even) td {
+      background: var(--blitzy-surface-3);
+    }
+
+    .reveal table td.num,
+    .reveal table th.num {
+      text-align: right;
+      font-family: var(--ff-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .reveal table td .domain-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .reveal table td .domain-cell i {
+      width: 20px;
+      height: 20px;
+      color: var(--blitzy-primary);
+      flex-shrink: 0;
+    }
+
+    /* -------------------------------------------------------------------------
+       Status chips
+       ------------------------------------------------------------------------- */
+    .reveal .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-family: var(--ff-mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .reveal .status-chip i {
+      width: 14px;
+      height: 14px;
+      stroke-width: 2.5;
+    }
+
+    .reveal .status-chip.approved {
+      background: rgba(148, 250, 213, 0.35);
+      color: #1A105F;
+      border: 1px solid rgba(91, 57, 243, 0.2);
+    }
+
+    .reveal .status-chip.blocked {
+      background: rgba(255, 107, 107, 0.14);
+      color: #9B1C1C;
+      border: 1px solid rgba(255, 107, 107, 0.3);
+    }
+
+    .reveal .status-chip.open {
+      background: var(--blitzy-surface-2);
+      color: var(--blitzy-primary-dark);
+      border: 1px solid var(--blitzy-border-soft);
+    }
+
+    .reveal .severity-chip {
+      display: inline-block;
+      padding: 0.22rem 0.7rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-family: var(--ff-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .reveal .severity-chip.critical { background: #FBE4E4; color: #7A1A1A; }
+    .reveal .severity-chip.high     { background: #FDE3D0; color: #7A3A0A; }
+    .reveal .severity-chip.medium   { background: #FFF3CD; color: #7A5A0A; }
+    .reveal .severity-chip.low      { background: var(--blitzy-surface-2); color: var(--blitzy-primary-dark); }
+
+    /* -------------------------------------------------------------------------
+       Icon row
+       ------------------------------------------------------------------------- */
+    .reveal .icon-row {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: flex-start;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .reveal .icon-row .icon-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0.95rem;
+      background: var(--blitzy-surface-2);
+      border: 1px solid var(--blitzy-border-soft);
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-family: var(--ff-mono);
+      color: var(--blitzy-primary-dark);
+      letter-spacing: 0.04em;
+    }
+
+    .reveal .icon-row .icon-chip i {
+      width: 18px;
+      height: 18px;
+      color: var(--blitzy-primary);
+      stroke-width: 2;
+    }
+
+    /* -------------------------------------------------------------------------
+       Mermaid container
+       Use flex centering + unset dimension caps that would otherwise break the
+       SVG's intrinsic aspect ratio.  Mermaid emits `width="100%"` on the SVG,
+       so we force `width: auto` and rely on `max-width` / `max-height` via the
+       container to scale proportionally.
+       ------------------------------------------------------------------------- */
+    /* Mermaid container — do NOT override font-family here.  Mermaid computes
+       text widths internally using its own default font stack, so forcing a
+       different font via CSS causes the rendered text to overflow and clip
+       at node-boundary edges.  We keep the container as a neutral flex wrapper
+       and let Mermaid's own stylesheet handle typography inside the SVG. */
+    .reveal .mermaid {
+      background: transparent;
+      text-align: center;
+      margin: 1rem auto;
+      max-width: 100%;
+      max-height: 75vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+    }
+
+    .reveal .mermaid svg {
+      max-width: 100% !important;
+      max-height: 75vh !important;
+      width: auto !important;
+      height: auto !important;
+      display: block;
+      margin: 0 auto;
+      /* Mermaid v11.4.0 xychart-beta and pie diagrams set their SVG viewBox
+         to the exact data region, causing axis tick labels and legend text
+         to render outside that viewBox and be clipped by the default SVG
+         `overflow: hidden`.  Forcing `overflow: visible` lets those labels
+         paint beyond the viewBox boundary (remediation for QA CP2
+         Issues 2, 3, and 4 — slide 5 and slide 9 x-axis label clipping
+         plus slide 13 pie legend truncation). */
+      overflow: visible !important;
+    }
+
+    /* Mermaid internal <g> groups sometimes carry their own clip-path that
+       further truncates outside-viewBox content; neutralize them so the
+       overflow: visible above is actually honored down to the label glyphs. */
+    .reveal .mermaid svg g {
+      overflow: visible !important;
+    }
+
+    /* Mermaid htmlLabels render as <foreignObject><div class="nodeLabel">...
+       Force the label font-family to Inter (matching the document.fonts.ready
+       await in renderVisuals) so Mermaid's SVG width measurement matches the
+       rendered typeface.  overflow: visible allows any residual glyph overshoot
+       to paint beyond the foreignObject box rather than being clipped. */
+    .reveal .mermaid foreignObject,
+    .reveal .mermaid foreignObject div,
+    .reveal .mermaid .nodeLabel,
+    .reveal .mermaid .edgeLabel {
+      font-family: 'Inter', system-ui, sans-serif !important;
+      line-height: 1.35;
+      overflow: visible !important;
+    }
+
+    /* When a Mermaid block appears below a KPI grid on the same slide, the
+       chart needs a reduced max-height so the combined KPI cards + chart
+       fit within the 1920×1080 canvas.  Applying via sibling selector keeps
+       full-width Mermaid slides (e.g., Slide 3 architecture) at 75vh. */
+    .reveal .kpi-grid ~ .mermaid,
+    .reveal .kpi-grid ~ pre.mermaid {
+      max-height: 48vh;
+      margin-top: 0.75rem;
+    }
+    .reveal .kpi-grid ~ .mermaid svg,
+    .reveal .kpi-grid ~ pre.mermaid svg {
+      max-height: 48vh !important;
+    }
+
+    /* -------------------------------------------------------------------------
+       Layout helpers
+       ------------------------------------------------------------------------- */
+    .reveal .content-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      gap: 2rem;
+    }
+
+    .reveal .content-header .content-title {
+      flex: 1;
+    }
+
+    .reveal .content-header .content-badge {
+      flex-shrink: 0;
+    }
+
+    .reveal .two-col {
+      display: grid;
+      grid-template-columns: 2fr 3fr;
+      gap: 2.5rem;
+      align-items: start;
+    }
+
+    .reveal .narrative {
+      font-size: 1.05rem;
+      line-height: 1.55;
+    }
+
+    .reveal .narrative li {
+      margin: 0.45rem 0;
+    }
+
+    .reveal .footnote {
+      margin-top: 1.5rem;
+      font-family: var(--ff-mono);
+      font-size: 0.8rem;
+      color: var(--blitzy-text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .reveal .footnote .tag {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      background: var(--blitzy-surface-2);
+      border-radius: 4px;
+      margin-right: 0.5rem;
+    }
+
+    /* Slide number footer styling */
+    .reveal .slide-number {
+      font-family: var(--ff-mono);
+      color: var(--blitzy-text-muted);
+      background: transparent;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      /* Counter sits at bottom-right of the viewport.  A 1.5rem inset clipped
+         the trailing digit of two-digit pages (e.g. "15/16", "16/16") on
+         1920x1080 because Reveal's position math plus the 0.1em letter-spacing
+         carries the final glyph past the computed right edge.  Increased to
+         2.25rem to restore the ~20px safe margin required by QA CP2 Issue 5. */
+      right: 2.25rem;
+      bottom: 1rem;
+    }
+
+    /* Controls and progress */
+    .reveal .controls { color: var(--blitzy-primary); }
+    .reveal .progress { color: var(--blitzy-primary); background: var(--blitzy-border); height: 4px; }
+
+    /* Print adjustments */
+    @media print {
+      .reveal .slides section { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- ===================================================================
+           Slide 1 — Title
+           =================================================================== -->
+      <section class="slide-title" data-background-color="#4101DB">
+        <i class="hero-icon" data-lucide="landmark" aria-hidden="true"></i>
+        <span class="eyebrow">Executive Summary</span>
+        <h1>Enterprise Accounting for Odoo 19.0 CE</h1>
+        <h2>Archaeology of Merged Changes &amp; Seven-Phase Segmented PR Review</h2>
+        <div class="title-meta">
+          <span><strong>Audience</strong> &nbsp; Executive Leadership</span>
+          <span><strong>Date</strong> &nbsp; June 2026</span>
+          <span><strong>Review</strong> &nbsp; cr-2026-06-20</span>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           Slide 2 — Headline KPIs
+           =================================================================== -->
+      <section>
+        <span class="eyebrow">By The Numbers</span>
+        <h2>Headline Findings</h2>
+        <p class="lead">Six AGPL-3 accounting addons for Odoo 19.0 Community Edition &mdash; delivered and fully reviewed.</p>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="files" aria-hidden="true"></i>
+            <div><span class="kpi-value">278</span></div>
+            <div class="kpi-label">Files Changed</div>
+            <div class="kpi-sub">+134,588 insertions</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="package" aria-hidden="true"></i>
+            <div><span class="kpi-value">6</span></div>
+            <div class="kpi-label">Accounting Addons</div>
+            <div class="kpi-sub">Assets &middot; Budget &middot; Deferred &middot; Follow-up &middot; Reports &middot; Bank Rec</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="database" aria-hidden="true"></i>
+            <div><span class="kpi-value">12</span></div>
+            <div class="kpi-label">New Data Models</div>
+            <div class="kpi-sub">Net-new models on the Odoo ORM</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="check-circle-2" aria-hidden="true"></i>
+            <div><span class="kpi-value">619</span><span class="kpi-suffix">/ 619</span></div>
+            <div class="kpi-label">Tests Passing</div>
+            <div class="kpi-sub">0 failed &middot; 0 errors</div>
+          </div>
+        </div>
+        <p class="footnote">
+          <span class="tag">Source</span> <code>git diff 7bd7718 origin/pdlc</code> &middot;
+          <span class="tag">Base</span> <code>7bd7718</code> &middot;
+          <span class="tag">Head</span> <code>13896915095</code>
+        </p>
+      </section>
+
+      <!-- ===================================================================
+           Slide 3 — Architecture Overview (module-dependency graph)
+           Mermaid reproduced verbatim from Technical Specifications.md §6.3
+           (graph TD) plus Blitzy-palette classDefs (visual only).
+           =================================================================== -->
+      <section>
+        <span class="eyebrow">What Was Built</span>
+        <h2>Module Architecture</h2>
+        <pre class="mermaid" aria-label="Module dependency graph: all six addons inherit Odoo account core; account_budget_management also depends on analytic and account_payment_followup on mail">
+graph TD
+    ACC[account core] --> AFR[account_financial_report_ce]
+    ACC --> ABR[account_bank_reconciliation_ce]
+    ACC --> AAM[account_asset_management]
+    ACC --> ADR[account_deferred_revenue]
+    ACC --> APF[account_payment_followup]
+    ACC --> ABM[account_budget_management]
+    ANALYTIC[analytic] --> ABM
+    MAIL[mail] --> APF
+    classDef core fill:#F2F0FE,stroke:#5B39F3,color:#1A105F,stroke-width:2px,font-weight:600;
+    classDef addon fill:#94FAD5,stroke:#2D1C77,color:#1A105F,stroke-width:2px,font-weight:700;
+    class ACC,ANALYTIC,MAIL core;
+    class AFR,ABR,AAM,ADR,APF,ABM addon;
+        </pre>
+      </section>
+
+      <!-- ===================================================================
+           Slide 4 — Divider: What Was Built
+           =================================================================== -->
+      <section class="slide-divider" data-background-color="#2D1C77">
+        <i class="hero-icon" data-lucide="layers" aria-hidden="true"></i>
+        <span class="eyebrow">Section 01</span>
+        <h2>What Was Built</h2>
+        <p>Six accounting capabilities extending Odoo core &mdash; assets, budgets, deferred revenue, dunning, financial reports, and bank reconciliation.</p>
+      </section>
+
+      <!-- ===================================================================
+           Slide 5 — Six-addon value (table + files-per-addon bar chart)
+           =================================================================== -->
+      <section>
+        <span class="eyebrow">Delivered Capabilities</span>
+        <h2>Six Addons, 206 Module Files</h2>
+        <div class="two-col">
+          <div>
+            <table>
+              <thead>
+                <tr><th>Addon</th><th class="num">Files</th><th>Capability</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><span class="domain-cell"><i data-lucide="file-text" aria-hidden="true"></i> Financial Reports</span></td><td class="num">44</td><td>Balance &middot; P&amp;L &middot; GL &middot; TB</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="banknote" aria-hidden="true"></i> Bank Reconciliation</span></td><td class="num">35</td><td>CSV / OFX / QIF import &middot; matching</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="receipt" aria-hidden="true"></i> Payment Follow-up</span></td><td class="num">39</td><td>Multi-level dunning</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="landmark" aria-hidden="true"></i> Asset Management</span></td><td class="num">31</td><td>Depreciation &middot; disposal</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="wallet" aria-hidden="true"></i> Budget Management</span></td><td class="num">31</td><td>Variance &middot; alerts</td></tr>
+                <tr><td><span class="domain-cell"><i data-lucide="calendar-clock" aria-hidden="true"></i> Deferred Revenue</span></td><td class="num">26</td><td>Recognition schedules</td></tr>
+              </tbody>
+            </table>
+            <div class="icon-row">
+              <span class="icon-chip"><i data-lucide="git-merge" aria-hidden="true"></i> 3 merged PRs</span>
+              <span class="icon-chip"><i data-lucide="scale" aria-hidden="true"></i> AGPL-3 licensed</span>
+            </div>
+          </div>
+          <div>
+            <pre class="mermaid" aria-label="Bar chart of files delivered per addon: Reports 44, Bank Rec 35, Follow-up 39, Asset 31, Budget 31, Deferred 26">
+xychart-beta
+    title "Files Delivered Per Addon"
+    x-axis ["Reports", "BankRec", "Follow-up", "Asset", "Budget", "Deferred"]
+    y-axis 0 --> 50
+    bar [44, 35, 39, 31, 31, 26]
+            </pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           Slide 6 — Divider: What Changed Architecturally
+           =================================================================== -->
+      <section class="slide-divider" data-background-color="#2D1C77">
+        <i class="hero-icon" data-lucide="git-merge" aria-hidden="true"></i>
+        <span class="eyebrow">Section 02</span>
+        <h2>What Changed Architecturally</h2>
+        <p>All six addons inherit Odoo's account core and add twelve net-new models, three scheduled jobs, and QWeb reports.</p>
+      </section>
+
+      <!-- ===================================================================
+           Slide 7 — Data-flow (asset-depreciation sequence diagram)
+           Mermaid reproduced verbatim from Technical Specifications.md §6.5.
+           =================================================================== -->
+      <section>
+        <span class="eyebrow">Representative Data Flow</span>
+        <h2>Asset Depreciation Posting</h2>
+        <pre class="mermaid" aria-label="Sequence diagram: the daily ir.cron computes due depreciation on account.asset, which generates a depreciation line that creates and posts an account.move journal entry">
+sequenceDiagram
+    participant Cron as ir.cron (daily)
+    participant Asset as account.asset
+    participant Line as account.asset.depreciation.line
+    participant Move as account.move
+    Cron->>Asset: compute due depreciation
+    Asset->>Line: generate/lookup depreciation line
+    Line->>Move: create journal entry
+    Move-->>Asset: post &amp; link
+        </pre>
+      </section>
+
+      <!-- ===================================================================
+           Slide 8 — Divider: How We Reviewed It
+           =================================================================== -->
+      <section class="slide-divider" data-background-color="#2D1C77">
+        <i class="hero-icon" data-lucide="shield-check" aria-hidden="true"></i>
+        <span class="eyebrow">Section 03</span>
+        <h2>How We Reviewed It</h2>
+        <p>A single atomic Segmented PR Review &mdash; a pre-flight gate, then seven sequential domain phases, each APPROVED or BLOCKED.</p>
+      </section>
+
+      <!-- ===================================================================
+           Slide 9 — Review-pipeline (flowchart)
+           Mermaid reproduced verbatim from Technical Specifications.md §6.6.
+           =================================================================== -->
+      <section>
+        <span class="eyebrow">Review Workflow</span>
+        <h2>Seven-Phase Segmented Pipeline</h2>
+        <pre class="mermaid" aria-label="Flowchart: the pre-flight gate passes into seven sequential review phases ending in a final verdict; any BLOCKED returns the work item to code generation">
+flowchart LR
+    PF[Pre-Flight Gate] -->|pass| P1[1 Infra/DevOps]
+    PF -->|fail| RG[Return to Code-Gen]
+    P1 --> P2[2 Security] --> P3[3 Backend Arch] --> P4[4 QA/Test]
+    P4 --> P5[5 Business/Domain] --> P6[6 Frontend] --> P7[7 Other SME]
+    P7 --> FV{Final Verdict}
+    FV -->|APPROVED| DONE[Merge-ready]
+    FV -->|BLOCKED| RG
+    P1 -.->|BLOCKED| RG
+        </pre>
+      </section>
+
+      <!-- ===================================================================
+           Slide 10 — Pre-flight KPIs + partition bar chart
+           =================================================================== -->
+      <section>
+        <span class="eyebrow">Pre-Flight Gate</span>
+        <h2>Gate Passed Before Phase One</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="list-checks" aria-hidden="true"></i>
+            <div><span class="kpi-value">278</span><span class="kpi-suffix">/ 278</span></div>
+            <div class="kpi-label">Files Partitioned</div>
+            <div class="kpi-sub">Exactly one of seven domains each</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="check-circle-2" aria-hidden="true"></i>
+            <div><span class="kpi-value">619</span><span class="kpi-suffix">/ 619</span></div>
+            <div class="kpi-label">Tests Pass</div>
+            <div class="kpi-sub">Per-module coverage 87&ndash;90%</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="shield-check" aria-hidden="true"></i>
+            <div><span class="kpi-value">0</span></div>
+            <div class="kpi-label">Ruff Violations</div>
+            <div class="kpi-sub">Static-analysis gate clean</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="badge-check" aria-hidden="true"></i>
+            <div><span class="kpi-value">0</span></div>
+            <div class="kpi-label">Production Stubs</div>
+            <div class="kpi-sub">No placeholders on production paths</div>
+          </div>
+        </div>
+        <pre class="mermaid" aria-label="Bar chart of files by review domain: Infra 52, Security 12, Backend 41, QA 52, Business 18, Frontend 36, Other 67">
+xychart-beta
+    title "Files by Review Domain (278 total)"
+    x-axis ["Infra", "Security", "Backend", "QA", "Business", "Frontend", "Other"]
+    y-axis 0 --> 70
+    bar [52, 12, 41, 52, 18, 36, 67]
+        </pre>
+      </section>
+
+      <!-- ===================================================================
+           Slide 11 — Divider: Risks & Mitigations
+           =================================================================== -->
+      <section class="slide-divider" data-background-color="#2D1C77">
+        <i class="hero-icon" data-lucide="alert-triangle" aria-hidden="true"></i>
+        <span class="eyebrow">Section 04</span>
+        <h2>Risks &amp; Mitigations</h2>
+        <p>Six tracked risks, each with a concrete mitigation and a clear path to production.</p>
+      </section>
+
+      <!-- ===================================================================
+           Slide 12 — Risk register table (R1-R6, severities match TS §7)
+           =================================================================== -->
+      <section>
+        <span class="eyebrow">Risk Register</span>
+        <h2>Six Tracked Risks, All Mitigated</h2>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 34%;">Risk</th>
+              <th style="width: 14%;">Severity</th>
+              <th style="width: 52%;">Mitigation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="alert-triangle" aria-hidden="true"></i> Mermaid 11.4.0 XSS &mdash; CVE-2025-54881 (CWE-79, CVSS 5.3)</span></td>
+              <td><span class="severity-chip medium">Medium</span></td>
+              <td>Static author-authored diagrams, no untrusted input &mdash; negligible practical exploitability; upgrade path to 11.10.0+ when the pin policy permits</td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="clock" aria-hidden="true"></i> Three unattended <code>ir.cron</code> jobs</span></td>
+              <td><span class="severity-chip medium">Medium</span></td>
+              <td>Idempotent, batched logic (follow-up caps &le;500 partners/run); reachable under Settings &rarr; Technical &rarr; Automation</td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="gauge" aria-hidden="true"></i> Per-story coverage interpretation</span></td>
+              <td><span class="severity-chip low">Low</span></td>
+              <td>Per-module aggregate is the meaningful gate &mdash; AAM 87% / ABM 89% / ADR 87% / APF 90%, all passing</td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="building-2" aria-hidden="true"></i> Multi-company record-rule exposure</span></td>
+              <td><span class="severity-chip medium">Medium</span></td>
+              <td>Twelve <code>company_id</code>-scoped <code>ir.rule</code> records across the four newest addons; ACL coverage verified</td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="lock" aria-hidden="true"></i> <code>sudo()</code> elevation breadth</span></td>
+              <td><span class="severity-chip low">Low</span></td>
+              <td>Exactly one executable production <code>.sudo()</code> &mdash; an audited <code>ir.config_parameter</code> read, not a write</td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="package" aria-hidden="true"></i> Demo-data independence</span></td>
+              <td><span class="severity-chip low">Low</span></td>
+              <td>Newest addons ship no <code>demo/</code>; tests build their own fixtures and install under <code>--without-demo</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="footnote">
+          <span class="tag">Full register</span> <code>Technical Specifications.md</code> Section 7 (R1&ndash;R6)
+        </p>
+      </section>
+
+      <!-- ===================================================================
+           Slide 13 — Divider: Onboarding & Continuation
+           =================================================================== -->
+      <section class="slide-divider" data-background-color="#2D1C77">
+        <i class="hero-icon" data-lucide="rocket" aria-hidden="true"></i>
+        <span class="eyebrow">Section 05</span>
+        <h2>Onboarding &amp; Continuation</h2>
+        <p>Install, test, and lint with four commands; full developer and user guides ship with the suite.</p>
+      </section>
+
+      <!-- ===================================================================
+           Slide 14 — Dev-setup commands (inline Fira Code; Lucide icons = visual)
+           No fenced code blocks per the Executive Presentation rule.
+           =================================================================== -->
+      <section>
+        <span class="eyebrow">Developer Setup</span>
+        <h2>Up and Running in Four Commands</h2>
+        <table>
+          <thead>
+            <tr><th style="width: 30%;">Step</th><th>Command</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="download" aria-hidden="true"></i> Install deps</span></td>
+              <td><code>pip install -r requirements.txt</code></td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="play" aria-hidden="true"></i> Install module</span></td>
+              <td><code>python odoo-bin -d db -i account_asset_management --stop-after-init</code></td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="check-circle-2" aria-hidden="true"></i> Run tests</span></td>
+              <td><code>python -m pytest addons/&lt;module&gt;/tests/ --cov</code></td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="shield-check" aria-hidden="true"></i> Lint</span></td>
+              <td><code>ruff check addons/&lt;module&gt;/</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="icon-row">
+          <span class="icon-chip"><i data-lucide="book-open" aria-hidden="true"></i> docs/SETUP.md</span>
+          <span class="icon-chip"><i data-lucide="users" aria-hidden="true"></i> docs/USER_GUIDE.md</span>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           Slide 15 — Verdict KPI cards
+           =================================================================== -->
+      <section>
+        <span class="eyebrow">Final Verdict</span>
+        <h2>Approved Across Every Phase</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="badge-check" aria-hidden="true"></i>
+            <div><span class="kpi-value">7</span><span class="kpi-suffix">/ 7</span></div>
+            <div class="kpi-label">Phases Approved</div>
+            <div class="kpi-sub">Infrastructure &rarr; Other SME</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="check-circle-2" aria-hidden="true"></i>
+            <div><span class="kpi-value">APPROVED</span></div>
+            <div class="kpi-label">Final Verdict</div>
+            <div class="kpi-sub">Single atomic review pass</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="files" aria-hidden="true"></i>
+            <div><span class="kpi-value">278</span><span class="kpi-suffix">/ 278</span></div>
+            <div class="kpi-label">Files Reviewed</div>
+            <div class="kpi-sub">Exactly one domain each</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="shield-check" aria-hidden="true"></i>
+            <div><span class="kpi-value">0</span></div>
+            <div class="kpi-label">Blocking Findings</div>
+            <div class="kpi-sub">No BLOCKED phase</div>
+          </div>
+        </div>
+        <p class="footnote">
+          <span class="tag">Record</span> <code>CODE_REVIEW.md</code> &middot;
+          <span class="tag">Window</span> 2026-06-20 (after last code-gen 2026-06-09)
+        </p>
+      </section>
+
+      <!-- ===================================================================
+           Slide 16 — Closing
+           =================================================================== -->
+      <section class="slide-closing" data-background-color="#1A105F">
+        <div class="accent-bar"></div>
+        <div class="closing-layout">
+          <div>
+            <span class="eyebrow">Merge-Ready</span>
+            <h1>Production-Ready Accounting Suite</h1>
+            <p class="lead" style="color: rgba(255,255,255,0.82);">Onboard the team with these documents:</p>
+            <ul>
+              <li><a href="../CODE_REVIEW.md"><code>CODE_REVIEW.md</code></a> &mdash; Segmented PR Review record</li>
+              <li><a href="../blitzy/documentation/Technical%20Specifications.md"><code>Technical Specifications.md</code></a> &mdash; Archaeology report</li>
+              <li><a href="../blitzy/documentation/Project%20Guide.md"><code>Project Guide.md</code></a> &mdash; Compliance &amp; quality review</li>
+              <li><a href="../docs/SETUP.md"><code>docs/SETUP.md</code></a> &amp; <a href="../docs/USER_GUIDE.md"><code>USER_GUIDE.md</code></a> &mdash; Dev &amp; user paths</li>
+            </ul>
+            <div class="brand-lockup">
+              <span class="brand-mark brand-mark--wordmark">B</span>
+              <span class="brand-name">Blitzy</span>
+              <span class="brand-tagline">Archaeology &middot; June 2026</span>
+            </div>
+          </div>
+          <div class="closing-hero">
+            <i class="hero-icon" data-lucide="rocket" aria-hidden="true"></i>
+            <span class="hero-caption">Ship with Confidence</span>
+          </div>
+        </div>
+      </section>
+    </div><!-- /.slides -->
+  </div><!-- /.reveal -->
+
+  <!-- reveal.js 5.1.0 UMD runtime (pinned with SRI integrity per review finding #9) -->
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"
+          integrity="sha384-M/JtqCVlLcK9lwVnBnMXP0V577CBULkjodKsR/PITOe4MSKNbbwqCemEyluOw0+5"
+          crossorigin="anonymous"></script>
+
+  <!-- Lucide 0.460.0 UMD runtime — exposes window.lucide (pinned with SRI integrity per review finding #9) -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"
+          integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge"
+          crossorigin="anonymous"></script>
+
+  <!--
+    Mermaid 11.4.0 ESM module per AAP §0.9.9 binding (review finding #4).
+    Pre-loading with SRI integrity on the top-level module script tag lets
+    the browser verify the fetched .mjs before any code executes; the inline
+    module below re-imports from the same cached URL and wires up Reveal
+    lifecycle hooks only after mermaid.initialize() has run.
+    Note: ESM sub-chunk requests (./chunks/…) are out-of-scope for SRI by
+    design of the HTML spec; the top-level hash still improves supply-chain
+    posture versus the previous unpinned UMD load.
+  -->
+  <script type="module"
+          src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs"
+          integrity="sha384-HbZodwcydhFoeJkM8JD85LgJ4EGrGW8p7/jgYlNNjwawbrvYc5jzWjzs8Z8Lgsvo"
+          crossorigin="anonymous"></script>
+
+  <script type="module">
+    // Import the already-verified Mermaid ESM module.  Because the module
+    // URL was preloaded above with an `integrity=` hash, the browser's
+    // module cache serves this import from the verified bytes.
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+    // Expose globally so the classic render handler below (and any ad-hoc
+    // debugging in DevTools) can invoke mermaid.run() without re-importing.
+    window.mermaid = mermaid;
+
+    // Capture each diagram's raw Mermaid source BEFORE any render runs, so a
+    // diagram can be re-rendered later while its slide is actually visible.
+    // reveal.js hides off-screen slides with display:none; a flowchart laid
+    // out in a zero-dimension (hidden) container computes a degenerate viewBox
+    // (e.g. "-8 -8 16 16") and renders invisibly. Re-rendering the current
+    // slide's diagrams on every slidechanged — at real container dimensions —
+    // eliminates that class of layout failure deterministically.
+    document.querySelectorAll('.reveal .slides .mermaid').forEach(function (el) {
+      el.setAttribute('data-mermaid-src', el.textContent);
+    });
+
+    // Mermaid theme bound to the Blitzy palette — AAP §0.9.9 (verbatim).
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#F2F0FE',
+        primaryTextColor: '#333333',
+        primaryBorderColor: '#5B39F3',
+        lineColor: '#999999',
+        secondaryColor: '#F4EFF6'
+      },
+      // Flowchart config: htmlLabels enabled (default) so labels render via
+      // <foreignObject><div><span> and respect Mermaid's internal font stack.
+      // Padding and spacing give nodes breathing room for multi-line labels.
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        padding: 20,
+        nodeSpacing: 60,
+        rankSpacing: 70,
+        curve: 'basis'
+      },
+      sequence: {
+        useMaxWidth: true,
+        wrap: true,
+        diagramMarginX: 40,
+        diagramMarginY: 20,
+        boxMargin: 12,
+        messageMargin: 48
+      }
+    });
+
+    // reveal.js configuration — AAP §0.9.9 (verbatim keys).
+    // Registered inside the module so that `mermaid` is guaranteed to be
+    // loaded + initialized before Reveal starts firing lifecycle events.
+    Reveal.initialize({
+      hash: true,
+      transition: 'slide',
+      controlsTutorial: false,
+      width: 1920,
+      height: 1080,
+      margin: 0.04,
+      minScale: 0.2,
+      maxScale: 1.5,
+      slideNumber: 'c/t',
+      hashOneBasedIndex: true,
+      backgroundTransition: 'fade'
+    });
+
+    // Re-render Mermaid diagrams and Lucide icons after reveal.js mounts each
+    // slide, because reveal.js lazily materializes DOM during transitions.
+    //
+    // IMPORTANT: Await document.fonts.ready before mermaid.run() to prevent
+    // Mermaid v11.4.0's text-width race condition.  Without this await,
+    // Mermaid measures label widths in a fallback sans-serif font, then the
+    // labels re-render in the slightly wider Inter font which causes the
+    // right edge of each label to clip inside the SVG node boundary.
+    async function renderVisuals() {
+      try {
+        if (document.fonts && typeof document.fonts.ready !== 'undefined') {
+          await document.fonts.ready;
+        }
+        // Render the CURRENT slide's diagrams while the slide is visible, so
+        // Mermaid measures real (non-zero) container dimensions; also render
+        // any diagram that has never been processed yet. Each target node is
+        // reset from its captured source first, so a prior hidden/degenerate
+        // render (16px viewBox) is discarded and redrawn correctly.
+        var nodes = [];
+        var current = (typeof Reveal !== 'undefined' && Reveal.getCurrentSlide)
+          ? Reveal.getCurrentSlide() : null;
+        if (current) {
+          nodes = Array.prototype.slice.call(current.querySelectorAll('.mermaid'));
+        }
+        Array.prototype.forEach.call(
+          document.querySelectorAll('.reveal .slides .mermaid'),
+          function (n) {
+            if (!n.getAttribute('data-processed') && nodes.indexOf(n) === -1) {
+              nodes.push(n);
+            }
+          }
+        );
+        nodes.forEach(function (n) {
+          var src = n.getAttribute('data-mermaid-src');
+          if (src !== null) {
+            n.removeAttribute('data-processed');
+            n.innerHTML = '';
+            n.textContent = src;
+          }
+        });
+        if (nodes.length) {
+          await mermaid.run({ nodes: nodes });
+        }
+      } catch (err) {
+        // Log but do not interrupt the presentation.
+        console.warn('[executive-summary] mermaid render warning', err);
+      }
+      try {
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      } catch (err) {
+        console.warn('[executive-summary] lucide render warning', err);
+      }
+    }
+
+    // AAP §0.9.9 binding: lucide.createIcons() + mermaid.run() on 'ready'
+    // and on every 'slidechanged'.
+    Reveal.on('ready', renderVisuals);
+    Reveal.on('slidechanged', renderVisuals);
+  </script>
+</body>
+</html>
+

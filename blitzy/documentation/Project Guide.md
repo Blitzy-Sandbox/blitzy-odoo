@@ -4,7 +4,7 @@
 **Synthetic PR under review**: `origin/pdlc` vs base `7bd7718…` — `blitzy[bot]` merge PRs **#2** / **#3** / **#7** (278 files changed, +134,588 insertions) [../../CODE_REVIEW.md]  
 **Base**: `7bd7718bcd4c5d232779e8eab0340169461af14e` — clean upstream Odoo 19.0 Community Edition [../../CODE_REVIEW.md]  
 **Head / Latest Commit**: `1389691509568206594224539d5495f87a310ed1` (`origin/pdlc` tip — Merge pull request #7, 2026-06-09) [../../CODE_REVIEW.md]  
-**Scope**: EPIC-001 Enterprise Accounting Parity — six AGPL-3 addons (FEATURE-001..006); the runtime/test evidence in §3–§4 focuses on the four newest addons (FEATURE-003 Budget Management + FEATURE-004 Asset Management + FEATURE-005 Deferred Revenue + FEATURE-006 Payment Follow-ups) [Technical Specifications.md]  
+**Scope**: EPIC-001 Enterprise Accounting Parity — six AGPL-3 addons (FEATURE-001..006); the runtime/test evidence in §3–§4 focuses on the four newest addons (FEATURE-003 Budget Management + FEATURE-004 Asset Management + FEATURE-005 Deferred Revenue + FEATURE-006 Payment Follow-ups) [Technical Specifications.md §0.1.1]  
 **Segmented PR Review verdict**: **APPROVED** — pre-flight gate PASS, all seven domain phases APPROVED, final reviewer APPROVED [../../CODE_REVIEW.md]  
 **Companion documents**: `Technical Specifications.md` (archaeology report, same folder) · `../../CODE_REVIEW.md` (Segmented PR Review record, repository root)  
 
@@ -16,7 +16,7 @@
 
 This Project Guide is the **compliance-and-quality companion** to the code-archaeology report in `Technical Specifications.md`. Where the archaeology report reconstructs *what was merged and why* across the full synthetic pull request — the union of three `blitzy[bot]` merge PRs (#2, #3, #7) that carried six Odoo accounting addons onto `origin/pdlc`, a cumulative diff of 278 files and +134,588 insertions [../../CODE_REVIEW.md] — this guide quantifies *how well it works* and **consumes the Segmented PR Review verdict** recorded at `../../CODE_REVIEW.md` (§5).
 
-The runtime and test evidence below concentrates on the four newest AGPL-3 licensed Odoo 19.0 Community Edition addons — `account_asset_management`, `account_budget_management`, `account_deferred_revenue`, and `account_payment_followup` — which implement the twenty user stories specified under EPIC-001 across four dependency-gated tracks [origin/pdlc:tickets/EPIC-001-enterprise-accounting.md]. The two prior addons in the synthetic set, `account_financial_report_ce` (FEATURE-001) and `account_bank_reconciliation_ce` (FEATURE-002), are "complete — do not touch" deliverables: they are documented and partitioned in the review but were not edited [../../CODE_REVIEW.md]. The modules target accounting professionals, controllers, CFOs, and finance teams running AGPL-licensed Odoo Community without any Enterprise modules. **Business impact**: closes the most critical remaining Enterprise-Edition gap by adding fixed-asset lifecycle management, budget planning with variance analysis, ASC 606 / IFRS 15 deferred revenue recognition, and automated payment follow-up workflows. **Technical scope (four newest addons)**: 127 module files, ~72,713 LOC, 619 automated tests, 12 net-new ORM models with full multi-company isolation [origin/pdlc:blitzy/documentation/Technical Specifications.md].
+The runtime and test evidence below concentrates on the four newest AGPL-3 licensed Odoo 19.0 Community Edition addons — `account_asset_management`, `account_budget_management`, `account_deferred_revenue`, and `account_payment_followup` — which implement the twenty user stories specified under EPIC-001 across four dependency-gated tracks [origin/pdlc:tickets/EPIC-001-enterprise-accounting.md:L109-L114]. The two prior addons in the synthetic set, `account_financial_report_ce` (FEATURE-001) and `account_bank_reconciliation_ce` (FEATURE-002), are "complete — do not touch" deliverables: they are documented and partitioned in the review but were not edited [../../CODE_REVIEW.md]. The modules target accounting professionals, controllers, CFOs, and finance teams running AGPL-licensed Odoo Community without any Enterprise modules. **Business impact**: closes the most critical remaining Enterprise-Edition gap by adding fixed-asset lifecycle management, budget planning with variance analysis, ASC 606 / IFRS 15 deferred revenue recognition, and automated payment follow-up workflows. **Technical scope (four newest addons)**: 127 module files, ~72,713 LOC, 619 automated tests, 12 net-new ORM models with full multi-company isolation [Technical Specifications.md §6.2].
 
 ### 1.2 Completion Status
 
@@ -38,30 +38,30 @@ Computation: **376 / 432 = 87.0%** complete. All 376 completed hours are autonom
 
 ### 1.3 Key Accomplishments
 
-- [x] **All 20 EPIC-001 user stories implemented** across four parallel tracks: 6 AM + 5 BM + 4 DR + 5 PF stories with per-story BDD-aligned `test_<story_id>.py` files [origin/pdlc:tickets/stories/]
-- [x] **619 of 619 tests passing** (98 AM + 171 BM + 37 DR + 312 PF + setup) — 0 failed, 0 errors in the combined run; identical results across 12 deterministic runs (3 per module) [origin/pdlc:blitzy/documentation/Project Guide.md:L140]
+- [x] **All 20 EPIC-001 user stories implemented** across four parallel tracks: 6 AM + 5 BM + 4 DR + 5 PF stories with per-story BDD-aligned `test_<story_id>.py` files [origin/pdlc:tickets/EPIC-001-enterprise-accounting.md:L109-L114]
+- [x] **619 of 619 tests passing** (98 AM + 171 BM + 37 DR + 312 PF + setup) — 0 failed, 0 errors in the combined run; identical results across 12 deterministic runs (3 per module) (§3)
 - [x] **Segmented PR Review = APPROVED** — the pre-flight gate passed all five binding conditions and all seven domain phases plus the final reviewer resolved to exactly `APPROVED` [../../CODE_REVIEW.md]
-- [x] **All 4 modules install cleanly** via `--stop-after-init` (exit 0) individually and in a single combined install [origin/pdlc:blitzy/documentation/Project Guide.md:L176]
-- [x] **Per-module aggregate coverage** exceeds the R-04 ≥80% gate: `account_asset_management` 87%, `account_budget_management` 89%, `account_deferred_revenue` 87%, `account_payment_followup` 90% [origin/pdlc:blitzy/documentation/Project Guide.md:L140]
-- [x] **Zero Odoo Enterprise dependencies** — verified against the R-02 exclusion list (`account_accountant`, `account_reports`, `account_asset`, `account_budget`, `account_followup`, `account_deferred_revenue`) [origin/pdlc:blitzy/documentation/Technical Specifications.md]
-- [x] **Zero cross-module dependencies** — R-01 verified: every `__manifest__.py` `depends` list contains only core Odoo modules (`account`, `analytic`, `mail`) [origin/pdlc:addons/account_asset_management/__manifest__.py]
-- [x] **AGPL-3.0 licensing** applied consistently across all new files; all four manifests declare `license: AGPL-3`, `version: 19.0.1.0.0`, `installable: True`, `application: False` [origin/pdlc:addons/account_budget_management/__manifest__.py]
+- [x] **All 4 modules install cleanly** via `--stop-after-init` (exit 0) individually and in a single combined install (§4.1)
+- [x] **Per-module aggregate coverage** exceeds the R-04 ≥80% gate: `account_asset_management` 87%, `account_budget_management` 89%, `account_deferred_revenue` 87%, `account_payment_followup` 90% (§3)
+- [x] **Zero Odoo Enterprise dependencies** — verified against the R-02 exclusion list (`account_accountant`, `account_reports`, `account_asset`, `account_budget`, `account_followup`, `account_deferred_revenue`) [origin/pdlc:blitzy/documentation/Technical Specifications.md:§0.7.1.2]
+- [x] **Zero cross-module dependencies** — R-01 verified: every `__manifest__.py` `depends` list contains only core Odoo modules (`account`, `analytic`, `mail`) [origin/pdlc:addons/account_asset_management/__manifest__.py:L102]
+- [x] **AGPL-3.0 licensing** applied consistently across all new files; all four manifests declare `license: AGPL-3`, `version: 19.0.1.0.0`, `installable: True`, `application: False` [origin/pdlc:addons/account_budget_management/__manifest__.py:L44,L48]
 - [x] **3 `ir.cron` records via XML** (R-06 mandatory for AM-004 + PF-002, plus BM-005): `Assets: Post Depreciation Entries` (daily, `account.asset`) [origin/pdlc:addons/account_asset_management/data/depreciation_cron.xml:L142], `Budget Alert Threshold Evaluation` (hourly, `budget.alert`) [origin/pdlc:addons/account_budget_management/data/budget_alert_cron.xml:L64], `Payment Follow-up: Send Reminders` (daily, `account.followup.level`) [origin/pdlc:addons/account_payment_followup/data/followup_cron.xml:L81] — all reachable in Settings → Technical → Automation → Scheduled Actions
-- [x] **12 net-new PostgreSQL tables** materialised at install: `budget_budget`, `budget_budget_line`, `budget_budget_period`, `budget_alert`, `account_asset`, `account_asset_category`, `account_asset_depreciation_line`, `account_deferred_schedule`, `account_deferred_line`, `account_followup_level`, `account_followup_line`, `account_followup_history` [origin/pdlc:blitzy/documentation/Project Guide.md:L184]
-- [x] **Additive `_inherit` extensions** to `account.move`, `account.move.line`, `account.analytic.account`, `res.partner` — R-03 and R-05 verified, no core field redefinition [origin/pdlc:blitzy/documentation/Technical Specifications.md]
+- [x] **12 net-new PostgreSQL tables** materialised at install: `budget_budget`, `budget_budget_line`, `budget_budget_period`, `budget_alert`, `account_asset`, `account_asset_category`, `account_asset_depreciation_line`, `account_deferred_schedule`, `account_deferred_line`, `account_followup_level`, `account_followup_line`, `account_followup_history` [Technical Specifications.md §6.2]
+- [x] **Additive `_inherit` extensions** to `account.move`, `account.move.line`, `account.analytic.account`, `res.partner` — R-03 and R-05 verified, no core field redefinition [origin/pdlc:blitzy/documentation/Technical Specifications.md:§0.7.1.3,§0.7.1.5]
 - [x] **Multi-company isolation** via per-addon `ir.rule` security XML (one `*_security.xml` per module) [origin/pdlc:addons/account_asset_management/security/asset_security.xml:L57]
-- [x] **OCA-conformant module structure**: per-module `README.rst`, `security/ir.model.access.csv`, `data/` XML, and `models/` + `wizard/` + `report/` + `views/` + `tests/` subtrees [origin/pdlc:addons/account_asset_management/__manifest__.py]
-- [x] **Performance SLAs verified**: AM-003 depreciation board <2s for 480 periods (1066ms confirm + 5ms cold read), BM-004 variance report <3s for 1,000 lines (2.7s cold), DR-004 dashboard <2s for 1,001 schedules (236ms), PF-005 aging across 10,000 receivable lines (<5s) [origin/pdlc:blitzy/documentation/Project Guide.md:L220]
+- [x] **OCA-conformant module structure**: per-module `README.rst`, `security/ir.model.access.csv`, `data/` XML, and `models/` + `wizard/` + `report/` + `views/` + `tests/` subtrees [origin/pdlc:addons/account_asset_management/__manifest__.py:L5]
+- [x] **Performance SLAs verified**: AM-003 depreciation board <2s for 480 periods (1066ms confirm + 5ms cold read), BM-004 variance report <3s for 1,000 lines (2.7s cold), DR-004 dashboard <2s for 1,001 schedules (236ms), PF-005 aging across 10,000 receivable lines (<5s) (§4.5)
 - [x] **R-07 `sudo()` justified** — the single non-test `.sudo()` call reads `ir.config_parameter` with an inline justification comment [origin/pdlc:addons/account_deferred_revenue/models/account_deferred_schedule.py:L385]
-- [x] **Ruff lint clean** — `ruff check --no-fix` reports "All checks passed!" across all four modules [origin/pdlc:blitzy/documentation/Project Guide.md:L263]
+- [x] **Ruff lint clean** — `ruff check --no-fix` reports "All checks passed!" across all four modules (§5.3)
 
 ### 1.4 Critical Unresolved Issues
 
 | Issue | Impact | Owner | ETA |
 |---|---|---|---|
 | Per-story literal R-04 coverage gate (≥80% per-story file) returns 30–62% — interpretation gap from the per-module aggregate (which passes) | Medium — the autonomous validator declared aggregate coverage the meaningful gate; routed to the risk register as a non-blocking observation in the review [../../CODE_REVIEW.md] | Human Developer | 16 engineering hours |
-| PF-002 cron processes 500 partners **with PDF attachments** in ~557s vs the default cron-timeout target | Medium — without PDF attachments the cron completes in ~10s for 500 partners; PDF generation is the bottleneck [origin/pdlc:blitzy/documentation/Project Guide.md:L225] | Human Developer | 8 engineering hours |
-| AM-003 performance verified only up to 480 periods (40 years monthly) per the AAP target | Low — assets with longer schedules may exceed the <2s SLA; not a typical real-world case [origin/pdlc:blitzy/documentation/Project Guide.md:L221] | Human Developer (validation only) | 2 engineering hours |
+| PF-002 cron processes 500 partners **with PDF attachments** in ~557s vs the default cron-timeout target | Medium — without PDF attachments the cron completes in ~10s for 500 partners; PDF generation is the bottleneck (§4.5) | Human Developer | 8 engineering hours |
+| AM-003 performance verified only up to 480 periods (40 years monthly) per the AAP target | Low — assets with longer schedules may exceed the <2s SLA; not a typical real-world case (§4.5) | Human Developer (validation only) | 2 engineering hours |
 | No explicit demo data for end-user UAT walkthrough | Low — modules pass `--without-demo=True`; demo data not required by the AAP, recommended for stakeholder walkthroughs | Human Developer (optional) | 6 engineering hours |
 
 ### 1.5 Access Issues
@@ -91,32 +91,32 @@ Computation: **376 / 432 = 87.0%** complete. All 376 completed hours are autonom
 | Component | Hours | Description |
 |---|---|---|
 | **Track A — account_asset_management (FEATURE-004)** | | |
-| AM-001 Asset Registration | 16 | `account.asset` + `account.asset.category` models with vendor/source-invoice linkage, `mail.thread` chatter, `ir.sequence` numbering; 8 BDD scenarios in `test_am_001.py` [origin/pdlc:addons/account_asset_management/tests/test_am_001.py] |
-| AM-002 Depreciation Configuration | 16 | Straight-line / declining-balance / units-of-production methods, useful-life and salvage-value parametrization; 12 BDD scenarios in `test_am_002.py` [origin/pdlc:addons/account_asset_management/tests/test_am_002.py] |
-| AM-003 Depreciation Board | 16 | `account.asset.depreciation.line` model with `@api.depends` schedule computation; tree/kanban/graph views; <2s SLA for 480 periods verified [origin/pdlc:addons/account_asset_management/models/account_asset_depreciation_line.py] |
+| AM-001 Asset Registration | 16 | `account.asset` + `account.asset.category` models with vendor/source-invoice linkage, `mail.thread` chatter, `ir.sequence` numbering; 8 BDD scenarios in `test_am_001.py` [origin/pdlc:addons/account_asset_management/tests/test_am_001.py:L83] |
+| AM-002 Depreciation Configuration | 16 | Straight-line / declining-balance / units-of-production methods, useful-life and salvage-value parametrization; 12 BDD scenarios in `test_am_002.py` [origin/pdlc:addons/account_asset_management/tests/test_am_002.py:L80] |
+| AM-003 Depreciation Board | 16 | `account.asset.depreciation.line` model with `@api.depends` schedule computation; tree/kanban/graph views; <2s SLA for 480 periods verified [origin/pdlc:addons/account_asset_management/models/account_asset_depreciation_line.py:L95] |
 | AM-004 Automatic Depreciation Entries | 18 | `ir.cron` XML record (`Assets: Post Depreciation Entries`, daily) invoking the depreciation-posting method; idempotency, fault tolerance, auto-close at salvage value; 17 scenarios [origin/pdlc:addons/account_asset_management/data/depreciation_cron.xml:L142] |
-| AM-005 Asset Modification | 17 | Revaluation / impairment wizard (`TransientModel`), GAAP/IFRS-compliant journal entries, `mail.thread` audit trail; 16 scenarios [origin/pdlc:addons/account_asset_management/wizard/asset_modification_wizard.py] |
-| AM-006 Asset Disposal | 17 | Disposal/sale/scrap/write-off wizard with gain/loss posting, partial-disposal proportions, catch-up depreciation; 19 scenarios [origin/pdlc:addons/account_asset_management/wizard/asset_disposal_wizard.py] |
+| AM-005 Asset Modification | 17 | Revaluation / impairment wizard (`TransientModel`), GAAP/IFRS-compliant journal entries, `mail.thread` audit trail; 16 scenarios [origin/pdlc:addons/account_asset_management/wizard/asset_modification_wizard.py:L145] |
+| AM-006 Asset Disposal | 17 | Disposal/sale/scrap/write-off wizard with gain/loss posting, partial-disposal proportions, catch-up depreciation; 19 scenarios [origin/pdlc:addons/account_asset_management/wizard/asset_disposal_wizard.py:L117] |
 | **Track B — account_budget_management (FEATURE-003)** | | |
-| BM-001 Budget Definition | 14 | `budget.budget` + `budget.budget.line` models with analytic distribution via `analytic.mixin`; 27 scenarios in `test_bm_001.py` [origin/pdlc:addons/account_budget_management/models/budget_budget.py] |
-| BM-002 Period Allocation | 12 | `budget.budget.period` model supporting monthly/quarterly/annual periods; equal/manual/percentage/copy-previous distribution strategies; 26 scenarios [origin/pdlc:addons/account_budget_management/models/budget_period.py] |
-| BM-003 Actual vs Budget Reporting | 12 | `budget.vs.actual.report` AbstractModel with `read_group` aggregation on `account.move.line`; pivot/graph views; 16 scenarios [origin/pdlc:addons/account_budget_management/report/budget_vs_actual_report.py] |
-| BM-004 Variance Analysis | 16 | `budget.variance.wizard` `TransientModel` with absolute/percentage variance, favorable/unfavorable classification; <3s SLA for 1,000 lines verified [origin/pdlc:addons/account_budget_management/wizard/budget_variance_wizard.py] |
+| BM-001 Budget Definition | 14 | `budget.budget` + `budget.budget.line` models with analytic distribution via `analytic.mixin`; 27 scenarios in `test_bm_001.py` [origin/pdlc:addons/account_budget_management/models/budget_budget.py:L74] |
+| BM-002 Period Allocation | 12 | `budget.budget.period` model supporting monthly/quarterly/annual periods; equal/manual/percentage/copy-previous distribution strategies; 26 scenarios [origin/pdlc:addons/account_budget_management/models/budget_period.py:L177] |
+| BM-003 Actual vs Budget Reporting | 12 | `budget.vs.actual.report` AbstractModel with `read_group` aggregation on `account.move.line`; pivot/graph views; 16 scenarios [origin/pdlc:addons/account_budget_management/report/budget_vs_actual_report.py:L103] |
+| BM-004 Variance Analysis | 16 | `budget.variance.wizard` `TransientModel` with absolute/percentage variance, favorable/unfavorable classification; <3s SLA for 1,000 lines verified [origin/pdlc:addons/account_budget_management/wizard/budget_variance_wizard.py:L96] |
 | BM-005 Budget Alerts | 12 | `budget.alert` model with threshold-based alerts (75/90/100/110%); `ir.cron` XML for hourly evaluation; 31 scenarios [origin/pdlc:addons/account_budget_management/data/budget_alert_cron.xml:L64] |
 | **Track C — account_deferred_revenue (FEATURE-005)** | | |
-| DR-001 Schedule Definition | 14 | `account.deferred.schedule` header model with invoice-driven creation, analytic-distribution preservation; 6 scenarios in `test_dr_001.py` [origin/pdlc:addons/account_deferred_revenue/models/account_deferred_schedule.py] |
-| DR-002 Period Allocation | 14 | `account.deferred.line` model with straight-line/date-based/manual recognition methods; multi-currency support; 7 scenarios [origin/pdlc:addons/account_deferred_revenue/models/account_deferred_line.py] |
-| DR-003 Cut-off Wizard | 16 | `cutoff.wizard` `TransientModel` supporting single/batch/preview/reversal modes with `account.lock.exception` enforcement; 6 scenarios [origin/pdlc:addons/account_deferred_revenue/wizard/cutoff_wizard.py] |
-| DR-004 Recognition Dashboard | 12 | `recognition.dashboard.wizard` `TransientModel` with `read_group` aggregation, summary cards, period filters; 10 scenarios [origin/pdlc:addons/account_deferred_revenue/wizard/recognition_dashboard_wizard.py] |
+| DR-001 Schedule Definition | 14 | `account.deferred.schedule` header model with invoice-driven creation, analytic-distribution preservation; 6 scenarios in `test_dr_001.py` [origin/pdlc:addons/account_deferred_revenue/models/account_deferred_schedule.py:L36] |
+| DR-002 Period Allocation | 14 | `account.deferred.line` model with straight-line/date-based/manual recognition methods; multi-currency support; 7 scenarios [origin/pdlc:addons/account_deferred_revenue/models/account_deferred_line.py:L49] |
+| DR-003 Cut-off Wizard | 16 | `cutoff.wizard` `TransientModel` supporting single/batch/preview/reversal modes with `account.lock.exception` enforcement; 6 scenarios [origin/pdlc:addons/account_deferred_revenue/wizard/cutoff_wizard.py:L123] |
+| DR-004 Recognition Dashboard | 12 | `recognition.dashboard.wizard` `TransientModel` with `read_group` aggregation, summary cards, period filters; 10 scenarios [origin/pdlc:addons/account_deferred_revenue/wizard/recognition_dashboard_wizard.py:L148] |
 | **Track D — account_payment_followup (FEATURE-006)** | | |
-| PF-001 Level Configuration | 14 | `account.followup.level` model with sequence/delay/template/action_type; 22 scenarios [origin/pdlc:addons/account_payment_followup/models/account_followup_level.py] |
+| PF-001 Level Configuration | 14 | `account.followup.level` model with sequence/delay/template/action_type; 22 scenarios [origin/pdlc:addons/account_payment_followup/models/account_followup_level.py:L68] |
 | PF-002 Automated Email Generation | 18 | `ir.cron` XML record (`Payment Follow-up: Send Reminders`, daily); batched `mail.mail` send via the existing pipeline; 34 scenarios; SLA verified for 500 partners no-PDF in ~10s [origin/pdlc:addons/account_payment_followup/data/followup_cron.xml:L81] |
-| PF-003 Report Generation | 14 | `followup.report` model + QWeb PDF + `openpyxl` XLSX export; wizard with filters, drill-down to invoices; 22 scenarios [origin/pdlc:addons/account_payment_followup/report/followup_report.py] |
-| PF-004 Action History | 14 | `account.followup.history` immutable audit trail with `mail.thread`; 31 scenarios [origin/pdlc:addons/account_payment_followup/models/account_followup_history.py] |
-| PF-005 Overdue Calculation | 16 | `_inherit = 'res.partner'` aging buckets (Current / 1-30 / 31-60 / 61-90 / 90+); `account.followup.line` aggregator; computed `days_overdue` on `account.move`/`account.move.line`; 45 scenarios [origin/pdlc:addons/account_payment_followup/models/res_partner.py] |
+| PF-003 Report Generation | 14 | `followup.report` model + QWeb PDF + `openpyxl` XLSX export; wizard with filters, drill-down to invoices; 22 scenarios [origin/pdlc:addons/account_payment_followup/report/followup_report.py:L179] |
+| PF-004 Action History | 14 | `account.followup.history` immutable audit trail with `mail.thread`; 31 scenarios [origin/pdlc:addons/account_payment_followup/models/account_followup_history.py:L106] |
+| PF-005 Overdue Calculation | 16 | `_inherit = 'res.partner'` aging buckets (Current / 1-30 / 31-60 / 61-90 / 90+); `account.followup.line` aggregator; computed `days_overdue` on `account.move`/`account.move.line`; 45 scenarios [origin/pdlc:addons/account_payment_followup/models/res_partner.py:L78] |
 | **Cross-Cutting Implementation Work** | | |
-| Module Foundation (4 modules) | 24 | Per-module `__manifest__.py` (avg 80 LOC each), `README.rst` (OCA template), `security/ir.model.access.csv`, `security/<module>_security.xml` (multi-company `ir.rule`), root `views/menuitem.xml`, package `__init__.py` files [origin/pdlc:addons/account_asset_management/__manifest__.py] |
-| QA Validation Cycles (10 checkpoints) | 30 | Address findings from QA Checkpoints 1–10 spanning visual fidelity (CP4: 28 issues), security defects (CP5: 4 issues), code quality (CP6: 7 issues), documentation accuracy (CP9), test coverage and quality (CP10) [origin/pdlc:blitzy/documentation/Project Guide.md:L274] |
+| Module Foundation (4 modules) | 24 | Per-module `__manifest__.py` (avg 80 LOC each), `README.rst` (OCA template), `security/ir.model.access.csv`, `security/<module>_security.xml` (multi-company `ir.rule`), root `views/menuitem.xml`, package `__init__.py` files [origin/pdlc:addons/account_asset_management/__manifest__.py:L5] |
+| QA Validation Cycles (10 checkpoints) | 30 | Address findings from QA Checkpoints 1–10 spanning visual fidelity (CP4: 28 issues), security defects (CP5: 4 issues), code quality (CP6: 7 issues), documentation accuracy (CP9), test coverage and quality (CP10) (§5.4) |
 | Cross-Module Compliance Verification | 12 | Verify R-01 module independence (no cross-imports), R-02 zero Enterprise deps, R-03 `_inherit` correctness, R-07 `sudo()` justified, R-08 BM-004/005 disjoint fields, R-09 exact folder names |
 | Performance SLA Verification | 12 | Author and execute `blitzy/qa_artifacts/sla_*.py` benchmarks for AM-003 (480 periods), BM-004 (1,000 lines), DR-004 (1,001 schedules), PF-002 (500 partners), PF-005 (10,000 lines) |
 | **TOTAL COMPLETED** | **376** | |
@@ -158,7 +158,7 @@ All test results below originate from Blitzy's autonomous validation logs captur
 | Module install (`--stop-after-init`) | Odoo CLI | 5 scenarios (4 individual + 1 combined) | 5 | 0 | n/a | Exit code 0 for each |
 | Linter | `ruff check --no-fix` | 4 modules | 4 | 0 | n/a | "All checks passed!"; one removed-rule advisory (UP038) |
 
-**Per-Module Coverage Detail (final post-fix run from `coverage/report_final_<module>.txt`)** [origin/pdlc:blitzy/documentation/Project Guide.md:L140]:
+**Per-Module Coverage Detail (final post-fix run from `coverage/report_final_<module>.txt`)** (the per-module coverage column of the §3 summary table above, expanded):
 
 ```
 account_asset_management:  1041 stmts / 140 miss / 87% (account_asset.py 87%, asset_category.py 88%, depreciation_line.py 82%, asset_disposal_wizard.py 87%, asset_modification_wizard.py 86%, _inherit account_move.py 100%, _inherit account_move_line.py 100%)
@@ -179,17 +179,17 @@ Runtime verification was performed by the autonomous validator against a combine
 
 ### 4.1 Module Install — All ✅ Operational
 
-- ✅ `account_asset_management --stop-after-init` exit 0 (state `installed`, version `19.0.1.0.0`) [origin/pdlc:blitzy/documentation/Project Guide.md:L176]
-- ✅ `account_budget_management --stop-after-init` exit 0 (state `installed`, version `19.0.1.0.0`)
-- ✅ `account_deferred_revenue --stop-after-init` exit 0 (state `installed`, version `19.0.1.0.0`)
-- ✅ `account_payment_followup --stop-after-init` exit 0 (state `installed`, version `19.0.1.0.0`)
+- ✅ `account_asset_management --stop-after-init` exit 0 (state `installed`, version `19.0.1.0.0`) [origin/pdlc:addons/account_asset_management/__manifest__.py:L69]
+- ✅ `account_budget_management --stop-after-init` exit 0 (state `installed`, version `19.0.1.0.0`) [origin/pdlc:addons/account_budget_management/__manifest__.py:L44]
+- ✅ `account_deferred_revenue --stop-after-init` exit 0 (state `installed`, version `19.0.1.0.0`) [origin/pdlc:addons/account_deferred_revenue/__manifest__.py:L50]
+- ✅ `account_payment_followup --stop-after-init` exit 0 (state `installed`, version `19.0.1.0.0`) [origin/pdlc:addons/account_payment_followup/__manifest__.py:L109]
 - ✅ Combined install of all four modules in one run exit 0
 
 The post-install database state confirmed by the review: all four newest addons `state='installed'`, `latest_version='19.0.1.0.0'` [../../CODE_REVIEW.md].
 
 ### 4.2 Database Schema — All ✅ Operational
 
-12 net-new tables verified materialized [origin/pdlc:blitzy/documentation/Project Guide.md:L184]:
+12 net-new tables verified materialized [Technical Specifications.md §6.2]:
 
 - ✅ `budget_budget`, `budget_budget_line`, `budget_budget_period`, `budget_alert`
 - ✅ `account_asset`, `account_asset_category`, `account_asset_depreciation_line`
@@ -200,11 +200,11 @@ Additive `_inherit` columns verified on `account_move`, `account_move_line`, `ac
 
 ### 4.3 Scheduled Actions (`ir.cron` per R-06) — All ✅ Operational
 
-A live SQL query against `ir_cron JOIN ir_act_server JOIN ir_model` confirmed three active, XML-defined records [origin/pdlc:blitzy/documentation/Project Guide.md:L195]:
+A live SQL query against `ir_cron JOIN ir_act_server JOIN ir_model` confirmed three active, XML-defined records [origin/pdlc:addons/account_asset_management/data/depreciation_cron.xml:L142; origin/pdlc:addons/account_budget_management/data/budget_alert_cron.xml:L64; origin/pdlc:addons/account_payment_followup/data/followup_cron.xml:L81]:
 
-- ✅ `Assets: Post Depreciation Entries` — model `account.asset`, active=t, interval **1 day** (AM-004) [origin/pdlc:addons/account_asset_management/data/depreciation_cron.xml:L142]
-- ✅ `Budget Alert Threshold Evaluation` — model `budget.alert`, active=t, interval **1 hour** (BM-005) [origin/pdlc:addons/account_budget_management/data/budget_alert_cron.xml:L64]
-- ✅ `Payment Follow-up: Send Reminders` — model `account.followup.level`, active=t, interval **1 day** (PF-002) [origin/pdlc:addons/account_payment_followup/data/followup_cron.xml:L81]
+- ✅ `Assets: Post Depreciation Entries` — model `account.asset`, active=t, interval **1 day** (AM-004) [origin/pdlc:addons/account_asset_management/data/depreciation_cron.xml:L142,L147-L148]
+- ✅ `Budget Alert Threshold Evaluation` — model `budget.alert`, active=t, interval **1 hour** (BM-005) [origin/pdlc:addons/account_budget_management/data/budget_alert_cron.xml:L64,L69-L70]
+- ✅ `Payment Follow-up: Send Reminders` — model `account.followup.level`, active=t, interval **1 day** (PF-002) [origin/pdlc:addons/account_payment_followup/data/followup_cron.xml:L81,L86-L87]
 
 All three are XML-defined per R-06; no Python-level scheduling primitives (`threading.Timer`, `APScheduler`) exist anywhere in the four modules — verified by grep and re-confirmed by the review's Infrastructure/DevOps phase [../../CODE_REVIEW.md].
 
@@ -223,18 +223,18 @@ Visual-fidelity issues found in QA Checkpoint 4 (28 issues across the 4 modules)
 
 ### 4.5 Performance SLAs — Mixed (3 ✅ + PF-005 ✅ + PF-002 ⚠ with-PDF / ✅ no-PDF)
 
-- ✅ **AM-003 Depreciation Board** <2s for 480 periods: confirmed compute 1066ms + cold read 5ms (well under 2s) — `blitzy/qa_artifacts/sla_am003_result.json` [origin/pdlc:blitzy/documentation/Project Guide.md:L221]
+- ✅ **AM-003 Depreciation Board** <2s for 480 periods: confirmed compute 1066ms + cold read 5ms (well under 2s) — `blitzy/qa_artifacts/sla_am003_result.json`
 - ✅ **BM-004 Variance Report** <3s for 1,000 lines: confirmed cold compute 2.7s, warm <1ms — `blitzy/qa_artifacts/sla_bm004_result.json`
 - ✅ **DR-004 Recognition Dashboard** <2s for 1,001 schedules: confirmed cold 236ms — `blitzy/qa_artifacts/sla_edge_cases_v3_result.json`
 - ✅ **PF-005 Aging Calculation** for 10,000 receivable lines: `days_overdue` 37ms + aging buckets 31ms + partner totals 15-29ms (all <5s SLA) — `blitzy/qa_artifacts/sla_pf005_result.json`
-- ⚠ **PF-002 Email Cron** for 500 partners **with PDF attachments**: 556.7s observed (target <60s) — `blitzy/qa_artifacts/sla_pf002_result.json`. **Without PDF** (no_pdf variant): 9.86s (passes the 60s/120s/300s budgets) — `blitzy/qa_artifacts/sla_pf002_no_pdf_result.json`. Bottleneck = PDF rendering for high-level templates; tuning tracked in §2.2 and as risk-register item R1/Obs-1 [origin/pdlc:blitzy/documentation/Project Guide.md:L225]
+- ⚠ **PF-002 Email Cron** for 500 partners **with PDF attachments**: 556.7s observed (target <60s) — `blitzy/qa_artifacts/sla_pf002_result.json`. **Without PDF** (no_pdf variant): 9.86s (passes the 60s/120s/300s budgets) — `blitzy/qa_artifacts/sla_pf002_no_pdf_result.json`. Bottleneck = PDF rendering for high-level templates; tuning tracked in §2.2 and as risk-register item R1/Obs-1
 - ✅ **PF-002 Boundary Test** 500-partner batch cap honored: pass — `blitzy/qa_artifacts/sla_pf002_boundary_result.json`
 
 The PF-002 with-PDF result is the single performance caveat; the Segmented PR Review's Business/Domain phase logged it as a **non-blocking** observation (performance tuning, not a correctness defect) [../../CODE_REVIEW.md]. See §6 Risk Assessment.
 
 ### 4.6 API Integration — Not Applicable
 
-The four modules add **no HTTP controllers**. All interactions route through the Odoo web client and ORM; no external API integrations are wired in this delivery [origin/pdlc:blitzy/documentation/Technical Specifications.md].
+The four modules add **no HTTP controllers**. All interactions route through the Odoo web client and ORM; no external API integrations are wired in this delivery [origin/pdlc:blitzy/documentation/Technical Specifications.md:L153].
 
 ---
 
@@ -279,26 +279,26 @@ The nine binding architecture/quality rules (R-01..R-09) carried by the feature 
 | Rule | Description | Status | Evidence |
 |---|---|---|---|
 | **R-01** | Module independence — no cross-imports between the 4 newest modules | ✅ Pass | `__manifest__.py` `depends` lists contain only core Odoo modules; the review's Infrastructure phase confirmed no sibling-module imports [../../CODE_REVIEW.md] |
-| **R-02** | No Odoo Enterprise dependencies | ✅ Pass | depends = `['account']`, `['account','analytic']`, `['account']`, `['account','mail']`; no Enterprise addon names [origin/pdlc:addons/account_budget_management/__manifest__.py] |
+| **R-02** | No Odoo Enterprise dependencies | ✅ Pass | depends = `['account']`, `['account','analytic']`, `['account']`, `['account','mail']`; no Enterprise addon names [origin/pdlc:addons/account_budget_management/__manifest__.py:L62] |
 | **R-03** | `_inherit` for existing models, `_name` only for net-new | ✅ Pass | Extensions to `account.move`, `account.move.line`, `account.analytic.account`, `res.partner` use `_inherit`; 12 net-new models declare `_name` [../../CODE_REVIEW.md] |
 | **R-04** | ≥80% per-story coverage gate | ✅ Pass (per-module aggregate); ⚠ literal per-story 30–62% | Aggregate AM 87% / BM 89% / DR 87% / PF 90%; literal per-story-file gate is an interpretation gap logged non-blocking by the QA phase [../../CODE_REVIEW.md] |
-| **R-05** | No core field redefinition | ✅ Pass | All inherited-model extensions add **new** computed/relational fields (`days_overdue`, `aging_bucket`, `asset_id`, `deferred_*`, `followup_history_ids`, …); none redefines an existing field [origin/pdlc:blitzy/documentation/Technical Specifications.md] |
+| **R-05** | No core field redefinition | ✅ Pass | All inherited-model extensions add **new** computed/relational fields (`days_overdue`, `aging_bucket`, `asset_id`, `deferred_*`, `followup_history_ids`, …); none redefines an existing field [origin/pdlc:blitzy/documentation/Technical Specifications.md:§0.7.1.5] |
 | **R-06** | `ir.cron` via XML for AM-004 + PF-002 | ✅ Pass | `depreciation_cron.xml` (AM-004), `followup_cron.xml` (PF-002), `budget_alert_cron.xml` (BM-005 bonus); all 3 active; zero Python scheduling primitives [origin/pdlc:addons/account_asset_management/data/depreciation_cron.xml:L142] |
 | **R-07** | `sudo()` justified | ✅ Pass | The single non-test `.sudo()` reads `ir.config_parameter` with an inline justification; the Security phase traced `sudo()` usage and raised no `BLOCKED` finding [origin/pdlc:addons/account_deferred_revenue/models/account_deferred_schedule.py:L385] |
-| **R-08** | BM-004 / BM-005 disjoint fields | ✅ Pass | BM-004 → `budget.variance.wizard` (`TransientModel`); BM-005 → `budget.alert` (`Model`); different tables, no field collision [origin/pdlc:addons/account_budget_management/wizard/budget_variance_wizard.py] |
-| **R-09** | Exact module folder names | ✅ Pass | `account_asset_management`, `account_budget_management`, `account_deferred_revenue`, `account_payment_followup` [origin/pdlc:addons/account_asset_management/__manifest__.py] |
+| **R-08** | BM-004 / BM-005 disjoint fields | ✅ Pass | BM-004 → `budget.variance.wizard` (`TransientModel`); BM-005 → `budget.alert` (`Model`); different tables, no field collision [origin/pdlc:addons/account_budget_management/wizard/budget_variance_wizard.py:L96] |
+| **R-09** | Exact module folder names | ✅ Pass | `account_asset_management`, `account_budget_management`, `account_deferred_revenue`, `account_payment_followup` [origin/pdlc:addons/account_asset_management/__manifest__.py:L5] |
 
 ### 5.2 OCA Conventions Compliance
 
 | Convention | Status | Evidence |
 |---|---|---|
-| AGPL-3 license declared | ✅ Pass | All 4 manifests: `'license': 'AGPL-3'`; every Python file carries the AGPL-3 header [origin/pdlc:addons/account_budget_management/__manifest__.py] |
+| AGPL-3 license declared | ✅ Pass | All 4 manifests: `'license': 'AGPL-3'`; every Python file carries the AGPL-3 header [origin/pdlc:addons/account_budget_management/__manifest__.py:L48] |
 | Version `19.0.1.0.0` | ✅ Pass | All 4 manifests declare `'version': '19.0.1.0.0'` |
 | `installable: True` / `application: False` | ✅ Pass | All 4 manifests |
-| OCA-template `README.rst` | ✅ Pass | All 4 modules; license/odoo/python/status/maintainer badges; Overview / Features / Configuration / Usage / Changelog sections [origin/pdlc:addons/account_asset_management/README.rst] |
+| OCA-template `README.rst` | ✅ Pass | All 4 modules; license/odoo/python/status/maintainer badges; Overview / Features / Configuration / Usage / Changelog sections [origin/pdlc:addons/account_asset_management/README.rst:L1] |
 | Per-module security CSV | ✅ Pass | All 4 modules; **37 access-control rows** across the four newest modules by the review's first-hand count (the prior draft of this guide stated "44"; the difference is a documentation-accuracy nuance tracked in §6 — every net-new and inherited model has ≥1 ACL entry) [../../CODE_REVIEW.md] |
 | Multi-company `ir.rule` | ✅ Pass | Each `<module>_security.xml` declares `company_id`-scoped record rules [origin/pdlc:addons/account_asset_management/security/asset_security.xml:L57] |
-| Per-story test naming `test_<story_id_lowercase>.py` | ✅ Pass | All 20 story files present and conformant [origin/pdlc:addons/account_asset_management/tests/test_am_001.py] |
+| Per-story test naming `test_<story_id_lowercase>.py` | ✅ Pass | All 20 story files present and conformant [origin/pdlc:addons/account_asset_management/tests/test_am_001.py:L83] |
 
 ### 5.3 Code Quality
 
@@ -306,7 +306,7 @@ The nine binding architecture/quality rules (R-01..R-09) carried by the feature 
 |---|---|---|
 | Ruff lint (target `py310`) | ✅ Pass | "All checks passed!" across all 4 modules; config repo-root `ruff.toml`, ruff 0.11.4+ [ruff.toml:L2] |
 | Python compile of key model files | ✅ Pass | First-hand `py_compile` of 47 production files (0 failures) during the review pre-flight [../../CODE_REVIEW.md] |
-| All test files execute | ✅ Pass | 619 tests run, 0 failed, 0 errors [origin/pdlc:blitzy/documentation/Project Guide.md:L146] |
+| All test files execute | ✅ Pass | 619 tests run, 0 failed, 0 errors (§3) |
 | Determinism (no flaky tests) | ✅ Pass | 12 of 12 runs identical (3 per module) |
 | Anti-pattern scan (N+1, slow queries) | ✅ Pass | `blitzy/qa_artifacts/anti_pattern_audit.json` — 0 N+1 findings, 0 slow queries |
 | Demo independence | ✅ Pass | All modules pass with `--without-demo=True` |
@@ -334,17 +334,17 @@ This section **mirrors the archaeology risk register authored in [`Technical Spe
 
 | # | Risk | Category | Severity | Likelihood | Evidence `[path:locator]` | Mitigation |
 |--:|------|----------|----------|------------|---------------------------|------------|
-| **R1** | **Mermaid version-vs-CVE tension.** The binding Executive Presentation rule pins **Mermaid 11.4.0**, which lies inside the affected range of **CVE-2025-54881** (XSS in sequence-diagram labels). A security-scan branch had bumped Mermaid to **11.10.0** to remediate the CVE, but that bump was reverted to satisfy the AAP-literal pin and lives only on an **unmerged** branch (outside the 278-file synthetic set). | Policy / Security | Medium | Low | Rule pin 11.4.0 [origin/pdlc:blitzy/documentation/Technical Specifications.md]; reverted 11.10.0/CVE bump on the separate security-scan branch [Technical Specifications.md §7 R1] | Exploit path requires KaTeX/MathML in sequence-diagram labels, which the deck does not enable, so the as-used exploit surface is zero; document the residual risk and define an AAP-amendment re-approval path to a patched release (`11.10.0+` / `10.9.4`) if the pin policy changes. |
+| **R1** | **Mermaid version-vs-CVE tension.** The binding Executive Presentation rule pins **Mermaid 11.4.0**, which lies inside the affected range of **CVE-2025-54881** — improper sanitization of sequence-diagram labels leading to XSS (**CWE-79**) when KaTeX is enabled. **Affected ≥ 10.9.0-rc.1 through ≤ 11.9.0** (so the pinned 11.4.0 is affected); **patched in 11.10.0** and the **10.9.4** backport line; **CVSS v4.0 5.3 (Medium)**. A security-scan branch had bumped Mermaid to **11.10.0** to remediate the CVE, but that bump was reverted to satisfy the AAP-literal pin and lives only on an **unmerged** branch (outside the 278-file synthetic set). | Policy / Security | Medium | Low | Rule pin 11.4.0 [origin/pdlc:blitzy/documentation/Technical Specifications.md:§0.10.2,§0.6.1]; affected-range / fixed versions / CWE-79 / CVSS 5.3 [Technical Specifications.md §7 R1] | The CVE requires KaTeX/MathML delimiters in **untrusted, user-supplied** diagram labels; this deck renders only **static, author-authored** diagrams with no user input and does not enable KaTeX, so **practical exploitability is negligible — not a guaranteed-zero library state**. Accept the residual risk on that rationale; optionally apply a `script-src`/`style-src` Content-Security-Policy when the deck is hosted; and define an AAP-amendment re-approval path to upgrade to a patched release (`11.10.0+` / `10.9.4`) if the pin policy changes or untrusted diagram input is introduced. |
 | **R2** | **Unattended scheduled-job load.** Three `ir.cron` jobs run without supervision: asset depreciation **daily**, budget alert **hourly** (the most frequent), follow-up email **daily**. A failing or slow job could silently skip postings, flood alerts, or exceed the cron timeout. | Operational | Medium | Medium | depreciation daily [origin/pdlc:addons/account_asset_management/data/depreciation_cron.xml:L142]; budget alert hourly [origin/pdlc:addons/account_budget_management/data/budget_alert_cron.xml:L64]; follow-up daily [origin/pdlc:addons/account_payment_followup/data/followup_cron.xml:L81] | Confirm idempotent batch logic, per-run record caps (follow-up batch ≤500 partners/run), and failure isolation; verify all three are reachable under Settings → Technical → Automation after install. |
-| **R3** | **Per-story coverage interpretation gap.** A literal per-story-file reading of the ≥80% gate returns only **30–62%** per individual story file, even though the **per-module aggregate** comfortably passes (AAM 87% / ABM 89% / ADR 87% / APF 90%). | Test | Low | Certain (documented) | Per-story literal 30–62% [origin/pdlc:blitzy/documentation/Project Guide.md:L168]; aggregate [origin/pdlc:blitzy/documentation/Project Guide.md:L161] | Treat the per-module aggregate as the meaningful gate (already passing) and schedule optional uplift adding focused unit tests so each `test_<story>.py` independently reaches ≥80%; record the interpretation so reviewers do not mis-`BLOCK`. |
+| **R3** | **Per-story coverage interpretation gap.** A literal per-story-file reading of the ≥80% gate returns only **30–62%** per individual story file, even though the **per-module aggregate** comfortably passes (AAM 87% / ABM 89% / ADR 87% / APF 90%). | Test | Low | Certain (documented) | Per-story literal 30–62% (§3); per-module aggregate (§3) | Treat the per-module aggregate as the meaningful gate (already passing) and schedule optional uplift adding focused unit tests so each `test_<story>.py` independently reaches ≥80%; record the interpretation so reviewers do not mis-`BLOCK`. |
 | **R4** | **Multi-company / record-rule exposure.** Net-new models add their own `ir.rule` multi-company rules; an incomplete or overly broad rule could leak records across companies or block legitimate access. | Security | Medium | Low | `account_asset_multi_company_rule` using `company_id in company_ids` [origin/pdlc:addons/account_asset_management/security/asset_security.xml:L57] | The review's Security phase audited each `*_security.xml` for a `company_id`-scoped rule on every net-new model and confirmed ACL coverage; verdict APPROVED [../../CODE_REVIEW.md]. |
-| **R5** | **`sudo()` boundary breadth.** `sudo()` appears across the newest addons — notably **40** occurrences in `account_payment_followup` (cron/email/report paths), plus 17/9/17 in asset/budget/deferred — each bypassing record rules and requiring justification. | Security | Medium | Medium | `sudo(` counts APF 40, AAM 17, ADR 17, ABM 9 [Technical Specifications.md §7 R5] | The Security phase traced each `sudo()` in cron/report paths to a documented justification and raised no file-and-line `BLOCKED` finding [../../CODE_REVIEW.md]. |
-| **R6** | **Demo-data independence.** The four newest addons ship **no** `demo/` directory (only the two prior addons do), so any test/view implicitly assuming demo records would fail under `--without-demo=True`. | Test | Low | Low | newest addons carry zero `demo/` files; demo present only on prior addons [origin/pdlc:addons/account_bank_reconciliation_ce/demo/demo_data.xml] | Each module installs cleanly with `--without-demo=True` and `tests/` build their own fixtures (`TransactionCase`), so the modules are demo-data independent by construction. |
+| **R5** | **`sudo()` boundary breadth.** A raw text search for the token `sudo(` returns many hits across the newest addons (APF 40, AAM 17, ADR 17, ABM 9), but those counts include **docstrings, comments, XML, and test code** and do **not** measure privilege elevation. Restricting to **executable, non-test production Python**, the four newest addons contain **exactly one** `.sudo()` call — an audited scalar `ir.config_parameter` read carrying an inline justification comment — so the real record-rule-bypass surface is a single configuration read, not a broad elevation. | Security | Low | Low | Executable production `.sudo(` (excluding `tests/`, comments, docstrings, and XML): **one** call [origin/pdlc:addons/account_deferred_revenue/models/account_deferred_schedule.py:L385]; the raw `grep "sudo("` token tallies (APF/AAM/ADR/ABM) are commentary/test/XML occurrences and are non-security-relevant [Technical Specifications.md §7 R5] | The Security phase confirmed the single production `.sudo()` is a configuration read (not a permission-sensitive write) and is correctly scoped; any future `.sudo()` introduced in cron/report paths must carry a documented justification or be flagged as a file-and-line `BLOCKED` finding [../../CODE_REVIEW.md]. |
+| **R6** | **Demo-data independence.** The four newest addons ship **no** `demo/` directory (only the two prior addons do), so any test/view implicitly assuming demo records would fail under `--without-demo=True`. | Test | Low | Low | newest addons carry zero `demo/` files; demo present only on prior addons [origin/pdlc:addons/account_bank_reconciliation_ce/demo/demo_data.xml:L1] | Each module installs cleanly with `--without-demo=True` and `tests/` build their own fixtures (`TransactionCase`), so the modules are demo-data independent by construction. |
 | **R7** | **Documentation ACL-count nuance.** The prior Project Guide cited "44" combined access-control rows across the four newest modules; the review's first-hand count is **37**. Substantively, every net-new and inherited model has ≥1 ACL entry. | Documentation | Low | Certain | first-hand 37 vs documented 44 [../../CODE_REVIEW.md] | Corrected to 37 in §5.2; routed to follow-up tracking as a documentation-accuracy item, not a security or correctness defect. |
 
 ### 6.1 Risk Summary
 
-The risk surface is dominated by **operational** concerns (R2 scheduled-job load, R5 `sudo()` breadth) and **policy/interpretation** concerns (R1 Mermaid pin-vs-CVE, R3 coverage gate, R7 documentation nuance), rather than by correctness defects in the merged accounting logic. None of the findings required a source-code change *by the reviewer*; each is accepted-with-rationale, verified-during-review, or operationally monitored. Consistent with the Segmented PR Review's APPROVED verdict, **no finding rose to a file-and-line `BLOCKED` verdict** [../../CODE_REVIEW.md]. The full evidence and forward-looking mitigations for R1–R6 are authored in [`Technical Specifications.md`](Technical%20Specifications.md) §7.
+The risk surface is dominated by **operational** concerns (R2 scheduled-job load) and **policy/interpretation** concerns (R1 Mermaid pin-vs-CVE, R3 coverage gate, R7 documentation nuance), rather than by correctness defects in the merged accounting logic; the `sudo()` surface (R5) reduces on inspection to a single audited configuration read. None of the findings required a source-code change *by the reviewer*; each is accepted-with-rationale (R1, R3, R6, R7), verified-during-review (R4, R5), or operationally monitored (R2). Consistent with the Segmented PR Review's APPROVED verdict, **no finding rose to a file-and-line `BLOCKED` verdict** [../../CODE_REVIEW.md]. The full evidence and forward-looking mitigations for R1–R6 are authored in [`Technical Specifications.md`](Technical%20Specifications.md) §7.
 
 ---
 
@@ -403,7 +403,7 @@ flowchart LR
 
 ### 8.1 Achievements Summary
 
-The Enterprise Accounting Parity delivery, framed here as the synthetic pull request `origin/pdlc` vs base `7bd7718…`, has reached **87.0% completion** (376 of 432 hours) for the four newest addons and has been **certified APPROVED by the Segmented PR Review** [../../CODE_REVIEW.md]. All twenty user stories specified in EPIC-001 are implemented and passing their full BDD acceptance suites. The four modules — `account_asset_management`, `account_budget_management`, `account_deferred_revenue`, `account_payment_followup` — install cleanly individually and combined, register their `ir.cron` records as required by R-06, expose their menu items and views correctly, and pass **619 of 619** automated tests with zero failures and zero errors. Per-module aggregate coverage exceeds the R-04 ≥80% gate (AM 87%, BM 89%, DR 87%, PF 90%). Performance SLAs are verified for AM-003 (480-period board <2s), BM-004 (1,000-line variance <3s), DR-004 (1,001-schedule dashboard <2s), and PF-005 (10,000-line aging <5s). Code quality is clean (`ruff` "All checks passed!") with no anti-pattern findings [origin/pdlc:blitzy/documentation/Project Guide.md:L263].
+The Enterprise Accounting Parity delivery, framed here as the synthetic pull request `origin/pdlc` vs base `7bd7718…`, has reached **87.0% completion** (376 of 432 hours) for the four newest addons and has been **certified APPROVED by the Segmented PR Review** [../../CODE_REVIEW.md]. All twenty user stories specified in EPIC-001 are implemented and passing their full BDD acceptance suites. The four modules — `account_asset_management`, `account_budget_management`, `account_deferred_revenue`, `account_payment_followup` — install cleanly individually and combined, register their `ir.cron` records as required by R-06, expose their menu items and views correctly, and pass **619 of 619** automated tests with zero failures and zero errors. Per-module aggregate coverage exceeds the R-04 ≥80% gate (AM 87%, BM 89%, DR 87%, PF 90%). Performance SLAs are verified for AM-003 (480-period board <2s), BM-004 (1,000-line variance <3s), DR-004 (1,001-schedule dashboard <2s), and PF-005 (10,000-line aging <5s). Code quality is clean (`ruff` "All checks passed!") with no anti-pattern findings (§5.3).
 
 ### 8.2 Remaining Gaps
 
@@ -412,7 +412,7 @@ The remaining 56 hours (13.0%) are exclusively path-to-production activities req
 - **Production environment configuration (8h)** — PostgreSQL 15, Odoo 19.0 conf, SMTP relay setup, secrets management
 - **UAT in staging (12h)** — End-to-end validation across all 20 stories with realistic data
 - **Production deployment & smoke testing (6h)** — Cron-registration verification, access-control validation, menu smoke tests
-- **PF-002 PDF SLA tuning (8h)** — 500-partner cron with PDF attachments takes ~557s vs target; without PDF it completes in ~10s. Resolution = batch-size tuning, async PDF generation, or PDF caching [origin/pdlc:blitzy/documentation/Project Guide.md:L225]
+- **PF-002 PDF SLA tuning (8h)** — 500-partner cron with PDF attachments takes ~557s vs target; without PDF it completes in ~10s. Resolution = batch-size tuning, async PDF generation, or PDF caching (§4.5)
 - **Per-story literal R-04 coverage uplift (16h)** — Per-module aggregate already passes; the literal per-story-file interpretation requires narrow unit-test additions
 - **Documentation polish & training (6h)** — Update `docs/USER_GUIDE.md`, prepare accountant-persona training materials
 
@@ -454,14 +454,14 @@ Total critical-path time on a single resource: ~30h of high-priority work + 16�
 
 ## 9. Development Guide
 
-This guide provides verified commands for setting up the Odoo 19.0 Community Edition codebase, installing the four newest modules, and running their test suites. Onboarding content is drawn from `origin/pdlc:docs/SETUP.md` (the "Development Environment Setup Guide", which refers to the repository root as `$REPO_ROOT`) and `origin/pdlc:docs/USER_GUIDE.md` [origin/pdlc:docs/SETUP.md]. Throughout, replace `$REPO_ROOT` with your local checkout path and `<db>` with a fresh database name.
+This guide provides verified commands for setting up the Odoo 19.0 Community Edition codebase, installing the four newest modules, and running their test suites. Onboarding content is drawn from `origin/pdlc:docs/SETUP.md` (the "Development Environment Setup Guide", which refers to the repository root as `$REPO_ROOT`) and `origin/pdlc:docs/USER_GUIDE.md` [origin/pdlc:docs/SETUP.md:L1]. Throughout, replace `$REPO_ROOT` with your local checkout path and `<db>` with a fresh database name.
 
 ### 9.1 System Prerequisites
 
 | Tool | Minimum | Recommended (this project) | Notes |
 |---|---|---|---|
 | Operating System | Linux x86_64 / macOS 13+ / WSL2 Ubuntu 22.04+ | Ubuntu 22.04 LTS | Windows native not supported by Odoo |
-| Python | 3.10 | 3.13 | `odoo/release.py` declares `MIN_PY_VERSION=(3,10)`, `MAX_PY_VERSION=(3,13)` [origin/pdlc:odoo/release.py] |
+| Python | 3.10 | 3.13 | `odoo/release.py` declares `MIN_PY_VERSION=(3,10)`, `MAX_PY_VERSION=(3,13)` [origin/pdlc:odoo/release.py:L39-L40] |
 | PostgreSQL | 13 | 15 | Per the AAP requirement |
 | wkhtmltopdf | 0.12.6 | 0.12.6 | Required for QWeb PDF rendering (PF-003 follow-up reports) |
 | git | 2.30 | 2.43+ | For branch management |
@@ -507,7 +507,7 @@ pip list | grep -E "psycopg|babel|lxml|coverage"
 #   psycopg2            2.9.10
 ```
 
-The Python pins are recorded in repo-root `requirements.txt`: `Babel==2.17.0` (the `python_version >= '3.13'` line), `lxml==5.2.1` (the `python_version >= '3.12'` line), and `psycopg2==2.9.10` (the `python_version >= '3.13'` line) [requirements.txt]. `coverage 7.13.5` and `lxml_html_clean 0.4.4` are provided by the venv (`lxml-html-clean` is intentionally unpinned in `requirements.txt` for forward security patches) [requirements.txt].
+The Python pins are recorded in repo-root `requirements.txt`: `Babel==2.17.0` (the `python_version >= '3.13'` line), `lxml==5.2.1` (the `python_version >= '3.12'` line), and `psycopg2==2.9.10` (the `python_version >= '3.13'` line) [origin/pdlc:requirements.txt:L7,L36,L58]. `coverage 7.13.5` and `lxml_html_clean 0.4.4` are provided by the venv (`lxml-html-clean` is intentionally unpinned in `requirements.txt` for forward security patches) [origin/pdlc:requirements.txt:L37].
 
 #### 9.2.3 Start PostgreSQL
 
@@ -725,7 +725,7 @@ ruff check addons/account_asset_management addons/account_budget_management \
 | `--stop-after-init` exits non-zero with `Module not found` | Verify `addons/<module>` is on the addon path; `odoo-bin` looks in `addons/` automatically when run from the repo root |
 | Cron does not execute on schedule | The cron worker needs `--workers >= 1` (it is 0 under `--stop-after-init`). Trigger manually via Settings → Scheduled Actions in the meantime |
 | Test failures after pulling new commits | Run `pip install --no-deps -r requirements.txt` to refresh dependencies; recreate the test DB (`dropdb` + re-run `-i ... --test-enable`) |
-| `account_payment_followup` PDF rendering slow | This is the documented PF-002 limitation (~557s for 500 partners with PDF). Skip PDF attachments for high-volume levels until SLA tuning completes (see §2.2) [origin/pdlc:blitzy/documentation/Project Guide.md:L225] |
+| `account_payment_followup` PDF rendering slow | This is the documented PF-002 limitation (~557s for 500 partners with PDF). Skip PDF attachments for high-volume levels until SLA tuning completes (see §2.2) |
 | `ruff check` reports unexpected violations | Verify `ruff` version 0.11.4+ is installed; module code is linted clean against this version [ruff.toml:L2] |
 
 ---
@@ -761,10 +761,10 @@ ruff check addons/account_asset_management addons/account_budget_management \
 
 | Location | Description |
 |---|---|
-| `addons/account_asset_management/` | FEATURE-004 (Track A) — 6 stories AM-001..006 [origin/pdlc:addons/account_asset_management/__manifest__.py] |
-| `addons/account_budget_management/` | FEATURE-003 (Track B) — 5 stories BM-001..005 [origin/pdlc:addons/account_budget_management/__manifest__.py] |
-| `addons/account_deferred_revenue/` | FEATURE-005 (Track C) — 4 stories DR-001..004 [origin/pdlc:addons/account_deferred_revenue/__manifest__.py] |
-| `addons/account_payment_followup/` | FEATURE-006 (Track D) — 5 stories PF-001..005 [origin/pdlc:addons/account_payment_followup/__manifest__.py] |
+| `addons/account_asset_management/` | FEATURE-004 (Track A) — 6 stories AM-001..006 [origin/pdlc:addons/account_asset_management/__manifest__.py:L5] |
+| `addons/account_budget_management/` | FEATURE-003 (Track B) — 5 stories BM-001..005 [origin/pdlc:addons/account_budget_management/__manifest__.py:L5] |
+| `addons/account_deferred_revenue/` | FEATURE-005 (Track C) — 4 stories DR-001..004 [origin/pdlc:addons/account_deferred_revenue/__manifest__.py:L5] |
+| `addons/account_payment_followup/` | FEATURE-006 (Track D) — 5 stories PF-001..005 [origin/pdlc:addons/account_payment_followup/__manifest__.py:L60] |
 | `addons/account_financial_report_ce/` | FEATURE-001 — prior "complete — do not touch" addon (documented + partitioned, not edited) [../../CODE_REVIEW.md] |
 | `addons/account_bank_reconciliation_ce/` | FEATURE-002 — prior "complete — do not touch" addon (documented + partitioned, not edited) [../../CODE_REVIEW.md] |
 | `addons/account_asset_management/data/depreciation_cron.xml` | AM-004 `ir.cron` XML record (R-06 mandatory) [origin/pdlc:addons/account_asset_management/data/depreciation_cron.xml:L142] |
@@ -772,15 +772,15 @@ ruff check addons/account_asset_management addons/account_budget_management \
 | `addons/account_budget_management/data/budget_alert_cron.xml` | BM-005 `ir.cron` XML record [origin/pdlc:addons/account_budget_management/data/budget_alert_cron.xml:L64] |
 | `addons/<module>/security/ir.model.access.csv` | Per-module access matrix (37 access rows across the four newest modules per the review's first-hand count) [../../CODE_REVIEW.md] |
 | `addons/<module>/security/<module>_security.xml` | Per-module multi-company `ir.rule` records [origin/pdlc:addons/account_asset_management/security/asset_security.xml:L57] |
-| `addons/<module>/tests/test_<story_id>.py` | Per-story BDD acceptance tests (20 files) [origin/pdlc:addons/account_asset_management/tests/test_am_001.py] |
+| `addons/<module>/tests/test_<story_id>.py` | Per-story BDD acceptance tests (20 files) [origin/pdlc:addons/account_asset_management/tests/test_am_001.py:L83] |
 | `addons/<module>/__manifest__.py` | Module declaration: depends, data, version, license |
-| `addons/<module>/README.rst` | OCA-template module documentation [origin/pdlc:addons/account_asset_management/README.rst] |
-| `docs/SETUP.md` | Repo-level development setup guide (`$REPO_ROOT` convention) [origin/pdlc:docs/SETUP.md] |
-| `docs/USER_GUIDE.md` | Repo-level user documentation [origin/pdlc:docs/USER_GUIDE.md] |
+| `addons/<module>/README.rst` | OCA-template module documentation [origin/pdlc:addons/account_asset_management/README.rst:L1] |
+| `docs/SETUP.md` | Repo-level development setup guide (`$REPO_ROOT` convention) [origin/pdlc:docs/SETUP.md:L1] |
+| `docs/USER_GUIDE.md` | Repo-level user documentation [origin/pdlc:docs/USER_GUIDE.md:L1] |
 | `requirements.txt` | Pinned Python dependencies (no new pins) [requirements.txt] |
-| `odoo/release.py` | Odoo runtime version metadata (`19.0.0`, `MIN_PY_VERSION=(3,10)`, `MAX_PY_VERSION=(3,13)`) [origin/pdlc:odoo/release.py] |
+| `odoo/release.py` | Odoo runtime version metadata (`19.0.0`, `MIN_PY_VERSION=(3,10)`, `MAX_PY_VERSION=(3,13)`) [origin/pdlc:odoo/release.py:L15,L39-L40] |
 | `ruff.toml` | Linter config, target `py310` [ruff.toml:L2] |
-| `blitzy/documentation/Technical Specifications.md` | The code-archaeology report (companion to this guide) [Technical Specifications.md] |
+| `blitzy/documentation/Technical Specifications.md` | The code-archaeology report (companion to this guide) [Technical Specifications.md §0.1.1] |
 | `CODE_REVIEW.md` | The Segmented PR Review record at the repository root [../../CODE_REVIEW.md] |
 | `blitzy/screenshots/` | **20 committed UI verification PNG screenshots** (verified via `git ls-tree`; e.g. `qaver_03_asset_form_FIXED.png`) [origin/pdlc:blitzy/screenshots/qaver_03_asset_form_FIXED.png] |
 
@@ -788,17 +788,17 @@ ruff check addons/account_asset_management addons/account_budget_management \
 
 | Technology | Version | Source |
 |---|---|---|
-| Odoo Community | 19.0.0 (FINAL) | `odoo/release.py: version_info = (19, 0, 0, FINAL, 0, '')` [origin/pdlc:odoo/release.py] |
-| Python (declared min/max) | 3.10 / 3.13 | `odoo/release.py: MIN_PY_VERSION = (3, 10)`, `MAX_PY_VERSION = (3, 13)` [origin/pdlc:odoo/release.py] |
+| Odoo Community | 19.0.0 (FINAL) | `odoo/release.py: version_info = (19, 0, 0, FINAL, 0, '')` [origin/pdlc:odoo/release.py:L15] |
+| Python (declared min/max) | 3.10 / 3.13 | `odoo/release.py: MIN_PY_VERSION = (3, 10)`, `MAX_PY_VERSION = (3, 13)` [origin/pdlc:odoo/release.py:L39-L40] |
 | Python (used in this build) | 3.13.x | `venv/bin/python --version` |
 | PostgreSQL | 15 | `postgres:15` Docker image (per the AAP) |
-| psycopg2 | 2.9.10 | `requirements.txt` (`python_version >= '3.13'`) + venv [requirements.txt] |
-| lxml | 5.2.1 | `requirements.txt` (`python_version >= '3.12'`) + venv [requirements.txt] |
-| lxml_html_clean | 0.4.4 | venv (`lxml-html-clean` unpinned in `requirements.txt`) [requirements.txt] |
-| Babel | 2.17.0 | `requirements.txt` (`python_version >= '3.13'`) + venv [requirements.txt] |
+| psycopg2 | 2.9.10 | `requirements.txt` (`python_version >= '3.13'`) + venv [origin/pdlc:requirements.txt:L58] |
+| lxml | 5.2.1 | `requirements.txt` (`python_version >= '3.12'`) + venv [origin/pdlc:requirements.txt:L36] |
+| lxml_html_clean | 0.4.4 | venv (`lxml-html-clean` unpinned in `requirements.txt`) [origin/pdlc:requirements.txt:L37] |
+| Babel | 2.17.0 | `requirements.txt` (`python_version >= '3.13'`) + venv [origin/pdlc:requirements.txt:L7] |
 | coverage | 7.13.5 | venv pip list |
 | ruff | 0.11.4+ | repo-root `ruff.toml` [ruff.toml:L2] |
-| Module versions | 19.0.1.0.0 | All 4 manifests [origin/pdlc:addons/account_asset_management/__manifest__.py] |
+| Module versions | 19.0.1.0.0 | All 4 manifests [origin/pdlc:addons/account_asset_management/__manifest__.py:L69] |
 | Module license | AGPL-3 | All 4 manifests |
 
 ### Appendix E — Environment Variable Reference

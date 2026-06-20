@@ -15,9 +15,9 @@
  * Runtime: reveal.js 5.1.0 (framework-agnostic overrides).
  * Fonts:   Inter / Space Grotesk / Fira Code are loaded by the host deck via
  *          Google Fonts; this file references them ONLY through the --ff-*
- *          tokens (no @import / no font hosting here).
+ *          tokens (no stylesheet imports / no font hosting here).
  *
- * NOTE:    Mermaid DIAGRAM theming (Mermaid JS themeVariables) and reveal.js
+ * NOTE:    Mermaid DIAGRAM theming (Mermaid JS theme settings) and reveal.js
  *          library configuration live in the deck's JavaScript, NOT here. This
  *          file only styles the .mermaid CONTAINER.
  *
@@ -434,7 +434,7 @@
 
 /* ============================================================
    11. Mermaid container -- centered, transparent bg, max-width
-   (Diagram colours come from the deck's Mermaid JS themeVariables.)
+   (Diagram colours come from the deck's Mermaid JS theme settings.)
    ============================================================ */
 .reveal .mermaid {
   display: flex;

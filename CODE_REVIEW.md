@@ -578,3 +578,22 @@ Per-domain subtotals below reconcile **exactly** to the §C.2 matrix column tota
 - "Reviewer observations (non-blocking)" recorded under an `APPROVED` phase are advisory notes routed to the risk register; by definition they do **not** meet the `BLOCKED` threshold (they are not build, test, static-analysis, or production-stub failures) and they do **not** qualify the verdict.
 
 ---
+
+### Phase 1 — Infrastructure / DevOps  ·  Reviewer: Infrastructure & Release Engineering SME (review-only)
+
+**Files reviewed:** the 52 files in the Infrastructure/DevOps column of §C.2 — every `__manifest__.py`, every package `__init__.py`, each addon `README.rst`, and all `data/**` records (sequences + scheduled actions) across the six addons.
+
+**Findings (file:line):**
+
+1. **Manifest correctness.** All four newest manifests declare the OCA-conformant identity set — `version` `19.0.1.0.0`, `license` `AGPL-3`, `application` `False`, `installable` `True` [addons/account_budget_management/__manifest__.py:L44]. Identity is consistent across modules and matches the installed `latest_version` observed at install time (§B install verification).
+2. **Dependency declarations (R-01/R-02).** `depends` lists contain **only** core Odoo modules and no sibling new module or Enterprise addon: `account_asset_management` → `['account']` [addons/account_asset_management/__manifest__.py:L102]; `account_budget_management` → `['account', 'analytic']` [addons/account_budget_management/__manifest__.py:L62]; `account_deferred_revenue` → `['account']` [addons/account_deferred_revenue/__manifest__.py:L69]; `account_payment_followup` → `['account', 'mail']` [addons/account_payment_followup/__manifest__.py:L151].
+3. **Module load order.** The `data` list loads **security before data before cron**, a hard contract so that `ir.cron` records reference models whose ACL rows already exist; the ordering is explicit and annotated [addons/account_budget_management/__manifest__.py:L66]. The `account_payment_followup` manifest documents the same topological ordering contract for mail-template → follow-up-level foreign keys [addons/account_payment_followup/__manifest__.py:L17].
+4. **Scheduled actions (R-06).** Exactly three declarative `ir.cron` records, all `state='code'` invoking a model method on a sound cadence: depreciation posting daily via `model._cron_post_depreciation_entries()` [addons/account_asset_management/data/depreciation_cron.xml:L145]; budget alert evaluation hourly via `model._cron_evaluate_thresholds()` [addons/account_budget_management/data/budget_alert_cron.xml:L67]; follow-up emails daily via `model.process_followup_emails()` [addons/account_payment_followup/data/followup_cron.xml:L84]. No Python scheduling primitives exist (§B).
+5. **Warning hygiene.** The `account_asset_management` manifest summary is intentionally built with implicit string concatenation to avoid docutils block-quote warnings at install, demonstrating attention to the zero-warning build gate [addons/account_asset_management/__manifest__.py:L18].
+6. **Documentation packaging.** Each of the four newest addons ships an OCA-template `README.rst` with the standard badge/Overview/Features/Usage/Changelog sections [addons/account_asset_management/README.rst:L1].
+
+**Reviewer observations (non-blocking):** none. Infrastructure scope is clean.
+
+**Verdict — Phase 1 (Infrastructure / DevOps): APPROVED**
+
+---

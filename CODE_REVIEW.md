@@ -333,7 +333,7 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
 
 **Reviewer observations (non-blocking):** none. Frontend scope is clean and screenshot-verified.
 
-**Verdict — Phase 6 (Frontend): PENDING**
+**Verdict — Phase 6 (Frontend): APPROVED**
 
 ---
 

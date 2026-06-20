@@ -15,13 +15,13 @@
 | **Referencing Agent Action Plan** | The archaeology/review AAP at `blitzy/documentation/Technical Specifications.md` §0 (this run's AAP) |
 | **Base commit** | `7bd7718bcd4c5d232779e8eab0340169461af14e` — *"[FIX] account: fix cash basis tax calculation for full payments"* (clean upstream Odoo 19.0 CE base) |
 | **Head commit** | `1389691509568206594224539d5495f87a310ed1` (abbrev `13896915095`) — the `origin/pdlc` tip / **Merge pull request #7** |
-| **Synthetic change set** | `git diff 7bd7718…7..origin/pdlc` = **278 files changed, +134,588 insertions** |
+| **Synthetic change set** | `git diff 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc` = **278 files changed, +134,588 insertions** |
 | **Provenance** | **310** commits in `7bd7718..origin/pdlc`: **307** authored by `Blitzy Agent <agent@blitzy.com>` + **3** `blitzy[bot]` merge commits |
 | **Last code-generation commit** | **2026-06-09** (the PR #7 merge) — the review window opens only after this point |
 | **Review start (UTC)** | **2026-06-20T04:50Z** |
 | **Review end (UTC)** | **2026-06-20T04:56Z** |
 | **Timestamp assertion** | Review window `2026-06-20` is **strictly after** the last code-generation commit `2026-06-09` ✔ |
-| **Result** | Pre-flight gate **PASS**; seven domain phases **APPROVED**; final verdict **APPROVED** |
+| **Result** | Pre-flight gate **PASS**; seven domain phases **PENDING**; final verdict **PENDING** |
 
 ### Reviewer roster (exactly one specialist per phase + one final reviewer; all review-only)
 
@@ -42,7 +42,7 @@ The merged Blitzy feature work does **not** exist in the destination working tre
 
 ```bash
 # Fetch the merged feature branch into local refs
-git fetch origin 'refs/remotes/origin/pdlc:refs/remotes/origin/pdlc'
+git fetch origin 'refs/heads/pdlc:refs/remotes/origin/pdlc'
 
 # Boundary + change-set size of the synthetic PR
 git diff --shortstat 7bd7718bcd4c5d232779e8eab0340169461af14e origin/pdlc
@@ -66,8 +66,8 @@ The pre-flight gate **MUST pass before Phase 1 opens**. Any failed condition ret
 
 | # | Gate condition | Result | Evidence / provenance |
 |--:|----------------|:------:|-----------------------|
-| 1 | **All AAP deliverables exist at specified paths** | **PASS** | `CODE_REVIEW.md` (root) created this run; `blitzy/documentation/Technical Specifications.md` and `blitzy/documentation/Project Guide.md` present on `origin/pdlc` [blitzy/documentation/Project Guide.md:L1]; `blitzy-deck/executive-summary.html` produced this run on the review branch. |
-| 2 | **Build: zero errors / zero warnings** | **PASS** | Per-module and combined `--stop-after-init` installs exit 0 with a "Modules loaded" line and no traceback [blitzy/documentation/Project Guide.md:L176]. |
+| 1 | **All AAP deliverables exist at specified paths** | **PASS** | `CODE_REVIEW.md` (root) created this run; `blitzy/documentation/Technical Specifications.md` and `blitzy/documentation/Project Guide.md` present on `origin/pdlc` [blitzy/documentation/Project Guide.md:L1]; `blitzy-deck/executive-summary.html` created this run on the review branch — a self-contained reveal.js deck (16 `<section>` slides; pinned CDNs reveal.js 5.1.0 / Mermaid 11.4.0 / Lucide 0.460.0) [blitzy-deck/executive-summary.html:L1]. |
+| 2 | **Build: zero errors / zero warnings** | **PASS** | *Zero errors* substantiated: per-module and combined `--stop-after-init` installs exit 0 with a "Modules loaded" line, no traceback, and `state='installed'` [blitzy/documentation/Project Guide.md:L176]. *Zero warnings* is scoped to the recorded evidence — the clean `ruff` lint gate (only the ignored `UP038` advisory, Condition 4) plus the deliberate docutils-warning hygiene at [addons/account_asset_management/__manifest__.py:L18]; a fresh install-log warning capture was not reproducible in this offline reviewer environment (no PostgreSQL), so the warning assessment is bounded accordingly (see Condition 2 detail). |
 | 3 | **All required tests pass** | **PASS** | 619/619 tests pass — 0 failed, 0 errors of 569 post-tests; per-module coverage 87/89/87/90% (≥80% per-module aggregate gate) [blitzy/documentation/Project Guide.md:L140]. |
 | 4 | **Static analysis: zero violations** | **PASS** | `ruff check --no-fix` reports "All checks passed!" across all four modules [blitzy/documentation/Project Guide.md:L263]. Config: repo-root `ruff.toml`, ruff 0.11.4+, `target-version = "py310"`, `[lint] preview = true` [ruff.toml:L2]. |
 | 5 | **No production-path placeholder stub** | **PASS** | First-hand scan of all production `.py` (excluding `tests/`) in the four newest modules: zero `NotImplementedError`, zero `???`, zero `FIXME`/`TODO`. Anti-pattern audit independently clean [blitzy/documentation/Project Guide.md:L268]. |
@@ -81,7 +81,7 @@ git cat-file -e "origin/pdlc:blitzy/documentation/Technical Specifications.md" &
 git cat-file -e "origin/pdlc:blitzy/documentation/Project Guide.md" && echo present
 ```
 
-`CODE_REVIEW.md` and `blitzy-deck/executive-summary.html` are net-new deliverables produced during this review/documentation run and are present on the review branch.
+`CODE_REVIEW.md` and `blitzy-deck/executive-summary.html` are net-new deliverables created during this review/documentation run and are present on the review branch; the deck is a single self-contained reveal.js file (16 `<section>` slides, Blitzy brand theme embedded inline, CDNs pinned to reveal.js 5.1.0 / Mermaid 11.4.0 / Lucide 0.460.0, Lucide SVG icons with zero emoji) verified to open and render its Mermaid diagrams and icons in-browser [blitzy-deck/executive-summary.html:L1].
 
 **Condition 2 — Build (zero errors / zero warnings).** The documented gate command (executed by the autonomous validator) is:
 
@@ -92,7 +92,7 @@ python odoo-bin --db_host=localhost --db_port=5432 --db_user=odoo --db_password=
 # Expected: exit 0; "Modules loaded" log line; no traceback
 ```
 
-All four individual installs and the combined install exit 0 with `state='installed'`, `latest_version='19.0.1.0.0'` [blitzy/documentation/Project Guide.md:L176]. The `account_asset_management` manifest summary is expressed via implicit string concatenation specifically to avoid docutils block-quote warnings during install [addons/account_asset_management/__manifest__.py:L18], evidencing deliberate zero-warning hygiene.
+All four individual installs and the combined install exit 0 with `state='installed'`, `latest_version='19.0.1.0.0'` [blitzy/documentation/Project Guide.md:L176] — substantiating **zero errors** (no traceback; successful module load). The `account_asset_management` manifest summary is expressed via implicit string concatenation specifically to avoid docutils block-quote warnings during install [addons/account_asset_management/__manifest__.py:L18], evidencing deliberate zero-warning hygiene. On the **zero-warnings** sub-condition specifically, the recorded evidence is the clean `ruff` static-analysis gate (Condition 4 — only the ignored `UP038` advisory) plus that manifest hygiene; a fresh install-log warning capture could not be regenerated in this offline reviewer environment (no PostgreSQL/Odoo bootstrap available), so this gate's warning assessment is scoped to the validator-recorded evidence rather than an independently re-run zero-warning install log.
 
 **Condition 3 — Tests pass.** Full native test variant plus per-module pytest with coverage:
 
@@ -114,11 +114,18 @@ Observed: "All checks passed!" for all four modules; the only emitted notice is 
 **Condition 5 — No production-path placeholder stub.** Executed first-hand against `/tmp/pdlc-review`:
 
 ```bash
-for m in account_asset_management account_budget_management account_deferred_revenue account_payment_followup; do
-  for f in $(find addons/$m -name '*.py' -not -path '*/tests/*'); do python3 -m py_compile "$f"; done
-done
+cd /tmp/pdlc-review        # materialized origin/pdlc worktree (see Phase A)
+# Byte-compile every production .py (tests/ excluded) across the four newest modules
+find addons/account_asset_management addons/account_budget_management \
+     addons/account_deferred_revenue addons/account_payment_followup \
+     -name '*.py' -not -path '*/tests/*' -print0 | xargs -0 -n1 python3 -m py_compile
 # -> 47 production files compiled, 0 failures
-grep -rn "NotImplementedError\|???\|# *FIXME\|# *TODO" addons/account_*/{models,wizard,report} --include='*.py' | grep -v '/tests/'
+# Stub / placeholder scan over the SAME production files — no brace globs over
+# possibly-absent dirs; -print0 / -0 is safe for any path
+find addons/account_asset_management addons/account_budget_management \
+     addons/account_deferred_revenue addons/account_payment_followup \
+     -name '*.py' -not -path '*/tests/*' -print0 \
+  | xargs -0 grep -nE 'NotImplementedError|\?\?\?|# *FIXME|# *TODO'
 # -> no matches
 ```
 
@@ -197,11 +204,11 @@ Counts are produced by applying §C.1 to the 278-file list. Every row total equa
 The matrix above is exhaustive; the following lists anchor each domain to concrete, verifiable paths (the four newest addons shown explicitly; the two prior addons follow the identical layout).
 
 - **1 Infrastructure/DevOps (52):** per addon — `__manifest__.py`, addon-root + `models/` + `wizard/` + `report/` + `tests/` `__init__.py` files, `README.rst`, and `data/**` records (sequences + cron). E.g. `[addons/account_asset_management/data/depreciation_cron.xml:L142]`, `[addons/account_budget_management/data/budget_alert_cron.xml:L64]`, `[addons/account_payment_followup/data/followup_cron.xml:L81]`.
-- **2 Security (12):** each addon's `security/ir.model.access.csv` + `security/<name>_security.xml` — e.g. `[addons/account_asset_management/security/ir.model.access.csv]`, `[addons/account_deferred_revenue/security/deferred_security.xml:L103]`.
-- **3 Backend Architecture (41):** `models/**.py` + `wizard/**.py` — e.g. `[addons/account_asset_management/models/account_asset.py:L133]`, `[addons/account_budget_management/wizard/budget_variance_wizard.py]`.
-- **4 QA/Test Integrity (52):** `tests/**` (story files + `common.py` + fixtures) + `test_data/**` — e.g. `[addons/account_payment_followup/tests/test_pf_002.py]`, `[test_data/]` sample statements (`.qif`/`.ofx`).
-- **5 Business/Domain (18):** `report/**` — e.g. `[addons/account_budget_management/report/budget_vs_actual_report.py]`, `[addons/account_payment_followup/report/followup_report.xml]`, plus the 13 financial-report templates under `[addons/account_financial_report_ce/report/]`.
-- **6 Frontend (36):** `views/**.xml` + `wizard/*_views.xml` + `static/src/scss/**` — e.g. `[addons/account_asset_management/views/account_asset_views.xml]`, `[addons/account_asset_management/static/src/scss/asset_management.scss]`.
+- **2 Security (12):** each addon's `security/ir.model.access.csv` + `security/<name>_security.xml` — e.g. `[addons/account_asset_management/security/ir.model.access.csv:L2]`, `[addons/account_deferred_revenue/security/deferred_security.xml:L100]`.
+- **3 Backend Architecture (41):** `models/**.py` + `wizard/**.py` — e.g. `[addons/account_asset_management/models/account_asset.py:L133]`, `[addons/account_budget_management/wizard/budget_variance_wizard.py:L69]`.
+- **4 QA/Test Integrity (52):** `tests/**` (story files + `common.py` + fixtures) + `test_data/**` — e.g. `[addons/account_payment_followup/tests/test_pf_002.py:L83]`, `[test_data/bank_statements/sample.qif:L1]` / `[test_data/bank_statements/sample.ofx:L1]` sample statements.
+- **5 Business/Domain (18):** `report/**` — e.g. `[addons/account_budget_management/report/budget_vs_actual_report.py:L71]`, `[addons/account_payment_followup/report/followup_report.xml:L87]`, plus the 13 financial-report templates under `[addons/account_financial_report_ce/report/report_templates.xml:L1]`.
+- **6 Frontend (36):** `views/**.xml` + `wizard/*_views.xml` + `static/src/scss/**` — e.g. `[addons/account_asset_management/views/account_asset_views.xml:L46]`, `[addons/account_asset_management/static/src/scss/asset_management.scss:L1]`.
 - **7 Other SME (67):** `tickets/**` (EPIC-001 + README + 6 features + 32 stories + 3 templates = 43), `blitzy/**` (2 documentation + 20 screenshots = 22), `docs/**` (`SETUP.md`, `USER_GUIDE.md` = 2).
 
 ---
@@ -229,11 +236,11 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
 3. **Module load order.** The `data` list loads **security before data before cron**, a hard contract so that `ir.cron` records reference models whose ACL rows already exist; the ordering is explicit and annotated [addons/account_budget_management/__manifest__.py:L66]. The `account_payment_followup` manifest documents the same topological ordering contract for mail-template → follow-up-level foreign keys [addons/account_payment_followup/__manifest__.py:L17].
 4. **Scheduled actions (R-06).** Exactly three declarative `ir.cron` records, all `state='code'` invoking a model method on a sound cadence: depreciation posting daily via `model._cron_post_depreciation_entries()` [addons/account_asset_management/data/depreciation_cron.xml:L145]; budget alert evaluation hourly via `model._cron_evaluate_thresholds()` [addons/account_budget_management/data/budget_alert_cron.xml:L67]; follow-up emails daily via `model.process_followup_emails()` [addons/account_payment_followup/data/followup_cron.xml:L84]. No Python scheduling primitives exist (§B).
 5. **Warning hygiene.** The `account_asset_management` manifest summary is intentionally built with implicit string concatenation to avoid docutils block-quote warnings at install, demonstrating attention to the zero-warning build gate [addons/account_asset_management/__manifest__.py:L18].
-6. **Documentation packaging.** Each of the four newest addons ships an OCA-template `README.rst` with the standard badge/Overview/Features/Usage/Changelog sections [addons/account_asset_management/README.rst].
+6. **Documentation packaging.** Each of the four newest addons ships an OCA-template `README.rst` with the standard badge/Overview/Features/Usage/Changelog sections [addons/account_asset_management/README.rst:L1].
 
 **Reviewer observations (non-blocking):** none. Infrastructure scope is clean.
 
-**Verdict — Phase 1 (Infrastructure / DevOps): APPROVED**
+**Verdict — Phase 1 (Infrastructure / DevOps): PENDING**
 
 ---
 
@@ -243,14 +250,14 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
 
 **Findings (file:line):**
 
-1. **ACL completeness.** The four newest modules contribute **37** access-control rows — `account_asset_management` 8, `account_budget_management` 10, `account_deferred_revenue` 11, `account_payment_followup` 8 — and every model carries at least one access entry [addons/account_asset_management/security/ir.model.access.csv]. ACL rows split read/write privileges across the accounting user vs. manager groups rather than granting blanket access.
-2. **Multi-company record rules.** Each `*_security.xml` declares `company_id`-based `ir.rule` records using the reserved `company_ids` runtime context variable for per-company isolation: `account_asset_management` (4 rules) [addons/account_asset_management/security/asset_security.xml:L37]; `account_budget_management` (5 rules) [addons/account_budget_management/security/budget_security.xml:L57]; `account_deferred_revenue` (3 rules, including a relational rule that walks `schedule_id.company_id` for child lines) [addons/account_deferred_revenue/security/deferred_security.xml:L111]; `account_payment_followup` (4 rules) [addons/account_payment_followup/security/followup_security.xml:L22].
+1. **ACL completeness.** The four newest modules contribute **37** access-control rows — `account_asset_management` 8, `account_budget_management` 10, `account_deferred_revenue` 11, `account_payment_followup` 8 — and every model carries at least one access entry [addons/account_asset_management/security/ir.model.access.csv:L2]. ACL rows split read/write privileges across the accounting user vs. manager groups rather than granting blanket access.
+2. **Multi-company record rules.** Each `*_security.xml` declares `company_id`-based `ir.rule` records using the reserved `company_ids` runtime context variable for per-company isolation: `account_asset_management` (3 rules) [addons/account_asset_management/security/asset_security.xml:L57,L80,L97]; `account_budget_management` (4 rules) [addons/account_budget_management/security/budget_security.xml:L66,L88,L111,L143]; `account_deferred_revenue` (2 rules, including a relational rule that walks `schedule_id.company_id` for child lines) [addons/account_deferred_revenue/security/deferred_security.xml:L100,L108]; `account_payment_followup` (3 rules) [addons/account_payment_followup/security/followup_security.xml:L29,L39,L50].
 3. **`sudo()` boundary (R-07).** Exactly **one** non-test `.sudo()` call exists in the four modules — a scalar `ir.config_parameter` read carrying an inline justification comment; it is a configuration read, not a permission-sensitive write, and is correctly scoped [addons/account_deferred_revenue/models/account_deferred_schedule.py:L385].
 4. **No core field redefinition (R-05).** Extensions to `account.move`, `account.move.line`, `account.analytic.account`, and `res.partner` add only **new** computed/relational fields (e.g. `days_overdue`, `aging_bucket`, `asset_id`, `deferred_*`, `followup_history_ids`); no existing core field is redefined [addons/account_payment_followup/models/res_partner.py:L78].
 
 **Reviewer observations (non-blocking):** the validator's documentation cites a combined "44 access-control rows" figure that aggregates differently from this reviewer's first-hand four-module count of 37 [blitzy/documentation/Project Guide.md:L256]; the discrepancy is a counting-scope difference (not a missing-ACL gap) — every model has coverage. Routed to the risk register as a documentation-accuracy note; not blocking.
 
-**Verdict — Phase 2 (Security): APPROVED**
+**Verdict — Phase 2 (Security): PENDING**
 
 ---
 
@@ -267,12 +274,12 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
    - `account_payment_followup`: `_name = 'account.followup.level'` [addons/account_payment_followup/models/account_followup_level.py:L68], `_name = 'account.followup.line'` [addons/account_payment_followup/models/account_followup_line.py:L79], `_name = 'account.followup.history'` [addons/account_payment_followup/models/account_followup_history.py:L106]; extension `_inherit = 'res.partner'` [addons/account_payment_followup/models/res_partner.py:L78].
 2. **Mixin composition.** Aggregate-root models correctly compose chatter/activity mixins — `_inherit = ['mail.thread', 'mail.activity.mixin']` on `account.asset` [addons/account_asset_management/models/account_asset.py:L134] and `account.deferred.schedule` [addons/account_deferred_revenue/models/account_deferred_schedule.py:L38]; `budget.budget.line` composes `analytic.mixin` for multi-dimensional analytic distribution [addons/account_budget_management/models/budget_budget_line.py:L129].
 3. **Computed fields.** Domain computes are method-backed and dependency-driven (not stored-without-trigger), e.g. depreciation schedule [addons/account_asset_management/models/account_asset.py:L1578], variance [addons/account_budget_management/models/budget_budget_line.py:L447], recognition schedule [addons/account_deferred_revenue/models/account_deferred_schedule.py:L580], partner aging [addons/account_payment_followup/models/res_partner.py:L214].
-4. **Transient wizard flows.** Wizards are `TransientModel`s with disjoint field sets (R-08) — e.g. budget variance vs. budget alert occupy different tables with no field collision; asset disposal/modification, deferred cut-off, and follow-up report wizards each drive a single bounded transaction [addons/account_budget_management/wizard/budget_variance_wizard.py].
+4. **Transient wizard flows.** Wizards are `TransientModel`s with disjoint field sets (R-08) — e.g. budget variance vs. budget alert occupy different tables with no field collision; asset disposal/modification, deferred cut-off, and follow-up report wizards each drive a single bounded transaction [addons/account_budget_management/wizard/budget_variance_wizard.py:L69].
 5. **Compilation.** All 47 production model/wizard/report `.py` files byte-compile cleanly (§B condition 5).
 
 **Reviewer observations (non-blocking):** none affecting architecture; aggregate per-module coverage on backend modules is 86–96% per file [blitzy/documentation/Project Guide.md:L160].
 
-**Verdict — Phase 3 (Backend Architecture): APPROVED**
+**Verdict — Phase 3 (Backend Architecture): PENDING**
 
 ---
 
@@ -284,13 +291,13 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
 
 1. **Suite size and pass rate.** 619/619 tests pass with 0 failed and 0 errors of 569 post-tests; per module `account_asset_management` 98/98, `account_budget_management` 171/171, `account_deferred_revenue` 37/37, `account_payment_followup` 312/312 [blitzy/documentation/Project Guide.md:L146].
 2. **Per-module coverage ≥ 80%.** Final post-fix coverage `account_asset_management` 87%, `account_budget_management` 89%, `account_deferred_revenue` 87%, `account_payment_followup` 90% — all clear the ≥80% per-module aggregate gate [blitzy/documentation/Project Guide.md:L160].
-3. **BDD parity / story-named tests.** Each acceptance story maps to a conformant `test_<story_id>.py` module — `test_am_001.py`..`test_am_006.py`, `test_bm_001.py`..`test_bm_005.py`, `test_dr_001.py`..`test_dr_004.py`, and the PF suite (`test_pf_001.py`..`test_pf_005.py` plus descriptive `test_action_history.py`, `test_email_generation.py`, `test_followup_level.py`, `test_followup_report.py`, `test_overdue_calculation.py`) [addons/account_payment_followup/tests/test_pf_002.py].
-4. **`TransactionCase` correctness.** Tests extend Odoo's `TransactionCase`/`AccountTestInvoicingCommon` with shared `common.py` fixtures rather than ad-hoc setup [addons/account_asset_management/tests/common.py].
+3. **BDD parity / story-named tests.** Each acceptance story maps to a conformant `test_<story_id>.py` module — `test_am_001.py`..`test_am_006.py`, `test_bm_001.py`..`test_bm_005.py`, `test_dr_001.py`..`test_dr_004.py`, and the PF suite (`test_pf_001.py`..`test_pf_005.py` plus descriptive `test_action_history.py`, `test_email_generation.py`, `test_followup_level.py`, `test_followup_report.py`, `test_overdue_calculation.py`) [addons/account_payment_followup/tests/test_pf_002.py:L83].
+4. **`TransactionCase` correctness.** Tests extend Odoo's `TransactionCase`/`AccountTestInvoicingCommon` with shared `common.py` fixtures rather than ad-hoc setup [addons/account_asset_management/tests/common.py:L96].
 5. **No stubbed assertions.** The anti-pattern audit found 0 N+1 query findings and 0 slow queries, and determinism is 12/12 identical runs — consistent with real (non-stubbed) assertions and stable fixtures [blitzy/documentation/Project Guide.md:L268]. Test fixtures (`test_data/**`, `tests/test_files/**`) are sample bank statements/journal entries, not assertion stand-ins.
 
 **Reviewer observations (non-blocking):** the **literal per-story-file** interpretation of the R-04 coverage gate returns 30–62% for individual story files, whereas the **per-module aggregate** (87/89/87/90%) — declared by the autonomous validator as the meaningful gate — passes [blitzy/documentation/Project Guide.md:L168]. This is an interpretation gap, not a test failure (all 619 tests pass), and optional uplift work is tracked in the risk register. It does not meet the `BLOCKED` threshold and does not qualify the verdict.
 
-**Verdict — Phase 4 (QA / Test Integrity): APPROVED**
+**Verdict — Phase 4 (QA / Test Integrity): PENDING**
 
 ---
 
@@ -301,14 +308,14 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
 **Findings (file:line):**
 
 1. **Depreciation correctness (IAS 16 / IAS 36 / ASC 360).** Asset management supports straight-line, declining-balance (with optional switch to straight-line), and units-of-production methods, with salvage value, mid-period proration, IAS 16 revaluation, IAS 36 / ASC 360 impairment and reversal, and disposal gain/loss against net book value — implemented in the depreciation schedule compute [addons/account_asset_management/models/account_asset.py:L1578] and documented per story AM-001..006 in the manifest [addons/account_asset_management/__manifest__.py:L41].
-2. **Budget variance correctness.** Variance is computed per budget line against posted actuals [addons/account_budget_management/models/budget_budget_line.py:L447] and surfaced through the budget-vs-actual report [addons/account_budget_management/report/budget_vs_actual_report.py]; the BM-004 variance report meets its <3s/1,000-line SLA [blitzy/documentation/Project Guide.md:L222].
+2. **Budget variance correctness.** Variance is computed per budget line against posted actuals [addons/account_budget_management/models/budget_budget_line.py:L447] and surfaced through the budget-vs-actual report [addons/account_budget_management/report/budget_vs_actual_report.py:L71]; the BM-004 variance report meets its <3s/1,000-line SLA [blitzy/documentation/Project Guide.md:L222].
 3. **Revenue recognition (ASC 606 / IFRS 15).** Deferred schedules generate recognition lines by straight-line/date-based/manual allocation with fiscal-year boundary handling and lock-date-enforced cut-off entries [addons/account_deferred_revenue/models/account_deferred_schedule.py:L580], with the DR-003 cut-off wizard integrating Odoo 19.0's `account.lock_exception` [addons/account_deferred_revenue/__manifest__.py:L36].
-4. **Dunning / overdue correctness.** Per-partner aging buckets and `days_overdue` drive multi-level follow-up; aging is computed on the partner [addons/account_payment_followup/models/res_partner.py:L214] and per move line [addons/account_payment_followup/models/account_move_line.py:L104], and rendered through the QWeb follow-up report [addons/account_payment_followup/report/followup_report.xml].
-5. **Traceability.** Each calculation traces to a `tickets/` story (AM/BM/DR/PF) and the financial-report family (13 templates) is documented and partitioned under `account_financial_report_ce` [addons/account_financial_report_ce/report/].
+4. **Dunning / overdue correctness.** Per-partner aging buckets and `days_overdue` drive multi-level follow-up; aging is computed on the partner [addons/account_payment_followup/models/res_partner.py:L214] and per move line [addons/account_payment_followup/models/account_move_line.py:L104], and rendered through the QWeb follow-up report [addons/account_payment_followup/report/followup_report.xml:L87].
+5. **Traceability.** Each calculation traces to a `tickets/` story (AM/BM/DR/PF) and the financial-report family (13 templates) is documented and partitioned under `account_financial_report_ce` [addons/account_financial_report_ce/report/report_templates.xml:L1].
 
 **Reviewer observations (non-blocking):** (a) the **PF-002** follow-up cron renders 500-partner batches **with** PDF attachments in ~557s vs a <60s target; the no-PDF path completes in ~9.86s and a 500-partner batch cap is honored — a performance-tuning item, not a correctness defect [blitzy/documentation/Project Guide.md:L225]. (b) **AM-003** depreciation-board performance is verified only up to 480 periods (40 years monthly), beyond typical useful life [blitzy/documentation/Project Guide.md:L221]. Both are routed to the risk register; neither is a build/test/correctness failure and neither meets the `BLOCKED` threshold.
 
-**Verdict — Phase 5 (Business / Domain): APPROVED**
+**Verdict — Phase 5 (Business / Domain): PENDING**
 
 ---
 
@@ -318,15 +325,15 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
 
 **Findings (file:line):**
 
-1. **View validity and breadth.** Each module ships the expected view set — form, tree/list, kanban, and (for assets) graph — e.g. asset form/tree and category views [addons/account_asset_management/views/account_asset_views.xml] and the read-only depreciation board (list/kanban/graph) [addons/account_asset_management/views/depreciation_board_views.xml].
-2. **Action / menu wiring.** Menus and window actions are declared and wired to the new models via dedicated `menuitem.xml` files, reachable from the Accounting menu [addons/account_asset_management/views/menuitem.xml].
-3. **Wizard UI.** Transient-model wizards expose their forms through `wizard/*_views.xml` (asset disposal/modification, deferred cut-off, follow-up report), correctly partitioned to the Frontend domain rather than Backend [addons/account_asset_management/views/asset_disposal_views.xml].
-4. **SCSS assets.** Each module provides a scoped stylesheet — `asset_management.scss`, `budget_management.scss`, `deferred_revenue.scss`, `payment_followup.scss` — registered through the manifest assets convention [addons/account_asset_management/static/src/scss/asset_management.scss].
+1. **View validity and breadth.** Each module ships the expected view set — form, tree/list, kanban, and (for assets) graph — e.g. asset form/tree and category views [addons/account_asset_management/views/account_asset_views.xml:L46] and the read-only depreciation board (list/kanban/graph) [addons/account_asset_management/views/depreciation_board_views.xml:L94].
+2. **Action / menu wiring.** Menus and window actions are declared and wired to the new models via dedicated `menuitem.xml` files, reachable from the Accounting menu [addons/account_asset_management/views/menuitem.xml:L29].
+3. **Wizard UI.** Transient-model wizards expose their forms through `wizard/*_views.xml` (asset disposal/modification, deferred cut-off, follow-up report), correctly partitioned to the Frontend domain rather than Backend [addons/account_asset_management/views/asset_disposal_views.xml:L87].
+4. **SCSS assets.** Each module provides a scoped stylesheet — `asset_management.scss`, `budget_management.scss`, `deferred_revenue.scss`, `payment_followup.scss` — registered through the manifest assets convention [addons/account_asset_management/static/src/scss/asset_management.scss:L1].
 5. **Runtime UI verification.** 197 QA screenshots across desktop (1280/1920), tablet (768), and mobile (375) breakpoints confirm rendered correctness; visual-fidelity issues found in QA Checkpoints 4 (28) and 6 (7) were resolved before the passing state was declared [blitzy/documentation/Project Guide.md:L205].
 
 **Reviewer observations (non-blocking):** none. Frontend scope is clean and screenshot-verified.
 
-**Verdict — Phase 6 (Frontend): APPROVED**
+**Verdict — Phase 6 (Frontend): PENDING**
 
 ---
 
@@ -336,14 +343,14 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
 
 **Findings (file:line):**
 
-1. **Requirement traceability.** The requirement tree is complete and hierarchical — `EPIC-001` → six feature specs `FEATURE-001`..`FEATURE-006` → 32 stories across six tracks (financial-reporting 7, asset-management 6, bank-reconciliation 5, budget-management 5, payment-followups 5, deferred-revenue 4) → 3 templates [tickets/EPIC-001-enterprise-accounting.md]. Each feature maps one-to-one to a delivered addon, and each story maps to a `test_<story_id>.py` module (Phase 4).
+1. **Requirement traceability.** The requirement tree is complete and hierarchical — `EPIC-001` → six feature specs `FEATURE-001`..`FEATURE-006` → 32 stories across six tracks (financial-reporting 7, asset-management 6, bank-reconciliation 5, budget-management 5, payment-followups 5, deferred-revenue 4) → 3 templates [tickets/EPIC-001-enterprise-accounting.md:L1]. Each feature maps one-to-one to a delivered addon, and each story maps to a `test_<story_id>.py` module (Phase 4).
 2. **Blitzy deliverables.** `blitzy/documentation/` carries the regenerated Technical Specifications (archaeology report) and Project Guide; `blitzy/screenshots/` holds the 20 packaged UI captures referenced by the runtime-validation evidence [blitzy/documentation/Project Guide.md:L205].
 3. **End-user documentation.** `docs/SETUP.md` and `docs/USER_GUIDE.md` provide onboarding/runbook content consistent with the development guide in the Project Guide §9 [blitzy/documentation/Project Guide.md:L397].
 4. **Documentation accuracy.** Documentation-accuracy and hallucination fixes were applied at QA Checkpoint 9 prior to the passing state, and citations in the regenerated specs resolve against `origin/pdlc` paths [blitzy/documentation/Project Guide.md:L284].
 
 **Reviewer observations (non-blocking):** a cross-cutting supply-chain note surfaced during documentation review — a security-scan branch bumped Mermaid to **11.10.0** for **CVE-2025-54881**, whereas the binding Executive Presentation rule pins Mermaid **11.4.0**. This bump lives on an **unmerged** branch and is **not part of the 278-file synthetic change set**, so it is not a file under review in any phase; it is recorded in the risk register for reconciliation when the executive deck is finalized. Not blocking.
 
-**Verdict — Phase 7 (Other SME): APPROVED**
+**Verdict — Phase 7 (Other SME): PENDING**
 
 ---
 
@@ -351,20 +358,9 @@ The matrix above is exhaustive; the following lists anchor each domain to concre
 
 **Reviewer:** Final Reviewer (independent, review-only).
 
-With all seven domain phases `APPROVED`, the final reviewer re-verified — against the delivered `origin/pdlc` state — deliverable presence and functionality, build, tests, and static analysis:
+_Final re-verification is pending completion of all seven sequential domain phases; the final verdict will be recorded only after Phase 7 resolves to `APPROVED`._
 
-| Re-verification | Outcome | Evidence |
-|-----------------|:-------:|----------|
-| Deliverables present at specified paths | PASS | Technical Specifications + Project Guide on `origin/pdlc` [blitzy/documentation/Project Guide.md:L1]; `CODE_REVIEW.md` + executive deck produced this run |
-| Build — zero errors / zero warnings | PASS | All installs exit 0, `19.0.1.0.0` installed [blitzy/documentation/Project Guide.md:L176] |
-| Tests — all pass | PASS | 619/619, 0 failed / 0 errors [blitzy/documentation/Project Guide.md:L146] |
-| Static analysis — zero violations | PASS | `ruff` "All checks passed!" [blitzy/documentation/Project Guide.md:L263] |
-| No production-path stub | PASS | First-hand py_compile 47/47 + clean stub scan (§B condition 5) |
-| Verdict discipline | PASS | All seven phase verdicts are exactly `APPROVED`; no qualifiers |
-
-**Rationale.** The pre-flight gate passed on all five binding conditions; all seven sequential domain phases resolved to `APPROVED` with no `BLOCKED` finding raised; and re-verification against the delivered state reproduces the same passing evidence. The non-blocking observations (PF-002 with-PDF performance, the literal per-story R-04 interpretation, AM-003 horizon, the unmerged Mermaid/CVE bump, and a documentation ACL-count wording nuance) are tracked in the risk register; none is a build, test, static-analysis, or production-stub failure, and therefore none meets the `BLOCKED` threshold or qualifies this verdict.
-
-**Final Verdict: APPROVED**
+**Final Verdict: PENDING**
 
 ---
 

@@ -614,3 +614,25 @@ Per-domain subtotals below reconcile **exactly** to the §C.2 matrix column tota
 **Verdict — Phase 2 (Security): APPROVED**
 
 ---
+
+### Phase 3 — Backend Architecture  ·  Reviewer: Odoo ORM / Backend Architecture SME (review-only)
+
+**Files reviewed:** the 41 files in the Backend Architecture column of §C.2 — all `models/**.py` and `wizard/**.py` across the six addons, anchored on the four newest.
+
+**Findings (file:line):**
+
+1. **`_name` vs `_inherit` discipline (R-03).** Net-new tables declare `_name`; core extensions use `_inherit` exclusively — verified across all four modules:
+   - `account_asset_management`: `_name = 'account.asset'` [addons/account_asset_management/models/account_asset.py:L133], `_name = 'account.asset.category'` [addons/account_asset_management/models/account_asset_category.py:L90], `_name = 'account.asset.depreciation.line'` [addons/account_asset_management/models/account_asset_depreciation_line.py:L95]; core extension `_inherit = 'account.move'` [addons/account_asset_management/models/account_move.py:L119].
+   - `account_budget_management`: `_name = 'budget.budget'` [addons/account_budget_management/models/budget_budget.py:L74], `_name = 'budget.budget.line'` [addons/account_budget_management/models/budget_budget_line.py:L127], `_name = 'budget.budget.period'` [addons/account_budget_management/models/budget_period.py:L177], `_name = 'budget.alert'` [addons/account_budget_management/models/budget_alert.py:L114]; extension `_inherit = 'account.analytic.account'` [addons/account_budget_management/models/account_analytic_account.py:L126].
+   - `account_deferred_revenue`: `_name = 'account.deferred.schedule'` [addons/account_deferred_revenue/models/account_deferred_schedule.py:L36], `_name = 'account.deferred.line'` [addons/account_deferred_revenue/models/account_deferred_line.py:L49].
+   - `account_payment_followup`: `_name = 'account.followup.level'` [addons/account_payment_followup/models/account_followup_level.py:L68], `_name = 'account.followup.line'` [addons/account_payment_followup/models/account_followup_line.py:L79], `_name = 'account.followup.history'` [addons/account_payment_followup/models/account_followup_history.py:L106]; extension `_inherit = 'res.partner'` [addons/account_payment_followup/models/res_partner.py:L78].
+2. **Mixin composition.** Aggregate-root models correctly compose chatter/activity mixins — `_inherit = ['mail.thread', 'mail.activity.mixin']` on `account.asset` [addons/account_asset_management/models/account_asset.py:L134] and `account.deferred.schedule` [addons/account_deferred_revenue/models/account_deferred_schedule.py:L38]; `budget.budget.line` composes `analytic.mixin` for multi-dimensional analytic distribution [addons/account_budget_management/models/budget_budget_line.py:L129].
+3. **Computed fields.** Domain computes are method-backed and dependency-driven (not stored-without-trigger), e.g. depreciation schedule [addons/account_asset_management/models/account_asset.py:L1578], variance [addons/account_budget_management/models/budget_budget_line.py:L447], recognition schedule [addons/account_deferred_revenue/models/account_deferred_schedule.py:L580], partner aging [addons/account_payment_followup/models/res_partner.py:L214].
+4. **Transient wizard flows.** Wizards are `TransientModel`s with disjoint field sets (R-08) — e.g. budget variance vs. budget alert occupy different tables with no field collision; asset disposal/modification, deferred cut-off, and follow-up report wizards each drive a single bounded transaction [addons/account_budget_management/wizard/budget_variance_wizard.py:L69].
+5. **Compilation.** All 47 production model/wizard/report `.py` files byte-compile cleanly (§B condition 5).
+
+**Reviewer observations (non-blocking):** none affecting architecture; aggregate per-module coverage on backend modules is 86–96% per file [blitzy/documentation/Project Guide.md:L160].
+
+**Verdict — Phase 3 (Backend Architecture): APPROVED**
+
+---

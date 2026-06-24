@@ -228,58 +228,26 @@ screen, from where figures drill down to source journal items and export to
 PDF or Excel
 (Source: ``addons/account_financial_report_ce/wizard/financial_report_wizard.py:30``).
 
-FR-001: Balance Sheet
----------------------
+All seven reports (FR-001 through FR-007) launch the same way — pick the
+report from the **Financial Reports** menu, complete the wizard, then review
+it on screen with drill-down and PDF/Excel export. Each report and its backing
+model are catalogued in the **Features and Reports** section above; the
+report-specific wizard options are summarised here.
 
-Produces a statement of financial position that validates
-Assets = Liabilities + Equity, classifying accounts through the
-``account.account`` ``account_type`` field and supporting comparative periods
-and zero-balance hiding — model ``account.balance.sheet.report``
-(Source: ``addons/account_financial_report_ce/models/balance_sheet.py:62``).
-
-FR-002: Profit & Loss
----------------------
-
-Produces an income statement broken into Revenue, Cost of Goods Sold,
-Operating Expenses, and Net Income, with optional hierarchical grouping and
-comparative periods — model ``account.profit.loss.report``
-(Source: ``addons/account_financial_report_ce/models/profit_loss.py:50``).
-
-FR-003: Cash Flow Statement
----------------------------
-
-Produces an indirect-method cash flow statement with operating, investing,
-and financing activity sections — model ``account.cash.flow.report``
-(Source: ``addons/account_financial_report_ce/models/cash_flow.py:55``).
-
-FR-004: General Ledger
-----------------------
-
-Lists every posted transaction per account with running balances and an
-optional opening (initial) balance — model ``account.general.ledger.report``
-(Source: ``addons/account_financial_report_ce/models/general_ledger.py:33``).
-
-FR-005: Trial Balance
----------------------
-
-Lists each account's debit and credit totals and verifies overall
-debit/credit equality — model ``account.trial.balance.report``
-(Source: ``addons/account_financial_report_ce/models/trial_balance.py:78``).
-
-FR-006: Aged Receivable/Payable
--------------------------------
-
-Ages partner balances across 30 / 60 / 90 / 120+ day buckets for receivables
-or payables — model ``account.aged.partner.balance.report``
-(Source: ``addons/account_financial_report_ce/models/aged_partner_balance.py:70``).
-
-FR-007: Report Export and Drill-down
-------------------------------------
-
-Every report renders to PDF through its QWeb template and exports to Excel
-(``.xlsx``) through the ``openpyxl`` dependency; report figures drill down to
-the underlying journal items
-(Source: ``addons/account_financial_report_ce/models/financial_report.py:29``).
+* **FR-001 Balance Sheet** — validates Assets = Liabilities + Equity, with
+  comparative periods and zero-balance hiding.
+* **FR-002 Profit & Loss** — Revenue, COGS, Operating Expenses, and Net Income
+  sections with optional hierarchical grouping and comparative periods.
+* **FR-003 Cash Flow Statement** — indirect-method operating, investing, and
+  financing activity sections.
+* **FR-004 General Ledger** — per-account transactions with running balances
+  and an optional opening (initial) balance.
+* **FR-005 Trial Balance** — debit/credit equality verification across all
+  accounts.
+* **FR-006 Aged Receivable/Payable** — partner aging across 30 / 60 / 90 /
+  120+ day buckets for receivables or payables.
+* **FR-007 Report Export and Drill-down** — PDF via QWeb plus Excel (``.xlsx``)
+  via ``openpyxl``, drilling each figure down to its source journal items.
 
 Technical Notes
 ===============

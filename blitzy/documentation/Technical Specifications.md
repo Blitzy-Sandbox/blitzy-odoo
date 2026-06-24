@@ -4,7 +4,7 @@
 > **Engagement:** Archaeology of all merged Blitzy-Agent changes treated as this-run work, plus an in-depth Segmented PR Review of that same change set.
 > **Subject:** An Enterprise Accounting Suite of six net-new Odoo Community-Edition addons.
 > **Archaeology window:** `sandbox @ 7bd7718bcd4` (pre-Blitzy baseline) → `origin/pdlc @ 13896915095` (merged-work tip).
-> **Headline KPIs:** 278 files · 6 addons · +134,588 insertions · 0 deletions · Segmented PR Review verdict **APPROVED**.
+> **Headline KPIs:** 278 files · 6 addons · +134,588 insertions · 0 deletions · Segmented PR Review: _planned_ (verdict to be recorded in the planned root `CODE_REVIEW.md`).
 >
 > *Source: `git diff --name-status 7bd7718bcd4..13896915095` (the archaeology diff).*
 
@@ -25,7 +25,7 @@
 
 # 0. Agent Action Plan
 
-> Section 0 **is** this run's Agent Action Plan (AAP) for the dual *archaeology + Segmented PR Review* engagement. It retains subsection numbering **0.1 through 0.12**. The root `CODE_REVIEW.md` and the executive deck (`blitzy-deck/executive-summary.html`) cite this section by number; in particular `§0.10` (Execution Parameters / review gate) and `§0.11` (rules R-1 and R-2) are authored under those exact numbers so that downstream citations resolve.
+> Section 0 **is** this run's Agent Action Plan (AAP) for the dual *archaeology + Segmented PR Review* engagement. It retains subsection numbering **0.1 through 0.12**. The planned root `CODE_REVIEW.md` and the planned executive deck (`blitzy-deck/executive-summary.html`) will cite this section by number; in particular `§0.10` (Execution Parameters / review gate) and `§0.11` (rules R-1 and R-2) are authored under those exact numbers so that those downstream citations resolve.
 
 ## 0.1 Intent Clarification
 
@@ -203,9 +203,9 @@ The Executive Presentation rule specifies a proprietary design system — the **
 ### 0.4.1 System Identification
 
 - **Library:** Blitzy reveal.js theme (proprietary, in-repo), composed on top of reveal.js.
-- **Version / status:** the runtime is reveal.js 5.1.0 loaded via CDN; the brand layer is the repository's canonical theme file. Status: the canonical theme is a **REFERENCE** artifact; the deck embeds the theme inline (self-contained, no local file dependency).
+- **Version / status:** the runtime is reveal.js 5.1.0 loaded via CDN; the brand layer is the deck's canonical theme. Status: the canonical theme is a **planned REFERENCE** artifact — authored in the later deck checkpoint and not yet present at this milestone — that the deck will embed inline (self-contained, no local file dependency).
 - **Package / source:** CDN-pinned reveal.js 5.1.0, Mermaid 11.4.0, and Lucide 0.460.0, plus Google Fonts (Inter, Space Grotesk, Fira Code).
-- **Source inspected:** the canonical theme `blitzy-deck/references/blitzy-reveal-theme.css` defines the `:root` custom properties and the slide/component classes the deck must use.
+- **Source (planned reference):** the canonical theme `blitzy-deck/references/blitzy-reveal-theme.css` — a planned deck artifact to be authored in the later deck checkpoint (not present at this milestone) — will define the `:root` custom properties and the slide/component classes the deck must use.
 
 ### 0.4.2 Component Mapping
 
@@ -244,7 +244,7 @@ Because no Figma source is provided, the design values are the system tokens the
 ### 0.4.4 Gaps Inventory
 
 - **No dedicated data-table component.** The theme provides no table primitive; the change-inventory slide uses a styled HTML `<table>` whose every value resolves to theme tokens (`--blitzy-border`, `--blitzy-surface-*`). This is acceptable graceful degradation (generic container styled with system tokens).
-- **Surface-token divergence between the rule snippet and the canonical theme.** The rule's inline-CSS template lists `--blitzy-surface-1:#F4EFF6`, `--blitzy-surface-2:#F2F0FE`, `--blitzy-surface-3:#F5F5F5`, whereas the canonical theme file resolves `--blitzy-surface-1:#F5F5F5`, `--blitzy-surface-2:#F4EFF6`, `--blitzy-surface-3:#D9D9D9`. **Resolution:** the canonical theme file is authoritative for surface values; the deck must reconcile to it.
+- **Surface-token divergence between the rule snippet and the canonical theme.** The rule's inline-CSS template lists `--blitzy-surface-1:#F4EFF6`, `--blitzy-surface-2:#F2F0FE`, `--blitzy-surface-3:#F5F5F5`, whereas the planned canonical theme is specified to resolve `--blitzy-surface-1:#F5F5F5`, `--blitzy-surface-2:#F4EFF6`, `--blitzy-surface-3:#D9D9D9`. **Resolution:** the canonical theme is authoritative for surface values; the deck must reconcile to it.
 
 ### 0.4.5 Compliance Summary
 
@@ -291,20 +291,18 @@ Mermaid diagrams are the default visual. Planned diagrams:
 - **Traceability diagram:** EPIC-001 → six FEATUREs → addon mapping.
 - **Review pipeline (in `CODE_REVIEW.md`):** Archaeology Report → Phase 1 → … → Phase 7 → all `APPROVED` → PR Ready, with any `BLOCKED` routing to a remediation queue.
 
-A representative architecture diagram:
+A representative architecture sketch follows as pseudocode; the single canonical, rendered Mermaid system-architecture diagram lives in §3.1 (this sketch is intentionally non-rendered to avoid duplicating that diagram):
 
-```mermaid
-graph TD
-    subgraph Odoo Community Edition
-        ACC[account base module]
-    end
-    AFR[account_financial_report_ce] --> ACC
-    APF[account_payment_followup] --> ACC
-    ABR[account_bank_reconciliation_ce] --> ACC
-    AAM[account_asset_management] --> ACC
-    ABM[account_budget_management] --> ACC
-    ADR[account_deferred_revenue] --> ACC
-    ACC --> ORM[(Odoo ORM / PostgreSQL)]
+```text
+Odoo Community Edition
+  account                          (base accounting module)
+    ^  account_financial_report_ce  --> account
+    ^  account_payment_followup      --> account
+    ^  account_bank_reconciliation_ce --> account
+    ^  account_asset_management       --> account
+    ^  account_budget_management      --> account
+    ^  account_deferred_revenue       --> account
+  account                          --> Odoo ORM / PostgreSQL
 ```
 
 In the executive deck, the same relationships are rendered via `<pre class="mermaid">` using the brand Mermaid theme variables, and KPI metrics are rendered as `.kpi-card` tiles rather than prose.
@@ -323,7 +321,7 @@ This sub-section enumerates every documentation file the run touches, with the t
 | `blitzy-deck/executive-summary.html` | CREATE | Technical Spec + `CODE_REVIEW.md` | Single self-contained reveal.js 5.1.0 deck, 16 slides, Blitzy brand, Mermaid 11.4.0 + Lucide 0.460.0, KPI cards (rule R-1) |
 | `addons/account_bank_reconciliation_ce/README.rst` | CREATE | manifest + `models/` + `wizard/` | Addon README (Overview / Features / Configuration / Usage) — remediates the missing-README gap; follows the four existing addon READMEs |
 | `addons/account_financial_report_ce/README.rst` | CREATE | manifest + `models/` + `report/` | Addon README (Overview / Features / Reports / Usage) — remediates the missing-README gap |
-| `blitzy-deck/references/blitzy-reveal-theme.css` | REFERENCE | (canonical theme) | Brand tokens + slide/component classes the deck's inline CSS mirrors |
+| `blitzy-deck/references/blitzy-reveal-theme.css` | REFERENCE (planned) | (planned canonical theme) | Brand tokens + slide/component classes the deck's inline CSS will mirror — planned deck artifact authored in the later deck checkpoint |
 | `addons/account_asset_management/README.rst` | REFERENCE | (existing) | RST style/structure exemplar for the two new READMEs |
 | `addons/account_budget_management/README.rst` | REFERENCE | (existing) | RST style/structure exemplar |
 | `addons/account_deferred_revenue/README.rst` | REFERENCE | (existing) | RST style/structure exemplar |
@@ -520,7 +518,7 @@ Two user-specified rules are binding for this run. Both mandate deliverable file
 - Visual identity: the Blitzy brand palette, Inter / Space Grotesk / Fira Code typography (Google Fonts), the hero/divider/accent gradients, and the inline `:root` CSS custom properties preserved verbatim in §0.1.2.
 - Mermaid: embed as `<pre class="mermaid">`, initialize with `startOnLoad:false`, and call `mermaid.run()` after the reveal.js `ready` event and on every `slidechanged`; theme variables `primaryColor:'#F2F0FE'`, `primaryTextColor:'#333333'`, `primaryBorderColor:'#5B39F3'`, `lineColor:'#999999'`, `secondaryColor:'#F4EFF6'`.
 - Technical delivery: a single self-contained HTML file, no build steps, no local file dependencies; CDN versions pinned to reveal.js 5.1.0, Mermaid 11.4.0, Lucide 0.460.0; reveal.js config `hash:true`, `transition:'slide'`, `controlsTutorial:false`, `width:1920`, `height:1080`; `lucide.createIcons()` called after `ready` and on every `slidechanged`.
-- The canonical theme lives at `blitzy-deck/references/blitzy-reveal-theme.css`; where the rule's inline snippet and the canonical file diverge on surface tokens, the canonical file is authoritative (§0.4.4).
+- The canonical theme is specified to live at `blitzy-deck/references/blitzy-reveal-theme.css` (a planned deck artifact created in the later deck checkpoint); where the rule's inline snippet and the canonical file diverge on surface tokens, the canonical file is authoritative (§0.4.4).
 - **Verification:** the HTML opens in a browser, renders all Mermaid diagrams and Lucide icons, contains 12–18 `<section>` elements, and every `<section>` contains at least one non-text visual.
 
 #### R-2 — Segmented PR Review
@@ -555,7 +553,7 @@ All inputs to this plan derive from the user's request, the two user-specified r
 
 # 1. Executive Summary of the Archaeology Engagement
 
-This Technical Specification is a **code-archaeology report**: it inventories and explains, in full, every change that Blitzy Agents merged into this repository between the pre-Blitzy baseline and the merged-work tip, and it treats the entire delta as if it were authored during this run. The same change set is then subjected to an in-depth **Segmented PR Review** (recorded in the root `CODE_REVIEW.md`) and summarized for leadership in a self-contained reveal.js deck (`blitzy-deck/executive-summary.html`).
+This Technical Specification is a **code-archaeology report**: it inventories and explains, in full, every change that Blitzy Agents merged into this repository between the pre-Blitzy baseline and the merged-work tip, and it treats the entire delta as if it were authored during this run. The same change set is then subjected to an in-depth **Segmented PR Review** (to be recorded in the planned root `CODE_REVIEW.md`) and summarized for leadership in a self-contained reveal.js deck (the planned `blitzy-deck/executive-summary.html`).
 
 ## 1.1 What Was Merged
 
@@ -563,7 +561,7 @@ The merged work is a single, coherent body of net-new code: an **Enterprise Acco
 
 ## 1.2 Headline KPIs
 
-These KPIs are mirrored by the executive deck (`blitzy-deck/executive-summary.html`) and the review record (`CODE_REVIEW.md`).
+These KPIs will be mirrored by the planned executive deck (`blitzy-deck/executive-summary.html`) and the planned review record (`CODE_REVIEW.md`) — both authored in later checkpoints.
 
 | KPI | Value | Source |
 |-----|-------|--------|
@@ -571,12 +569,12 @@ These KPIs are mirrored by the executive deck (`blitzy-deck/executive-summary.ht
 | Change type | **All Added** (status `A`) | `git diff --name-status 7bd7718bcd4..13896915095` |
 | Insertions | **+134,588** | `git diff --shortstat 7bd7718bcd4..13896915095` |
 | Deletions | **0** | `git diff --shortstat 7bd7718bcd4..13896915095` |
-| Net-new addons | **6** | `git diff --name-only … \| addons/ tally` |
+| Net-new addons | **6** | `git diff --name-only 7bd7718bcd4..13896915095 -- addons/` (count of distinct addon directories) |
 | `agent@blitzy.com` commits | **307** | `git log --author=agent@blitzy.com 7bd7718bcd4..13896915095` |
 | `blitzy[bot]` merge commits | **3** | `git log 7bd7718bcd4..13896915095` |
 | Total commits in range | **310** | `git log 7bd7718bcd4..13896915095` |
 | EPIC / FEATUREs / Stories | **1 / 6 / 32** | `tickets/EPIC-001-enterprise-accounting.md` |
-| Segmented PR Review verdict | **APPROVED** | `CODE_REVIEW.md` (rule R-2) |
+| Segmented PR Review verdict | _Planned_ (pending) | downstream — to be recorded in the planned root `CODE_REVIEW.md` (rule R-2) |
 
 ## 1.3 How This Report Is Organized
 
@@ -592,7 +590,7 @@ These KPIs are mirrored by the executive deck (`blitzy-deck/executive-summary.ht
 
 # 2. Archaeology Facts and Authorship Attribution
 
-All figures in this section were confirmed by running git against this repository over the archaeology window. They are stated verbatim and are the authoritative numbers mirrored elsewhere in this report, in `CODE_REVIEW.md`, and in the executive deck.
+All figures in this section were confirmed by running git against this repository over the archaeology window. They are stated verbatim and are the authoritative numbers mirrored elsewhere in this report and, in later checkpoints, in the planned `CODE_REVIEW.md` and the planned executive deck.
 
 ## 2.1 Archaeology Window
 
@@ -614,7 +612,7 @@ The entire 278-file delta is attributable to Blitzy Agents and is treated as thi
 | `blitzy[bot]` | **3** | Merge commits integrating the work |
 | **Total** | **310** | — |
 
-*Source: `git log --author=agent@blitzy.com 7bd7718bcd4..13896915095` (307); `git log --format='%an' 7bd7718bcd4..13896915095 \| sort \| uniq -c` (307 + 3 = 310).*
+*Source: `git log --author=agent@blitzy.com 7bd7718bcd4..13896915095` (307); `git log --format='%an' 7bd7718bcd4..13896915095 | sort | uniq -c` (307 + 3 = 310).*
 
 Because the baseline contains zero `agent@blitzy.com` commits and every one of the 278 files has git status `A` (Added), there is no pre-existing Blitzy code to disentangle: the delta **is** the Blitzy contribution in its entirety.
 
@@ -652,7 +650,7 @@ By top-level directory (sums to 278) [Source: `git diff --name-only 7bd7718bcd4.
 
 ## 2.5 Per-Addon File Counts
 
-The 206 addon files distribute across the six addons as follows (sums to 206) [Source: `git diff --name-only 7bd7718bcd4..13896915095 \| addons/<addon> tally`]:
+The 206 addon files distribute across the six addons as follows (sums to 206) [Source: `git diff --name-only 7bd7718bcd4..13896915095 -- addons/ | sed 's#addons/\([^/]*\)/.*#\1#' | sort | uniq -c`]:
 
 | Addon | FEATURE | Files | Has `README.rst`? |
 |-------|---------|-------|-------------------|
@@ -683,7 +681,7 @@ The Enterprise Accounting Suite is six independent Odoo Community-Edition addons
 
 ## 3.1 System-Architecture Diagram
 
-The following diagram shows the six addons layered on the `account` base module, which in turn persists through the Odoo ORM to PostgreSQL [Source: AAP §0.5.3; each `addons/<addon>/__manifest__.py` `depends` key].
+The following diagram shows the six addons layered on the `account` base module, which in turn persists through the Odoo ORM to PostgreSQL [Source: AAP §0.5.3; the `depends` key in `addons/account_financial_report_ce/__manifest__.py`, `addons/account_payment_followup/__manifest__.py`, `addons/account_bank_reconciliation_ce/__manifest__.py`, `addons/account_asset_management/__manifest__.py`, `addons/account_budget_management/__manifest__.py`, and `addons/account_deferred_revenue/__manifest__.py`].
 
 ```mermaid
 graph TD
@@ -712,7 +710,7 @@ Each addon integrates with the core accounting ledger through one or more of thr
 | `account_deferred_revenue` | `account` | `account.deferred.schedule`, `account.deferred.line` | `account.move`, `account.move.line` |
 | `account_payment_followup` | `account`, `mail` | `account.followup.level`, `account.followup.line`, `account.followup.history` | `res.partner`, `account.move`, `account.move.line` |
 
-*Source: per-addon `__manifest__.py` `depends`; `addons/<addon>/models/*.py` `_name`/`_inherit` declarations.*
+*Source: the `depends` key in each of the six addons' `__manifest__.py`, and the `_name`/`_inherit` declarations under each addon's `models/` directory — `addons/account_financial_report_ce/models/`, `addons/account_bank_reconciliation_ce/models/`, `addons/account_budget_management/models/`, `addons/account_asset_management/models/`, `addons/account_deferred_revenue/models/`, and `addons/account_payment_followup/models/` (each per-model file is cited individually in the Section 4 feature catalog).*
 
 # 4. Feature Catalog: The Enterprise Accounting Suite
 
@@ -743,39 +741,39 @@ The suite is documented here as a single EPIC (`EPIC-001` — "Enterprise Accoun
   - `partial_reconcile_ext.py` extends `account.bank.statement.line` via `_inherit` and adds an `account.reconciliation.partial.helper` for write-off handling [Source: `addons/account_bank_reconciliation_ce/models/partial_reconcile_ext.py`].
 - **Wizards.** `wizard/bank_statement_import_wizard.py` and `wizard/reconciliation_wizard.py` (with their `_views.xml`) drive the import and manual/partial reconciliation UI [Source: `addons/account_bank_reconciliation_ce/wizard/`].
 - **Report.** `report/reconciliation_report.py` (+ `reconciliation_report.xml`) [Source: `addons/account_bank_reconciliation_ce/report/`].
-- **Configuration / security.** `data/reconciliation_data.xml`; `security/bank_reconciliation_security.xml` + `security/ir.model.access.csv` [Source: `addons/account_bank_reconciliation_ce/data/`, `.../security/`]. Sample statements for all four formats ship under `tests/test_files/{sample.csv,sample.ofx,sample.qif,sample_camt053.xml}` and `test_data/bank_statements/` [Source: `addons/account_bank_reconciliation_ce/tests/test_files/`; `test_data/bank_statements/`].
+- **Configuration / security.** `data/reconciliation_data.xml`; `security/bank_reconciliation_security.xml` + `security/ir.model.access.csv` [Source: `addons/account_bank_reconciliation_ce/data/reconciliation_data.xml`, `addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml`, `addons/account_bank_reconciliation_ce/security/ir.model.access.csv`]. Sample statements for all four formats ship under `tests/test_files/` as `sample.csv`, `sample.ofx`, `sample.qif`, and `sample_camt053.xml`, plus `test_data/bank_statements/` [Source: `addons/account_bank_reconciliation_ce/tests/test_files/sample.csv`, `addons/account_bank_reconciliation_ce/tests/test_files/sample.ofx`, `addons/account_bank_reconciliation_ce/tests/test_files/sample.qif`, `addons/account_bank_reconciliation_ce/tests/test_files/sample_camt053.xml`; `test_data/bank_statements/`].
 - **Integration.** Consumes core `account.bank.statement.line` and `account.reconcile.model`; reconciliation posts against the standard ledger.
 
 ## 4.3 FEATURE-003 — `account_budget_management` (Budget Management)
 
 - **Purpose / manifest.** "Budget Management", version **19.0.1.0.0**, category **Accounting/Accounting**, license **AGPL-3**, `depends = ['account', 'analytic']` [Source: `addons/account_budget_management/__manifest__.py`]. **31 files**; ships a `README.rst`.
-- **Public models.** `budget.budget`, `budget.budget.line` (composes `analytic.mixin`), `budget.budget.period` (file `budget_period.py`), and `budget.alert`; plus `_inherit` extensions of `account.analytic.account` and `account.move` [Source: `addons/account_budget_management/models/budget_budget.py`, `.../budget_budget_line.py`, `.../budget_period.py`, `.../budget_alert.py`, `.../account_analytic_account.py`, `.../account_move.py`].
-- **Wizard / report.** `wizard/budget_variance_wizard.py` computes variance; `report/budget_vs_actual_report.py` renders actual-vs-budget [Source: `addons/account_budget_management/wizard/budget_variance_wizard.py`; `.../report/budget_vs_actual_report.py`].
-- **Configuration / security.** **BM-005 alert cron** in `data/budget_alert_cron.xml` plus seed data in `data/budget_data.xml`; `security/budget_security.xml` + `security/ir.model.access.csv` [Source: `addons/account_budget_management/data/`, `.../security/`].
+- **Public models.** `budget.budget`, `budget.budget.line` (composes `analytic.mixin`), `budget.budget.period` (file `budget_period.py`), and `budget.alert`; plus `_inherit` extensions of `account.analytic.account` and `account.move` [Source: `addons/account_budget_management/models/budget_budget.py`, `addons/account_budget_management/models/budget_budget_line.py`, `addons/account_budget_management/models/budget_period.py`, `addons/account_budget_management/models/budget_alert.py`, `addons/account_budget_management/models/account_analytic_account.py`, `addons/account_budget_management/models/account_move.py`].
+- **Wizard / report.** `wizard/budget_variance_wizard.py` computes variance; `report/budget_vs_actual_report.py` renders actual-vs-budget [Source: `addons/account_budget_management/wizard/budget_variance_wizard.py`; `addons/account_budget_management/report/budget_vs_actual_report.py`].
+- **Configuration / security.** **BM-005 alert cron** in `data/budget_alert_cron.xml` plus seed data in `data/budget_data.xml`; `security/budget_security.xml` + `security/ir.model.access.csv` [Source: `addons/account_budget_management/data/budget_alert_cron.xml`, `addons/account_budget_management/data/budget_data.xml`, `addons/account_budget_management/security/budget_security.xml`, `addons/account_budget_management/security/ir.model.access.csv`].
 - **Integration.** Reads posted `account.move(.line)` actuals against analytic accounts to compute variance and raise alerts.
 
 ## 4.4 FEATURE-004 — `account_asset_management` (Asset Management)
 
 - **Purpose / manifest.** "Asset Management", version **19.0.1.0.0**, category **Accounting/Assets**, license **AGPL-3**, `depends = ['account']`. The manifest documents **straight-line, declining-balance, and units-of-production** depreciation with GAAP/IFRS alignment (**IAS 16, IAS 36, ASC 360**) and disposal by sale / scrapping / write-off with automatic gain/loss calculation [Source: `addons/account_asset_management/__manifest__.py`]. **31 files**; ships a `README.rst`.
-- **Public models.** `account.asset.category`, `account.asset`, `account.asset.depreciation.line`; plus `_inherit` extensions of `account.move` and `account.move.line` [Source: `addons/account_asset_management/models/account_asset_category.py`, `.../account_asset.py`, `.../account_asset_depreciation_line.py`, `.../account_move.py`, `.../account_move_line.py`].
+- **Public models.** `account.asset.category`, `account.asset`, `account.asset.depreciation.line`; plus `_inherit` extensions of `account.move` and `account.move.line` [Source: `addons/account_asset_management/models/account_asset_category.py`, `addons/account_asset_management/models/account_asset.py`, `addons/account_asset_management/models/account_asset_depreciation_line.py`, `addons/account_asset_management/models/account_move.py`, `addons/account_asset_management/models/account_move_line.py`].
 - **Wizards.** `wizard/asset_modification_wizard.py` (revaluation / useful-life changes) and `wizard/asset_disposal_wizard.py` (disposal) [Source: `addons/account_asset_management/wizard/`].
-- **Configuration / security.** **AM-004 depreciation cron** in `data/depreciation_cron.xml` and the asset numbering sequence in `data/asset_sequence.xml`; `security/asset_security.xml` + `security/ir.model.access.csv` [Source: `addons/account_asset_management/data/`, `.../security/`].
+- **Configuration / security.** **AM-004 depreciation cron** in `data/depreciation_cron.xml` and the asset numbering sequence in `data/asset_sequence.xml`; `security/asset_security.xml` + `security/ir.model.access.csv` [Source: `addons/account_asset_management/data/depreciation_cron.xml`, `addons/account_asset_management/data/asset_sequence.xml`, `addons/account_asset_management/security/asset_security.xml`, `addons/account_asset_management/security/ir.model.access.csv`].
 - **Integration.** Posts depreciation as `account.move` journal entries against the configured asset/expense accounts.
 
 ## 4.5 FEATURE-005 — `account_deferred_revenue` (Deferred Revenue)
 
 - **Purpose / manifest.** "Deferred Revenue", version **19.0.1.0.0**, category **Accounting/Accounting**, license **AGPL-3**, `depends = ['account']`; implements ASC 606 / IFRS 15 revenue recognition [Source: `addons/account_deferred_revenue/__manifest__.py`]. **26 files**; ships a `README.rst`.
-- **Public models.** `account.deferred.schedule` and `account.deferred.line`; plus `_inherit` extensions of `account.move` and `account.move.line` [Source: `addons/account_deferred_revenue/models/account_deferred_schedule.py`, `.../account_deferred_line.py`, `.../account_move.py`, `.../account_move_line.py`].
+- **Public models.** `account.deferred.schedule` and `account.deferred.line`; plus `_inherit` extensions of `account.move` and `account.move.line` [Source: `addons/account_deferred_revenue/models/account_deferred_schedule.py`, `addons/account_deferred_revenue/models/account_deferred_line.py`, `addons/account_deferred_revenue/models/account_move.py`, `addons/account_deferred_revenue/models/account_move_line.py`].
 - **Wizards.** `wizard/cutoff_wizard.py` (period cutoff entries) and `wizard/recognition_dashboard_wizard.py` (recognition dashboard) [Source: `addons/account_deferred_revenue/wizard/`].
-- **Configuration / security.** `data/deferred_data.xml` and `data/recognition_dashboard_report.xml`; `security/deferred_security.xml` + `security/ir.model.access.csv` [Source: `addons/account_deferred_revenue/data/`, `.../security/`].
+- **Configuration / security.** `data/deferred_data.xml` and `data/recognition_dashboard_report.xml`; `security/deferred_security.xml` + `security/ir.model.access.csv` [Source: `addons/account_deferred_revenue/data/deferred_data.xml`, `addons/account_deferred_revenue/data/recognition_dashboard_report.xml`, `addons/account_deferred_revenue/security/deferred_security.xml`, `addons/account_deferred_revenue/security/ir.model.access.csv`].
 - **Integration.** Generates recognition and cutoff `account.move` entries that release deferred balances over the schedule periods.
 
 ## 4.6 FEATURE-006 — `account_payment_followup` (Payment Follow-ups / Dunning)
 
 - **Purpose / manifest.** "Payment Follow-ups", version **19.0.1.0.0**, category **Accounting/Accounting**, license **AGPL-3**, `depends = ['account', 'mail']`. External Python dependency **`openpyxl`** powers PF-003 XLSX export [Source: `addons/account_payment_followup/__manifest__.py`]. **39 files**; ships a `README.rst`.
-- **Public models.** `account.followup.level` (PF-001 level configuration), `account.followup.line` (PF-005 overdue/aging summary), `account.followup.history` (PF-004 immutable audit trail, composes `mail.thread`/`mail.activity.mixin`), and a report model for PF-003; `res.partner` is extended via `_inherit` to carry follow-up fields; plus `_inherit` extensions of `account.move` and `account.move.line` [Source: `addons/account_payment_followup/models/account_followup_level.py`, `.../account_followup_line.py`, `.../account_followup_history.py`, `.../res_partner.py`, `.../account_move.py`, `.../account_move_line.py`].
-- **Wizard / report.** `wizard/followup_report_wizard.py`; `report/followup_report.py` (+ `followup_report.xml`) for the aged-receivables report (PDF/XLSX) [Source: `addons/account_payment_followup/wizard/`; `.../report/`].
-- **Configuration / security.** **PF-002 email cron** in `data/followup_cron.xml` (an `ir.cron` that triggers a batched `mail.template` send), the seeded templates in `data/mail_template_data.xml`, and default levels in `data/followup_data.xml`; `security/followup_security.xml` + `security/ir.model.access.csv` [Source: `addons/account_payment_followup/data/`, `.../security/`].
+- **Public models.** `account.followup.level` (PF-001 level configuration), `account.followup.line` (PF-005 overdue/aging summary), `account.followup.history` (PF-004 immutable audit trail, composes `mail.thread`/`mail.activity.mixin`), and a report model for PF-003; `res.partner` is extended via `_inherit` to carry follow-up fields; plus `_inherit` extensions of `account.move` and `account.move.line` [Source: `addons/account_payment_followup/models/account_followup_level.py`, `addons/account_payment_followup/models/account_followup_line.py`, `addons/account_payment_followup/models/account_followup_history.py`, `addons/account_payment_followup/models/res_partner.py`, `addons/account_payment_followup/models/account_move.py`, `addons/account_payment_followup/models/account_move_line.py`].
+- **Wizard / report.** `wizard/followup_report_wizard.py`; `report/followup_report.py` (+ `followup_report.xml`) for the aged-receivables report (PDF/XLSX) [Source: `addons/account_payment_followup/wizard/followup_report_wizard.py`; `addons/account_payment_followup/report/followup_report.py`, `addons/account_payment_followup/report/followup_report.xml`].
+- **Configuration / security.** **PF-002 email cron** in `data/followup_cron.xml` (an `ir.cron` that triggers a batched `mail.template` send), the seeded templates in `data/mail_template_data.xml`, and default levels in `data/followup_data.xml`; `security/followup_security.xml` + `security/ir.model.access.csv` [Source: `addons/account_payment_followup/data/followup_cron.xml`, `addons/account_payment_followup/data/mail_template_data.xml`, `addons/account_payment_followup/data/followup_data.xml`, `addons/account_payment_followup/security/followup_security.xml`, `addons/account_payment_followup/security/ir.model.access.csv`].
 - **Integration.** Reads overdue `account.move(.line)` receivables per `res.partner`, escalates through follow-up levels, and queues reminder emails through Odoo's `mail` subsystem.
 
 
@@ -804,7 +802,7 @@ sequenceDiagram
 
 ## 5.2 Statement Import and Matching (Bank Reconciliation)
 
-From multi-format import through the matching engine and rules to full/partial reconciliation [Source: `addons/account_bank_reconciliation_ce/models/bank_statement_import.py`, `.../reconciliation_matching_engine.py`, `.../reconciliation_rule.py`, `.../partial_reconcile_ext.py`].
+From multi-format import through the matching engine and rules to full/partial reconciliation [Source: `addons/account_bank_reconciliation_ce/models/bank_statement_import.py`, `addons/account_bank_reconciliation_ce/models/reconciliation_matching_engine.py`, `addons/account_bank_reconciliation_ce/models/reconciliation_rule.py`, `addons/account_bank_reconciliation_ce/models/partial_reconcile_ext.py`].
 
 ```mermaid
 flowchart TD
@@ -827,7 +825,7 @@ flowchart TD
 
 ## 5.3 Recognition-Schedule Generation (Deferred Revenue)
 
-From schedule definition through automatic period allocation and cutoff entries to the recognition dashboard [Source: `addons/account_deferred_revenue/models/account_deferred_schedule.py`, `.../account_deferred_line.py`; `addons/account_deferred_revenue/wizard/cutoff_wizard.py`, `.../recognition_dashboard_wizard.py`].
+From schedule definition through automatic period allocation and cutoff entries to the recognition dashboard [Source: `addons/account_deferred_revenue/models/account_deferred_schedule.py`, `addons/account_deferred_revenue/models/account_deferred_line.py`; `addons/account_deferred_revenue/wizard/cutoff_wizard.py`, `addons/account_deferred_revenue/wizard/recognition_dashboard_wizard.py`].
 
 ```mermaid
 sequenceDiagram
@@ -848,7 +846,7 @@ sequenceDiagram
 
 ## 5.4 Actual-vs-Budget Variance (Budget Management)
 
-From budget definition through period allocation and actuals aggregation to variance computation and alerts [Source: `addons/account_budget_management/models/budget_budget.py`, `.../budget_period.py`, `.../budget_alert.py`; `.../wizard/budget_variance_wizard.py`; `.../data/budget_alert_cron.xml`].
+From budget definition through period allocation and actuals aggregation to variance computation and alerts [Source: `addons/account_budget_management/models/budget_budget.py`, `addons/account_budget_management/models/budget_period.py`, `addons/account_budget_management/models/budget_alert.py`; `addons/account_budget_management/wizard/budget_variance_wizard.py`; `addons/account_budget_management/data/budget_alert_cron.xml`].
 
 ```mermaid
 flowchart TD
@@ -865,7 +863,7 @@ flowchart TD
 
 ## 5.5 Dunning Escalation (Payment Follow-ups)
 
-From overdue calculation through follow-up levels and the PF-002 cron to the batched email send and history [Source: `addons/account_payment_followup/models/account_followup_line.py`, `.../account_followup_level.py`, `.../account_followup_history.py`; `.../data/followup_cron.xml`, `.../data/mail_template_data.xml`].
+From overdue calculation through follow-up levels and the PF-002 cron to the batched email send and history [Source: `addons/account_payment_followup/models/account_followup_line.py`, `addons/account_payment_followup/models/account_followup_level.py`, `addons/account_payment_followup/models/account_followup_history.py`; `addons/account_payment_followup/data/followup_cron.xml`, `addons/account_payment_followup/data/mail_template_data.xml`].
 
 ```mermaid
 sequenceDiagram
@@ -885,7 +883,7 @@ sequenceDiagram
 
 ## 5.6 Report Generation and Drill-Down (Financial Reporting)
 
-From wizard parameters through the report engine to QWeb/XLSX output and drill-down [Source: `addons/account_financial_report_ce/wizard/financial_report_wizard.py`; `.../report/report_balance_sheet.py` et al.; `.../report/report_templates.xml`].
+From wizard parameters through the report engine to QWeb/XLSX output and drill-down [Source: `addons/account_financial_report_ce/wizard/financial_report_wizard.py`; the report engines `addons/account_financial_report_ce/report/report_balance_sheet.py`, `addons/account_financial_report_ce/report/report_profit_loss.py`, `addons/account_financial_report_ce/report/report_cash_flow.py`, `addons/account_financial_report_ce/report/report_general_ledger.py`, `addons/account_financial_report_ce/report/report_trial_balance.py`, `addons/account_financial_report_ce/report/report_aged_partner_balance.py`; and `addons/account_financial_report_ce/report/report_templates.xml`].
 
 ```mermaid
 flowchart TD
@@ -1005,14 +1003,14 @@ Each story maps to its ticket file (exact path) and a representative implementat
 
 ## 6.4 Tickets Composition (sums to 43)
 
-The `tickets/` tree comprises **43 files** [Source: `git diff --name-only 7bd7718bcd4..13896915095 \| tickets/ tally`]:
+The `tickets/` tree comprises **43 files** [Source: `git diff --name-only 7bd7718bcd4..13896915095 -- tickets/ | wc -l` → 43]:
 
 | Component | Count | Paths |
 |-----------|-------|-------|
 | Epic | 1 | `tickets/EPIC-001-enterprise-accounting.md` |
 | Tickets README | 1 | `tickets/README.md` |
 | Features | 6 | `tickets/features/FEATURE-001-financial-reporting.md` … `FEATURE-006-payment-followups.md` |
-| Stories | 32 | `tickets/stories/<domain>/<STORY>-*.md` across the six domains (7+5+5+6+4+5) |
+| Stories | 32 | `git ls-tree -r --name-only origin/pdlc -- tickets/stories/` — 32 files across six domains (7+5+5+6+4+5) |
 | Templates | 3 | `tickets/templates/{epic,feature,story}-template.md` |
 | **Total** | **43** | — |
 
@@ -1023,7 +1021,7 @@ Every addon ships a security pair and one or more data files. The aggregate surf
 
 ## 7.1 Security Files (12 total)
 
-Each addon ships exactly two security files: a record-rule/group XML and a model-ACL CSV [Source: `addons/<addon>/security/`].
+Each addon ships exactly two security files: a record-rule/group XML and a model-ACL CSV [Source: `git diff --name-only 7bd7718bcd4..13896915095 -- addons/ | grep '/security/'` → 12 files; per-addon paths enumerated below].
 
 | Addon | Groups + record rules (XML) | Model ACLs (CSV) |
 |-------|------------------------------|------------------|
@@ -1034,11 +1032,11 @@ Each addon ships exactly two security files: a record-rule/group XML and a model
 | `account_deferred_revenue` | `security/deferred_security.xml` | `security/ir.model.access.csv` |
 | `account_payment_followup` | `security/followup_security.xml` | `security/ir.model.access.csv` |
 
-The six `ir.model.access.csv` files account for six of the nine `.csv` files in the delta; the remaining three are sample data (`test_data/financial_reports/sample_journal_entries.csv`, `test_data/bank_statements/sample.csv`, and `addons/account_bank_reconciliation_ce/tests/test_files/sample.csv`) [Source: `git diff --name-only 7bd7718bcd4..13896915095 \| .csv tally`].
+The six `ir.model.access.csv` files account for six of the nine `.csv` files in the delta; the remaining three are sample data (`test_data/financial_reports/sample_journal_entries.csv`, `test_data/bank_statements/sample.csv`, and `addons/account_bank_reconciliation_ce/tests/test_files/sample.csv`) [Source: `git diff --name-only 7bd7718bcd4..13896915095 | grep '\.csv$'` → 9].
 
 ## 7.2 Data Files (11 total)
 
-The `data/` directories carry crons, sequences, seed records, and parameters [Source: `addons/<addon>/data/`].
+The `data/` directories carry crons, sequences, seed records, and parameters [Source: `git diff --name-only 7bd7718bcd4..13896915095 -- addons/ | grep '/data/'` → 11 files; per-addon paths enumerated below].
 
 | Addon | Data XML files | Count |
 |-------|----------------|-------|
@@ -1054,7 +1052,7 @@ Two scheduled actions drive automation: **AM-004** depreciation posting (`accoun
 
 ## 7.3 Test Surface
 
-Each addon ships an Odoo test suite under `addons/<addon>/tests/` using `TransactionCase`/`HttpCase`, executed via `odoo-bin --test-enable` (not pytest), per §0.10-9 [Source: `addons/<addon>/tests/`]. Bank-reconciliation tests carry fixture files for all four import formats under `tests/test_files/` [Source: `addons/account_bank_reconciliation_ce/tests/test_files/`].
+Each addon ships an Odoo test suite under `addons/<addon>/tests/` using `TransactionCase`/`HttpCase`, executed via `odoo-bin --test-enable` (not pytest), per §0.10-9 [Source: `git diff --name-only 7bd7718bcd4..13896915095 -- addons/ | grep '/tests/'` → 53 test files across the six suites]. Bank-reconciliation tests carry fixture files for all four import formats under `tests/test_files/` [Source: `addons/account_bank_reconciliation_ce/tests/test_files/`].
 
 # 8. Risk, Onboarding, and Documentation-Gap Remediation
 
@@ -1065,13 +1063,13 @@ The entire 278-file delta is treated as work actively performed during this run,
 ## 8.2 Risk Narrative
 
 - **Bus-factor concentration.** The entire suite is single-authored (`agent@blitzy.com`), so domain knowledge is concentrated. *Mitigation:* the per-addon READMEs, this archaeology report, and the requirements tickets distribute that knowledge.
-- **Change hotspots.** The two largest addons — `account_financial_report_ce` (44 files) and `account_bank_reconciliation_ce` (35 files) — concentrate the most change and the most public surface, making them the highest-attention review targets [Source: per-addon file tally]. *Mitigation:* both are scheduled into the Segmented PR Review's Backend Architecture and Business/Domain phases with explicit file scope.
+- **Change hotspots.** The two largest addons — `account_financial_report_ce` (44 files) and `account_bank_reconciliation_ce` (35 files) — concentrate the most change and the most public surface, making them the highest-attention review targets [Source: `git diff --name-only 7bd7718bcd4..13896915095 -- addons/ | sed 's#addons/\([^/]*\)/.*#\1#' | sort | uniq -c` → 44 and 35 respectively]. *Mitigation:* both are scheduled into the Segmented PR Review's Backend Architecture and Business/Domain phases with explicit file scope.
 - **CE-only constraint maintenance.** The suite must never introduce an Odoo Enterprise dependency (e.g., `account_reports`, `account_accountant`); the financial-report manifest explicitly excludes the Enterprise reporting module [Source: `addons/account_financial_report_ce/__manifest__.py`]. *Mitigation:* the review's Backend Architecture phase verifies every `depends` against the CE-only allowlist.
 - **External Python dependencies.** `openpyxl` (XLSX export — FR-007 and PF-003) and `ofxparse` (OFX import — BR-001) are declared in the relevant manifests' `external_dependencies.python` and pinned in `requirements.txt` [Source: `requirements.txt:L43-L45`; `addons/account_financial_report_ce/__manifest__.py`; `addons/account_payment_followup/__manifest__.py`; `addons/account_bank_reconciliation_ce/__manifest__.py`]. *Mitigation:* manifests fail fast at install if a dependency is missing.
 
 ## 8.3 Documentation-Gap Remediation
 
-Two of the six addons — the two largest — **had no `README.rst`** at the start of this run, whereas the other four each ship one [Source: `addons/<addon>/README.rst` presence check]:
+Two of the six addons — the two largest — **had no `README.rst`** at the start of this run, whereas the other four each ship one [Source: `git diff --name-only 7bd7718bcd4..13896915095 -- addons/ | grep '/README.rst$'` → the four addon READMEs present in the merged delta — `account_asset_management`, `account_budget_management`, `account_deferred_revenue`, `account_payment_followup`; `account_bank_reconciliation_ce` and `account_financial_report_ce` absent]:
 
 | Addon | Files | `README.rst` at run start | Action this run |
 |-------|-------|---------------------------|-----------------|
@@ -1093,7 +1091,7 @@ The suite is net-new for end users, so onboarding connects to the two preserved 
 
 ## 8.5 Visual Evidence
 
-Twenty screenshots under `blitzy/screenshots/` (`*.png`) provide rendered visual evidence of the suite's UIs and are referenced — not modified — by this report and mirrored conceptually by the executive deck [Source: `git diff --name-only 7bd7718bcd4..13896915095 \| blitzy/screenshots tally` (20 `.png`)].
+Twenty screenshots under `blitzy/screenshots/` (`*.png`) provide rendered visual evidence of the suite's UIs and are referenced — not modified — by this report and mirrored conceptually by the executive deck [Source: `git diff --name-only 7bd7718bcd4..13896915095 -- blitzy/screenshots/ | wc -l` → 20].
 
 # 9. Cross-Document Contract and References
 
@@ -1101,21 +1099,21 @@ Twenty screenshots under `blitzy/screenshots/` (`*.png`) provide rendered visual
 
 This report is one of a set of companion deliverables that cite one another by stable anchors:
 
-- **`CODE_REVIEW.md`** (repository root) cites this file (`blitzy/documentation/Technical Specifications.md`) at **§0.10** (review gate / Execution Parameters, items 0.10-1..0.10-10) and **§0.11** (rules R-1 and R-2). Those sections are authored under exactly those numbers so the citations resolve.
-- **`blitzy-deck/executive-summary.html`** summarizes this report and the review verdict, exposing the headline KPIs — **278 files, 6 addons, +134,588 insertions, 0 deletions, review verdict APPROVED** — and mirroring this report's diagrams (system architecture, the six per-domain data-flow/sequence diagrams, the traceability diagram, and the review pipeline that lives in `CODE_REVIEW.md`).
+- **`CODE_REVIEW.md`** (repository root; a planned artifact authored in the later review checkpoint) will cite this file (`blitzy/documentation/Technical Specifications.md`) at **§0.10** (review gate / Execution Parameters, items 0.10-1..0.10-10) and **§0.11** (rules R-1 and R-2). Those sections are authored under exactly those numbers so the citations resolve.
+- **`blitzy-deck/executive-summary.html`** (a planned deck artifact, authored in the later deck checkpoint) will summarize this report and, once issued, the Segmented PR Review verdict — exposing the headline KPIs **278 files, 6 addons, +134,588 insertions, 0 deletions** (the review verdict to be recorded in the planned root `CODE_REVIEW.md`) — and will mirror this report's diagrams (system architecture, the six per-domain data-flow/sequence diagrams, the traceability diagram, and the review pipeline that will live in `CODE_REVIEW.md`).
 - The requirements spine **`EPIC-001` → `FEATURE-001..006` → 32 stories → addon → file** (Section 6) is the shared traceability backbone across all three artifacts.
 
 ## 9.2 References (Repository Sources)
 
 - **Change set:** `git diff --name-status 7bd7718bcd4..13896915095` (278 files, all Added); `git diff --shortstat 7bd7718bcd4..13896915095` (+134,588 / 0); `git log --author=agent@blitzy.com 7bd7718bcd4..13896915095` (307 commits).
 - **Addons:** `addons/account_financial_report_ce/`, `addons/account_bank_reconciliation_ce/`, `addons/account_budget_management/`, `addons/account_asset_management/`, `addons/account_deferred_revenue/`, `addons/account_payment_followup/` (manifests, `models/`, `wizard/`, `report/`, `data/`, `security/`, `tests/`).
-- **Requirements:** `tickets/EPIC-001-enterprise-accounting.md`, `tickets/features/FEATURE-00{1..6}-*.md`, `tickets/stories/**`, `tickets/templates/*`, `tickets/README.md`.
+- **Requirements:** `tickets/EPIC-001-enterprise-accounting.md`, `tickets/features/` (six FEATURE files), `tickets/stories/` (32 story files), `tickets/templates/`, `tickets/README.md`.
 - **End-user docs:** `docs/SETUP.md`, `docs/USER_GUIDE.md`.
 - **Toolchain / gate:** `odoo/release.py:L15`, `ruff.toml:L2,L7`, `setup.cfg:L4,L13,L21`, `requirements.txt:L43-L45`.
-- **Design system (deck):** `blitzy-deck/references/blitzy-reveal-theme.css` (REFERENCE).
-- **Precedent (not modified):** `blitzy/documentation/Project Guide.md`; `blitzy/screenshots/*.png` (20 images).
+- **Design system (deck):** `blitzy-deck/references/blitzy-reveal-theme.css` (planned REFERENCE — authored in the later deck checkpoint).
+- **Precedent (not modified):** `blitzy/documentation/Project Guide.md`; `blitzy/screenshots/` (20 `.png` images).
 
 ---
 
-*End of Technical Specification. This archaeology report documents the complete 278-file Blitzy-Agent delta as this-run work and anchors the companion Segmented PR Review (`CODE_REVIEW.md`) and executive deck (`blitzy-deck/executive-summary.html`).*
+*End of Technical Specification. This archaeology report documents the complete 278-file Blitzy-Agent delta as this-run work and anchors the companion, later-checkpoint Segmented PR Review (planned `CODE_REVIEW.md`) and executive deck (planned `blitzy-deck/executive-summary.html`).*
 

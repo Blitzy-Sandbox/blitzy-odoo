@@ -1,0 +1,470 @@
+/*!
+ * ============================================================================
+ * Blitzy Reveal.js Brand Theme -- CANONICAL REFERENCE COPY
+ * ----------------------------------------------------------------------------
+ * Path:    blitzy-deck/references/blitzy-reveal-theme.css
+ * Purpose: The single, auditable, canonical source of the Blitzy executive-
+ *          presentation theme. Its :root design tokens and component / slide-
+ *          type classes are embedded INLINE (inside a <style> block) in
+ *          blitzy-deck/executive-summary.html. That deck stays a single
+ *          self-contained HTML file and therefore does NOT <link> to this
+ *          stylesheet at runtime; however, the deck's inline copy and this
+ *          file MUST remain byte-for-byte consistent in their tokens and
+ *          classes (single source of truth -- AAP Sec. 0.10.2).
+ *
+ * Runtime: reveal.js 5.1.0 (framework-agnostic overrides).
+ * Fonts:   Inter / Space Grotesk / Fira Code are loaded by the host deck via
+ *          Google Fonts; this file references them ONLY through the --ff-*
+ *          tokens (no stylesheet imports / no font hosting here).
+ *
+ * NOTE:    Mermaid DIAGRAM theming (Mermaid JS theme settings) and reveal.js
+ *          library configuration live in the deck's JavaScript, NOT here. This
+ *          file only styles the .mermaid CONTAINER.
+ *
+ * Brand:   Palette, typography and gradients per AAP Sec. 0.10.2.
+ * License: Documentation/presentation asset (Blitzy). Do not modify source.
+ * ============================================================================
+ */
+
+/* ============================================================
+   1. Design tokens -- :root custom properties (AAP Sec. 0.10.2)
+   ============================================================ */
+:root {
+  /* Brand purples */
+  --blitzy-primary: #5B39F3;
+  --blitzy-primary-dark: #2D1C77;
+  --blitzy-primary-navy: #1A105F;
+  --blitzy-primary-deep: #4101DB;
+  --blitzy-primary-light: #7A6DEC;
+
+  /* Accent */
+  --blitzy-accent-teal: #94FAD5;
+
+  /* Neutral surface ramp (light -> grey) */
+  --blitzy-surface-0: #FFFFFF;
+  --blitzy-surface-1: #F5F5F5;
+  --blitzy-surface-2: #F4EFF6;
+  --blitzy-surface-3: #D9D9D9;
+
+  /* Borders */
+  --blitzy-border: #D9D9D9;
+  --blitzy-border-soft: #F4EFF6;
+
+  /* Text */
+  --blitzy-text: #333333;
+  --blitzy-text-muted: #999999;
+  --blitzy-text-invert: #FFFFFF;
+
+  /* Font families (loaded by the host deck via Google Fonts) */
+  --ff-body: 'Inter', system-ui, sans-serif;
+  --ff-display: 'Space Grotesk', sans-serif;
+  --ff-mono: 'Fira Code', monospace;
+
+  /* Gradients */
+  --gradient-hero: linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
+  --gradient-divider: linear-gradient(135deg, #2D1C77, #1A105F);
+  --gradient-accent-bar: linear-gradient(90deg, #5B39F3, #94FAD5);
+}
+
+/* ============================================================
+   2. Base typography & reveal.js light surface (AAP Sec. 0.10.2)
+   Body -> Inter, headings -> Space Grotesk, code/eyebrow -> Fira Code.
+   Default content slides sit on a light surface with --blitzy-text.
+   ============================================================ */
+.reveal {
+  font-family: var(--ff-body);
+  font-weight: 400;
+  font-size: 34px;
+  color: var(--blitzy-text);
+  background: var(--blitzy-surface-0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+/* Default (content) slides: light surface, brand text, comfortable padding. */
+.reveal .slides > section,
+.reveal .slides > section > section {
+  background-color: var(--blitzy-surface-0);
+  color: var(--blitzy-text);
+  padding: 48px 64px;
+  box-sizing: border-box;
+  height: 100%;
+}
+
+/* Headings use the display family. */
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+  font-family: var(--ff-display);
+  color: var(--blitzy-primary-dark);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.45em;
+  text-transform: none;
+  text-shadow: none;
+}
+
+.reveal h1 { font-size: 2.10em; }
+.reveal h2 { font-size: 1.50em; }
+.reveal h3 { font-size: 1.15em; color: var(--blitzy-primary); }
+.reveal h4 { font-size: 1.00em; color: var(--blitzy-primary); }
+
+.reveal p {
+  line-height: 1.4;
+  margin: 0 0 0.6em;
+}
+
+.reveal a {
+  color: var(--blitzy-primary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.reveal a:hover {
+  color: var(--blitzy-primary-deep);
+}
+
+.reveal strong,
+.reveal b {
+  color: var(--blitzy-primary-dark);
+  font-weight: 600;
+}
+
+.reveal em,
+.reveal i {
+  color: inherit;
+}
+
+/* Lists -- keep tight to respect the 4-bullet content rule. */
+.reveal ul,
+.reveal ol {
+  display: block;
+  margin: 0 0 0.6em 1.1em;
+}
+.reveal li {
+  line-height: 1.4;
+  margin: 0 0 0.35em;
+}
+.reveal ul li::marker {
+  color: var(--blitzy-primary);
+}
+.reveal ol li::marker {
+  color: var(--blitzy-primary);
+  font-family: var(--ff-mono);
+}
+
+/* Inline code / commands -- Fira Code chips (no fenced blocks inside slides). */
+.reveal code {
+  font-family: var(--ff-mono);
+  font-size: 0.82em;
+  background: var(--blitzy-surface-2);
+  color: var(--blitzy-primary-deep);
+  border: 1px solid var(--blitzy-border-soft);
+  border-radius: 6px;
+  padding: 0.12em 0.45em;
+}
+
+/* ============================================================
+   3. Eyebrow label -- Fira Code, uppercase, letter-spacing
+   ============================================================ */
+.reveal .eyebrow {
+  display: block;
+  font-family: var(--ff-mono);
+  font-weight: 500;
+  font-size: 0.5em;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--blitzy-primary);
+  margin: 0 0 1.1em;
+}
+
+/* On dark slide types the eyebrow uses the teal accent for contrast. */
+.reveal .slide-title .eyebrow,
+.reveal .slide-divider .eyebrow,
+.reveal .slide-closing .eyebrow {
+  color: var(--blitzy-accent-teal);
+}
+
+/* ============================================================
+   4. Slide type -- TITLE (hero gradient, inverted text, hero icon)
+   ============================================================ */
+.reveal .slides section.slide-title {
+  background: var(--gradient-hero);
+  color: var(--blitzy-text-invert);
+  text-align: center;
+  padding: 64px;
+}
+.reveal section.slide-title h1,
+.reveal section.slide-title h2,
+.reveal section.slide-title h3 {
+  color: var(--blitzy-text-invert);
+}
+.reveal section.slide-title h1 {
+  font-size: 2.4em;
+}
+.reveal section.slide-title p {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+/* Large Lucide hero icon on the title slide. */
+.reveal .hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  margin: 0 0 28px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: var(--blitzy-accent-teal);
+}
+.reveal .hero-icon svg,
+.reveal .hero-icon [data-lucide] {
+  width: 68px;
+  height: 68px;
+  stroke-width: 1.5;
+}
+
+/* ============================================================
+   5. Slide type -- DIVIDER (dark #2D1C77 / gradient, inverted text)
+   ============================================================ */
+.reveal .slides section.slide-divider {
+  background-color: var(--blitzy-primary-dark);
+  background-image: var(--gradient-divider);
+  color: var(--blitzy-text-invert);
+  text-align: left;
+  padding: 64px;
+}
+.reveal section.slide-divider h1,
+.reveal section.slide-divider h2,
+.reveal section.slide-divider h3 {
+  color: var(--blitzy-text-invert);
+}
+.reveal section.slide-divider h1 {
+  font-size: 2.2em;
+}
+.reveal section.slide-divider p {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* ============================================================
+   6. Slide type -- CLOSING (navy #1A105F, inverted text, lockup + bar)
+   ============================================================ */
+.reveal .slides section.slide-closing {
+  background-color: var(--blitzy-primary-navy);
+  color: var(--blitzy-text-invert);
+  text-align: left;
+  padding: 64px;
+}
+.reveal section.slide-closing h1,
+.reveal section.slide-closing h2,
+.reveal section.slide-closing h3 {
+  color: var(--blitzy-text-invert);
+}
+.reveal section.slide-closing p {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* ============================================================
+   7. Brand lockup (Blitzy wordmark) + accent bar
+   ============================================================ */
+.reveal .brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: 1.6em;
+  letter-spacing: -0.02em;
+  color: var(--blitzy-text-invert);
+}
+.reveal .brand-lockup::before {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 4px;
+  background: var(--gradient-accent-bar);
+}
+
+/* Thin gradient accent bar (used on closing + section dividers). */
+.reveal .accent-bar {
+  display: block;
+  width: 120px;
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gradient-accent-bar);
+  margin: 24px 0;
+}
+
+/* ============================================================
+   8. KPI grid + cards
+   ============================================================ */
+.reveal .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 28px;
+  width: 100%;
+  margin: 24px 0;
+}
+.reveal .kpi-card {
+  background: var(--blitzy-surface-1);
+  border: 1px solid var(--blitzy-border-soft);
+  border-radius: 16px;
+  padding: 28px 26px;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(45, 28, 119, 0.06);
+}
+
+/* Lucide icon wrapper inside a KPI card. */
+.reveal .kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 0 16px;
+  border-radius: 12px;
+  background: var(--blitzy-surface-2);
+  color: var(--blitzy-primary);
+}
+.reveal .kpi-icon svg,
+.reveal .kpi-icon [data-lucide] {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.75;
+}
+
+.reveal .kpi-value {
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: 2.1em;
+  line-height: 1;
+  color: var(--blitzy-primary-dark);
+  margin: 0 0 8px;
+}
+.reveal .kpi-label {
+  font-family: var(--ff-body);
+  font-size: 0.46em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--blitzy-text-muted);
+}
+
+/* KPI cards placed on dark slide types invert their surface for contrast. */
+.reveal .slide-divider .kpi-card,
+.reveal .slide-closing .kpi-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.reveal .slide-divider .kpi-value,
+.reveal .slide-closing .kpi-value {
+  color: var(--blitzy-text-invert);
+}
+.reveal .slide-divider .kpi-label,
+.reveal .slide-closing .kpi-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+.reveal .slide-divider .kpi-icon,
+.reveal .slide-closing .kpi-icon {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--blitzy-accent-teal);
+}
+
+/* ============================================================
+   9. Icon row (horizontal Lucide row)
+   ============================================================ */
+.reveal .icon-row {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin: 20px 0;
+}
+.reveal .icon-row svg,
+.reveal .icon-row [data-lucide] {
+  width: 40px;
+  height: 40px;
+  color: var(--blitzy-primary);
+  stroke-width: 1.6;
+}
+.reveal .slide-divider .icon-row svg,
+.reveal .slide-divider .icon-row [data-lucide],
+.reveal .slide-closing .icon-row svg,
+.reveal .slide-closing .icon-row [data-lucide] {
+  color: var(--blitzy-accent-teal);
+}
+
+/* ============================================================
+   10. Styled tables (risk table, six-addon value, etc.)
+   ============================================================ */
+.reveal table {
+  width: 100%;
+  margin: 16px 0;
+  border-collapse: collapse;
+  font-size: 0.6em;
+}
+.reveal table th {
+  font-family: var(--ff-display);
+  font-weight: 600;
+  text-align: left;
+  background: var(--blitzy-primary-dark);
+  color: var(--blitzy-text-invert);
+  padding: 12px 16px;
+  border: 0;
+}
+.reveal table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--blitzy-border);
+  color: var(--blitzy-text);
+  vertical-align: top;
+}
+.reveal table tr:nth-child(even) td {
+  background: var(--blitzy-surface-2);
+}
+
+/* ============================================================
+   11. Mermaid container -- centered, transparent bg, max-width
+   (Diagram colours come from the deck's Mermaid JS theme settings.)
+   ============================================================ */
+.reveal .mermaid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  margin: 12px auto;
+  background: transparent;
+  text-align: center;
+}
+.reveal .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================================
+   12. Reveal.js chrome tint (controls / progress)
+   ============================================================ */
+.reveal .controls {
+  color: var(--blitzy-primary);
+}
+.reveal .progress {
+  color: var(--blitzy-primary);
+  height: 4px;
+}
+.reveal .progress span {
+  background: var(--gradient-accent-bar);
+}
+.reveal .slide-number {
+  background-color: transparent;
+  color: var(--blitzy-text-muted);
+  font-family: var(--ff-mono);
+}

@@ -513,6 +513,18 @@
 /* ===== END CANONICAL THEME ===== */
 
 /* ===== BEGIN DECK-ONLY EXTENSIONS (additive; new selectors only; not part of the canonical theme) ===== */
+
+/* Deck-only design tokens (additive; the canonical :root above is left
+   byte-for-byte intact, as is blitzy-deck/references/blitzy-reveal-theme.css).
+   --blitzy-text-muted-strong: a WCAG 2.1 AA-compliant (>=4.5:1 on every light
+   deck surface -- #FFFFFF, --blitzy-surface-1 #F5F5F5, --blitzy-surface-2
+   #F4EFF6) replacement for --blitzy-text-muted (#999999, ~2.0-2.85:1) on small
+   light-background metadata. --blitzy-success-text: the documented low-severity
+   / success-green token (replaces a former one-off hex on .severity-chip.low). */
+:root {
+  --blitzy-text-muted-strong: #666666;
+  --blitzy-success-text: #1f7a54;
+}
 .reveal .lead {
   color: var(--blitzy-text-muted);
   font-size: 0.62em;
@@ -627,7 +639,7 @@
 .reveal .severity-chip.low {
   background: rgba(148, 250, 213, 0.32);
   border: 1px solid var(--blitzy-accent-teal);
-  color: #1f7a54;
+  color: var(--blitzy-success-text);
 }
 .reveal .footnote {
   color: var(--blitzy-text-muted);
@@ -697,11 +709,15 @@
    display:inline / 49.2x16px, below the 24x24px touch-target minimum
    (WCAG 2.5.8 / Lighthouse "target-size"). Two coordinated, additive changes to
    the framework chrome (the canonical ".reveal .slide-number" rule above is left
-   byte-for-byte intact; no brand token, colour, or the 436 verbatim theme lines
-   are changed):
-     1. Enlarge the <a> to a >=24px inline-flex box (centres the "N / 16" glyphs;
-        background stays transparent per the canonical rule, so the visible text
-        is unchanged — only the clickable target grows).
+   byte-for-byte intact — none of the verbatim canonical theme lines are changed;
+   the additive treatments below live only in this deck-only block):
+     1. Enlarge the <a> to a >=24px inline-flex box (centres the "N / 16" glyphs)
+        AND give the link an AA-contrast "pill": a --blitzy-surface-0 background
+        with --blitzy-text (#333333) glyphs and a --blitzy-border hairline, so the
+        slide-number meets WCAG AA on BOTH the light content slides and the dark
+        divider/closing slides (a single muted colour cannot satisfy both ends of
+        the background range). The pill is applied to the inner <a> only; the
+        canonical ".reveal .slide-number" container rule stays transparent/intact.
      2. Re-anchor the slide-number to bottom-CENTRE. reveal.js otherwise clusters
         the slide-number and the prev/next arrow controls ~9px apart in the
         bottom-right corner; once the link is >=24px tall it overlaps the
@@ -720,12 +736,16 @@
 }
 .reveal .slide-number a {
   align-items: center;
+  background-color: var(--blitzy-surface-0);
+  border: 1px solid var(--blitzy-border);
+  border-radius: 999px;
   box-sizing: border-box;
+  color: var(--blitzy-text);
   display: inline-flex;
   justify-content: center;
   min-height: 28px;
   min-width: 28px;
-  padding: 4px 8px;
+  padding: 4px 10px;
 }
 /* ------------------------------------------------------------------
    Issue 9 - base document typography & colour. reveal.js themes only
@@ -775,6 +795,28 @@ body.reveal-viewport {
 .reveal .controls button:focus {
   outline: 3px solid var(--blitzy-accent-teal);
   outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------
+   WCAG 2.1 AA contrast remediation (deck-only; additive). Small light-background
+   metadata previously resolved to --blitzy-text-muted (#999999), which yields
+   only ~2.0-2.85:1 on the light deck surfaces (< the 4.5:1 AA floor for normal
+   text). Re-colour those selectors to --blitzy-text-muted-strong (#666666,
+   >=4.5:1 on #FFFFFF / --blitzy-surface-1 / --blitzy-surface-2). These rules
+   follow the base declarations in source order, so they win on the LIGHT content
+   slides; the existing higher-specificity dark-slide overrides
+   (.reveal .slide-divider <x>, .reveal .slide-closing <x>) are left unchanged and
+   continue to win on the DARK slides, so no dark-slide regression is introduced.
+   The canonical theme block above and blitzy-deck/references/blitzy-reveal-theme.css
+   stay byte-for-byte intact: the muted-contrast finding is resolved here via the
+   sanctioned deck-only-override path, not by editing the canonical reference. */
+.reveal .kpi-label,
+.reveal .lead,
+.reveal .kpi-sub,
+.reveal .kpi-suffix,
+.reveal .footnote,
+.reveal .icon-chip {
+  color: var(--blitzy-text-muted-strong);
 }
 
 /* ------------------------------------------------------------------
@@ -1115,12 +1157,12 @@ flowchart LR
               <td><code>ruff check addons/&lt;module&gt;/</code></td>
             </tr>
             <tr>
-              <td><span class="domain-cell"><i data-lucide="file-text" aria-hidden="true"></i> Setup guide</span></td>
-              <td>docs/SETUP.md</td>
+              <td><span class="domain-cell"><i data-lucide="file-text" aria-hidden="true"></i> Architecture &amp; specs</span></td>
+              <td>blitzy/documentation/Technical Specifications.md</td>
             </tr>
             <tr>
-              <td><span class="domain-cell"><i data-lucide="compass" aria-hidden="true"></i> User guide</span></td>
-              <td>docs/USER_GUIDE.md</td>
+              <td><span class="domain-cell"><i data-lucide="book-open" aria-hidden="true"></i> Module READMEs</span></td>
+              <td>addons/&lt;addon&gt;/README.rst</td>
             </tr>
           </tbody>
         </table>
@@ -1140,7 +1182,7 @@ flowchart LR
             <div class="icon-row">
               <span class="icon-chip"><i data-lucide="clipboard-check" aria-hidden="true"></i> CODE_REVIEW.md</span>
               <span class="icon-chip"><i data-lucide="book-open" aria-hidden="true"></i> Technical Specs</span>
-              <span class="icon-chip"><i data-lucide="compass" aria-hidden="true"></i> User &amp; Setup Guides</span>
+              <span class="icon-chip"><i data-lucide="book-open" aria-hidden="true"></i> Per-Addon READMEs</span>
             </div>
             <div class="brand-row">
               <span class="brand-lockup">Blitzy</span>

@@ -4,7 +4,7 @@
 > **Engagement:** Archaeology of all merged Blitzy-Agent changes treated as this-run work, plus an in-depth Segmented PR Review of that same change set.
 > **Subject:** An Enterprise Accounting Suite of six net-new Odoo Community-Edition addons.
 > **Archaeology window:** `sandbox @ 7bd7718bcd4` (pre-Blitzy baseline) → `origin/pdlc @ 13896915095` (merged-work tip).
-> **Headline KPIs:** 278 files · 6 addons · +134,588 insertions · 0 deletions · Segmented PR Review: _planned_ (verdict to be recorded in the planned root `CODE_REVIEW.md`).
+> **Headline KPIs:** 278 files · 6 addons · +134,588 insertions · 0 deletions · Segmented PR Review: **`APPROVED`** (PR-READY; recorded in the root `CODE_REVIEW.md`).
 >
 > *Source: `git diff --name-status 7bd7718bcd4..13896915095` (the archaeology diff).*
 
@@ -553,7 +553,7 @@ All inputs to this plan derive from the user's request, the two user-specified r
 
 # 1. Executive Summary of the Archaeology Engagement
 
-This Technical Specification is a **code-archaeology report**: it inventories and explains, in full, every change that Blitzy Agents merged into this repository between the pre-Blitzy baseline and the merged-work tip, and it treats the entire delta as if it were authored during this run. The same change set is then subjected to an in-depth **Segmented PR Review** (to be recorded in the planned root `CODE_REVIEW.md`) and summarized for leadership in a self-contained reveal.js deck (the planned `blitzy-deck/executive-summary.html`).
+This Technical Specification is a **code-archaeology report**: it inventories and explains, in full, every change that Blitzy Agents merged into this repository between the pre-Blitzy baseline and the merged-work tip, and it treats the entire delta as if it were authored during this run. The same change set is then subjected to an in-depth **Segmented PR Review** (recorded in the root `CODE_REVIEW.md`, verdict **`APPROVED`**) and summarized for leadership in a self-contained reveal.js deck (the delivered `blitzy-deck/executive-summary.html`).
 
 ## 1.1 What Was Merged
 
@@ -561,7 +561,7 @@ The merged work is a single, coherent body of net-new code: an **Enterprise Acco
 
 ## 1.2 Headline KPIs
 
-These KPIs will be mirrored by the planned executive deck (`blitzy-deck/executive-summary.html`) and the planned review record (`CODE_REVIEW.md`) — both authored in later checkpoints.
+These KPIs are mirrored by the delivered executive deck (`blitzy-deck/executive-summary.html`) and the delivered review record (`CODE_REVIEW.md`) — both present in the final tree, consistent on every value below.
 
 | KPI | Value | Source |
 |-----|-------|--------|
@@ -574,7 +574,7 @@ These KPIs will be mirrored by the planned executive deck (`blitzy-deck/executiv
 | `blitzy[bot]` merge commits | **3** | `git log 7bd7718bcd4..13896915095` |
 | Total commits in range | **310** | `git log 7bd7718bcd4..13896915095` |
 | EPIC / FEATUREs / Stories | **1 / 6 / 32** | `tickets/EPIC-001-enterprise-accounting.md` |
-| Segmented PR Review verdict | _Planned_ (pending) | downstream — to be recorded in the planned root `CODE_REVIEW.md` (rule R-2) |
+| Segmented PR Review verdict | **`APPROVED`** (PR-READY) | recorded in the root `CODE_REVIEW.md` (rule R-2): pre-flight passed, all 7 domain phases `APPROVED`, final reviewer `APPROVED` |
 
 ## 1.3 How This Report Is Organized
 
@@ -590,7 +590,7 @@ These KPIs will be mirrored by the planned executive deck (`blitzy-deck/executiv
 
 # 2. Archaeology Facts and Authorship Attribution
 
-All figures in this section were confirmed by running git against this repository over the archaeology window. They are stated verbatim and are the authoritative numbers mirrored elsewhere in this report and, in later checkpoints, in the planned `CODE_REVIEW.md` and the planned executive deck.
+All figures in this section were confirmed by running git against this repository over the archaeology window. They are stated verbatim and are the authoritative numbers mirrored elsewhere in this report and in the delivered `CODE_REVIEW.md` and executive deck.
 
 ## 2.1 Archaeology Window
 
@@ -1099,8 +1099,8 @@ Twenty screenshots under `blitzy/screenshots/` (`*.png`) provide rendered visual
 
 This report is one of a set of companion deliverables that cite one another by stable anchors:
 
-- **`CODE_REVIEW.md`** (repository root; a planned artifact authored in the later review checkpoint) will cite this file (`blitzy/documentation/Technical Specifications.md`) at **§0.10** (review gate / Execution Parameters, items 0.10-1..0.10-10) and **§0.11** (rules R-1 and R-2). Those sections are authored under exactly those numbers so the citations resolve.
-- **`blitzy-deck/executive-summary.html`** (a planned deck artifact, authored in the later deck checkpoint) will summarize this report and, once issued, the Segmented PR Review verdict — exposing the headline KPIs **278 files, 6 addons, +134,588 insertions, 0 deletions** (the review verdict to be recorded in the planned root `CODE_REVIEW.md`) — and will mirror this report's diagrams (system architecture, the six per-domain data-flow/sequence diagrams, the traceability diagram, and the review pipeline that will live in `CODE_REVIEW.md`).
+- **`CODE_REVIEW.md`** (repository root; delivered) cites this file (`blitzy/documentation/Technical Specifications.md`) at **§0.10** (review gate / Execution Parameters, items 0.10-1..0.10-10) and **§0.11** (rules R-1 and R-2). Those sections are authored under exactly those numbers so the citations resolve. Its Segmented PR Review verdict is **`APPROVED`** (pre-flight passed; all seven domain phases `APPROVED`; final reviewer `APPROVED` → PR-READY).
+- **`blitzy-deck/executive-summary.html`** (delivered) summarizes this report and the Segmented PR Review verdict — exposing the headline KPIs **278 files, 6 addons, +134,588 insertions, 0 deletions** and the **`APPROVED`** review verdict recorded in the root `CODE_REVIEW.md` — and mirrors this report's diagrams (system architecture, the six per-domain data-flow/sequence diagrams, the traceability diagram, and the review pipeline that lives in `CODE_REVIEW.md`).
 - The requirements spine **`EPIC-001` → `FEATURE-001..006` → 32 stories → addon → file** (Section 6) is the shared traceability backbone across all three artifacts.
 
 ## 9.2 References (Repository Sources)
@@ -1110,10 +1110,10 @@ This report is one of a set of companion deliverables that cite one another by s
 - **Requirements:** `tickets/EPIC-001-enterprise-accounting.md`, `tickets/features/` (six FEATURE files), `tickets/stories/` (32 story files), `tickets/templates/`, `tickets/README.md`.
 - **End-user docs:** `docs/SETUP.md`, `docs/USER_GUIDE.md`.
 - **Toolchain / gate:** `odoo/release.py:L15`, `ruff.toml:L2,L7`, `setup.cfg:L4,L13,L21`, `requirements.txt:L43-L45`.
-- **Design system (deck):** `blitzy-deck/references/blitzy-reveal-theme.css` (planned REFERENCE — authored in the later deck checkpoint).
+- **Design system (deck):** `blitzy-deck/references/blitzy-reveal-theme.css` (delivered REFERENCE — canonical brand theme mirrored byte-for-byte in the deck's inline `:root` block).
 - **Precedent (not modified):** `blitzy/documentation/Project Guide.md`; `blitzy/screenshots/` (20 `.png` images).
 
 ---
 
-*End of Technical Specification. This archaeology report documents the complete 278-file Blitzy-Agent delta as this-run work and anchors the companion, later-checkpoint Segmented PR Review (planned `CODE_REVIEW.md`) and executive deck (planned `blitzy-deck/executive-summary.html`).*
+*End of Technical Specification. This archaeology report documents the complete 278-file Blitzy-Agent delta as this-run work and anchors the companion, delivered Segmented PR Review (`CODE_REVIEW.md`, verdict **`APPROVED`** → PR-READY) and executive deck (`blitzy-deck/executive-summary.html`).*
 

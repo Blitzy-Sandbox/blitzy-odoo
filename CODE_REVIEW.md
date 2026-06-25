@@ -21,7 +21,7 @@ phases:
   security: APPROVED
   backend_architecture: APPROVED
   qa_test_integrity: APPROVED
-  business_domain: pending
+  business_domain: APPROVED
   frontend: pending
   other_sme: pending
   final_verification: pending
@@ -613,7 +613,7 @@ Each file appears under exactly one domain heading, grouped by source group for 
 
 **Findings.** Requirements decompose cleanly: EPIC-001 ("Enterprise Accounting Capabilities for Odoo Community Edition") → six FEATUREs → **32 stories** (Financial Reporting 7, Asset Management 6, Bank Reconciliation 5, Budget Management 5, Payment Follow-ups 5, Deferred Revenue 4). Each FEATURE maps 1:1 to an addon, and story IDs (AM-/BR-/BM-/DR-/FR-/PF-) match the per-addon test modules reviewed in Phase 4. Accounting semantics are consistent with the `account` base module (journal entries, depreciation, reconciliation, recognition, variance, dunning) and with GAAP/IFRS alignment (IAS 16, IAS 36, ASC 360) documented in the asset manifest; the passing domain tests corroborate the cut-off, recognition, escalation, and variance logic. No blocking finding. *Source: `tickets/EPIC-001-enterprise-accounting.md`; `tickets/features/`; `tickets/stories/`.*
 
-**Status:** _pending review_
+**Status: APPROVED**
 
 ### Phase 6 — Frontend · Reviewer: Odoo Views / QWeb / SCSS SME (review-only)
 

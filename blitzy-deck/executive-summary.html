@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Executive summary deck for the Enterprise Accounting suite on Odoo 19.0 Community Edition — a forensic archaeology of all merged Blitzy changes (278 files across six AGPL-3.0 accounting addons) and the seven-phase Segmented PR Review outcome.">
+  <title>Blitzy Executive Summary — Enterprise Accounting for Odoo 19.0 CE</title>
+
+  <!-- Inline brand favicon (data URI) — keeps the deck self-contained and
+       avoids a /favicon.ico request. -->
+  <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Crect%20width='16'%20height='16'%20rx='3'%20fill='%235B39F3'/%3E%3C/svg%3E">
+
+
+  <!-- Google Fonts: Inter (body) / Space Grotesk (display) / Fira Code (mono) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- reveal.js 5.1.0 core CSS (pinned, CDN-only; theme is inline below) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" crossorigin="anonymous">
+
+  <style>
+  /* ============================================================================
+     Blitzy Reveal.js Brand Theme — embedded INLINE (single self-contained file).
+
+     STRUCTURE — two clearly separated blocks:
+       1. CANONICAL THEME — reproduced BYTE-FOR-BYTE from the single source of
+          truth at blitzy-deck/references/blitzy-reveal-theme.css (AAP Sec.
+          0.10.2). The bytes between the BEGIN/END CANONICAL THEME markers below
+          are an exact, verbatim copy of that file and diff clean against it.
+       2. DECK-ONLY EXTENSIONS — additive presentation rules used only by this
+          deck (e.g. .lead, .closing-hero, KPI refinements). They introduce NEW
+          selectors only, never redefine a canonical selector, so the canonical
+          block above stays parity-pure.
+
+     The deck does NOT <link> to the canonical file at runtime; it remains a
+     single self-contained HTML file.
+     ============================================================================ */
+
+/* ===== BEGIN CANONICAL THEME (byte-for-byte: blitzy-deck/references/blitzy-reveal-theme.css) ===== */
+/*!
+ * ============================================================================
+ * Blitzy Reveal.js Brand Theme -- CANONICAL REFERENCE COPY
+ * ----------------------------------------------------------------------------
+ * Path:    blitzy-deck/references/blitzy-reveal-theme.css
+ * Purpose: The single, auditable, canonical source of the Blitzy executive-
+ *          presentation theme. Its :root design tokens and component / slide-
+ *          type classes are embedded INLINE (inside a <style> block) in
+ *          blitzy-deck/executive-summary.html. That deck stays a single
+ *          self-contained HTML file and therefore does NOT <link> to this
+ *          stylesheet at runtime; however, the deck's inline copy and this
+ *          file MUST remain byte-for-byte consistent in their tokens and
+ *          classes (single source of truth -- AAP Sec. 0.10.2).
+ *
+ * Runtime: reveal.js 5.1.0 (framework-agnostic overrides).
+ * Fonts:   Inter / Space Grotesk / Fira Code are loaded by the host deck via
+ *          Google Fonts; this file references them ONLY through the --ff-*
+ *          tokens (no stylesheet imports / no font hosting here).
+ *
+ * NOTE:    Mermaid DIAGRAM theming (Mermaid JS theme settings) and reveal.js
+ *          library configuration live in the deck's JavaScript, NOT here. This
+ *          file only styles the .mermaid CONTAINER.
+ *
+ * Brand:   Palette, typography and gradients per AAP Sec. 0.10.2.
+ * License: Documentation/presentation asset (Blitzy). Do not modify source.
+ * ============================================================================
+ */
+
+/* ============================================================
+   1. Design tokens -- :root custom properties (AAP Sec. 0.10.2)
+   ============================================================ */
+:root {
+  /* Brand purples */
+  --blitzy-primary: #5B39F3;
+  --blitzy-primary-dark: #2D1C77;
+  --blitzy-primary-navy: #1A105F;
+  --blitzy-primary-deep: #4101DB;
+  --blitzy-primary-light: #7A6DEC;
+
+  /* Accent */
+  --blitzy-accent-teal: #94FAD5;
+
+  /* Neutral surface ramp (light -> grey) */
+  --blitzy-surface-0: #FFFFFF;
+  --blitzy-surface-1: #F5F5F5;
+  --blitzy-surface-2: #F4EFF6;
+  --blitzy-surface-3: #D9D9D9;
+
+  /* Borders */
+  --blitzy-border: #D9D9D9;
+  --blitzy-border-soft: #F4EFF6;
+
+  /* Text */
+  --blitzy-text: #333333;
+  --blitzy-text-muted: #999999;
+  --blitzy-text-invert: #FFFFFF;
+
+  /* Font families (loaded by the host deck via Google Fonts) */
+  --ff-body: 'Inter', system-ui, sans-serif;
+  --ff-display: 'Space Grotesk', sans-serif;
+  --ff-mono: 'Fira Code', monospace;
+
+  /* Gradients */
+  --gradient-hero: linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%);
+  --gradient-divider: linear-gradient(135deg, #2D1C77, #1A105F);
+  --gradient-accent-bar: linear-gradient(90deg, #5B39F3, #94FAD5);
+}
+
+/* ============================================================
+   2. Base typography & reveal.js light surface (AAP Sec. 0.10.2)
+   Body -> Inter, headings -> Space Grotesk, code/eyebrow -> Fira Code.
+   Default content slides sit on a light surface with --blitzy-text.
+   ============================================================ */
+.reveal {
+  font-family: var(--ff-body);
+  font-weight: 400;
+  font-size: 34px;
+  color: var(--blitzy-text);
+  background: var(--blitzy-surface-0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+/* Default (content) slides: light surface, brand text, comfortable padding. */
+.reveal .slides > section,
+.reveal .slides > section > section {
+  background-color: var(--blitzy-surface-0);
+  color: var(--blitzy-text);
+  padding: 48px 64px;
+  box-sizing: border-box;
+  height: 100%;
+}
+
+/* Headings use the display family. */
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+  font-family: var(--ff-display);
+  color: var(--blitzy-primary-dark);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.45em;
+  text-transform: none;
+  text-shadow: none;
+}
+
+.reveal h1 { font-size: 2.10em; }
+.reveal h2 { font-size: 1.50em; }
+.reveal h3 { font-size: 1.15em; color: var(--blitzy-primary); }
+.reveal h4 { font-size: 1.00em; color: var(--blitzy-primary); }
+
+.reveal p {
+  line-height: 1.4;
+  margin: 0 0 0.6em;
+}
+
+.reveal a {
+  color: var(--blitzy-primary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.reveal a:hover {
+  color: var(--blitzy-primary-deep);
+}
+
+.reveal strong,
+.reveal b {
+  color: var(--blitzy-primary-dark);
+  font-weight: 600;
+}
+
+.reveal em,
+.reveal i {
+  color: inherit;
+}
+
+/* Lists -- keep tight to respect the 4-bullet content rule. */
+.reveal ul,
+.reveal ol {
+  display: block;
+  margin: 0 0 0.6em 1.1em;
+}
+.reveal li {
+  line-height: 1.4;
+  margin: 0 0 0.35em;
+}
+.reveal ul li::marker {
+  color: var(--blitzy-primary);
+}
+.reveal ol li::marker {
+  color: var(--blitzy-primary);
+  font-family: var(--ff-mono);
+}
+
+/* Inline code / commands -- Fira Code chips (no fenced blocks inside slides). */
+.reveal code {
+  font-family: var(--ff-mono);
+  font-size: 0.82em;
+  background: var(--blitzy-surface-2);
+  color: var(--blitzy-primary-deep);
+  border: 1px solid var(--blitzy-border-soft);
+  border-radius: 6px;
+  padding: 0.12em 0.45em;
+}
+
+/* ============================================================
+   3. Eyebrow label -- Fira Code, uppercase, letter-spacing
+   ============================================================ */
+.reveal .eyebrow {
+  display: block;
+  font-family: var(--ff-mono);
+  font-weight: 500;
+  font-size: 0.5em;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--blitzy-primary);
+  margin: 0 0 1.1em;
+}
+
+/* On dark slide types the eyebrow uses the teal accent for contrast. */
+.reveal .slide-title .eyebrow,
+.reveal .slide-divider .eyebrow,
+.reveal .slide-closing .eyebrow {
+  color: var(--blitzy-accent-teal);
+}
+
+/* ============================================================
+   4. Slide type -- TITLE (hero gradient, inverted text, hero icon)
+   ============================================================ */
+.reveal .slides section.slide-title {
+  background: var(--gradient-hero);
+  color: var(--blitzy-text-invert);
+  text-align: center;
+  padding: 64px;
+}
+.reveal section.slide-title h1,
+.reveal section.slide-title h2,
+.reveal section.slide-title h3 {
+  color: var(--blitzy-text-invert);
+}
+.reveal section.slide-title h1 {
+  font-size: 2.4em;
+}
+.reveal section.slide-title p {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+/* Large Lucide hero icon on the title slide. */
+.reveal .hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  margin: 0 0 28px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: var(--blitzy-accent-teal);
+}
+.reveal .hero-icon svg,
+.reveal .hero-icon [data-lucide] {
+  width: 68px;
+  height: 68px;
+  stroke-width: 1.5;
+}
+
+/* ============================================================
+   5. Slide type -- DIVIDER (dark #2D1C77 / gradient, inverted text)
+   ============================================================ */
+.reveal .slides section.slide-divider {
+  background-color: var(--blitzy-primary-dark);
+  background-image: var(--gradient-divider);
+  color: var(--blitzy-text-invert);
+  text-align: left;
+  padding: 64px;
+}
+.reveal section.slide-divider h1,
+.reveal section.slide-divider h2,
+.reveal section.slide-divider h3 {
+  color: var(--blitzy-text-invert);
+}
+.reveal section.slide-divider h1 {
+  font-size: 2.2em;
+}
+.reveal section.slide-divider p {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* ============================================================
+   6. Slide type -- CLOSING (navy #1A105F, inverted text, lockup + bar)
+   ============================================================ */
+.reveal .slides section.slide-closing {
+  background-color: var(--blitzy-primary-navy);
+  color: var(--blitzy-text-invert);
+  text-align: left;
+  padding: 64px;
+}
+.reveal section.slide-closing h1,
+.reveal section.slide-closing h2,
+.reveal section.slide-closing h3 {
+  color: var(--blitzy-text-invert);
+}
+.reveal section.slide-closing p {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* ============================================================
+   7. Brand lockup (Blitzy wordmark) + accent bar
+   ============================================================ */
+.reveal .brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: 1.6em;
+  letter-spacing: -0.02em;
+  color: var(--blitzy-text-invert);
+}
+.reveal .brand-lockup::before {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 4px;
+  background: var(--gradient-accent-bar);
+}
+
+/* Thin gradient accent bar (used on closing + section dividers). */
+.reveal .accent-bar {
+  display: block;
+  width: 120px;
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gradient-accent-bar);
+  margin: 24px 0;
+}
+
+/* ============================================================
+   8. KPI grid + cards
+   ============================================================ */
+.reveal .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 28px;
+  width: 100%;
+  margin: 24px 0;
+}
+.reveal .kpi-card {
+  background: var(--blitzy-surface-1);
+  border: 1px solid var(--blitzy-border-soft);
+  border-radius: 16px;
+  padding: 28px 26px;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(45, 28, 119, 0.06);
+}
+
+/* Lucide icon wrapper inside a KPI card. */
+.reveal .kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 0 16px;
+  border-radius: 12px;
+  background: var(--blitzy-surface-2);
+  color: var(--blitzy-primary);
+}
+.reveal .kpi-icon svg,
+.reveal .kpi-icon [data-lucide] {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.75;
+}
+
+.reveal .kpi-value {
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: 2.1em;
+  line-height: 1;
+  color: var(--blitzy-primary-dark);
+  margin: 0 0 8px;
+}
+.reveal .kpi-label {
+  font-family: var(--ff-body);
+  font-size: 0.46em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--blitzy-text-muted);
+}
+
+/* KPI cards placed on dark slide types invert their surface for contrast. */
+.reveal .slide-divider .kpi-card,
+.reveal .slide-closing .kpi-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.reveal .slide-divider .kpi-value,
+.reveal .slide-closing .kpi-value {
+  color: var(--blitzy-text-invert);
+}
+.reveal .slide-divider .kpi-label,
+.reveal .slide-closing .kpi-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+.reveal .slide-divider .kpi-icon,
+.reveal .slide-closing .kpi-icon {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--blitzy-accent-teal);
+}
+
+/* ============================================================
+   9. Icon row (horizontal Lucide row)
+   ============================================================ */
+.reveal .icon-row {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin: 20px 0;
+}
+.reveal .icon-row svg,
+.reveal .icon-row [data-lucide] {
+  width: 40px;
+  height: 40px;
+  color: var(--blitzy-primary);
+  stroke-width: 1.6;
+}
+.reveal .slide-divider .icon-row svg,
+.reveal .slide-divider .icon-row [data-lucide],
+.reveal .slide-closing .icon-row svg,
+.reveal .slide-closing .icon-row [data-lucide] {
+  color: var(--blitzy-accent-teal);
+}
+
+/* ============================================================
+   10. Styled tables (risk table, six-addon value, etc.)
+   ============================================================ */
+.reveal table {
+  width: 100%;
+  margin: 16px 0;
+  border-collapse: collapse;
+  font-size: 0.6em;
+}
+.reveal table th {
+  font-family: var(--ff-display);
+  font-weight: 600;
+  text-align: left;
+  background: var(--blitzy-primary-dark);
+  color: var(--blitzy-text-invert);
+  padding: 12px 16px;
+  border: 0;
+}
+.reveal table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--blitzy-border);
+  color: var(--blitzy-text);
+  vertical-align: top;
+}
+.reveal table tr:nth-child(even) td {
+  background: var(--blitzy-surface-2);
+}
+
+/* ============================================================
+   11. Mermaid container -- centered, transparent bg, max-width
+   (Diagram colours come from the deck's Mermaid JS theme settings.)
+   ============================================================ */
+.reveal .mermaid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  margin: 12px auto;
+  background: transparent;
+  text-align: center;
+}
+.reveal .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================================
+   12. Reveal.js chrome tint (controls / progress)
+   ============================================================ */
+.reveal .controls {
+  color: var(--blitzy-primary);
+}
+.reveal .progress {
+  color: var(--blitzy-primary);
+  height: 4px;
+}
+.reveal .progress span {
+  background: var(--gradient-accent-bar);
+}
+.reveal .slide-number {
+  background-color: transparent;
+  color: var(--blitzy-text-muted);
+  font-family: var(--ff-mono);
+}
+/* ===== END CANONICAL THEME ===== */
+
+/* ===== BEGIN DECK-ONLY EXTENSIONS (additive; new selectors only; not part of the canonical theme) ===== */
+.reveal .lead {
+  color: var(--blitzy-text-muted);
+  font-size: 0.62em;
+  line-height: 1.45;
+  margin: 0 0 1em;
+  max-width: 40ch;
+}
+.reveal .slide-title .lead, .reveal .slide-divider .lead, .reveal .slide-closing .lead {
+  color: rgba(255, 255, 255, 0.82);
+  max-width: 46ch;
+}
+.reveal .kpi-sub {
+  color: var(--blitzy-text-muted);
+  font-family: var(--ff-body);
+  font-size: 0.4em;
+  line-height: 1.35;
+  margin-top: 8px;
+}
+.reveal .slide-divider .kpi-sub, .reveal .slide-closing .kpi-sub {
+  color: rgba(255, 255, 255, 0.6);
+}
+.reveal .kpi-suffix {
+  color: var(--blitzy-text-muted);
+  font-family: var(--ff-display);
+  font-size: 0.5em;
+  font-weight: 500;
+  margin-left: 0.25em;
+}
+.reveal .slide-divider .kpi-suffix, .reveal .slide-closing .kpi-suffix {
+  color: rgba(255, 255, 255, 0.6);
+}
+.reveal .title-meta {
+  display: flex;
+  gap: 2.4em;
+  justify-content: center;
+  margin-top: 1.6em;
+}
+.reveal .title-meta span {
+  color: rgba(255, 255, 255, 0.78);
+  font-family: var(--ff-mono);
+  font-size: 0.42em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.reveal .title-meta strong {
+  color: var(--blitzy-accent-teal);
+  font-weight: 500;
+}
+.reveal .two-col {
+  align-items: start;
+  display: grid;
+  gap: 40px;
+  grid-template-columns: 1.35fr 1fr;
+}
+.reveal .domain-cell {
+  align-items: center;
+  color: var(--blitzy-primary-dark);
+  display: inline-flex;
+  font-weight: 600;
+  gap: 0.55em;
+}
+.reveal .domain-cell svg, .reveal .domain-cell [data-lucide] {
+  color: var(--blitzy-primary);
+  flex: 0 0 auto;
+  height: 1.15em;
+  stroke-width: 1.75;
+  width: 1.15em;
+}
+.reveal .icon-chip {
+  align-items: center;
+  background: var(--blitzy-surface-2);
+  border-radius: 999px;
+  border: 1px solid var(--blitzy-border-soft);
+  color: var(--blitzy-text-muted);
+  display: inline-flex;
+  font-family: var(--ff-mono);
+  font-size: 0.42em;
+  gap: 0.5em;
+  letter-spacing: 0.06em;
+  padding: 0.5em 0.9em;
+  text-transform: uppercase;
+}
+.reveal .icon-chip svg, .reveal .icon-chip [data-lucide] {
+  color: var(--blitzy-primary);
+  height: 1.2em;
+  stroke-width: 1.75;
+  width: 1.2em;
+}
+.reveal .slide-closing .icon-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.82);
+}
+.reveal .slide-closing .icon-chip svg, .reveal .slide-closing .icon-chip [data-lucide] {
+  color: var(--blitzy-accent-teal);
+}
+.reveal .severity-chip {
+  border-radius: 6px;
+  display: inline-block;
+  font-family: var(--ff-mono);
+  font-size: 0.92em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 0.2em 0.7em;
+  text-transform: uppercase;
+}
+.reveal .severity-chip.medium {
+  background: var(--blitzy-surface-2);
+  border: 1px solid var(--blitzy-primary-light);
+  color: var(--blitzy-primary-deep);
+}
+.reveal .severity-chip.low {
+  background: rgba(148, 250, 213, 0.32);
+  border: 1px solid var(--blitzy-accent-teal);
+  color: #1f7a54;
+}
+.reveal .footnote {
+  color: var(--blitzy-text-muted);
+  font-family: var(--ff-body);
+  font-size: 0.42em;
+  margin-top: 1.2em;
+}
+.reveal .footnote .tag {
+  color: var(--blitzy-primary);
+  font-family: var(--ff-mono);
+  font-size: 0.88em;
+  letter-spacing: 0.08em;
+  margin-right: 0.3em;
+  text-transform: uppercase;
+}
+.reveal .closing-layout {
+  align-items: center;
+  display: grid;
+  gap: 48px;
+  grid-template-columns: 1.5fr 1fr;
+}
+.reveal .closing-hero {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  justify-content: center;
+}
+.reveal .hero-caption {
+  color: var(--blitzy-accent-teal);
+  font-family: var(--ff-mono);
+  font-size: 0.42em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.reveal .brand-row {
+  align-items: center;
+  display: flex;
+  gap: 1.2em;
+  margin-top: 1.4em;
+}
+.reveal .brand-tagline {
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--ff-mono);
+  font-size: 0.4em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------
+   Slide 2 ("Headline Findings") compact layout — scoped to .headline-layout
+   ONLY, so the other 15 slides (all of which already fit the 1080px canvas
+   exactly) are untouched. This run's KPI-summary slide carries a heading, a
+   four-card KPI grid, and a single source-citation footnote (no diagram).
+   With reveal's center:false (top-aligned) layout, these additive rules trim
+   the KPI grid/card whitespace and the heading/footnote margins so all four
+   KPI cards and the footnote sit comfortably within the deck's native
+   1920x1080 design resolution with a generous bottom margin. The canonical
+   Blitzy theme above is left byte-for-byte intact. */
+.reveal .headline-layout h2 { margin-bottom: 0.3em; }
+.reveal .headline-layout .kpi-grid { margin: 16px 0; }
+.reveal .headline-layout .kpi-card { padding: 22px 24px; }
+.reveal .headline-layout .footnote { margin-top: 0.7em; }
+
+/* ------------------------------------------------------------------
+   reveal.js slide-number control (F-02) — the framework-generated link is
+   display:inline / 49.2x16px, below the 24x24px touch-target minimum
+   (WCAG 2.5.8 / Lighthouse "target-size"). Two coordinated, additive changes to
+   the framework chrome (the canonical ".reveal .slide-number" rule above is left
+   byte-for-byte intact; no brand token, colour, or the 436 verbatim theme lines
+   are changed):
+     1. Enlarge the <a> to a >=24px inline-flex box (centres the "N / 16" glyphs;
+        background stays transparent per the canonical rule, so the visible text
+        is unchanged — only the clickable target grows).
+     2. Re-anchor the slide-number to bottom-CENTRE. reveal.js otherwise clusters
+        the slide-number and the prev/next arrow controls ~9px apart in the
+        bottom-right corner; once the link is >=24px tall it overlaps the
+        next-arrow and — because the slide-number layer sits above the controls
+        (z-index 31 > 11) — intercepts the arrow's centre click, breaking primary
+        navigation. Centring the slide-number cleanly separates it from the
+        right-corner arrows AND from the bottom-left source-citation footnotes, so
+        every control retains a clear >=24px target with zero click interception.
+   reveal.js does not constrain slide-number position, and centring is consistent
+   with the deck's centred title/divider/closing slides. */
+.reveal .slide-number {
+  bottom: 8px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+.reveal .slide-number a {
+  align-items: center;
+  box-sizing: border-box;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 4px 8px;
+}
+/* ------------------------------------------------------------------
+   Issue 9 - base document typography & colour. reveal.js themes only
+   .reveal; the bare <html>/<body> otherwise fall back to the UA default
+   (Times New Roman / black). Brand the document root so a computed-style
+   spot-check of document.body reports Inter / #333333, and so any pre-mount
+   flash inherits the brand surface. Per-slide backgrounds (title / divider /
+   closing) remain driven by the canonical slide-type rules above. */
+html, body {
+  font-family: var(--ff-body);
+  color: var(--blitzy-text);
+  background: var(--blitzy-surface-0);
+  /* Narrow-viewport safety: the fixed 1920px deck never paints a horizontal
+     scrollbar once Reveal scales it down (see minScale in the init script). */
+  overflow-x: hidden;
+}
+
+/* reveal.js relocates the `reveal-viewport` class onto <body>, and reveal.css
+   declares `.reveal-viewport { color: #000 }` (specificity 0,1,0) which outranks
+   the element-level `html, body` rule above. Re-assert the brand text colour at
+   matching+ specificity (body.reveal-viewport = 0,1,1) so a computed-style check
+   of document.body reports Inter / #333333 (Issue 9). The viewport background is
+   left to reveal's white, which already equals --blitzy-surface-0. */
+body.reveal-viewport {
+  color: var(--blitzy-text);
+  font-family: var(--ff-body);
+}
+
+/* ------------------------------------------------------------------
+   Issue 10 - high-contrast keyboard focus indicator. The framework's
+   default focus outline is faint against the deck chrome. Apply a thick
+   teal-accent ring (brand --blitzy-accent-teal) with offset to every
+   keyboard-focusable control - the slide-number link, the prev/next/play
+   controls, and in-slide links - so the focused element is unmistakable on
+   both the light content slides and the dark divider/closing slides.
+   :focus-visible keeps the ring keyboard-only (no mouse-click halo); a
+   :focus fallback covers engines without :focus-visible. */
+.reveal .slide-number a:focus-visible,
+.reveal .controls button:focus-visible,
+.reveal .slides a:focus-visible {
+  outline: 3px solid var(--blitzy-accent-teal);
+  outline-offset: 3px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 5px rgba(45, 28, 119, 0.55);
+}
+.reveal .slide-number a:focus,
+.reveal .controls button:focus {
+  outline: 3px solid var(--blitzy-accent-teal);
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------
+   Issue 8 (responsive clipping) - the fixed 1920px slides use content-box
+   with 64px padding, so each section's real box is 2048px wide. reveal.js
+   scales the deck with `zoom` computed from the configured 1920px width, which
+   leaves the 128px of horizontal padding to overflow: 2048 * 0.1875 = 384px on
+   a 375px phone, clipping ~4-5px off each edge of the divider band. At narrow
+   viewports only, make the sections border-box so the 1920px width INCLUDES the
+   padding (box = 1920px -> 360px zoomed, fits within 375px with no clipping).
+   Desktop and tablet (>768px) keep their existing, QA-approved content-box
+   layout completely untouched. The overflow-x:hidden on html/body above is the
+   final backstop so no horizontal scrollbar can ever appear. */
+@media (max-width: 768px) {
+  .reveal .slides > section {
+    box-sizing: border-box;
+  }
+}
+/* ===== END DECK-ONLY EXTENSIONS ===== */
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- =================================================================
+           Slide 1 / 16 — Title (slide-title)
+           Non-text visual: Lucide hero icon + hero gradient background.
+           ================================================================= -->
+      <section class="slide-title"
+               data-background-gradient="linear-gradient(68deg, #7A6DEC 15.56%, #5B39F3 62.74%, #4101DB 84.44%)">
+        <i class="hero-icon" data-lucide="landmark" aria-hidden="true"></i>
+        <span class="eyebrow">Blitzy Code Archaeology &amp; PR Review</span>
+        <h1>Enterprise Accounting Suite for Odoo 19.0 CE</h1>
+        <p class="lead">A forensic archaeology of every merged change and the seven-phase Segmented PR Review outcome.</p>
+        <div class="title-meta">
+          <span><strong>Audience</strong> Executive Leadership</span>
+          <span><strong>Scope</strong> 278 Files &middot; 6 Addons</span>
+          <span><strong>Verdict</strong> Approved</span>
+        </div>
+      </section>
+
+      <!-- =================================================================
+           Slide 2 / 16 — Headline KPI summary (default content)
+           Non-text visual: KPI cards with Lucide icons.
+           "headline-layout" scopes the compact-layout rules in the deck-only
+           extensions block so the four KPI cards and the source footnote sit
+           comfortably within the 1080px canvas at native design resolution.
+           ================================================================= -->
+      <section class="headline-layout">
+        <span class="eyebrow">By The Numbers</span>
+        <h2>Headline Findings</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="files" aria-hidden="true"></i>
+            <div class="kpi-value">278</div>
+            <div class="kpi-label">Files Added</div>
+            <div class="kpi-sub">vs base 7bd7718</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="package" aria-hidden="true"></i>
+            <div class="kpi-value">6</div>
+            <div class="kpi-label">Accounting Addons</div>
+            <div class="kpi-sub">Odoo Community Edition</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="trending-up" aria-hidden="true"></i>
+            <div class="kpi-value">+134,588</div>
+            <div class="kpi-label">Insertions</div>
+            <div class="kpi-sub">0 deletions &middot; net-new</div>
+          </div>
+          <div class="kpi-card">
+            <i class="kpi-icon" data-lucide="shield-check" aria-hidden="true"></i>
+            <div class="kpi-value">APPROVED</div>
+            <div class="kpi-label">Review Verdict</div>
+            <div class="kpi-sub">7 of 7 phases</div>
+          </div>
+        </div>
+        <p class="footnote">
+          <span class="tag">Source</span> git diff sandbox..origin/pdlc &middot; base 7bd7718bcd4 &rarr; head 13896915095
+        </p>
+      </section>
+
+      <!-- =================================================================
+           Slide 3 / 16 — Module architecture (default content)
+           Non-text visual: module-dependency Mermaid graph (AAP Sec. 0.5.3).
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">What Was Built</span>
+        <h2>Module Architecture</h2>
+        <pre class="mermaid" role="img" aria-label="Module dependency graph: all six Community-Edition accounting addons extend the Odoo account base module inside an Odoo Community Edition boundary, and the account base module reads and writes through the Odoo ORM on PostgreSQL.">
+graph TD
+    subgraph OCE["Odoo Community Edition"]
+        ACC["account base module"]
+    end
+    AFR["account_financial_report_ce"] --> ACC
+    APF["account_payment_followup"] --> ACC
+    ABR["account_bank_reconciliation_ce"] --> ACC
+    AAM["account_asset_management"] --> ACC
+    ABM["account_budget_management"] --> ACC
+    ADR["account_deferred_revenue"] --> ACC
+    ACC --> ORM[("Odoo ORM / PostgreSQL")]
+        </pre>
+      </section>
+
+      <!-- =================================================================
+           Slide 4 / 16 — Divider: Code Archaeology (slide-divider)
+           Non-text visual: Lucide icon + accent bar.
+           ================================================================= -->
+      <section class="slide-divider" data-background-color="#2D1C77">
+        <span class="eyebrow">Section 01</span>
+        <div class="icon-row"><i data-lucide="layers" aria-hidden="true"></i></div>
+        <h2>Code Archaeology</h2>
+        <span class="accent-bar"></span>
+        <p>Every merged change, treated as this-run work — 278 net-new files across six accounting addons.</p>
+      </section>
+
+      <!-- =================================================================
+           Slide 5 / 16 — Change inventory (default content)
+           Non-text visual: styled table with Lucide icons + icon-row chips.
+           Per-addon file counts sum to 206 addon files.
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">Change Inventory</span>
+        <h2>Six Addons, 206 Module Files</h2>
+        <table>
+          <thead>
+            <tr><th>Addon</th><th>Files</th><th>Feature</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="domain-cell"><i data-lucide="file-text" aria-hidden="true"></i> Financial Reports</span></td><td>44</td><td>FEATURE-001</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="receipt" aria-hidden="true"></i> Payment Follow-up</span></td><td>39</td><td>FEATURE-006</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="banknote" aria-hidden="true"></i> Bank Reconciliation</span></td><td>35</td><td>FEATURE-002</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="wallet" aria-hidden="true"></i> Budget Management</span></td><td>31</td><td>FEATURE-003</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="landmark" aria-hidden="true"></i> Asset Management</span></td><td>31</td><td>FEATURE-004</td></tr>
+            <tr><td><span class="domain-cell"><i data-lucide="calendar-clock" aria-hidden="true"></i> Deferred Revenue</span></td><td>26</td><td>FEATURE-005</td></tr>
+          </tbody>
+        </table>
+        <div class="icon-row">
+          <span class="icon-chip"><i data-lucide="folder-tree" aria-hidden="true"></i> 206 addon files</span>
+          <span class="icon-chip"><i data-lucide="git-merge" aria-hidden="true"></i> all Added</span>
+          <span class="icon-chip"><i data-lucide="scale" aria-hidden="true"></i> AGPL-3.0</span>
+        </div>
+      </section>
+
+      <!-- =================================================================
+           Slide 6 / 16 — Financial reporting (FEATURE-001) (default content)
+           Non-text visual: report-generation data-flow Mermaid.
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">FEATURE-001 &middot; Financial Reporting</span>
+        <h2>Reports On Demand</h2>
+        <pre class="mermaid" role="img" aria-label="Financial reporting data flow: report wizard parameters drive the report engine, which produces QWeb PDF or XLSX output and supports interactive drill-down back to journal entries.">
+flowchart LR
+    P["Wizard parameters"] --> E["Report engine"]
+    E --> O["QWeb PDF / XLSX export"]
+    O --> D["Interactive drill-down"]
+        </pre>
+      </section>
+
+      <!-- =================================================================
+           Slide 7 / 16 — Bank reconciliation (FEATURE-002) (default content)
+           Non-text visual: statement-import-and-match data-flow Mermaid.
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">FEATURE-002 &middot; Bank Reconciliation</span>
+        <h2>Import And Match</h2>
+        <pre class="mermaid" role="img" aria-label="Bank reconciliation data flow: statement import in CSV, OFX, QIF or CAMT.053 feeds the matching engine and rules, which reconciles each line fully or partially.">
+flowchart LR
+    I["Statement import: CSV / OFX / QIF / CAMT.053"] --> M["Matching engine and rules"]
+    M --> R["Reconcile: full or partial"]
+        </pre>
+      </section>
+
+      <!-- =================================================================
+           Slide 8 / 16 — Budget management (FEATURE-003) (default content)
+           Non-text visual: variance-computation data-flow Mermaid.
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">FEATURE-003 &middot; Budget Management</span>
+        <h2>Plan Versus Actual</h2>
+        <pre class="mermaid" role="img" aria-label="Budget management data flow: a budget definition is allocated across periods, posted actuals are aggregated, variance is computed, and threshold alerts are raised.">
+flowchart LR
+    D["Budget definition"] --> A["Period allocation"]
+    A --> G["Actual aggregation"]
+    G --> V["Variance analysis"]
+    V --> AL["Threshold alerts"]
+        </pre>
+      </section>
+
+      <!-- =================================================================
+           Slide 9 / 16 — Asset management (FEATURE-004) (default content)
+           Non-text visual: depreciation-posting sequence Mermaid.
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">FEATURE-004 &middot; Asset Management</span>
+        <h2>Depreciation, Automated</h2>
+        <pre class="mermaid" role="img" aria-label="Asset depreciation sequence: asset registration generates a depreciation board; the AM-004 daily cron picks up due lines; the board creates and posts an account.move journal entry that is linked back to the asset.">
+sequenceDiagram
+    participant Reg as Asset registration
+    participant Board as Depreciation board
+    participant Cron as AM-004 daily cron
+    participant Move as account.move
+    Reg->>Board: generate depreciation schedule
+    Cron->>Board: pick up due lines
+    Board->>Move: create and post entry
+    Move-->>Reg: link posted depreciation
+        </pre>
+      </section>
+
+      <!-- =================================================================
+           Slide 10 / 16 — Deferred revenue (FEATURE-005) (default content)
+           Non-text visual: recognition-schedule data-flow Mermaid.
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">FEATURE-005 &middot; Deferred Revenue</span>
+        <h2>Recognize Over Time</h2>
+        <pre class="mermaid" role="img" aria-label="Deferred revenue data flow: a schedule definition drives automatic period allocation, which generates cutoff entries surfaced on a recognition dashboard.">
+flowchart LR
+    S["Schedule definition"] --> A["Automatic period allocation"]
+    A --> C["Cutoff entries"]
+    C --> D["Recognition dashboard"]
+        </pre>
+      </section>
+
+      <!-- =================================================================
+           Slide 11 / 16 — Payment follow-up (FEATURE-006) (default content)
+           Non-text visual: dunning-escalation data-flow Mermaid.
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">FEATURE-006 &middot; Payment Follow-up</span>
+        <h2>Dunning On Schedule</h2>
+        <pre class="mermaid" role="img" aria-label="Payment follow-up data flow: overdue calculation feeds follow-up levels; the PF-002 cron triggers a batched mail.template send; every reminder is written to follow-up history.">
+flowchart LR
+    O["Overdue calculation"] --> L["Follow-up levels"]
+    L --> Cr["PF-002 cron"]
+    Cr --> Sn["Batched mail.template send"]
+    Sn --> H["Follow-up history"]
+        </pre>
+      </section>
+
+      <!-- =================================================================
+           Slide 12 / 16 — Divider: Quality & Review (slide-divider)
+           Non-text visual: Lucide icon + accent bar.
+           ================================================================= -->
+      <section class="slide-divider" data-background-color="#2D1C77">
+        <span class="eyebrow">Section 02</span>
+        <div class="icon-row"><i data-lucide="shield-check" aria-hidden="true"></i></div>
+        <h2>Quality &amp; Review</h2>
+        <span class="accent-bar"></span>
+        <p>A single atomic Segmented PR Review — a pre-flight gate, then seven sequential domain phases.</p>
+      </section>
+
+      <!-- =================================================================
+           Slide 13 / 16 — Segmented PR Review pipeline (default content)
+           Non-text visual: seven-phase review-pipeline Mermaid flowchart.
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">Review Workflow</span>
+        <h2>Seven-Phase Segmented Pipeline</h2>
+        <pre class="mermaid" role="img" aria-label="Segmented PR Review pipeline: a pre-flight gate passes into seven sequential domain phases — Infrastructure/DevOps, Security, Backend Architecture, QA/Test Integrity, Business/Domain, Frontend, Other SME — ending in a final verdict of Approved that marks the PR ready; any Blocked phase or a Blocked verdict returns the work item to code generation and restarts from the pre-flight gate.">
+flowchart LR
+    PF["Pre-flight gate"] -->|pass| P1["1 Infrastructure / DevOps"]
+    PF -->|fail| RG["Return to code generation"]
+    P1 --> P2["2 Security"]
+    P2 --> P3["3 Backend Architecture"]
+    P3 --> P4["4 QA / Test Integrity"]
+    P4 --> P5["5 Business / Domain"]
+    P5 --> P6["6 Frontend"]
+    P6 --> P7["7 Other SME"]
+    P7 --> FV{"Final verdict"}
+    FV -->|APPROVED| DONE["PR ready"]
+    FV -->|BLOCKED| RG
+    RG -.->|restart| PF
+        </pre>
+      </section>
+
+      <!-- =================================================================
+           Slide 14 / 16 — Risks & Mitigations (default content)
+           Non-text visual: styled risk table with Lucide icons + severity chips.
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">Risk Register</span>
+        <h2>Tracked Risks, All Mitigated</h2>
+        <table>
+          <thead>
+            <tr><th>Risk</th><th>Severity</th><th>Mitigation</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="users" aria-hidden="true"></i> Bus-factor concentration</span></td>
+              <td><span class="severity-chip medium">Medium</span></td>
+              <td>Consolidated specs, per-addon READMEs, onboarding guides</td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="git-branch" aria-hidden="true"></i> CE-only constraint</span></td>
+              <td><span class="severity-chip low">Low</span></td>
+              <td>Manifests pin Community deps; no Enterprise modules</td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="package" aria-hidden="true"></i> External python deps</span></td>
+              <td><span class="severity-chip low">Low</span></td>
+              <td>openpyxl and ofxparse pinned in requirements.txt</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="footnote">
+          <span class="tag">Register</span> Technical Specifications.md &sect;7 &middot; all findings non-blocking
+        </p>
+      </section>
+
+      <!-- =================================================================
+           Slide 15 / 16 — Onboarding & Continuation (default content)
+           Non-text visual: Lucide icon-row + styled table.
+           Commands shown only as inline <code> inside table cells (no fenced
+           code blocks anywhere in the deck).
+           ================================================================= -->
+      <section>
+        <span class="eyebrow">Onboarding &amp; Continuation</span>
+        <h2>Up And Running Fast</h2>
+        <div class="icon-row">
+          <i data-lucide="download" aria-hidden="true"></i>
+          <i data-lucide="package" aria-hidden="true"></i>
+          <i data-lucide="play" aria-hidden="true"></i>
+          <i data-lucide="book-open" aria-hidden="true"></i>
+        </div>
+        <table>
+          <thead>
+            <tr><th style="width: 26%;">Step</th><th>Command / Reference</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="terminal" aria-hidden="true"></i> Install</span></td>
+              <td><code>odoo-bin -i &lt;modules&gt; --stop-after-init --without-demo=True</code></td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="shield-check" aria-hidden="true"></i> Lint</span></td>
+              <td><code>ruff check addons/&lt;module&gt;/</code></td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="file-text" aria-hidden="true"></i> Setup guide</span></td>
+              <td>docs/SETUP.md</td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="compass" aria-hidden="true"></i> User guide</span></td>
+              <td>docs/USER_GUIDE.md</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- =================================================================
+           Slide 16 / 16 — Closing (slide-closing)
+           Non-text visual: gradient accent bar + brand lockup + Lucide icon.
+           ================================================================= -->
+      <section class="slide-closing" data-background-color="#1A105F">
+        <span class="accent-bar"></span>
+        <div class="closing-layout">
+          <div>
+            <span class="eyebrow">Merge-Ready</span>
+            <h1>Production-Ready Accounting Suite</h1>
+            <p class="lead">Onboard the team with the delivered documentation set.</p>
+            <div class="icon-row">
+              <span class="icon-chip"><i data-lucide="clipboard-check" aria-hidden="true"></i> CODE_REVIEW.md</span>
+              <span class="icon-chip"><i data-lucide="book-open" aria-hidden="true"></i> Technical Specs</span>
+              <span class="icon-chip"><i data-lucide="compass" aria-hidden="true"></i> User &amp; Setup Guides</span>
+            </div>
+            <div class="brand-row">
+              <span class="brand-lockup">Blitzy</span>
+              <span class="brand-tagline">Code Archaeology &middot; June 2026</span>
+            </div>
+          </div>
+          <div class="closing-hero">
+            <i class="hero-icon" data-lucide="rocket" aria-hidden="true"></i>
+            <span class="hero-caption">Ship With Confidence</span>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /.slides -->
+  </div><!-- /.reveal -->
+
+  <!-- ===================================================================
+       Library runtimes (pinned CDN). CDN assets carry EXACT version pins and
+       crossorigin="anonymous" (SRI-ready), but no Subresource-Integrity hash:
+       this is a documented, ACCEPTED EXCEPTION (Technical Specifications Sec 7
+       R8 / Project Guide Sec 6 R8 / CODE_REVIEW.md observation 6). Recommended
+       hardening at deployment: add an integrity hash (or self-host the three
+       libraries) and serve under a script-src Content-Security-Policy.
+       reveal.js 5.1.0 (UMD) + Lucide 0.460.0 (UMD).
+       =================================================================== -->
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
+
+  <!-- ===================================================================
+       Mermaid 11.4.0 (ESM) + library initialization. Loaded as an ESM import,
+       which is not amenable to a tag-level integrity attribute (see the
+       accepted-exception note above and the risk registers).
+       =================================================================== -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+
+    // Expose globally for the slidechanged handler below.
+    window.mermaid = mermaid;
+
+    // Capture each diagram's raw source BEFORE any render so it can be
+    // re-rendered later, while its slide is actually visible. reveal.js hides
+    // off-screen slides with display:none; a diagram laid out in a zero-size
+    // (hidden) container computes a degenerate viewBox and renders invisibly.
+    // Re-rendering the current slide's diagrams on every slidechanged — at
+    // real container dimensions — eliminates that class of layout failure.
+    document.querySelectorAll('.reveal .slides .mermaid').forEach(function (el) {
+      el.setAttribute('data-mermaid-src', el.textContent);
+    });
+
+    // Mermaid theme bound to the Blitzy palette (AAP Sec. 0.10.2, verbatim).
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#F2F0FE',
+        primaryTextColor: '#333333',
+        primaryBorderColor: '#5B39F3',
+        lineColor: '#999999',
+        secondaryColor: '#F4EFF6'
+      },
+      // htmlLabels:false renders node labels as SVG <text> (measured via
+      // getBBox in SVG user units), NOT as <foreignObject> HTML. reveal.js
+      // applies a CSS transform: scale(...) to the .slides container, which
+      // breaks foreignObject width measurement (nodes size to 0 and labels
+      // clip). SVG text is immune to the outer transform, so labels size and
+      // render correctly inside the scaled deck.
+      htmlLabels: false,
+      flowchart: { useMaxWidth: true, htmlLabels: false, curve: 'basis' },
+      sequence: { useMaxWidth: true, wrap: true }
+    });
+
+    // reveal.js configuration (AAP Sec. 0.10.2, verbatim keys).
+    Reveal.initialize({
+      hash: true,
+      transition: 'slide',
+      controlsTutorial: false,
+      width: 1920,
+      height: 1080,
+      margin: 0.04,
+      center: false,
+      // Issue 8 (responsive): allow the fixed 1920x1080 deck to scale
+      // BELOW reveal's default 0.2 floor on narrow viewports. At 375px the
+      // required scale is ~0.195; the 0.2 floor would render the slide 384px
+      // wide and clip its left edge. minScale 0.1 lets the full slide fit any
+      // phone width (no horizontal clipping); maxScale pinned at the default.
+      minScale: 0.1,
+      maxScale: 2.0,
+      // Issue 8 (responsive + a11y): disable reveal's AUTOMATIC scroll view.
+      // reveal's default scrollActivationWidth (435px) silently switches the
+      // deck into scroll view below that width, stacking EVERY slide in a
+      // scroll container. That both mis-sizes the fixed 1920x1080 slides (the
+      // ~4-5px left-edge clip seen at 375px) and exposes every slide's text and
+      // raw Mermaid source in the accessibility tree. null keeps the normal
+      // scaled single-slide view at all widths, so exactly one slide is present
+      // and the rest remain aria-hidden; combined with minScale 0.1 the full
+      // slide scales to fit a 375px viewport with no horizontal clipping.
+      scrollActivationWidth: null,
+      slideNumber: 'c/t'
+    });
+
+    // Render Mermaid diagrams + Lucide icons after reveal.js mounts a slide.
+    // Awaits document.fonts.ready first to avoid Mermaid's text-width race
+    // (labels measured in a fallback font then re-flowing in Inter/Space
+    // Grotesk, clipping inside node boundaries).
+    async function renderVisuals() {
+      try {
+        if (document.fonts && typeof document.fonts.ready !== 'undefined') {
+          await document.fonts.ready;
+        }
+        var nodes = [];
+        var current = (typeof Reveal !== 'undefined' && Reveal.getCurrentSlide)
+          ? Reveal.getCurrentSlide() : null;
+        if (current) {
+          nodes = Array.prototype.slice.call(current.querySelectorAll('.mermaid'));
+        }
+        // Render ONLY the current slide's diagrams. reveal.js hides off-screen
+        // slides with display:none; rendering a diagram in a zero-dimension
+        // (hidden) container yields translate(undefined, NaN) transforms and a
+        // degenerate viewBox. Each diagram therefore renders the first time its
+        // slide is shown, and is re-rendered cleanly on revisit from its
+        // captured source below.
+        nodes.forEach(function (n) {
+          var src = n.getAttribute('data-mermaid-src');
+          if (src !== null) {
+            n.removeAttribute('data-processed');
+            n.innerHTML = '';
+            n.textContent = src;
+          }
+        });
+        if (nodes.length) {
+          await mermaid.run({ nodes: nodes });
+        }
+      } catch (err) {
+        console.warn('[executive-summary] mermaid render warning', err);
+      }
+      try {
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      } catch (err) {
+        console.warn('[executive-summary] lucide render warning', err);
+      }
+    }
+
+    // AAP Sec. 0.10.2: mermaid.run() + lucide.createIcons() on 'ready' and on
+    // every 'slidechanged'.
+    Reveal.on('ready', renderVisuals);
+    Reveal.on('slidechanged', renderVisuals);
+  </script>
+</body>
+</html>

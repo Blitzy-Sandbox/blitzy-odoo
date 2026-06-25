@@ -705,27 +705,32 @@
 .reveal .headline-layout .footnote { margin-top: 0.7em; }
 
 /* ------------------------------------------------------------------
-   reveal.js slide-number control (F-02) — the framework-generated link is
-   display:inline / 49.2x16px, below the 24x24px touch-target minimum
-   (WCAG 2.5.8 / Lighthouse "target-size"). Two coordinated, additive changes to
-   the framework chrome (the canonical ".reveal .slide-number" rule above is left
-   byte-for-byte intact — none of the verbatim canonical theme lines are changed;
-   the additive treatments below live only in this deck-only block):
-     1. Enlarge the <a> to a >=24px inline-flex box (centres the "N / 16" glyphs)
-        AND give the link an AA-contrast "pill": a --blitzy-surface-0 background
-        with --blitzy-text (#333333) glyphs and a --blitzy-border hairline, so the
-        slide-number meets WCAG AA on BOTH the light content slides and the dark
-        divider/closing slides (a single muted colour cannot satisfy both ends of
-        the background range). The pill is applied to the inner <a> only; the
-        canonical ".reveal .slide-number" container rule stays transparent/intact.
+   reveal.js bottom-chrome touch targets (F-02 / final_alt Issue 3) — the
+   framework-generated slide-number link is display:inline / ~49.2x16px and the
+   prev/next arrow buttons render ~36x36px, both below the 44x44px enhanced
+   touch-target guideline (WCAG 2.5.5 / common 44px target; supersedes the prior
+   24px WCAG 2.5.8 minimum). All treatments below are additive and live ONLY in
+   this deck-only block; the canonical ".reveal .slide-number" rule above is left
+   byte-for-byte intact (none of the verbatim canonical theme lines are changed):
+     1. Enlarge the slide-number <a> to a >=44px inline-flex box (centres the
+        "N / 16" glyphs) AND give the link an AA-contrast "pill": a
+        --blitzy-surface-0 background with --blitzy-text (#333333) glyphs and a
+        --blitzy-border hairline, so the slide-number meets WCAG AA on BOTH the
+        light content slides and the dark divider/closing slides (a single muted
+        colour cannot satisfy both ends of the background range). The pill is
+        applied to the inner <a> only; the canonical ".reveal .slide-number"
+        container rule stays transparent/intact.
      2. Re-anchor the slide-number to bottom-CENTRE. reveal.js otherwise clusters
         the slide-number and the prev/next arrow controls ~9px apart in the
-        bottom-right corner; once the link is >=24px tall it overlaps the
-        next-arrow and — because the slide-number layer sits above the controls
-        (z-index 31 > 11) — intercepts the arrow's centre click, breaking primary
+        bottom-right corner; once the link is enlarged it overlaps the next-arrow
+        and — because the slide-number layer sits above the controls (z-index
+        31 > 11) — intercepts the arrow's centre click, breaking primary
         navigation. Centring the slide-number cleanly separates it from the
         right-corner arrows AND from the bottom-left source-citation footnotes, so
-        every control retains a clear >=24px target with zero click interception.
+        every control retains a clear >=44px target with zero click interception.
+     3. Enlarge the prev/next arrow buttons to >=44x44px (the arrow glyph stays
+        centred within the larger hit area). See the ".reveal .controls button"
+        rule immediately below.
    reveal.js does not constrain slide-number position, and centring is consistent
    with the deck's centred title/divider/closing slides. */
 .reveal .slide-number {
@@ -743,9 +748,26 @@
   color: var(--blitzy-text);
   display: inline-flex;
   justify-content: center;
-  min-height: 28px;
-  min-width: 28px;
-  padding: 4px 10px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 4px 14px;
+}
+/* ------------------------------------------------------------------
+   reveal.js prev/next arrow controls (final_alt Issue 3) — enlarge the
+   framework arrow buttons to the 44x44px enhanced touch-target. reveal renders
+   each ".navigate-*" button at ~36x36px; we expand the clickable box to 44x44px
+   and keep the arrow glyph centred. Additive deck-only rule; the canonical theme
+   block above is untouched. Controls sit bottom-right and the slide-number is
+   bottom-centre, so the enlarged targets do not overlap. */
+.reveal .controls button.navigate-left,
+.reveal .controls button.navigate-right,
+.reveal .controls button.navigate-up,
+.reveal .controls button.navigate-down {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 /* ------------------------------------------------------------------
    Issue 9 - base document typography & colour. reveal.js themes only
@@ -1107,24 +1129,29 @@ flowchart LR
           </thead>
           <tbody>
             <tr>
-              <td><span class="domain-cell"><i data-lucide="users" aria-hidden="true"></i> Bus-factor concentration</span></td>
+              <td><span class="domain-cell"><i data-lucide="users" aria-hidden="true"></i> Bus-factor</span></td>
               <td><span class="severity-chip medium">Medium</span></td>
-              <td>Consolidated specs, per-addon READMEs, onboarding guides</td>
+              <td>READMEs, specs, onboarding</td>
             </tr>
             <tr>
-              <td><span class="domain-cell"><i data-lucide="git-branch" aria-hidden="true"></i> CE-only constraint</span></td>
+              <td><span class="domain-cell"><i data-lucide="git-branch" aria-hidden="true"></i> CE-only scope</span></td>
               <td><span class="severity-chip low">Low</span></td>
-              <td>Manifests pin Community deps; no Enterprise modules</td>
+              <td>Community deps only</td>
             </tr>
             <tr>
-              <td><span class="domain-cell"><i data-lucide="package" aria-hidden="true"></i> External python deps</span></td>
+              <td><span class="domain-cell"><i data-lucide="package" aria-hidden="true"></i> Python deps</span></td>
               <td><span class="severity-chip low">Low</span></td>
-              <td>openpyxl and ofxparse pinned in requirements.txt</td>
+              <td>Pinned in requirements.txt</td>
+            </tr>
+            <tr>
+              <td><span class="domain-cell"><i data-lucide="shield-alert" aria-hidden="true"></i> Pinned CDN libs</span></td>
+              <td><span class="severity-chip low">Low</span></td>
+              <td>Static author-controlled diagrams</td>
             </tr>
           </tbody>
         </table>
         <p class="footnote">
-          <span class="tag">Register</span> Technical Specifications.md &sect;7 &middot; all findings non-blocking
+          <span class="tag">Detail</span> Technical Specifications.md &sect;8.2
         </p>
       </section>
 
@@ -1212,9 +1239,24 @@ flowchart LR
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
 
   <!-- ===================================================================
-       Mermaid 11.4.0 (ESM) + library initialization. Loaded as an ESM import,
-       which is not amenable to a tag-level integrity attribute (see the
-       accepted-exception note above and the risk registers).
+       Mermaid 11.4.0 (ESM) + library initialization. The version is pinned
+       EXACTLY by rule R-1 (AAP Sec. 0.11) and is retained as mandated.
+
+       SECURITY / RISK ACCEPTANCE (final_alt Issue 4): an OSV/GHSA scan of
+       mermaid@11.4.0 reports six advisories (GHSA-6m6c-36f7-fhxh,
+       GHSA-7rqq-prvp-x9jh, GHSA-87f9-hvmw-gh4p, GHSA-8gwm-58g9-j8pw,
+       GHSA-ghcm-xqfw-q4vr, GHSA-xcj9-5m2h-648r) in the XSS / HTML-CSS-injection /
+       DoS classes, each of which requires Mermaid to render UNTRUSTED input to be
+       exploitable. This deck passes ONLY static, author-controlled diagram text
+       (no user / query-string / runtime-fetched content) and initializes Mermaid
+       with securityLevel:'strict' + htmlLabels:false, so labels render as
+       sanitized SVG <text>. Residual risk is Low and is FORMALLY ACCEPTED for this
+       delivery; see Technical Specifications.md Sec. 8.2 and the deck's
+       risk-register slide. Re-evaluate the pin if R-1 is ever revised to permit a
+       newer Mermaid release.
+
+       Loaded as an ESM import, which is not amenable to a tag-level integrity
+       attribute (see the accepted-exception note above and the risk registers).
        =================================================================== -->
   <script type="module">
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
@@ -1235,6 +1277,11 @@ flowchart LR
     // Mermaid theme bound to the Blitzy palette (AAP Sec. 0.10.2, verbatim).
     mermaid.initialize({
       startOnLoad: false,
+      // securityLevel:'strict' (final_alt Issue 4) — explicitly enforce Mermaid's
+      // strictest sanitization for the mandated 11.4.0 pin. All diagram text in
+      // this deck is static/author-controlled, so 'strict' (the library default)
+      // changes no rendering while documenting and hardening the accepted risk.
+      securityLevel: 'strict',
       theme: 'base',
       themeVariables: {
         primaryColor: '#F2F0FE',

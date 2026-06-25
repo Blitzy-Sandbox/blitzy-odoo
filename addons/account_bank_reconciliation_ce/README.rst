@@ -95,7 +95,7 @@ story of FEATURE-002:
   (Source: ``addons/account_bank_reconciliation_ce/models/bank_statement_import.py:account.bank.statement.import``).
 
 * **BR-002 Algorithmic Matching.** A matching engine that scores each bank
-  statement line against candidate journal items using configurable weights
+  statement line against candidate journal items using default scoring weights
   for amount, reference, partner, and date proximity, then classifies each
   candidate into High, Medium, Low, or None confidence bands and supports
   one-to-many and many-to-one resolution. Implemented by the
@@ -217,13 +217,20 @@ rules, declared in ``views/menuitem.xml``
 3. Reconciliation Rules and Matching Defaults
 ---------------------------------------------
 
-Default confidence thresholds (``confidence_high``, ``confidence_medium``,
-``confidence_low``) and matching weights for amount, reference, partner, and
-date proximity are seeded as ``ir.config_parameter`` records, alongside sample
-reconciliation rules (loaded with ``noupdate="1"`` so user customisations are
-preserved across upgrades), in ``data/reconciliation_data.xml``. The seeded
-matching weights are amount 0.40, reference 0.25, partner 0.20, and date 0.15
-(summing to 1.0)
+The matching engine scores each candidate using a fixed set of built-in default
+weights (the ``DEFAULT_WEIGHTS`` class attribute on the
+``account.reconciliation.matching`` model): amount 0.35, reference 0.25, partner
+0.25, and date 0.15 (summing to 1.0). These are the weights applied at runtime by
+the engine's ``_compute_match_score`` method
+(Source: ``addons/account_bank_reconciliation_ce/models/reconciliation_matching_engine.py:account.reconciliation.matching``).
+
+The ``data/reconciliation_data.xml`` file seeds default ``ir.config_parameter``
+records (confidence thresholds and per-criterion weight parameters) together with
+sample reconciliation rules (loaded with ``noupdate="1"`` so user customisations
+are preserved across upgrades). The engine applies its built-in defaults — the
+``DEFAULT_WEIGHTS`` above and the confidence-band constants — rather than reading
+these seeded parameters, so the documented 0.35 / 0.25 / 0.25 / 0.15 weighting is
+authoritative for matching behaviour
 (Source: ``addons/account_bank_reconciliation_ce/data/reconciliation_data.xml``).
 
 4. Multi-company Isolation

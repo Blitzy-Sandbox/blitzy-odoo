@@ -23,7 +23,7 @@ phases:
   qa_test_integrity: APPROVED
   business_domain: APPROVED
   frontend: APPROVED
-  other_sme: pending
+  other_sme: APPROVED
   final_verification: pending
 ---
 
@@ -633,7 +633,7 @@ Each file appears under exactly one domain heading, grouped by source group for 
 
 **Findings.** This run **closes both missing-README gaps** — `account_bank_reconciliation_ce/README.rst` and `account_financial_report_ce/README.rst` were created, bringing per-addon README coverage to 6/6 (the four baseline READMEs are reviewed under Phase 5); both new READMEs pass `rst2html --strict` (exit 0). The 20 archaeology screenshots under `blitzy/screenshots/` provide rendered evidence of the asset, budget, deferred-revenue, and follow-up UIs (kanban, pivot, graph, form views, wizards, dashboards). The archaeology report (`Technical Specifications.md`) and `Project Guide.md` are present and consistent with the change set. No blocking finding. *Source: `blitzy/documentation/`; `blitzy/screenshots/`; `addons/account_bank_reconciliation_ce/README.rst`; `addons/account_financial_report_ce/README.rst`.*
 
-**Status:** _pending review_
+**Status: APPROVED**
 
 ---
 

@@ -571,7 +571,7 @@ Each file appears under exactly one domain heading, grouped by source group for 
 
 **Preliminary observations (non-binding — phase not entered; pre-flight `BLOCKED`).** All six manifests validate via `ast.literal_eval` and declare Community-Edition `depends` only; data files load in the documented safe order (e.g. financial reporting orders `security/*` → `report/*` → `data/report_paperformat.xml` → `wizard` → `views`). The single install hook is isolated in `hooks.py` to keep `__init__.py` thin and to satisfy ruff `RUF067`. *Source: `addons/account_financial_report_ce/__manifest__.py`; `addons/account_bank_reconciliation_ce/hooks.py`; `ruff.toml` `[lint.per-file-ignores] "**/__init__.py" = ["F401"]`.*
 
-**Status: BLOCKED** — *phase not entered (pre-flight gate `BLOCKED`, Phase B); the observations above are non-binding and assert no verdict.*
+**Status: BLOCKED**
 
 ### Phase 2 — Security · Reviewer: Application-Security SME (review-only)
 
@@ -581,7 +581,7 @@ Each file appears under exactly one domain heading, grouped by source group for 
 
 **Preliminary observations (non-binding — phase not entered; pre-flight `BLOCKED`).** ACL coverage is present for every model — e.g. `account_financial_report_ce/security/ir.model.access.csv` ships 35 access rows (one or more per report/wizard model), all bound to `group_financial_report_user`. No manifest depends on `account_reports`, `account_accountant`, or any Enterprise module; `account_financial_report_ce/__manifest__.py` carries an explicit comment excluding Enterprise modules for AGPL-3 compatibility. The `account_bank_reconciliation_ce` `post_init_hook` deliberately adds accounting-role users to `base.group_user` because `ir.attachment` write access (required to upload CSV/OFX/QIF/CAMT.053 statement files) is gated on that group; the operation is idempotent (`Command.link` deduplicates). *Source: `addons/account_financial_report_ce/security/ir.model.access.csv`; `addons/*/__manifest__.py:depends`; `addons/account_bank_reconciliation_ce/hooks.py:post_init_hook`.*
 
-**Status: BLOCKED** — *phase not entered (pre-flight gate `BLOCKED`, Phase B); the observations above are non-binding and assert no verdict.*
+**Status: BLOCKED**
 
 ### Phase 3 — Backend Architecture · Reviewer: Odoo ORM / Backend SME (review-only)
 
@@ -591,7 +591,7 @@ Each file appears under exactly one domain heading, grouped by source group for 
 
 **Preliminary observations (non-binding — phase not entered; pre-flight `BLOCKED`).** 33 model files extend core models with `_inherit` and no `_name` (true additive inheritance — e.g. `account_asset_management/models/account_move.py` documents `_inherit = 'account.move'` *without* `_name`), while 23 declare new `_name` models (assets, depreciation lines, budgets, schedules, reconciliation records, follow-up levels). A scan found **zero** `setattr`-style monkey-patches of base classes. All 128 addon `.py` compile cleanly, and the 79 production files contain **zero** `pass`-only/`...`-only bodies and zero `NotImplementedError`. *Source: `addons/account_asset_management/models/account_move.py:_inherit`; AST/compile scan over `addons/*/{models,wizard,report}/*.py`.*
 
-**Status: BLOCKED** — *phase not entered (pre-flight gate `BLOCKED`, Phase B); the observations above are non-binding and assert no verdict.*
+**Status: BLOCKED**
 
 ### Phase 4 — QA / Test Integrity · Reviewer: QA & Test-Engineering SME (review-only)
 
@@ -601,7 +601,7 @@ Each file appears under exactly one domain heading, grouped by source group for 
 
 **Preliminary observations (non-binding — phase not entered; pre-flight `BLOCKED`).** The suite ships **49 test modules** with **942 `def test_*` methods**. Per-addon `tests/common.py` base classes extend `AccountTestInvoicingCommon` (which derives from `odoo.tests.common.TransactionCase`; referenced in 31 files), and 44 files apply `@tagged('post_install', '-at_install')`. There are **zero** `import pytest` and **zero** `@skip`/`skipIf` markers. Fixtures are substantive and well-formed: `sample_camt053.xml` (257 lines), `test_data/bank_statements/sample.xml` (313 lines, well-formed), `sample.ofx` (82 lines), `sample.qif` (31 lines), plus CSV samples. Tests run via `odoo-bin --test-enable` per §0.10-9. *Source: `addons/*/tests/`; `addons/*/tests/test_files/`; `test_data/`.*
 
-**Status: BLOCKED** — *phase not entered (pre-flight gate `BLOCKED`, Phase B); the observations above are non-binding and assert no verdict.*
+**Status: BLOCKED**
 
 ### Phase 5 — Business / Domain · Reviewer: Accounting Domain SME (review-only)
 
@@ -611,7 +611,7 @@ Each file appears under exactly one domain heading, grouped by source group for 
 
 **Preliminary observations (non-binding — phase not entered; pre-flight `BLOCKED`).** Requirements decompose cleanly: EPIC-001 ("Enterprise Accounting Capabilities for Odoo Community Edition") → six FEATUREs → **32 stories** (Financial Reporting 7, Asset Management 6, Bank Reconciliation 5, Budget Management 5, Payment Follow-ups 5, Deferred Revenue 4). Each FEATURE maps 1:1 to an addon, and story IDs (AM-/BR-/BM-/DR-/FR-/PF-) match the per-addon test modules reviewed in Phase 4. Accounting semantics are consistent with the `account` base module (journal entries, depreciation, reconciliation, recognition, variance, dunning). *Source: `tickets/EPIC-001-enterprise-accounting.md`; `tickets/features/`; `tickets/stories/`.*
 
-**Status: BLOCKED** — *phase not entered (pre-flight gate `BLOCKED`, Phase B); the observations above are non-binding and assert no verdict.*
+**Status: BLOCKED**
 
 ### Phase 6 — Frontend · Reviewer: Odoo Views / QWeb / SCSS SME (review-only)
 
@@ -621,7 +621,7 @@ Each file appears under exactly one domain heading, grouped by source group for 
 
 **Preliminary observations (non-binding — phase not entered; pre-flight `BLOCKED`).** All **58 addon XML files parse as well-formed** (0 malformed), spanning views, QWeb report templates, and wizard view definitions. The frontend surface is entirely server-rendered: **7 SCSS** stylesheets wired through addon `assets` blocks and **zero `.js`** files — confirming there is no client-side JavaScript/OWL component (consistent with §0.3.2). *Source: `addons/*/views/`, `addons/*/report/*.xml`, `addons/*/static/src/scss/`; file-type distribution (0 `.js`).*
 
-**Status: BLOCKED** — *phase not entered (pre-flight gate `BLOCKED`, Phase B); the observations above are non-binding and assert no verdict.*
+**Status: BLOCKED**
 
 ### Phase 7 — Other SME · Reviewer: Documentation & Requirements SME (review-only)
 
@@ -631,7 +631,7 @@ Each file appears under exactly one domain heading, grouped by source group for 
 
 **Preliminary observations (non-binding — phase not entered; pre-flight `BLOCKED`).** This run **closes both missing-README gaps** — `account_bank_reconciliation_ce/README.rst` and `account_financial_report_ce/README.rst` were created, bringing per-addon README coverage to 6/6 (the four baseline READMEs are reviewed under Phase 5). The 20 screenshots under `blitzy/screenshots/` provide rendered evidence of the asset, budget, deferred-revenue, and follow-up UIs (kanban, pivot, graph, form views, wizards, dashboards). The archaeology report (`Technical Specifications.md`) and `Project Guide.md` are present and consistent with the change set. *Source: `blitzy/documentation/`; `blitzy/screenshots/`; `addons/account_bank_reconciliation_ce/README.rst`; `addons/account_financial_report_ce/README.rst`.*
 
-**Status: BLOCKED** — *phase not entered (pre-flight gate `BLOCKED`, Phase B); the observations above are non-binding and assert no verdict.*
+**Status: BLOCKED**
 
 ---
 
@@ -663,8 +663,8 @@ Because the pre-flight gate is **`BLOCKED`** (Phase B), the review **does not en
 | # | Commit | Action | `CODE_REVIEW.md` state recorded |
 |---|--------|--------|----------------------------------|
 | 1 | `0a6004396ff` | **add** (`A`) at repo root | initial record — **superseded** (had asserted `APPROVED` with an unbacked cadence) |
-| 2 | pre-flight commit (this pass) | re-commit | pre-flight gate **`BLOCKED`** record (deck absent; build/test/static-analysis unevidenced) |
-| 3 | final commit (this pass) | re-commit (final) | final verdict **`BLOCKED`** — the commit on this branch that contains this log |
+| 2 | `5e01b69ee98` | re-commit | pre-flight gate **`BLOCKED`** record (deck absent; build/test/static-analysis unevidenced) |
+| 3 | final commit (this branch HEAD) | re-commit (final) | final verdict **`BLOCKED`** — the commit on this branch that contains this log |
 
 - **Verification mapping (rule R-2), for this pre-flight-blocked pass:** the artifact is present and committed at the pre-flight determination (row 2) and re-committed at the final verdict (row 3); pre-flight results are recorded **before** any phase status leaves its initial state (no phase was entered); all review timestamps (2026-06-25) fall **strictly after** the last code-generation commit (`13896915095`, 2026-06-09T20:25:11Z); the final commit contains `CODE_REVIEW.md` at the repository root. **No per-phase commit rows are claimed** — per rule R-2, no domain phase was entered, so none exists to commit. The next atomic pass will exercise the full per-phase cadence once the gate passes.
 

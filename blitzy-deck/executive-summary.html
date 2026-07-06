@@ -13,9 +13,9 @@
 
 
   <!-- Google Fonts: Inter (body) / Space Grotesk (display) / Fira Code (mono) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" crossorigin>
 
   <!-- reveal.js 5.1.0 core CSS (pinned, CDN-only; theme is inline below) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css" crossorigin="anonymous">
@@ -514,17 +514,6 @@
 
 /* ===== BEGIN DECK-ONLY EXTENSIONS (additive; new selectors only; not part of the canonical theme) ===== */
 
-/* Deck-only design tokens (additive; the canonical :root above is left
-   byte-for-byte intact, as is blitzy-deck/references/blitzy-reveal-theme.css).
-   --blitzy-text-muted-strong: a WCAG 2.1 AA-compliant (>=4.5:1 on every light
-   deck surface -- #FFFFFF, --blitzy-surface-1 #F5F5F5, --blitzy-surface-2
-   #F4EFF6) replacement for --blitzy-text-muted (#999999, ~2.0-2.85:1) on small
-   light-background metadata. --blitzy-success-text: the documented low-severity
-   / success-green token (replaces a former one-off hex on .severity-chip.low). */
-:root {
-  --blitzy-text-muted-strong: #666666;
-  --blitzy-success-text: #1f7a54;
-}
 .reveal .lead {
   color: var(--blitzy-text-muted);
   font-size: 0.62em;
@@ -639,7 +628,7 @@
 .reveal .severity-chip.low {
   background: rgba(148, 250, 213, 0.32);
   border: 1px solid var(--blitzy-accent-teal);
-  color: var(--blitzy-success-text);
+  color: var(--blitzy-text);
 }
 .reveal .footnote {
   color: var(--blitzy-text-muted);
@@ -705,60 +694,16 @@
 .reveal .headline-layout .footnote { margin-top: 0.7em; }
 
 /* ------------------------------------------------------------------
-   reveal.js bottom-chrome touch targets (F-02 / final_alt Issue 3) — the
-   framework-generated slide-number link is display:inline / ~49.2x16px and the
-   prev/next arrow buttons render ~36x36px, both below the 44x44px enhanced
-   touch-target guideline (WCAG 2.5.5 / common 44px target; supersedes the prior
-   24px WCAG 2.5.8 minimum). All treatments below are additive and live ONLY in
-   this deck-only block; the canonical ".reveal .slide-number" rule above is left
-   byte-for-byte intact (none of the verbatim canonical theme lines are changed):
-     1. Enlarge the slide-number <a> to a >=44px inline-flex box (centres the
-        "N / 16" glyphs) AND give the link an AA-contrast "pill": a
-        --blitzy-surface-0 background with --blitzy-text (#333333) glyphs and a
-        --blitzy-border hairline, so the slide-number meets WCAG AA on BOTH the
-        light content slides and the dark divider/closing slides (a single muted
-        colour cannot satisfy both ends of the background range). The pill is
-        applied to the inner <a> only; the canonical ".reveal .slide-number"
-        container rule stays transparent/intact.
-     2. Re-anchor the slide-number to bottom-CENTRE. reveal.js otherwise clusters
-        the slide-number and the prev/next arrow controls ~9px apart in the
-        bottom-right corner; once the link is enlarged it overlaps the next-arrow
-        and — because the slide-number layer sits above the controls (z-index
-        31 > 11) — intercepts the arrow's centre click, breaking primary
-        navigation. Centring the slide-number cleanly separates it from the
-        right-corner arrows AND from the bottom-left source-citation footnotes, so
-        every control retains a clear >=44px target with zero click interception.
-     3. Enlarge the prev/next arrow buttons to >=44x44px (the arrow glyph stays
-        centred within the larger hit area). See the ".reveal .controls button"
-        rule immediately below.
-   reveal.js does not constrain slide-number position, and centring is consistent
-   with the deck's centred title/divider/closing slides. */
-.reveal .slide-number {
-  bottom: 8px;
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-}
-.reveal .slide-number a {
-  align-items: center;
-  background-color: var(--blitzy-surface-0);
-  border: 1px solid var(--blitzy-border);
-  border-radius: 999px;
-  box-sizing: border-box;
-  color: var(--blitzy-text);
-  display: inline-flex;
-  justify-content: center;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 4px 14px;
-}
-/* ------------------------------------------------------------------
    reveal.js prev/next arrow controls (final_alt Issue 3) — enlarge the
-   framework arrow buttons to the 44x44px enhanced touch-target. reveal renders
-   each ".navigate-*" button at ~36x36px; we expand the clickable box to 44x44px
-   and keep the arrow glyph centred. Additive deck-only rule; the canonical theme
-   block above is untouched. Controls sit bottom-right and the slide-number is
-   bottom-centre, so the enlarged targets do not overlap. */
+   framework prev/next arrow buttons to the 44x44px enhanced touch-target
+   (WCAG 2.5.5). reveal renders each ".navigate-*" button at ~36x36px; we expand
+   the clickable box to 44x44px and keep the arrow glyph centred. This is an
+   additive deck-only rule targeting NEW selectors only
+   (".reveal .controls button.navigate-*"); the canonical theme block above —
+   including the ".reveal .slide-number" rule — is left byte-for-byte intact, so
+   the framework slide-number renders exactly as the canonical theme specifies
+   (Rule-1 additive constraint: deck-only CSS never redefines a canonical
+   selector). */
 .reveal .controls button.navigate-left,
 .reveal .controls button.navigate-right,
 .reveal .controls button.navigate-up,
@@ -817,45 +762,6 @@ body.reveal-viewport {
 .reveal .controls button:focus {
   outline: 3px solid var(--blitzy-accent-teal);
   outline-offset: 3px;
-}
-
-/* ------------------------------------------------------------------
-   WCAG 2.1 AA contrast remediation (deck-only; additive). Small light-background
-   metadata previously resolved to --blitzy-text-muted (#999999), which yields
-   only ~2.0-2.85:1 on the light deck surfaces (< the 4.5:1 AA floor for normal
-   text). Re-colour those selectors to --blitzy-text-muted-strong (#666666,
-   >=4.5:1 on #FFFFFF / --blitzy-surface-1 / --blitzy-surface-2). These rules
-   follow the base declarations in source order, so they win on the LIGHT content
-   slides; the existing higher-specificity dark-slide overrides
-   (.reveal .slide-divider <x>, .reveal .slide-closing <x>) are left unchanged and
-   continue to win on the DARK slides, so no dark-slide regression is introduced.
-   The canonical theme block above and blitzy-deck/references/blitzy-reveal-theme.css
-   stay byte-for-byte intact: the muted-contrast finding is resolved here via the
-   sanctioned deck-only-override path, not by editing the canonical reference. */
-.reveal .kpi-label,
-.reveal .lead,
-.reveal .kpi-sub,
-.reveal .kpi-suffix,
-.reveal .footnote,
-.reveal .icon-chip {
-  color: var(--blitzy-text-muted-strong);
-}
-
-/* ------------------------------------------------------------------
-   Issue 8 (responsive clipping) - the fixed 1920px slides use content-box
-   with 64px padding, so each section's real box is 2048px wide. reveal.js
-   scales the deck with `zoom` computed from the configured 1920px width, which
-   leaves the 128px of horizontal padding to overflow: 2048 * 0.1875 = 384px on
-   a 375px phone, clipping ~4-5px off each edge of the divider band. At narrow
-   viewports only, make the sections border-box so the 1920px width INCLUDES the
-   padding (box = 1920px -> 360px zoomed, fits within 375px with no clipping).
-   Desktop and tablet (>768px) keep their existing, QA-approved content-box
-   layout completely untouched. The overflow-x:hidden on html/body above is the
-   final backstop so no horizontal scrollbar can ever appear. */
-@media (max-width: 768px) {
-  .reveal .slides > section {
-    box-sizing: border-box;
-  }
 }
 /* ===== END DECK-ONLY EXTENSIONS ===== */
   </style>
@@ -920,7 +826,7 @@ body.reveal-viewport {
           </div>
         </div>
         <p class="footnote">
-          <span class="tag">Source</span> git diff 7bd7718bcd4 &rarr; 13896915095 &middot; base Odoo 19.0.0 Final &rarr; head origin/pdlc
+          <span class="tag">Source</span> git diff 7bd7718bcd4 &rarr; 1389691509568206594224539d5495f87a310ed1 &middot; base Odoo 19.0.0 Final &rarr; head origin/pdlc
         </p>
       </section>
 

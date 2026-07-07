@@ -19,7 +19,7 @@ preflight_gate: APPROVED
 overall_status: IN_REVIEW
 phases:
   infrastructure_devops: APPROVED
-  security: PENDING
+  security: APPROVED
   backend_architecture: PENDING
   qa_test_integrity: PENDING
   business_domain: PENDING
@@ -575,5 +575,21 @@ Every one of the 278 paths appears **exactly once** under exactly one domain hea
 - The single post-init hook is wired via `post_init_hook`.
 
 **Findings.** All six manifests parse as valid dicts and declare Community-Edition dependencies only (`account`, `analytic`, `mail`). The 11 data files provide runtime scaffolding — `data/asset_sequence.xml` and `data/depreciation_cron.xml` (asset numbering + scheduled depreciation), `data/reconciliation_data.xml`, `data/budget_alert_cron.xml` + `data/budget_data.xml`, `data/deferred_data.xml` + `data/recognition_dashboard_report.xml`, `data/report_paperformat.xml`, and `data/followup_cron.xml` + `data/followup_data.xml` + `data/mail_template_data.xml`. Exactly one addon (`account_bank_reconciliation_ce`) ships a `hooks.py`, wired as a `post_init_hook`. The clean PF-2 module-load (0/0, exit 0) corroborates that packaging, load order, and external-ID stability are correct. `Source: addons/account_asset_management/__manifest__.py`, `addons/account_bank_reconciliation_ce/hooks.py`, `addons/account_payment_followup/data/mail_template_data.xml`.
+
+**Status: APPROVED**
+
+### Phase 2 — Security · Reviewer: Application-Security SME (review-only)
+
+**File scope (12):** 6 `security/ir.model.access.csv` + 6 `security/*_security.xml`.
+
+**Checked:**
+- Every new model carries **≥ 1** access row.
+- The canonical **8-column** ACL header is used.
+- Access rows bind to **module-defined groups** (not world/global access).
+- Record and multi-company rules are scoped by groups.
+- **No Odoo Enterprise dependency** (CE-only, AGPL-3).
+- The `account_bank_reconciliation_ce` post-init hook's `base.group_user` grant is justified and idempotent.
+
+**Findings.** All six `ir.model.access.csv` files use the canonical header `id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink`, and access rows reference module-defined groups (for example `group_financial_report_user`) rather than granting unscoped world access. The six `*_security.xml` files define the module groups and record rules (including multi-company scoping). No file references an Enterprise addon or group. The `account_bank_reconciliation_ce` `post_init_hook` grants `base.group_user` the ability to link `ir.attachment` upload access via an idempotent `Command.link`, which is a defensible, least-surprise grant for statement-file uploads. `Source: addons/account_asset_management/security/ir.model.access.csv`, `addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml`.
 
 **Status: APPROVED**

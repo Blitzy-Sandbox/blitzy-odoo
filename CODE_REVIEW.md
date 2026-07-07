@@ -21,7 +21,7 @@ phases:
   infrastructure_devops: APPROVED
   security: APPROVED
   backend_architecture: APPROVED
-  qa_test_integrity: PENDING
+  qa_test_integrity: APPROVED
   business_domain: PENDING
   frontend: PENDING
   other_sme: PENDING
@@ -606,5 +606,20 @@ Every one of the 278 paths appears **exactly once** under exactly one domain hea
 - Clean compilation; **zero** production stubs.
 
 **Findings.** Core extensions correctly use `_inherit` **without** re-declaring `_name` — for example `models/account_move.py` sets `_inherit = 'account.move'` and does not re-register the model; the same additive pattern applies to `account.move.line` and `res.partner`. New business objects (e.g. `account.asset`, budget, deferred-revenue, and reconciliation models) declare fresh `_name` values. There is **no monkey-patching**: all behavior is layered through the ORM inheritance mechanism. The depreciation, recognition, statement-matching, and budget-variance engines compile cleanly and are exercised by the 940 passing tests. `Source: addons/account_asset_management/models/account_move.py`, `addons/account_bank_reconciliation_ce/models/reconciliation_matching_engine.py`, `addons/account_budget_management/report/budget_vs_actual_report.py`.
+
+**Status: APPROVED**
+
+### Phase 4 — QA / Test Integrity · Reviewer: QA & Test-Engineering SME (review-only)
+
+**File scope (60):** `addons/*/tests/**` = 49 `.py` test modules (including the 6 `tests/__init__.py`, which are QA under this precedence) + 4 `tests/test_files/*` fixtures, + 2 `demo/demo_data.xml`, + 5 `test_data/**` (49 + 4 + 2 + 5 = 60).
+
+**Checked:**
+- Per-story coverage across AM / BR / BM / DR / FR / PF.
+- Tests use `TransactionCase` / `HttpCase` (Odoo framework), **not** pytest.
+- `@tagged('post_install', '-at_install')` filtering.
+- Fixtures (CSV / OFX / QIF / CAMT.053) are non-empty and parseable.
+- No skipped or empty tests.
+
+**Findings.** The suite comprises **940** executable test methods (AM 86, BR 149, BM 161, DR 29, FR 222, PF 293), all derived from `TransactionCase` / `HttpCase` and filtered with `@tagged('post_install','-at_install')`. Coverage tracks the 32 planning stories across all six feature areas. The 4 in-addon fixtures under `account_bank_reconciliation_ce/tests/test_files/` (`sample.csv`, `sample.ofx`, `sample.qif`, `sample_camt053.xml`) and the 5 repository-level fixtures under `test_data/` are non-empty and parse with their respective importers. Two `demo/demo_data.xml` files (`account_bank_reconciliation_ce` and `account_financial_report_ce`) are classified here as QA seed data. *Caveat:* a naive `grep -c 'def test_'` yields **942** because two `def test_*` strings live inside docstrings (`tests/common.py:20`, `tests/test_am_004.py:109`); the authoritative executable count is **940**. `Source: addons/account_bank_reconciliation_ce/tests/test_files/sample_camt053.xml`, `addons/account_asset_management/tests/common.py`, `test_data/bank_statements/sample.qif`.
 
 **Status: APPROVED**

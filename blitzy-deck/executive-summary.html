@@ -28,7 +28,7 @@
      STRUCTURE — two clearly separated blocks:
        1. CANONICAL THEME — reproduced BYTE-FOR-BYTE from the single source of
           truth at blitzy-deck/references/blitzy-reveal-theme.css (AAP Sec.
-          0.10.2). The bytes between the BEGIN/END CANONICAL THEME markers below
+          0.7.1). The bytes between the BEGIN/END CANONICAL THEME markers below
           are an exact, verbatim copy of that file and diff clean against it.
        2. DECK-ONLY EXTENSIONS — additive presentation rules used only by this
           deck (e.g. .lead, .closing-hero, KPI refinements). They introduce NEW
@@ -694,7 +694,7 @@
 .reveal .headline-layout .footnote { margin-top: 0.7em; }
 
 /* ------------------------------------------------------------------
-   reveal.js prev/next arrow controls (final_alt Issue 3) — enlarge the
+   reveal.js prev/next arrow controls (enhanced touch target) — enlarge the
    framework prev/next arrow buttons to the 44x44px enhanced touch-target
    (WCAG 2.5.5). reveal renders each ".navigate-*" button at ~36x36px; we expand
    the clickable box to 44x44px and keep the arrow glyph centred. This is an
@@ -1151,8 +1151,8 @@ flowchart LR
   <!-- ===================================================================
        Library runtimes (pinned CDN). CDN assets carry EXACT version pins and
        crossorigin="anonymous" (SRI-ready), but no Subresource-Integrity hash:
-       this is a documented, ACCEPTED EXCEPTION (Technical Specifications Sec 7
-       R8 / Project Guide Sec 6 R8 / CODE_REVIEW.md observation 6). Recommended
+       this is a documented, ACCEPTED EXCEPTION recorded in the deck's
+       risk-register slide (Pinned CDN libs) and mandated by AAP Sec. 0.7.1. Recommended
        hardening at deployment: add an integrity hash (or self-host the three
        libraries) and serve under a script-src Content-Security-Policy.
        reveal.js 5.1.0 (UMD) + Lucide 0.460.0 (UMD).
@@ -1162,9 +1162,9 @@ flowchart LR
 
   <!-- ===================================================================
        Mermaid 11.4.0 (ESM) + library initialization. The version is pinned
-       EXACTLY by rule R-1 (AAP Sec. 0.11) and is retained as mandated.
+       EXACTLY by the Executive Presentation rule (AAP Sec. 0.7.1) and is retained as mandated.
 
-       SECURITY / RISK ACCEPTANCE (final_alt Issue 4): an OSV/GHSA scan of
+       SECURITY / RISK ACCEPTANCE: an OSV/GHSA scan of
        mermaid@11.4.0 reports six advisories (GHSA-6m6c-36f7-fhxh,
        GHSA-7rqq-prvp-x9jh, GHSA-87f9-hvmw-gh4p, GHSA-8gwm-58g9-j8pw,
        GHSA-ghcm-xqfw-q4vr, GHSA-xcj9-5m2h-648r) in the XSS / HTML-CSS-injection /
@@ -1173,8 +1173,8 @@ flowchart LR
        (no user / query-string / runtime-fetched content) and initializes Mermaid
        with securityLevel:'strict' + htmlLabels:false, so labels render as
        sanitized SVG <text>. Residual risk is Low and is FORMALLY ACCEPTED for this
-       delivery; see Technical Specifications.md Sec. 8.2 and the deck's
-       risk-register slide. Re-evaluate the pin if R-1 is ever revised to permit a
+       delivery; see the deck's risk-register slide (Pinned CDN libs).
+       Re-evaluate the pin if the Executive Presentation rule (AAP Sec. 0.7.1) is ever revised to permit a
        newer Mermaid release.
 
        Loaded as an ESM import, which is not amenable to a tag-level integrity
@@ -1196,10 +1196,10 @@ flowchart LR
       el.setAttribute('data-mermaid-src', el.textContent);
     });
 
-    // Mermaid theme bound to the Blitzy palette (AAP Sec. 0.10.2, verbatim).
+    // Mermaid theme bound to the Blitzy palette (AAP Sec. 0.7.1, verbatim).
     mermaid.initialize({
       startOnLoad: false,
-      // securityLevel:'strict' (final_alt Issue 4) — explicitly enforce Mermaid's
+      // securityLevel:'strict' — explicitly enforce Mermaid's
       // strictest sanitization for the mandated 11.4.0 pin. All diagram text in
       // this deck is static/author-controlled, so 'strict' (the library default)
       // changes no rendering while documenting and hardening the accepted risk.
@@ -1223,7 +1223,7 @@ flowchart LR
       sequence: { useMaxWidth: true, wrap: true }
     });
 
-    // reveal.js configuration (AAP Sec. 0.10.2, verbatim keys).
+    // reveal.js configuration (AAP Sec. 0.7.1, verbatim keys).
     Reveal.initialize({
       hash: true,
       transition: 'slide',
@@ -1296,7 +1296,7 @@ flowchart LR
       }
     }
 
-    // AAP Sec. 0.10.2: mermaid.run() + lucide.createIcons() on 'ready' and on
+    // AAP Sec. 0.7.1: mermaid.run() + lucide.createIcons() on 'ready' and on
     // every 'slidechanged'.
     Reveal.on('ready', renderVisuals);
     Reveal.on('slidechanged', renderVisuals);

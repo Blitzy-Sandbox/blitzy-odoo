@@ -24,7 +24,7 @@ phases:
   qa_test_integrity: APPROVED
   business_domain: APPROVED
   frontend: APPROVED
-  other_sme: PENDING
+  other_sme: APPROVED
   final_verification: PENDING
 ---
 
@@ -650,3 +650,19 @@ Every one of the 278 paths appears **exactly once** under exactly one domain hea
 **Findings.** All 58 addon XML files are well-formed and parse under the Odoo view loader; forms, lists, and analytical views (pivot/graph) are wired to actions and menus with valid model references. The 9 QWeb report templates render against their paired render engines. The 7 SCSS files are attached through the standard asset bundles. The addons contain **zero** `.js` files — the UI is server-rendered QWeb exclusively, so there are no OWL components to review. The clean PF-2 load corroborates that all views register without error. `Source: addons/account_asset_management/views/account_asset_views.xml`, `addons/account_financial_report_ce/report/`, `addons/account_bank_reconciliation_ce/static/src/scss/reconciliation.scss`.
 
 **Status: APPROVED**
+
+### Phase 7 — Other SME · Reviewer: Documentation & Requirements SME (review-only)
+
+**File scope (23):** `blitzy/documentation/Technical Specifications.md` + `blitzy/documentation/Project Guide.md` (2) + `blitzy/screenshots/*.png` (20) + `tickets/README.md` (1).
+
+**Checked:**
+- Documentation completeness and internal consistency.
+- The 20 screenshots as rendered-UI evidence.
+- Presence and consistency of the archaeology report and project guide.
+
+**Findings.** The `blitzy/documentation/` set — the host Technical Specifications (this archaeology report and Agent Action Plan) and the Project Guide — is present and internally consistent with the reconstructed 278-file delta. The 20 `blitzy/screenshots/*.png` provide point-in-time rendered-UI evidence spanning the accounting features. `tickets/README.md` indexes the ticket tree. **Non-blocking observation:** two addons (`account_bank_reconciliation_ce`, `account_financial_report_ce`) lack a `README.rst`, giving 4/6 coverage; adding both would achieve 6/6 completeness. This is **not** a functional defect — Odoo modules build, load, and test without a README — and is recorded as **RISK-001**. `Source: blitzy/documentation/Project Guide.md`, `tickets/README.md`.
+
+**Status: APPROVED**
+
+
+---

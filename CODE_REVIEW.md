@@ -22,7 +22,7 @@ phases:
   security: APPROVED
   backend_architecture: APPROVED
   qa_test_integrity: APPROVED
-  business_domain: PENDING
+  business_domain: APPROVED
   frontend: PENDING
   other_sme: PENDING
   final_verification: PENDING
@@ -621,5 +621,18 @@ Every one of the 278 paths appears **exactly once** under exactly one domain hea
 - No skipped or empty tests.
 
 **Findings.** The suite comprises **940** executable test methods (AM 86, BR 149, BM 161, DR 29, FR 222, PF 293), all derived from `TransactionCase` / `HttpCase` and filtered with `@tagged('post_install','-at_install')`. Coverage tracks the 32 planning stories across all six feature areas. The 4 in-addon fixtures under `account_bank_reconciliation_ce/tests/test_files/` (`sample.csv`, `sample.ofx`, `sample.qif`, `sample_camt053.xml`) and the 5 repository-level fixtures under `test_data/` are non-empty and parse with their respective importers. Two `demo/demo_data.xml` files (`account_bank_reconciliation_ce` and `account_financial_report_ce`) are classified here as QA seed data. *Caveat:* a naive `grep -c 'def test_'` yields **942** because two `def test_*` strings live inside docstrings (`tests/common.py:20`, `tests/test_am_004.py:109`); the authoritative executable count is **940**. `Source: addons/account_bank_reconciliation_ce/tests/test_files/sample_camt053.xml`, `addons/account_asset_management/tests/common.py`, `test_data/bank_statements/sample.qif`.
+
+**Status: APPROVED**
+
+### Phase 5 — Business / Domain · Reviewer: Accounting Domain SME (review-only)
+
+**File scope (48):** `tickets/EPIC-001-enterprise-accounting.md` (1) + `tickets/features/FEATURE-001..006-*.md` (6) + `tickets/stories/**` (32) + `tickets/templates/*.md` (3) + `docs/SETUP.md` + `docs/USER_GUIDE.md` (2) + the **4** existing addon `README.rst` (4).
+
+**Checked:**
+- EPIC → FEATURE → story traceability.
+- Accounting-domain correctness: depreciation & GAAP/IFRS alignment (IAS 16, IAS 36, ASC 360), deferred-revenue cut-off/recognition, dunning escalation, budget variance.
+- README scope (only the 4 present READMEs are in this phase).
+
+**Findings.** Traceability is intact: one epic (`EPIC-001`), six features (`FEATURE-001` … `FEATURE-006`), and 32 stories distributed as **FR 7, AM 6, BR 5, BM 5, PF 5, DR 4** = 32, plus three reusable templates. The domain narratives align with the referenced standards — straight-line/declining depreciation and impairment consistent with IAS 16 / IAS 36 / ASC 360, deferred-revenue recognition with correct period cut-off, tiered dunning escalation, and budget-vs-actual variance. `docs/SETUP.md` and `docs/USER_GUIDE.md` provide install and end-user guidance. Only **4 of 6** addon READMEs are present and in scope here; the two missing READMEs (`account_bank_reconciliation_ce`, `account_financial_report_ce`) are a **non-blocking** documentation observation recorded in the Risk Register (**RISK-001**), not a defect in this phase. `Source: tickets/EPIC-001-enterprise-accounting.md`, `tickets/features/FEATURE-004-asset-management.md`, `docs/USER_GUIDE.md`.
 
 **Status: APPROVED**

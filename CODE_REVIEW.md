@@ -18,7 +18,7 @@ review_end: "2026-07-07T02:24:00Z"
 preflight_gate: APPROVED
 overall_status: IN_REVIEW
 phases:
-  infrastructure_devops: PENDING
+  infrastructure_devops: APPROVED
   security: PENDING
   backend_architecture: PENDING
   qa_test_integrity: PENDING
@@ -557,3 +557,23 @@ Every one of the 278 paths appears **exactly once** under exactly one domain hea
 - **Precedence spot-check:** all 6 `tests/__init__.py` files resolve to **QA / Test** (rule 6 precedes rule 9), and all 11 `addons/*/data/*.xml` resolve to **Infrastructure / DevOps** (rule 8) — confirming the documented first-match-wins ordering.
 
 ---
+
+## Phases D1–D7 — Sequential Domain Review
+
+**Sequential review semantics.** The seven domain phases run strictly **1 → 7**. Each phase is owned by exactly **one review-only specialist** and resolves to exactly **`APPROVED`** or **`BLOCKED`** — no qualifiers. A **`BLOCKED`** phase records findings with **file-and-line specificity**, **halts** the review, returns the work item to code generation, and requires a **full restart from the pre-flight gate** with **no prior findings, approvals, or scope carried forward**. Non-blocking observations are routed to the **Appendix Risk Register** and change no verdict. Finding IDs use the form `<DOMAIN>-NNN`.
+
+### Phase 1 — Infrastructure / DevOps · Reviewer: DevOps & Module-Packaging SME (review-only)
+
+**File scope (40):** 22 `__init__.py` + 6 `__manifest__.py` + 1 `hooks.py` + 11 `addons/*/data/*.xml`.
+
+**Checked:**
+- Each `__manifest__.py` is a valid Python dict with the required keys (`name`, `version`, `depends`, `data`, `license`).
+- `version` is on the **19.0** series (`account_financial_report_ce` = `19.0.1.1.0`; the other five = `19.0.1.0.0`); `license = AGPL-3` on all six.
+- `data` load order is dependency-safe (security/ACL before views and data records).
+- Cron and sequence XML use stable external IDs.
+- `__init__.py` files are thin re-export surfaces (relying on the `F401` per-file relaxation in `ruff.toml`).
+- The single post-init hook is wired via `post_init_hook`.
+
+**Findings.** All six manifests parse as valid dicts and declare Community-Edition dependencies only (`account`, `analytic`, `mail`). The 11 data files provide runtime scaffolding — `data/asset_sequence.xml` and `data/depreciation_cron.xml` (asset numbering + scheduled depreciation), `data/reconciliation_data.xml`, `data/budget_alert_cron.xml` + `data/budget_data.xml`, `data/deferred_data.xml` + `data/recognition_dashboard_report.xml`, `data/report_paperformat.xml`, and `data/followup_cron.xml` + `data/followup_data.xml` + `data/mail_template_data.xml`. Exactly one addon (`account_bank_reconciliation_ce`) ships a `hooks.py`, wired as a `post_init_hook`. The clean PF-2 module-load (0/0, exit 0) corroborates that packaging, load order, and external-ID stability are correct. `Source: addons/account_asset_management/__manifest__.py`, `addons/account_bank_reconciliation_ce/hooks.py`, `addons/account_payment_followup/data/mail_template_data.xml`.
+
+**Status: APPROVED**

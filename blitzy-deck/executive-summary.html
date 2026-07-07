@@ -17,9 +17,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" crossorigin>
 
-  <!-- reveal.js 5.1.0 core CSS (pinned, CDN-only; theme is inline below) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" crossorigin="anonymous">
+  <!-- reveal.js 5.1.0 core CSS (pinned, CDN-only; theme is inline below).
+       Subresource-Integrity (SRI) sha384 hashes pin the exact bytes of the
+       immutable jsDelivr files (defense-in-depth added per the QA security review). -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css" integrity="sha384-AJKv9Ui5SfA0VsFksFI9GuA1ztX9Ca3CLP6HGfX4YY/tYSVodC+PUszaQZFIlkuy" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" integrity="sha384-YgvgKeZJykuztG+iQPoZHNZENTFZvOcOJ/uRzmJTje6GHYN9zAw+y5rx/L8MQKA/" crossorigin="anonymous">
 
   <style>
   /* ============================================================================
@@ -1085,7 +1087,7 @@ flowchart LR
               <tr>
                 <td><span class="domain-cell"><i data-lucide="shield-alert" aria-hidden="true"></i> Pinned CDN libs</span></td>
                 <td><span class="severity-chip low">Low</span></td>
-                <td>Static author-controlled diagrams, securityLevel strict</td>
+                <td>Known CVEs; static author-controlled diagrams, securityLevel strict, SRI-pinned assets</td>
               </tr>
             </tbody>
           </table>
@@ -1149,36 +1151,56 @@ flowchart LR
   </div><!-- /.reveal -->
 
   <!-- ===================================================================
-       Library runtimes (pinned CDN). CDN assets carry EXACT version pins and
-       crossorigin="anonymous" (SRI-ready), but no Subresource-Integrity hash:
-       this is a documented, ACCEPTED EXCEPTION recorded in the deck's
-       risk-register slide (Pinned CDN libs) and mandated by AAP Sec. 0.7.1. Recommended
-       hardening at deployment: add an integrity hash (or self-host the three
-       libraries) and serve under a script-src Content-Security-Policy.
+       Library runtimes (pinned CDN). Every tag-loadable CDN asset (the two
+       reveal.js stylesheets in <head> plus the two scripts below) carries an
+       EXACT version pin, crossorigin="anonymous", AND a Subresource-Integrity
+       (SRI) sha384 hash, so the browser refuses any tampered or substituted
+       payload. This is defense-in-depth added per the QA security review, and is
+       independent of (and complementary to) the AAP Sec. 0.7.1 version pins; the
+       hashes are taken over the immutable jsDelivr-pinned files.
+       NOTE: the Mermaid runtime (further below) is delivered as an ESM `import`
+       that also pulls dynamic chunk-*.mjs modules; ESM module graphs are NOT
+       amenable to a tag-level integrity attribute, so Mermaid is instead hardened
+       via securityLevel:'strict' + static author-only input (see its block) and,
+       at deployment, can be further constrained with a script-src
+       Content-Security-Policy or by self-hosting.
        reveal.js 5.1.0 (UMD) + Lucide 0.460.0 (UMD).
        =================================================================== -->
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js" integrity="sha384-M/JtqCVlLcK9lwVnBnMXP0V577CBULkjodKsR/PITOe4MSKNbbwqCemEyluOw0+5" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js" integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge" crossorigin="anonymous"></script>
 
   <!-- ===================================================================
        Mermaid 11.4.0 (ESM) + library initialization. The version is pinned
        EXACTLY by the Executive Presentation rule (AAP Sec. 0.7.1) and is retained as mandated.
 
-       SECURITY / RISK ACCEPTANCE: an OSV/GHSA scan of
-       mermaid@11.4.0 reports six advisories (GHSA-6m6c-36f7-fhxh,
-       GHSA-7rqq-prvp-x9jh, GHSA-87f9-hvmw-gh4p, GHSA-8gwm-58g9-j8pw,
-       GHSA-ghcm-xqfw-q4vr, GHSA-xcj9-5m2h-648r) in the XSS / HTML-CSS-injection /
-       DoS classes, each of which requires Mermaid to render UNTRUSTED input to be
-       exploitable. This deck passes ONLY static, author-controlled diagram text
-       (no user / query-string / runtime-fetched content) and initializes Mermaid
-       with securityLevel:'strict' + htmlLabels:false, so labels render as
-       sanitized SVG <text>. Residual risk is Low and is FORMALLY ACCEPTED for this
-       delivery; see the deck's risk-register slide (Pinned CDN libs).
-       Re-evaluate the pin if the Executive Presentation rule (AAP Sec. 0.7.1) is ever revised to permit a
-       newer Mermaid release.
+       SECURITY / RISK ACCEPTANCE: an OSV/GHSA scan of mermaid@11.4.0 reports six
+       applicable advisories, none of which is exploitable in this deck:
+         * GHSA-8gwm-58g9-j8pw / CVE-2025-54880 - architecture-diagram iconText
+           XSS, vendor-rated CRITICAL; fixed in 11.10.0.
+         * GHSA-7rqq-prvp-x9jh / CVE-2025-54881 - sequence-label KaTeX XSS
+           (Moderate); fixed in 11.10.0.
+         * GHSA-87f9-hvmw-gh4p, GHSA-ghcm-xqfw-q4vr, GHSA-xcj9-5m2h-648r,
+           GHSA-6m6c-36f7-fhxh - CSS-injection / DoS classes (Moderate); fixed in
+           11.15.0.
+       Every one of the six requires Mermaid to render UNTRUSTED input to be
+       exploitable. (The DOMPurify prototype-pollution advisory
+       GHSA-m4gq-x24j-jpmf does NOT apply here: it affects mermaid 10.9.2 and
+       earlier and was fixed in 11.0.0, so the pinned 11.4.0 already ships the
+       patched bundled DOMPurify 3.1.6.) This deck passes ONLY static,
+       author-controlled diagram text (no user / query-string / runtime-fetched
+       content) and initializes Mermaid with securityLevel:'strict' +
+       htmlLabels:false, so labels render as sanitized SVG <text>. Residual risk
+       is Low and is FORMALLY ACCEPTED for this delivery; see the deck's
+       risk-register slide (Pinned CDN libs).
+       Patched releases exist (11.10.0 clears the two XSS advisories; 11.15.0
+       clears all six), but the 11.4.0 pin is PRESCRIBED by the Executive
+       Presentation rule (AAP Sec. 0.7.1) and is retained as mandated; re-evaluate
+       the pin only if that rule is revised to permit a newer Mermaid release.
 
-       Loaded as an ESM import, which is not amenable to a tag-level integrity
-       attribute (see the accepted-exception note above and the risk registers).
+       Loaded as an ESM import (with dynamic chunk-*.mjs modules), which is not
+       amenable to a tag-level integrity attribute (see the SRI note above and the
+       risk register); it is instead hardened via securityLevel:'strict' and
+       static author-only input.
        =================================================================== -->
   <script type="module">
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';

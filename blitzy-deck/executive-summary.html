@@ -765,6 +765,38 @@ body.reveal-viewport {
   outline: 3px solid var(--blitzy-accent-teal);
   outline-offset: 3px;
 }
+
+/* ------------------------------------------------------------------
+   Issue 11 - accessible target size for the slide-number control
+   (WCAG 2.5.8 "Target Size (Minimum)"; Lighthouse `target-size`). With
+   slideNumber:'c/t' reveal.js renders the slide number as an <a> that
+   measures ~49x16px: its 16px height is below the 24x24px minimum, and the
+   framework pins it to the bottom-RIGHT corner beside the (44x44) next/down
+   controls, so Lighthouse flags it as BOTH undersized AND too close to an
+   adjacent target. Two additive, deck-only rules fix both halves:
+     1) size the <a> itself to a >=24x24px inline-flex box with padding
+        (min-height needs a non-inline display to take effect), and
+     2) relocate the slide-number CONTAINER to the bottom-LEFT corner, clear
+        of the bottom-right controls cluster, guaranteeing target spacing.
+   Only framework-domain position properties are added to the container; the
+   canonical theme's ".reveal .slide-number" colour/background/font
+   declarations are NOT overridden, so the byte-for-byte canonical theme
+   block above is preserved (Rule-1 additive constraint). */
+.reveal .slide-number {
+  left: 12px;
+  right: auto;
+  bottom: 12px;
+}
+.reveal .slide-number a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 4px 8px;
+  line-height: 1;
+  box-sizing: border-box;
+}
 /* ===== END DECK-ONLY EXTENSIONS ===== */
   </style>
 </head>

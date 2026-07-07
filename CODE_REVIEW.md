@@ -20,7 +20,7 @@ overall_status: IN_REVIEW
 phases:
   infrastructure_devops: APPROVED
   security: APPROVED
-  backend_architecture: PENDING
+  backend_architecture: APPROVED
   qa_test_integrity: PENDING
   business_domain: PENDING
   frontend: PENDING
@@ -591,5 +591,20 @@ Every one of the 278 paths appears **exactly once** under exactly one domain hea
 - The `account_bank_reconciliation_ce` post-init hook's `base.group_user` grant is justified and idempotent.
 
 **Findings.** All six `ir.model.access.csv` files use the canonical header `id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink`, and access rows reference module-defined groups (for example `group_financial_report_user`) rather than granting unscoped world access. The six `*_security.xml` files define the module groups and record rules (including multi-company scoping). No file references an Enterprise addon or group. The `account_bank_reconciliation_ce` `post_init_hook` grants `base.group_user` the ability to link `ir.attachment` upload access via an idempotent `Command.link`, which is a defensible, least-surprise grant for statement-file uploads. `Source: addons/account_asset_management/security/ir.model.access.csv`, `addons/account_bank_reconciliation_ce/security/bank_reconciliation_security.xml`.
+
+**Status: APPROVED**
+
+### Phase 3 — Backend Architecture · Reviewer: Odoo ORM / Backend SME (review-only)
+
+**File scope (50):** 32 `models/*.py` + 9 `wizard/*.py` + 9 `report/*.py` (render engines).
+
+**Checked:**
+- ORM correctness (field definitions, `@api.depends` / `@api.constrains`, `Command`-based writes).
+- **Additive `_inherit` without re-declaring `_name`** for core-model extensions vs. genuinely new `_name` models.
+- **No monkey-patching** of Odoo core.
+- Domain algorithms: asset depreciation, deferred-revenue recognition, bank-statement matching, budget variance.
+- Clean compilation; **zero** production stubs.
+
+**Findings.** Core extensions correctly use `_inherit` **without** re-declaring `_name` — for example `models/account_move.py` sets `_inherit = 'account.move'` and does not re-register the model; the same additive pattern applies to `account.move.line` and `res.partner`. New business objects (e.g. `account.asset`, budget, deferred-revenue, and reconciliation models) declare fresh `_name` values. There is **no monkey-patching**: all behavior is layered through the ORM inheritance mechanism. The depreciation, recognition, statement-matching, and budget-variance engines compile cleanly and are exercised by the 940 passing tests. `Source: addons/account_asset_management/models/account_move.py`, `addons/account_bank_reconciliation_ce/models/reconciliation_matching_engine.py`, `addons/account_budget_management/report/budget_vs_actual_report.py`.
 
 **Status: APPROVED**

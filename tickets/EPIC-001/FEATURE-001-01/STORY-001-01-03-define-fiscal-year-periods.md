@@ -55,9 +55,9 @@ Scenarios 3 and 4 are two distinct refusal paths rather than one repeated: in Sc
 
 ### Scenario 1: Calendar fiscal year defined for the parent company
 
-- **Given** Acme Group NV exists as a company whose functional currency is `USD`, module `account` ("Invoicing", version 1.4, licence LGPL-3) is installed in it, and its fiscal calendar is held as a fiscal-year end day and a fiscal-year end month on the company record with no accounting period stored as a separate record
+- **Given** Acme Group NV exists as a company whose functional currency is `USD`, module `account` ("Invoicing", version 1.4, licence LGPL-3) is installed in it, its fiscal calendar is held as a fiscal-year end day and a fiscal-year end month on the company record with no accounting period stored as a separate record, no entry is posted in Acme Group NV on or before 31 December 2025 so the 2026 calendar year opens at nil balances, and the only entry posted inside that year is one **Sales** journal entry dated 15 January 2026 debiting Accounts Receivable 1200 by USD 250,000.00 against a credit of USD 250,000.00 to Revenue 4000 — the same worked entry Scenario 5 carries forward — each amount rounded to 2 decimal places using half-up rounding at the USD rounding increment of 0.01
 - **When** the Chief Accountant sets Fiscal Year Last Day to 31 and Fiscal Year Last Month to December for Acme Group NV
-- **Then** fiscal year FY2026 of Acme Group NV spans 01 January 2026 to 31 December 2026; its twelve monthly periods are offered as selectable date ranges from 01 January 2026 to 31 December 2026 — 01 January 2026 to 31 January 2026, 01 February 2026 to 28 February 2026, and so on to 01 December 2026 to 31 December 2026; the count of periods in FY2026 is 12 and they cover 365 days with each period's start date one day after the preceding period's end date, so no day of FY2026 falls in two periods and no day falls in none; a Trial Balance requested for FY2026 resolves to the date range 01 January 2026 to 31 December 2026; and a Balance Sheet requested as of 31 December 2026 resolves its fiscal-year start to 01 January 2026
+- **Then** fiscal year FY2026 of Acme Group NV spans 01 January 2026 to 31 December 2026; its twelve monthly periods are offered as selectable date ranges from 01 January 2026 to 31 December 2026 — 01 January 2026 to 31 January 2026, 01 February 2026 to 28 February 2026, and so on to 01 December 2026 to 31 December 2026; the count of periods in FY2026 is 12 and they cover 365 days with each period's start date one day after the preceding period's end date, so no day of FY2026 falls in two periods and no day falls in none; the **Trial Balance** requested for FY2026 resolves to the date-range parameter 01 January 2026 to 31 December 2026 and, run over that range, reports Accounts Receivable 1200 at a debit of USD 250,000.00, Revenue 4000 at a credit of USD 250,000.00 and total debits of USD 250,000.00 equal to total credits of USD 250,000.00 — a difference of USD 0.00; and the **Balance Sheet** requested as of 31 December 2026 resolves its fiscal-year start to 01 January 2026 and presents Accounts Receivable 1200 at USD 250,000.00 and a Current Year Earnings line of USD 250,000.00 credit, every amount rounded to 2 decimal places using half-up rounding at the USD rounding increment of 0.01
 
 ### Scenario 2: Non-calendar fiscal year defined for the subsidiary without disturbing the parent
 
@@ -110,7 +110,7 @@ Scenarios 3 and 4 are two distinct refusal paths rather than one repeated: in Sc
 
 ---
 
-## Demonstration
+## Demonstration Path
 
 The story is accepted when the Chief Accountant walks the **Finance Controller** and the **Product Owner** through the following path in the Odoo user interface, with the Group Controller present to sign off each company's year-end date against the group close calendar. Where a reviewer prefers the public API, the same six steps are demonstrated through it; either way the walkthrough is recorded against this story. Every figure shown in the walkthrough is read in USD at 2 decimal places, rounded half-up.
 
@@ -190,7 +190,7 @@ The platform target of this programme is an **open decision (DEC-001)** recorded
 | OCA Repository | Module | Compatibility Consideration |
 |----------------|--------|-----------------------------|
 | OCA/account-closing | `account_fiscal_year_closing` | Implements a templated year-end closing and opening-move run for jurisdictions where closing moves are mandatory. Determine whether the year-end allocation entry of Edge Case 5 is delivered by it or authored as one manual entry, and whether its closing moves change the figures the Balance Sheet presents as current-year against prior-year earnings |
-| OCA/account-closing | `account_cutoff_start_end_dates` | Computes prepaid and accrued revenue and expense at a cut-off date derived from the fiscal-year end. Determine how it consumes the year-end date this story defines, since the deferral cutoff of FEATURE-001-07 is dated on that boundary |
+| OCA/account-closing | `account_cutoff_start_end_dates` | Computes prepaid and accrued revenue and expense at a cut-off date derived from the fiscal-year end, on top of `account_cutoff_base`. Determine how it consumes the year-end date this story defines, since the deferral cutoff of FEATURE-001-07 is dated on that boundary. Branch evidence: OCA/account-closing publishes it on the 14.0, 17.0 and 18.0 series; availability on the branch DEC-001 confirms is verified before adoption, a port from the nearest published series is scoped as migration work in the estimate of the story that adopts it, and where no port exists the capability stays with the present add-on or falls to bespoke scope under DEC-002 |
 | OCA/account-financial-reporting | `account_financial_report` | Renders the General Ledger, Trial Balance and Balance Sheet from date-range and as-of parameters. Determine whether it reads the company fiscal-year setting to default those parameters or requires explicit dates, which decides whether a period is selectable or typed |
 | OCA/mis-builder | `mis_builder` | Builds management statements from period expressions relative to a fiscal year. Determine how a non-calendar year-end and a later change of year-end affect those expressions, since both are recorded here as supported states |
 
@@ -268,7 +268,7 @@ Three points reflects a small, well-bounded configuration surface carrying one n
 
 | Acceptance Scenario | Unit Test Focus | Key Assertions |
 |---------------------|-----------------|----------------|
-| Scenario 1 | Fiscal-year derivation for a calendar year | With the year-end day at 31 and the year-end month at December, the fiscal year containing 15 June 2026 is 01 January 2026 to 31 December 2026; the derived period list has a length of 12; the first period starts 01 January 2026 and the last ends 31 December 2026; every period's start date is the day after the preceding period's end date; February 2026 ends 28 February 2026 |
+| Scenario 1 | Fiscal-year derivation for a calendar year, proved on the reports | With the year-end day at 31 and the year-end month at December, the fiscal year containing 15 June 2026 is 01 January 2026 to 31 December 2026; the derived period list has a length of 12; the first period starts 01 January 2026 and the last ends 31 December 2026; every period's start date is the day after the preceding period's end date; February 2026 ends 28 February 2026; the Trial Balance for 01 January 2026 to 31 December 2026 reports Accounts Receivable 1200 at USD 250,000.00 debit, Revenue 4000 at USD 250,000.00 credit and total debits equal to total credits at a difference of USD 0.00; the Balance Sheet as of 31 December 2026 reports Accounts Receivable 1200 at USD 250,000.00 and Current Year Earnings at USD 250,000.00 credit — every amount rounded to 2 decimal places using half-up rounding at the USD rounding increment of 0.01 |
 | Scenario 2 | Per-company independence of the setting | With the year-end month at March for Acme Industries Inc., the fiscal year containing 15 June 2025 is 01 April 2025 to 31 March 2026 and the period list has a length of 12; reading the same computation for Acme Group NV still returns 01 January 2026 to 31 December 2026, so neither company's value is read from the other |
 | Scenario 3 | Month-length validation with no opening entry | Saving a year-end day of 31 with the year-end month at February raises a validation error; the stored day stays 31 and the stored month stays December; the derived FY2026 range is unchanged at 01 January 2026 to 31 December 2026 |
 | Scenario 4 | Month-length validation against the opening entry | With the Opening Entry date at 01 January 2026, saving a year-end day of 30 with the year-end month at February raises a validation error whose month length is taken from 2026; the stored values are unchanged; the opening entry's date stays 31 December 2025 and its total debits equal its total credits at USD 4,875,300.00 each, a difference of USD 0.00, at 2 decimal places using half-up rounding |
@@ -368,7 +368,7 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 | Repository | Module | Relevance |
 |------------|--------|-----------|
 | OCA/account-closing | `account_fiscal_year_closing` | Templated year-end closing and opening moves, the candidate mechanism for the allocation entry of Edge Case 5 |
-| OCA/account-closing | `account_cutoff_start_end_dates` | Prepaid and accrued cut-offs computed at a date derived from the fiscal-year end, consumed by the period close of FEATURE-001-07 |
+| OCA/account-closing | `account_cutoff_start_end_dates` | Prepaid and accrued cut-offs computed at a date derived from the fiscal-year end, consumed by the period close of FEATURE-001-07; published on the 14.0, 17.0 and 18.0 series, with branch availability verified under DEC-001 before adoption |
 | OCA/account-financial-reporting | `account_financial_report` | General Ledger, Trial Balance and Balance Sheet rendered from the date-range and as-of parameters this calendar supplies |
 | OCA/mis-builder | `mis_builder` | Management statements built from period expressions relative to the fiscal year defined here |
 
@@ -410,7 +410,8 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2026-01-01 | Enterprise Accounting Team | Initial story creation |
+| 1.0 | 2026-08-13 | Enterprise Accounting Team | Initial story creation |
+| 1.1 | 2026-08-13 | Enterprise Accounting Team | Review remediation. Demonstrability section heading normalized to `## Demonstration Path`. Revision date aligned to the tree-wide authoring date. Trailing blank line removed at end of file. No acceptance criterion, fixture value or estimate changed. Both OCA/account-closing rows naming `account_cutoff_start_end_dates` now carry branch evidence — published on the 14.0, 17.0 and 18.0 series, on top of `account_cutoff_base` — with availability on the branch DEC-001 confirms verified before adoption, any port scoped as migration work in the adopting story's estimate, and the residual falling to the locally present `addons/account_deferred_revenue/` add-on or to bespoke scope under DEC-002, so the row asserts precedent rather than installability (C-003, C-004). |
 
 ---
 
@@ -425,4 +426,3 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 **Company names.** Acme Group NV (parent, functional currency `USD`) and Acme Industries Inc. (subsidiary) are the reference entities used across this backlog so that every multi-company assertion names the books it affects. They stand for the group's legal-entity register, which is enumerated during discovery; substituting the confirmed entity names changes the names in the criteria and nothing else.
 
 **Scope of this ticket.** This file is a planning artifact. It states the fiscal calendar finance requires and the assertions that prove it; it contains no module, model, view or data definition, and it prescribes none. No Odoo module is created, installed or configured by authoring it.
-

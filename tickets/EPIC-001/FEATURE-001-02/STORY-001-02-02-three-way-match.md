@@ -229,7 +229,7 @@ The constraint identifiers below are the Epic's own, restated in the terms of th
 | OCA Repository | Module | Compatibility consideration |
 |----------------|--------|-----------------------------|
 | OCA/account-invoicing | The purchase-invoice matching option in the invoicing extension set | The leading alternative to a bespoke comparison: determine whether it compares all three documents or only the order and the bill, whether its tolerance is expressible as the TOL-001 pair with the tighter limit governing, whether it records the measured variance with both its amount and its percentage, and whether adopting it is integration or replacement under DEC-002 |
-| OCA/account-financial-tools | `account_move_line_purchase_info` and the move-line information extension set | Determine whether an existing extension already carries the order and receipt context on the bill line, so the match reads one linkage rather than reconstructing it per comparison |
+| OCA/account-financial-tools | `account_move_line_purchase_info` and the move-line information extension set | Determine whether an existing extension already carries the order and receipt context on the bill line, so the match reads one linkage rather than reconstructing it per comparison. **Availability is not assumed:** this module is ported per Odoo version, so the branch DEC-001 confirms is checked before adoption, and OCA issue 2017 records that from 16.0 it interferes with the automated stock revaluation Odoo runs when a bill price differs from the purchase price under FIFO costing — so adoption on a 16.0-or-later branch carries that regression as a tracked risk with a bespoke alternative held in reserve (C-003, C-004) |
 | OCA/purchase-workflow | The purchase-order approval and quantity-control extension set | Determine whether an existing extension already supplies the exception worklist and the variance-approval record the External Auditor reads, and how its approval thresholds relate to the `$200.00 USD` cap of TOL-001 |
 
 ### Discovery versus Prescription
@@ -390,7 +390,7 @@ This story describes WHAT match outcome finance needs and WHY. It does not presc
 
 ---
 
-## Demo Path
+## Demonstration Path
 
 This story is demonstrated to the **Finance Controller** and the **Product Owner** in the Odoo user interface by the Accounts Payable Clerk, along the menu path **Accounting → Vendors → Bills**: the Clerk opens the draft bill `INV-2024-8871` from `Acme Industrial Supplies` for `$12,450.00 USD` in `US-01`, runs the three-way match, and shows the recorded outcome **Matched — released for posting** against purchase order `P00042` for 100.00 units at `$124.50 USD` and goods receipt `WH/IN/00031` for 100.00 units, with the price variance reading `$0.00 USD` and the draft line set balancing at total debits of `$12,450.00 USD` against total credits of `$12,450.00 USD` at a difference of `0.00 USD`. The Clerk then walks the three refusals and the one accepted variance on the same fixture: the billed unit price raised to `$126.00 USD` shows a recorded variance of `$150.00 USD` at `1.2048%` inside both limits with the bill released; raised to `$127.00 USD` it shows `$250.00 USD` at `2.0080%` with posting refused by a validation message naming the line and both tolerance limits and the bill left in state `draft`; the receipt cut to 60.00 units shows `$7,470.00 USD` matched and `$4,980.00 USD` held; and the billed quantity raised to 110.00 units shows the excess of 10.00 units worth `$1,245.00 USD` refused with no amount reaching **Accounts Payable 2000**. Every amount shown is rounded half-up to 2 decimal places at the USD rounding increment of `0.01`, and the refusals matter as much as the release, because the control is what the walkthrough is accepting.
 
@@ -432,7 +432,7 @@ flowchart TD
 - **Vendor bills** — <https://www.odoo.com/documentation/19.0/applications/finance/accounting/vendor_bills.html> — the functional behaviour of the draft vendor bill this story matches and releases
 - **Purchase agreements, receipts and bill control** — <https://www.odoo.com/documentation/19.0/applications/inventory_and_mrp/purchase/manage_deals/manage.html> — the ordered, received and billed quantities and the control policy that decides which of them a bill is checked against
 - **ORM reference** — <https://www.odoo.com/documentation/19.0/developer/reference/backend/orm.html> — the record, field and constraint semantics behind `account.move`, `account.move.line` and `purchase.order.line`, including how a declared constraint surfaces as a validation message
-- **External API** — <https://www.odoo.com/documentation/19.0/developer/reference/external_api.html> — the XML-RPC and JSON-RPC surface behind the alternative demonstration path in [Demo Path](#demo-path)
+- **External API** — <https://www.odoo.com/documentation/19.0/developer/reference/external_api.html> — the XML-RPC and JSON-RPC surface behind the alternative demonstration path in [Demonstration Path](#demonstration-path)
 
 ### OCA Guidelines and Modules
 
@@ -470,11 +470,12 @@ All paths below were read in this repository at the Odoo 19.0 Community baseline
 
 ---
 
-## Change History
+## Revision History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-08-13 | Enterprise Accounting Team | Initial story creation. Six Given/When/Then criteria covering a clean three-way match across purchase order `P00042`, goods receipt `WH/IN/00031` and draft bill `INV-2024-8871`, a `$150.00 USD` variance inside tolerance released with the variance recorded, a `$250.00 USD` variance outside tolerance refused with both limits named, a bill with no linked receipt held as an incomplete match, a partial receipt split into `$7,470.00 USD` matched and `$4,980.00 USD` held, and an over-billed 110.00 units refused at an excess of `$1,245.00 USD`. The tolerance policy TOL-001 is fixed here as ±2% of the ordered line value and `$200.00 USD` with the tighter limit governing and the crossover at an ordered line value of `$10,000.00 USD`; the canonical `$12,450.00 USD` bill fixture is reused from [STORY-001-02-01](./STORY-001-02-01-capture-vendor-bills.md) and extended with the two procurement documents. Eight sub-tasks across four assignees, five edge cases, an estimation table concluding at 8 Fibonacci points, and an accounting-reconciliation gate were added to the template structure; nested relative links adopted in place of the template's flat convention; and the platform version and edition decisions carried forward as DEC-001 and DEC-002 rather than settled |
+| 1.1 | 2026-08-13 | Enterprise Accounting Team | Review remediation. **Dependency coordinates (C-003, C-004).** The `account_move_line_purchase_info` row keeps its correct OCA/account-financial-tools attribution but no longer implies availability: the branches it is published on are stated, availability on the branch DEC-001 confirms is verified before adoption, and OCA issue 2017 — the module interfering with automated stock revaluation from the 16.0 series — is recorded, which matters here because this story matches a bill price against the purchase price the module carries onto the move line; where no usable port exists the purchase-order link falls to bespoke scope under DEC-002. **Documentation hygiene.** The history heading was `## Change History` and is normalized to `## Revision History`, matching every other ticket in the tree, and the trailing blank line at end of file was removed. No acceptance criterion, tolerance limit or monetary amount changed: the `$150.00 USD` and `$250.00 USD` variance cases, the `$7,470.00 USD` / `$4,980.00 USD` partial-receipt split and the `$1,245.00 USD` over-billing excess are unchanged |
 
 ---
 
@@ -483,4 +484,3 @@ All paths below were read in this repository at the Odoo 19.0 Community baseline
 The match is a **control**, not a calculation, and two consequences follow for whoever implements it. First, the outcome is recorded whether it passes or fails: a released bill carries its measured variance just as a held one carries its exception, because a control that leaves no trace when it passes cannot be tested by the External Auditor. Second, the tolerance is a policy figure and not a constant of the code — TOL-001 is stated as ±2% of the ordered line value and `$200.00 USD` with the tighter limit governing, and the refusal message names both limits so the Accounts Payable Clerk reads the policy from the refusal itself.
 
 One structural finding from discovery is worth carrying into implementation: the `purchase.bill.line.match` view present in this repository joins the order line to the bill line but exposes no received quantity, so the third point of a three-way match is not available from that view alone. Whether the view is extended, or the received quantity is read from `qty_received` on the order line alongside it, is a discovery decision under D-005 — but the gap is real and is the main reason this story is estimated at 8 rather than 5 points.
-

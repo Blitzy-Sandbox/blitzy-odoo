@@ -116,7 +116,7 @@ Scenarios 1 to 5 are asserted against the ten-account baseline. Scenario 6 adds 
 
 ---
 
-## Demonstration
+## Demonstration Path
 
 The story is accepted when the Chief Accountant walks the **Finance Controller** and the **Product Owner** through the following path in the Odoo user interface, with the Group Controller present to sign off the policy. Where a reviewer prefers the public API, the same five steps are demonstrated through it; either way the walkthrough is recorded against this story.
 
@@ -402,7 +402,8 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2026-01-01 | Enterprise Accounting Team | Initial story creation |
+| 1.0 | 2026-08-13 | Enterprise Accounting Team | Initial story creation |
+| 1.1 | 2026-08-13 | Enterprise Accounting Team | Review remediation. Demonstrability section heading normalized to `## Demonstration Path`, the form used across all seventeen stories of this epic, so a reader arrives at the same section name in every story. Revision date aligned to the tree-wide authoring date. Trailing blank line removed at end of file. No acceptance criterion, fixture value or estimate changed |
 
 ---
 
@@ -415,4 +416,3 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 **Company names.** Acme Group NV (parent, functional currency `USD`) and Acme Industries Inc. (subsidiary) are the reference entities used across the criteria so that every multi-company assertion names the books it affects. They stand for the group's legal-entity register, which is enumerated during discovery; substituting the confirmed entity names changes the names in the criteria and nothing else.
 
 **Scope of this ticket.** This file is a planning artifact. It states the account structure finance requires and the assertions that prove it; it contains no module, model, view or data definition, and it prescribes none. The mechanism — chart template, localization-pack reconciliation or configuration data — is chosen by the implementing agent from the discovery recorded above.
-

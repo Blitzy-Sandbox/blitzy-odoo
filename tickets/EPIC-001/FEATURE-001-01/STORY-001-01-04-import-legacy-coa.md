@@ -1,0 +1,516 @@
+# STORY-001-01-04: Import Legacy Chart of Accounts and Opening Balances
+
+---
+
+## Metadata
+
+| Attribute | Value |
+|-----------|-------|
+| **Story ID** | `STORY-001-01-04` |
+| **Title** | Import Legacy Chart of Accounts and Opening Balances |
+| **Parent Feature** | [FEATURE-001-01: Chart of Accounts & Fiscal Year](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) |
+| **Parent Epic** | [EPIC-001: Enterprise Accounting in Odoo](../../EPIC-001-enterprise-accounting-odoo.md) |
+| **Persona** | Chief Accountant |
+| **Status** | Draft |
+| **Priority** | 🟠 High |
+| **Estimate** | 8 story points (Fibonacci) |
+| **Feature Capability** | CAP-004 — import a legacy chart of accounts and its opening balances as a balanced journal entry |
+| **Epic Success Metric** | SM-006 — Trial Balance integrity, with the difference column asserted at 0.00 in the company currency; this story is the first entry the metric is measured against, and it realizes discovery item D-010 (Migration Reconciliation Approach) |
+| **Owner/Author** | Enterprise Accounting Team |
+
+This is the fourth of the five stories in FEATURE-001-01 and the **largest**, at 8 Fibonacci points. It is the ticket where the debits-equal-credits gate carries real weight: every later assertion in EPIC-001 is measured against a ledger whose first entry is created here, so an opening entry that does not balance leaves an unexplained suspense balance in every subsequent period. It has two documented predecessors — [STORY-001-01-01](./STORY-001-01-01-configure-coa-hierarchy.md), which fixes the target account codes the legacy codes are mapped onto, and [STORY-001-01-03](./STORY-001-01-03-define-fiscal-year-periods.md), which defines the fiscal year the opening date has to fall inside.
+
+The import and the opening entry are deliberately held in **one** story rather than split: a chart loaded without its balances proves nothing, and balances posted without their target accounts cannot be posted at all. The single outcome this story delivers is a migrated ledger that ties, line by line, to the audited legacy closing trial balance.
+
+> **Monetary convention used throughout this ticket.** Every amount is stated in USD, carried to 2 decimal places, and rounded half-up at the USD rounding increment of 0.01. Where a company reports in a functional currency other than USD, the same assertion is made in that currency at that currency's own decimal precision. Foreign-currency legacy balances are translated at a stated cut-over rate and the translated figure is rounded half-up to 2 decimal places at the target currency's rounding increment; the source amount is retained beside it rather than overwritten. Every date is stated as an explicit calendar date rather than as a relative period.
+
+---
+
+## User Story
+
+**As a** Chief Accountant
+
+**I want** the legacy chart of accounts loaded into `account.account` as 248 target accounts, each retaining its legacy code as a searchable cross-reference, and the audited legacy closing trial balance posted as the opening journal entry of Acme Group NV in the Miscellaneous journal
+
+**So that** the first Odoo period opens from an audited, balanced position — total debits of USD 4,875,300.00 equal to total credits of USD 4,875,300.00, a difference of USD 0.00, rounded to 2 decimal places using half-up rounding — with a documented mapping from every legacy code to its target code, so that the External Auditor can trace any opening figure back to the retired system without a data request (SM-006, D-010).
+
+---
+
+## INVEST Principles Compliance
+
+| Principle | Compliance | Notes |
+|-----------|------------|-------|
+| **Independent** | ✅ | This story carries two declared predecessors — [STORY-001-01-01](./STORY-001-01-01-configure-coa-hierarchy.md) for the ten target codes and [STORY-001-01-03](./STORY-001-01-03-define-fiscal-year-periods.md) for the fiscal year the opening date falls inside — and both are **configuration sequencing, not code coupling**. The predecessors deliver records that must exist in the database before the migration can be demonstrated: an account to debit, and a defined fiscal year containing 01 January 2026. Neither sibling shares an implementation with this story, neither is modified by it, and this story is developed against the ten codes and the calendar as *data* rather than against how either was created. Once those records exist the migration is deliverable on its own, with no further sibling in flight. |
+| **Negotiable** | ✅ | The outcome is stated — 248 target accounts, a legacy-code cross-reference on each, and one balanced opening entry that ties to the legacy trial balance — and the mechanism is left open. Whether the extract arrives as CSV, XLSX or a staged table, whether the load runs through Odoo's base import facility or a bespoke migration routine, and whether the opening entry is generated per company or per legal-entity group are deferred to the discovery recorded below. The 248-row volume, the cut-over date and the treatment of open items are open to negotiation with the Group Controller and the External Auditor for as long as the entry still posts balanced and still ties out at a USD 0.00 tolerance. |
+| **Valuable** | ✅ | Without a loaded opening position the ledger has no history: no comparative period, no aged balance, no asset net book value, no open payable or receivable to settle. This story converts the retired system's closing position into the Odoo opening position once, under audit sign-off, and it is the precondition of the Epic's Trial Balance integrity metric (SM-006) and of the comparative figures IAS 1 requires on the first published statement. It also discharges the epic-level data-migration dependency recorded in [§10.1](../../EPIC-001-enterprise-accounting-odoo.md#101-external-dependencies). |
+| **Estimable** | ✅ | The work is bounded by countable deliverables: one mapping workbook covering 248 legacy rows, one import definition with row-level validation and a rejection report, one opening-entry generation step, one tie-out worksheet, eight acceptance tests and the hostile-input tests C-022 requires. The models it writes to — `account.account`, `account.move`, `account.move.line` — and the opening-entry hook `res.company.account_opening_move_id` were all read during discovery, so nothing in the estimate awaits an open technical decision. |
+| **Small** | ✅ | Eight points is the largest estimate in this feature and it still fits one sprint, because it is **one** migration outcome demonstrated in a single walkthrough: the imported chart, the posted opening entry, and one Trial Balance run that ties to the legacy closing trial balance. The breadth is in the data — 248 rows and 12 opening lines — not in the number of outcomes. Everything adjacent is a separate story or a separate feature: the target codes (STORY-001-01-01), the calendar (STORY-001-01-03), the lock dates (STORY-001-01-05), the taxonomy inheritance (STORY-001-01-02), and the open-item settlement workflows (FEATURE-001-02, FEATURE-001-03, FEATURE-001-04). |
+| **Testable** | ✅ | Every criterion below is asserted as a count, a code, an amount or a refusal: 248 accounts created and 0 rejected, 2 rejected rows named by row number and legacy code, total debits of USD 4,875,300.00 equal to total credits of USD 4,875,300.00 at a difference of USD 0.00, a refused posting at a USD 1.00 imbalance left in Draft, a translated balance of USD 1,085,000.00 with a USD 0.01 residual, a blocked posting naming 31 December 2025, and a tax amount of USD 21,000.00 split from a base amount of USD 100,000.00 under tax code `VAT-STD-21`. Each of the eight scenarios maps to exactly one named automated test in § Test Requirements, so pass or fail is decided without judgement (C-008, C-009). |
+
+---
+
+## Acceptance Criteria
+
+Eight criteria are authored, at the ceiling of the 4-to-8 bound the Epic sets in [§5.3](../../EPIC-001-enterprise-accounting-odoo.md#53-feature-and-story-decomposition-guidelines), and the count is warranted by the 8-point scope: the story spans both a data load and a posting. They carry the mandated coverage distribution — Scenarios 1 and 2 are the valid-input cases (the chart loads, then the opening entry posts and is proved on a report), Scenario 3 is the invalid and incomplete-input case, Scenario 4 is the error-handling case, and Scenarios 5 to 8 are accounting edge cases covering a duplicate legacy code, a foreign-currency translation residual, a fiscal-period lock and a legacy tax balance.
+
+### Migration fixture M-1 — the audited legacy closing trial balance of Acme Group NV
+
+Every criterion below is asserted against this fixture (D-009). It is the opening position of **Acme Group NV** at the cut-over date of 01 January 2026, mapped onto the target codes fixed by [STORY-001-01-01](./STORY-001-01-01-configure-coa-hierarchy.md). Each amount is stated in USD to 2 decimal places, rounded half-up at the USD rounding increment of 0.01.
+
+| Target code | Account name | `account_type` | Debit (USD) | Credit (USD) |
+|-------------|--------------|----------------|------------:|-------------:|
+| 1010 | Bank | `asset_cash` | 152,400.00 | — |
+| 1020 | Petty Cash | `asset_cash` | 8,300.00 | — |
+| 1100 | Inventory | `asset_current` | 1,466,000.00 | — |
+| 1200 | Accounts Receivable | `asset_receivable` | 1,048,600.00 | — |
+| 1250 | Intercompany Receivable | `asset_receivable` | 1,200,000.00 | — |
+| 1300 | Prepaid Expenses | `asset_current` | 500,000.00 | — |
+| 1500 | Fixed Assets | `asset_fixed` | 500,000.00 | — |
+| 1590 | Accumulated Depreciation | `asset_fixed` | — | 75,000.00 |
+| 2000 | Accounts Payable | `liability_payable` | — | 540,400.00 |
+| 2200 | Tax Payable | `liability_current` | — | 21,000.00 |
+| 3000 | Share Capital | `equity` | — | 3,000,000.00 |
+| 3100 | Retained Earnings | `equity` | — | 1,238,900.00 |
+| **Total** | **12 opening lines** | — | **4,875,300.00** | **4,875,300.00** |
+
+Three properties of this fixture are asserted rather than assumed, and each is re-checked whenever the figures are restated:
+
+- **The two sides tie exactly.** The seven debit lines sum to USD 4,875,300.00 and the five credit lines sum to USD 4,875,300.00, a difference of USD 0.00. No line is a plug and no residual is carried outside the entry.
+- **Fixed assets are presented gross.** Code 1500 carries USD 500,000.00 debit and code 1590 carries USD 75,000.00 credit, so property, plant and equipment nets to USD 425,000.00 — the same figure [STORY-001-01-02](./STORY-001-01-02-map-accounts-ifrs-gaap-taxonomy.md) asserts on its IAS 1 presentation line. Accumulated depreciation is never netted inside the ledger.
+- **The group payable balance is split by company.** The group's legacy Accounts Payable balance is USD 612,300.00, of which USD 540,400.00 belongs to **Acme Group NV** and USD 71,900.00 to **Acme Industries Inc.** (USD 540,400.00 plus USD 71,900.00 equals USD 612,300.00). Each company's opening entry carries its own share, so neither entry absorbs the other's liability.
+
+### Scenario 1: Legacy chart of 248 accounts imported into the target chart
+
+- **Given** a legacy extract of **248 account rows** for **Acme Group NV**, each row carrying a legacy code, an account name, a target code and an `account_type` value, and the ten baseline accounts of [STORY-001-01-01](./STORY-001-01-01-configure-coa-hierarchy.md) already exist in that company — 1010 Bank (`asset_cash`), 1200 Accounts Receivable (`asset_receivable`), 1500 Fixed Assets (`asset_fixed`), 1590 Accumulated Depreciation (`asset_fixed`), 2000 Accounts Payable (`liability_payable`), 2200 Tax Payable (`liability_current`), 3000 Share Capital (`equity`), 3100 Retained Earnings (`equity`), 4000 Revenue (`income`) and 6100 Expense (`expense`)
+- **When** the Chief Accountant runs the legacy chart import for **Acme Group NV**
+- **Then** the Chart of Accounts of **Acme Group NV** holds **248** `account.account` records carrying the target codes and `account_type` values declared in the extract; the import summary reports **248 created and 0 rejected**; every imported account retains its legacy code as a stored, searchable cross-reference on the account record rather than in the extract file alone, so a search on legacy code `4010-01` returns the target account it was mapped to; the count of imported accounts with no `account_type` value is **0** and the count with no legacy code recorded is **0**; account **1210 Trade Receivables — Retail** is among the imported records and resolves under the same code range as account 1200 Accounts Receivable; and no `account.move` and no `account.move.line` record is created by the chart import, so the **Trial Balance** of **Acme Group NV** for **01 January 2026 to 01 January 2026** still reports total debits of **USD 0.00** equal to total credits of **USD 0.00**, each amount rounded to 2 decimal places using half-up rounding
+
+### Scenario 2: Opening entry posts balanced and ties to the legacy closing trial balance
+
+- **Given** the 248 accounts of Scenario 1 exist in **Acme Group NV**, fiscal year FY2026 spans 01 January 2026 to 31 December 2026 as defined by [STORY-001-01-03](./STORY-001-01-03-define-fiscal-year-periods.md), no lock date is set on that company, and the audited legacy closing trial balance is migration fixture M-1, whose total debits are **USD 4,875,300.00** and total credits are **USD 4,875,300.00**, each amount rounded to 2 decimal places using half-up rounding
+- **When** the Chief Accountant posts the opening entry dated **01 January 2026** in the **Miscellaneous** journal of **Acme Group NV**
+- **Then** the entry state is **Posted**, it holds **12 journal items**, and its **total debits of USD 4,875,300.00 equal its total credits of USD 4,875,300.00** — a difference of **USD 0.00**, each amount rounded to 2 decimal places using half-up rounding; the entry is recorded as the opening journal entry of **Acme Group NV** so that a second opening entry cannot be created for the same company; and the **Trial Balance** for **Acme Group NV** over **01 January 2026 to 01 January 2026** reports account **1010 Bank at a debit of USD 152,400.00**, account **1200 Accounts Receivable at a debit of USD 1,048,600.00**, account **2000 Accounts Payable at a credit of USD 540,400.00** and account **3100 Retained Earnings at a credit of USD 1,238,900.00**, with **total debits of USD 4,875,300.00 equal to total credits of USD 4,875,300.00** at a difference of **USD 0.00**, every line agreeing with its counterpart line in fixture M-1 at a **USD 0.00** tolerance
+
+### Scenario 3: Rows with a missing account type or an unmatched target code are rejected without a partial record
+
+- **Given** the legacy extract for **Acme Group NV** contains 248 rows, of which one row carries no `account_type` value and one row carries a target code that matches no account in the baseline chart of that company
+- **When** the Chief Accountant runs the legacy chart import for **Acme Group NV**
+- **Then** those **2 rows are rejected** and the remaining **246 rows are imported**; the rejection report names each rejected row by its **row number** and its **legacy code**, states which check failed — the missing `account_type` value for the first and the unmatched target code for the second — and states the remedial action for each; **no** `account.account` record is created for either rejected row, so no account exists with an empty `account_type` value and no account exists under the unmatched target code; the import summary reports **246 created and 2 rejected**; and no `account.move` record is created by the run, so the opening entry of **Acme Group NV** is still absent and the **Trial Balance** for **01 January 2026 to 01 January 2026** reports total debits of **USD 0.00** equal to total credits of **USD 0.00**, each amount rounded to 2 decimal places using half-up rounding
+
+### Scenario 4: An unbalanced opening entry is refused and left in Draft
+
+- **Given** an opening trial balance staged for **Acme Group NV** whose total debits are **USD 4,875,300.00** and whose total credits are **USD 4,875,299.00** — a difference of **USD 1.00**, each amount rounded to 2 decimal places using half-up rounding — and the corresponding opening entry stands in state **Draft** dated 01 January 2026 in the **Miscellaneous** journal
+- **When** the Chief Accountant attempts to post that opening entry
+- **Then** the posting is **refused** with an Odoo validation message stating that the entry is not balanced and naming the **USD 1.00** imbalance together with the entry it belongs to; the entry **remains in state Draft**; no journal item of that entry reaches any account balance, so the **Trial Balance** for **Acme Group NV** over **01 January 2026 to 01 January 2026** reports total debits of **USD 0.00** equal to total credits of **USD 0.00** after the attempt; the message discloses no stack trace, no file-system path and no database detail (C-020); and after the Chief Accountant corrects the staged credit total to **USD 4,875,300.00** the same entry posts with total debits of **USD 4,875,300.00** equal to total credits of **USD 4,875,300.00** at a difference of **USD 0.00** — every amount in this criterion rounded to 2 decimal places using half-up rounding
+
+### Scenario 5: A duplicate legacy code is rejected with its row number named
+
+- **Given** the legacy extract for **Acme Group NV** lists legacy code **`4010`** twice, on two rows carrying different account names, and the other 246 rows each carry a legacy code that appears once
+- **When** the Chief Accountant runs the legacy chart import for **Acme Group NV**
+- **Then** the **first** occurrence of legacy code `4010` is imported and its target account carries `4010` as its legacy cross-reference; the **second** occurrence is **rejected** with a message naming legacy code **`4010`**, its **row number** and the row number of the occurrence already imported; the import summary reports **247 created and 1 rejected**; exactly **1** `account.account` record in **Acme Group NV** carries legacy code `4010`, so the cross-reference stays unique inside the company; and the rejected row creates no `account.account` record and no `account.move.line` record
+
+### Scenario 6: A foreign-currency legacy balance is translated at the cut-over rate and its rounding residual is posted
+
+- **Given** the legacy extract for **Acme Industries Inc.**, whose functional currency is `USD`, carries a legacy balance of **EUR 1,000,000.00** rounded to 2 decimal places using half-up rounding at the EUR rounding increment of 0.01, and the cut-over rate recorded for 01 January 2026 is **1 EUR = 1.0850 USD**
+- **When** the Chief Accountant posts the opening entry for **Acme Industries Inc.** dated **01 January 2026** in the **Miscellaneous** journal
+- **Then** the translated balance is **USD 1,085,000.00**, rounded to 2 decimal places using half-up rounding at the USD rounding increment of 0.01; the journal item retains the source amount of **EUR 1,000,000.00** and the rate of 1 EUR = 1.0850 USD beside the translated figure rather than replacing them; a translation rounding residual of **USD 0.01** is posted to account **3100 Retained Earnings** and disclosed as a translation difference in the tie-out worksheet rather than absorbed into a settled balance; the entry's **total debits equal its total credits** at a difference of **USD 0.00**, each side rounded to 2 decimal places using half-up rounding; and the opening entry and balances of **Acme Group NV** are unchanged by the run, its Trial Balance for 01 January 2026 to 01 January 2026 still reporting total debits of USD 4,875,300.00 equal to total credits of USD 4,875,300.00
+
+### Scenario 7: A fiscal-year lock date blocks the back-dated opening entry until the Group Controller releases it
+
+- **Given** **Acme Group NV** carries a fiscal-year lock date of **31 December 2025** administered under [STORY-001-01-05](./STORY-001-01-05-configure-period-lock-dates.md), and the opening entry for that company stands in state **Draft** dated **31 December 2025** in the **Miscellaneous** journal, holding the 12 lines of fixture M-1 with total debits of **USD 4,875,300.00** and total credits of **USD 4,875,300.00**
+- **When** the Chief Accountant attempts to post that opening entry dated **31 December 2025**
+- **Then** the posting is **blocked** with an Odoo lock-date validation message naming **31 December 2025** as the date on and before which entries cannot be added or modified in **Acme Group NV**; the entry **remains in state Draft** with its 12 lines and its two totals unchanged at **USD 4,875,300.00** each, rounded to 2 decimal places using half-up rounding; the **Trial Balance** for **Acme Group NV** over **01 December 2025 to 31 December 2025** reports the same total debits equal to the same total credits that it reported before the attempt, at a difference of **USD 0.00**; and after the **Group Controller** moves the fiscal-year lock date of **Acme Group NV** back to **30 November 2025**, the same entry posts with **total debits of USD 4,875,300.00 equal to total credits of USD 4,875,300.00** — a difference of **USD 0.00**, each amount rounded to 2 decimal places using half-up rounding — with the lock-date change retained with its author and timestamp as audit evidence
+
+### Scenario 8: A legacy VAT liability is opened with its tax code, base amount and tax amount held apart
+
+- **Given** the legacy extract for **Acme Group NV** carries one open VAT liability recorded under tax code **`VAT-STD-21`** with a **base amount of USD 100,000.00** and a **tax amount of USD 21,000.00**, each rounded to 2 decimal places using half-up rounding, and fixture M-1 carries that tax amount on account 2200 Tax Payable
+- **When** the Chief Accountant posts the opening entry for **Acme Group NV** dated **01 January 2026** in the **Miscellaneous** journal
+- **Then** account **2200 Tax Payable** in **Acme Group NV** carries a credit of **USD 21,000.00**, rounded to 2 decimal places using half-up rounding; the journal item records tax code **`VAT-STD-21`** with its **base amount of USD 100,000.00** held separately from its **tax amount of USD 21,000.00**, so the base amount reaches no part of the account 2200 balance; the balance of account 2200 Tax Payable in **Acme Industries Inc.** is unchanged at **USD 0.00** and no journal item of this entry is readable in the books of **Acme Industries Inc.** (C-014, D-007); and the entry's **total debits of USD 4,875,300.00 equal its total credits of USD 4,875,300.00** at a difference of **USD 0.00**
+
+---
+
+## Sub-Tasks
+
+| # | Sub-Task | Assignee |
+|---|----------|----------|
+| 1 | Produce the legacy-to-target mapping workbook covering all 248 legacy rows — legacy code, legacy name, target code, `account_type`, and the merge rule where more than one legacy code maps to one target code — and drive the unmapped count to 0 with the Finance SME before cut-over | `@functional-consultant` |
+| 2 | Agree the cut-over date of 01 January 2026, the treatment of open items (unpaid vendor bills, unpaid customer invoices, unreconciled bank lines, asset net book value and accumulated depreciation) and the FX rate basis with the Chief Accountant, the Group Controller and the External Auditor, and record each decision against D-010 | `@functional-consultant` |
+| 3 | Build the import definition for `account.account`: target-code resolution, `account_type` validation, legacy-code capture as a stored searchable cross-reference, duplicate-code detection inside the company, and a row-level rejection report naming row number, legacy code, the failed check and the remedial action | `@developer` |
+| 4 | Build the opening-entry generation for one company: 12 lines from the mapped trial balance, dated on the agreed cut-over date, in the Miscellaneous journal, registered as that company's opening journal entry, and refused unless total debits equal total credits at a difference of USD 0.00 | `@developer` |
+| 5 | Implement the ingestion boundary the extract crosses: file type and size checked against the declared allowlist, CSV values neutralized against formula injection on read and on write, all data access expressed through the ORM or parameterized SQL, and failure messages that name the rejected file and the failed check without disclosing internal detail (C-015, C-017, C-019, C-020) | `@developer` |
+| 6 | Make the run idempotent and reversible: a dry run that reports created, merged and rejected counts without writing, and a re-run after a partial failure that neither duplicates an `account.account` record nor creates a second opening entry for the same company | `@developer` |
+| 7 | Author the eight automated acceptance tests named in § Test Requirements, one per scenario, with every monetary, count and debits-equal-credits assertion written as an amount or a count rather than inspected by eye | `@qa-engineer` |
+| 8 | Add the negative and hostile-input tests: the out-of-balance refusal at a USD 1.00 imbalance, the duplicate legacy code `4010`, the missing `account_type` row, the unmatched target code, a malformed extract, an oversized file, a disallowed file type, a formula-injection cell value, and a dry-run-then-rollback test asserting 0 accounts and 0 journal entries left behind (C-022) | `@qa-engineer` |
+| 9 | Reconcile the migrated Trial Balance for 01 January 2026 to 01 January 2026 against the legacy closing trial balance line by line at a USD 0.00 tolerance, confirm total debits of USD 4,875,300.00 equal total credits of USD 4,875,300.00, and sign off the tie-out worksheet for retention as migration evidence for the External Auditor | `@finance-sme` |
+
+---
+
+## Edge Cases
+
+| # | Edge Case | Expected Handling |
+|---|-----------|-------------------|
+| 1 | A legacy account carries a **zero closing balance** — legacy code `6205-04` mapped to target code 6100 Expense with a closing balance of USD 0.00 | The account **is imported** for continuity of the code space and of the legacy cross-reference, and **no opening journal item is created for it**: a USD 0.00 line would add a row to the entry without adding an amount, so the entry keeps 12 lines. The imported account is reportable immediately, and the **Trial Balance** for 01 January 2026 to 01 January 2026 shows it at USD 0.00 debit and USD 0.00 credit when zero-balance accounts are included in the run and omits its row when the run is restricted to accounts with activity; the report's total debits and total credits are unaffected by that choice and stay equal at a difference of USD 0.00 |
+| 2 | Three legacy codes map to **one** target code — legacy codes `1201`, `1202` and `1203`, carrying USD 620,300.00, USD 300,100.00 and USD 128,200.00 debit, all mapped to target code 1200 Accounts Receivable | The three rows are merged into **one** opening line on account 1200 at the summed amount of **USD 1,048,600.00**, rounded to 2 decimal places using half-up rounding, and the sum is asserted against the three source amounts at a difference of **USD 0.00**. All three legacy codes are retained on the target account as cross-references so the merge is reversible on paper for the External Auditor, and the merge rule is recorded in the mapping workbook and signed off before cut-over rather than inferred at run time |
+| 3 | The import is **re-run after a partial failure** — the first run created 246 accounts and then failed before the opening entry was generated | The re-run is idempotent on the legacy cross-reference: the 246 accounts already created are matched and left unchanged rather than duplicated, the outstanding rows are created, and the count of `account.account` records carrying the same legacy code inside **Acme Group NV** stays at 1 for every code. Because the first run created no `account.move`, the re-run generates the opening entry once and registers it as the company's opening journal entry, so a second opening entry cannot be created for **Acme Group NV**; total debits of **USD 4,875,300.00** equal total credits of **USD 4,875,300.00** at a difference of **USD 0.00**. Where the failure is not recoverable, the rollback leaves **0** imported accounts and **0** journal entries behind and the Trial Balance reports total debits of USD 0.00 equal to total credits of USD 0.00 |
+| 4 | A legacy **sub-ledger detail balance** must tie to the imported control account — 412 open customer invoices totalling USD 1,048,600.00 against target control account 1200 Accounts Receivable | The control-account opening line is posted at **USD 1,048,600.00** debit and the 412 open items are loaded as individual receivable items whose sum is asserted against that line at a difference of **USD 0.00**, so the Aged Receivables detail agrees with the control account from the first day. Where the two differ, the opening entry is not posted and the difference is reported as an amount in USD with the count of items on each side; the same rule is applied to open vendor bills against control account 2000 Accounts Payable and to asset net book value against control accounts 1500 and 1590 (D-010) |
+| 5 | The extract crosses the trust boundary as a **hostile file** — a disallowed file type, a file above the declared maximum size, a malformed row structure, or a cell whose value begins with `=`, `+`, `-` or `@` | The file is rejected at the **ingestion boundary** before any row is parsed, with an error naming the rejected file and the check that failed — permitted type, permitted extension, maximum size or row structure — and the remedial action; the error discloses no stack trace, no file-system path, no SQL and no credential, and the diagnostic detail goes to the server log on an access-controlled channel (C-015, C-020). **0** `account.account` records and **0** `account.move` records are created by the rejected file, the service stays available for the next run, and a formula-injection cell value is neutralized so it is treated as text on read and on any subsequent CSV or XLSX export (C-017, C-022) |
+
+---
+
+## Demonstration
+
+The story is accepted when the Chief Accountant walks the **Finance Controller** and the **Product Owner** through the following path in the Odoo user interface, with the External Auditor invited to observe the tie-out. Where a reviewer prefers the public API, the same six steps are demonstrated through it; either way the walkthrough is recorded against this story.
+
+1. **Accounting ▸ Configuration ▸ Chart of Accounts** — filtered to **Acme Group NV**, showing the count of accounts at **248**, the Code, Name and Type columns populated for every row, and a search on legacy code `4010-01` returning the target account it was mapped to, so the legacy cross-reference is seen to be stored on the account rather than held in the extract file.
+2. **The import summary and rejection report of the Scenario 3 run** — showing **246 created and 2 rejected**, with each rejected row named by its row number, its legacy code and the check that failed, and the Chart of Accounts shown to contain no record for either rejected row.
+3. **Accounting ▸ Accounting ▸ Journal Entries** — the opening entry of **Acme Group NV** dated **01 January 2026** in the **Miscellaneous** journal, opened to show its **12 journal items** and its **total debits of USD 4,875,300.00 equal to its total credits of USD 4,875,300.00** at a difference of **USD 0.00**, with the entry shown registered as that company's opening journal entry.
+4. **The Trial Balance for Acme Group NV over 01 January 2026 to 01 January 2026** — showing account **1010 Bank at USD 152,400.00** debit, account **1200 Accounts Receivable at USD 1,048,600.00** debit, account **2000 Accounts Payable at USD 540,400.00** credit and account **3100 Retained Earnings at USD 1,238,900.00** credit, with **total debits of USD 4,875,300.00 equal to total credits of USD 4,875,300.00**, placed beside the audited legacy closing trial balance so each line is seen to agree at a **USD 0.00** tolerance.
+5. **The negative walkthrough** — the staged credit total reduced to **USD 4,875,299.00** and the posting attempted and refused with the **USD 1.00** imbalance named and the entry shown still in **Draft**; the fiscal-year lock date of **31 December 2025** applied and the back-dated posting attempted and blocked with that date named; and a file of a disallowed type submitted and rejected at the ingestion boundary, with the Chart of Accounts and the Journal Entries list shown unchanged after all three attempts.
+6. **The signed tie-out worksheet** — the line-by-line reconciliation of the migrated Trial Balance to the legacy closing trial balance at a **USD 0.00** tolerance, countersigned by the Finance SME, together with the translation difference of **USD 0.01** disclosed for **Acme Industries Inc.** and the split of the group payable balance of **USD 612,300.00** into **USD 540,400.00** for Acme Group NV and **USD 71,900.00** for Acme Industries Inc.
+
+---
+
+## Constraints
+
+### License and Compliance
+
+- [ ] **C-001 — AGPL-3.0 compatible licence.** Any module delivering the migration load, the mapping register or the opening-entry generation is distributed under an AGPL-3.0 compatible licence, matching the six Community-edition accounting add-ons already present in this repository.
+- [ ] **C-002 — LGPL-3 of `account` respected.** `account.account`, `account.move`, `account.move.line`, `account.journal` and `res.company` are LGPL-3 code declared in `addons/account/__manifest__.py`; derived and dependent work stays licence-compatible with them and no derived work misstates their licence.
+- [ ] **C-005 and C-006 — Odoo and OCA coding standards.** Python follows Odoo and OCA module guidelines including PEP 8, and static analysis passes with the repository's configured tooling in `ruff.toml` at zero violations.
+- [ ] **C-012 — build on the existing models.** The imported chart lives on `account.account` and the opening position lives on `account.move` and `account.move.line`, registered through the opening-entry field on `res.company`. No parallel staging ledger survives cut-over, so one ledger and one audit trail carry the migrated position.
+- [ ] **C-014 — multi-company access rights.** The Chief Accountant runs the migration and owns the mapping, the Group Controller releases the lock date that gates a back-dated opening entry, the Finance SME countersigns the tie-out, and the External Auditor holds read-only access to the mapping workbook, the opening entry and the tie-out worksheet. A role restricted to **Acme Group NV** can neither read nor post the opening entry of **Acme Industries Inc.**
+
+### Security and Untrusted-Input Handling
+
+The legacy chart-of-accounts, opening-balance and open-item extracts loaded by this story arrive from a retired system outside this system's trust boundary, and the parent Feature names this story as the surface that carries them. The constraints below are inherited from the Epic's [§7.7](../../EPIC-001-enterprise-accounting-odoo.md#77-security-and-untrusted-input-handling) and are discharged by the hostile-input tests in § Test Requirements.
+
+- [ ] **C-015 — ingestion-boundary allowlist.** Every extract is checked against an allowlist of permitted MIME types and extensions and against a declared maximum size before a row is parsed, and is rejected with a named validation error when either check fails.
+- [ ] **C-017 — formula-injection neutralization.** A cell value beginning with `=`, `+`, `-`, `@`, a tab or a carriage return is escaped or prefixed so a spreadsheet application treats it as text, on read from the extract and on write to any CSV or XLSX export of the mapping workbook or the tie-out worksheet.
+- [ ] **C-019 — ORM and parameterized access only.** Legacy codes, target codes and account names carried by the extract reach search domains and queries through the Odoo ORM or parameterized SQL, with no string-concatenated query construction, no shell invocation, and no file path derived from an uploaded document's name and then opened on disk.
+- [ ] **C-020 — non-disclosing failure messages.** A rejection names the rejected file or row, the check that failed and the remedial action, and discloses no stack trace, no SQL, no file-system path and no credential; diagnostic detail goes to the server log on an access-controlled channel.
+- [ ] **C-022 — hostile-input tests are executable.** At least one acceptance test submits a malformed extract, an oversized file, a disallowed file type and a formula-injection cell value, and asserts a named rejection, **0** `account.account` records created, **0** `account.move` records created, and the service still available for the next run.
+
+### Version Compatibility
+
+The platform target of this programme is an **open decision (DEC-001)** recorded in the Epic's [Open Decisions Register](../../EPIC-001-enterprise-accounting-odoo.md#appendix-b-open-decisions-register) and stated here without being resolved:
+
+| Candidate target | Evidence on record | Consequence for this story |
+|------------------|--------------------|----------------------------|
+| **Odoo 17** | Named by the originating programme request | The opening-entry field names and the lock-date field set are re-checked against the 17 series before the mapping workbook is frozen, and the 209 `l10n_*` packs present here are 19.0-series, so the statutory chart each mapping row reconciles against is re-selected |
+| **Odoo 18.0** | Targeted by the prior, superseded backlog | Neither the request nor this repository is served; the field names, the constraint messages and the import facility asserted here are restated for 18.0 |
+| **Odoo 19.0** | The baseline present in this repository: `version_info = (19, 0, 0, FINAL, 0, '')` in `odoo/release.py`, with `MIN_PY_VERSION = (3, 10)`, `MAX_PY_VERSION = (3, 13)` and `MIN_PG_VERSION = 13` | The field names, validation messages and menu paths cited in this story hold as written: `res.company.account_opening_move_id` and `account_opening_date` carry the opening entry, `fiscalyear_lock_date` and `hard_lock_date` carry the block asserted in Scenario 7, and `account.account.code` is a `Char(64)` whose value is company-dependent |
+
+- [ ] **C-010 — the confirmed version is recorded** in the Epic and restated in the parent Feature before the migration is built; this story does not choose it. The choice changes which field and message names the tests assert against, and it changes nothing in the figures.
+- [ ] **C-011 — Python and PostgreSQL versions follow the confirmed target**, since each candidate release carries its own supported matrix.
+- [ ] **Edition source (DEC-002) does not gate the load.** The chart and the opening entry are written through `account`, which is present here under LGPL-3. The edition decision governs which engine renders the **Trial Balance** the tie-out is read from, which is why every reconciliation in this story is expressed against `account.move.line` amounts rather than against one report engine's internals.
+
+### Accounting Standards Compliance
+
+- [ ] **IAS 1 — Presentation of Financial Statements.** The opening position carries the comparative figures the first published statement presents, so each opening balance is classified on the target account whose type and hierarchy position already resolve to a statement line, and property, plant and equipment is opened gross (1500) against its contra account (1590) rather than net.
+- [ ] **ASC 210 — Balance Sheet classification.** The same opening balances resolve to US GAAP balance-sheet captions for the group's US entities, with the current-versus-non-current split carried by the target account rather than restated per report.
+- [ ] **ISA 510 — Initial Audit Engagements, Opening Balances.** The audit evidence the External Auditor needs over opening balances is produced as part of the migration rather than reconstructed afterwards: the mapping workbook with an unmapped count of 0, the signed line-by-line tie-out worksheet at a USD 0.00 tolerance, the cut-over rate and its basis, and the disclosed translation difference of USD 0.01.
+- [ ] **Legacy code retained as a cross-reference.** Every imported account keeps its legacy code on the account record, so an auditor tracing a figure from the retired system reaches the target account by search rather than by reading a migration script; a merged mapping retains every source code it absorbed.
+- [ ] **One opening entry per company.** The opening position of each legal entity is a single balanced entry registered as that company's opening journal entry, so the migrated position cannot be silently amended by a second opening entry, and any later correction is a dated adjusting entry with its own audit trail.
+
+---
+
+## Technical Discovery Notes
+
+> **Purpose:** these notes direct the codebase analysis that precedes implementation. This story states WHAT finance requires of the migration and WHY; the module structure, the choice between extending a model and adding one, the import technology and the staging design emerge from discovery and are deliberately not prescribed here.
+
+### Codebase Analysis Areas
+
+| Area | Files/Modules to Examine | Analysis Focus |
+|------|--------------------------|----------------|
+| Opening-entry hook on the company | `addons/account/models/company.py` | `account_opening_move_id` ("Opening Journal Entry", a link to `account.move`), `account_opening_journal_id` and `account_opening_date` ("Opening Entry"); the constraint declared `@api.constrains('account_opening_move_id', 'fiscalyear_last_day', 'fiscalyear_last_month')`, which evaluates the fiscal-year end day against the year of the opening-entry date; and what registering the opening entry implies for a second load against the same company |
+| Lock dates that can block a back-dated entry | `addons/account/models/company.py` | `fiscalyear_lock_date`, `tax_lock_date` and `hard_lock_date`, their computed per-role variants, and the routines that collect and format lock-date violations — the mechanism behind the block asserted in Scenario 7 and the release the Group Controller performs |
+| Entry posting and balance validation | `addons/account/models/account_move.py` | The balance check that refuses an unbalanced entry and the message it raises, how the unbalanced difference is computed per entry, the lock-date check invoked on post, and the tax-driven line synchronization — so the refusal in Scenario 4 is asserted against the platform's own validation rather than a bespoke one |
+| Account model and the legacy cross-reference | `addons/account/models/account_account.py` | `code` as a `Char(64)` with tracking whose value is company-dependent, `name`, the required `account_type` selection, `include_initial_balance` ("Bring Accounts Balance Forward") and what it implies for which opening balances carry forward, `company_ids`, and the code-uniqueness check inside a company — which decides where the legacy code is stored so it stays searchable without colliding with `code` |
+| Import mechanics | `addons/base_import/models/base_import.py`, `addons/account/models/account_document_import_mixin.py` | What Odoo's base import facility already supplies — column mapping, type coercion, row-level error reporting, batch commit behaviour — and what the accounting document-import mixin adds for attachment handling and transaction-safe record creation; the analysis decides whether the load extends one of these or stands beside them |
+| Chart instantiation and localization | `addons/account/models/chart_template.py`, `addons/account/models/template_generic_coa.py`, the 209 `addons/l10n_*` packs | What a chart template creates and how it behaves against a company that already holds accounts or postings, so the legacy load and the statutory pack do not each claim the same code (D-006) |
+| Open-item loading | `addons/account/models/account_move_line.py`, `addons/account/models/account_partial_reconcile.py` | How an unpaid vendor bill, an unpaid customer invoice and an unreconciled bank line are represented so the sub-ledger detail in Edge Case 4 ties to the imported control account and stays settleable by FEATURE-001-02, FEATURE-001-03 and FEATURE-001-04 |
+| Currency translation at cut-over | `odoo/addons/base/models/res_currency.py` | The rate record and the rounding routine behind the translation in Scenario 6, the decimal precision of each currency, and where a translation residual is recognized so it is disclosed rather than absorbed |
+| Tie-out reporting surface | `addons/account_financial_report_ce/models/trial_balance.py`, `general_ledger.py` | The `account.trial.balance.report` model with its `date_from` and `date_to` parameters and its opening-balance, period-movement and closing-balance columns, and its zero-balance option — the report the line-by-line tie-out is read from while DEC-002 is open |
+| Ingestion boundary and audit trail | `odoo/addons/base/models/ir_attachment.py`, `addons/account/models/account_move.py` | Where the file type, extension and size checks of C-015 are applied before parsing, and which fields are tracked so the mapping decisions and the lock-date release are retained with their author and timestamp for the External Auditor |
+
+### Relevant Existing Modules
+
+- `addons/account/` — "Invoicing", version 1.4, category `Accounting/Accounting`, licence LGPL-3. Supplies every model this story writes to or reads: `account.account`, `account.journal`, `account.move`, `account.move.line`, and the opening-entry and lock-date fields on `res.company`.
+- `addons/base_import/` — Odoo's base import facility, including the spreadsheet reader used for ODS and XLSX sources; the reference point for column mapping, type coercion and row-level error reporting rather than a reimplementation target.
+- `addons/l10n_*/` — 209 localization packs present in this repository. Each supplies one jurisdiction's statutory chart, which the mapping workbook reconciles the legacy codes against; the pack per operating country is selected during localization discovery (D-006).
+- `addons/account_financial_report_ce/` — version 19.0.1.1.0, AGPL-3. The Trial Balance, General Ledger and Balance Sheet implementations already present, and the surface the tie-out worksheet is produced from while the edition decision is open.
+- `odoo/addons/base/` — `res.company` and `res.currency`, which supply the legal-entity structure the opening entry is posted per, the functional currency of each entity, the cut-over rate and the decimal precision every amount is rounded to.
+
+### OCA Module Compatibility
+
+| OCA Repository | Module | Compatibility Consideration |
+|----------------|--------|-----------------------------|
+| OCA/server-tools | `base_import_match` | Matches an imported row to an existing record on a stated field set rather than on the database identifier; determine whether it is the mechanism that makes the re-run in Edge Case 3 idempotent on the legacy cross-reference |
+| OCA/account-financial-tools | `account_chart_update` | Compares an installed chart against its country template and applies template changes; determine how it behaves against a chart that was loaded from a legacy extract and deliberately diverges from the template |
+| OCA/account-financial-tools | `account_move_line_import` | Imports journal items from a file into an entry; determine whether the opening entry is generated from the mapped trial balance or loaded line by line, and which of the two keeps the balance check in front of the write |
+| OCA/account-financial-reporting | `account_financial_report` | Renders the Trial Balance and General Ledger the tie-out is read from under the OCA path of DEC-002; determine whether its opening-balance column reads the migrated entry without a translation layer |
+
+The decision to integrate, extend or replace any add-on above belongs to DEC-002 in the Epic and is not taken in this story.
+
+---
+
+## Dependencies
+
+### Story Dependencies
+
+| Dependency Type | Story / Feature ID | Title | Relationship |
+|-----------------|--------------------|-------|--------------|
+| Parent Feature | [FEATURE-001-01](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) | Chart of Accounts & Fiscal Year | This story is the fourth of the feature's five stories and delivers its capability CAP-004 |
+| **Blocked By** | [STORY-001-01-01](./STORY-001-01-01-configure-coa-hierarchy.md) | Configure Multi-Level Chart of Accounts Hierarchy | **The target account codes must exist before a legacy code can be mapped onto one and before an opening line can debit or credit it.** Configuration sequencing, not shared code |
+| **Blocked By** | [STORY-001-01-03](./STORY-001-01-03-define-fiscal-year-periods.md) | Define Fiscal Year and Accounting Periods | **The opening date must fall inside a defined fiscal year**: FY2026 spans 01 January 2026 to 31 December 2026, so the entry dated 01 January 2026 lands in a reportable period, and the fiscal-year end day is the value the opening-entry constraint on the company record is evaluated against |
+| Related | [STORY-001-01-02](./STORY-001-01-02-map-accounts-ifrs-gaap-taxonomy.md) | Map Accounts to IFRS and GAAP Reporting Taxonomy | Accounts loaded here inherit the published presentation lines from the closest parent account in their code range — account 1210 Trade Receivables — Retail inherits from account 1200 — and the mapping-completeness check is re-run at cut-over to confirm an unmapped-account count of 0 |
+| Related | [STORY-001-01-05](./STORY-001-01-05-configure-period-lock-dates.md) | Configure Period Lock Dates and Closing Controls | A fiscal-year lock date can block a back-dated opening entry, which is the case asserted in Scenario 7; the release of that lock date is a Group Controller action defined there |
+| Downstream features | FEATURE-001-02, FEATURE-001-03, FEATURE-001-04, FEATURE-001-07, FEATURE-001-08 | — | The open items and control balances loaded here are what those features settle and report against: unpaid vendor bills against Accounts Payable 2000, unpaid customer invoices against Accounts Receivable 1200, unreconciled bank lines against Bank 1010, the comparative period on every statement, and asset net book value against Fixed Assets 1500 and Accumulated Depreciation 1590 — sequenced by ordering rule ORD-001 in the Epic's [§6.2](../../EPIC-001-enterprise-accounting-odoo.md#62-inter-feature-ordering) |
+
+### External Dependencies
+
+| Dependency | Type | Notes |
+|------------|------|-------|
+| Legacy closing trial-balance extract | Data extract from the retired system | The 248 account rows and the 12 mapped opening balances of fixture M-1; delivered as a file that crosses the trust boundary and is therefore subject to C-015, C-017, C-019 and C-020 |
+| Audited cut-over balances | Governance artifact | The legacy closing position at 01 January 2026, audited before it is loaded; the authority the tie-out at a USD 0.00 tolerance is measured against, and the evidence ISA 510 expects over opening balances |
+| Legacy-to-target mapping workbook | Governance artifact | Owned by the Chief Accountant, signed off with an unmapped legacy-account count of 0 before cut-over, and retained with every merge rule it declares |
+| Open-item extracts | Data extract from the retired system | Unpaid vendor bills, unpaid customer invoices, unreconciled bank lines, asset net book value and accumulated depreciation, each summing to its imported control account at a difference of USD 0.00 (D-010) |
+| Exchange-rate source | Master data / integration | Supplies the cut-over rate of 1 EUR = 1.0850 USD that Scenario 6 translates at, its rate basis, and the 2-decimal precision each currency is rounded to |
+| Legal-entity register | Master data | Acme Group NV and Acme Industries Inc. exist as company records with their functional currency set before an opening entry is posted for either |
+| Platform version and edition confirmation | Open decision (DEC-001, DEC-002) | Recorded in the Epic's [Open Decisions Register](../../EPIC-001-enterprise-accounting-odoo.md#appendix-b-open-decisions-register); DEC-001 fixes the field and message names this story is implemented against, DEC-002 fixes which engine renders the Trial Balance the tie-out is read from |
+| IAS 1, ASC 210 and ISA 510 | Accounting and auditing standards | Fix the presentation of the opening position and the audit evidence retained over it |
+
+### Integration Points
+
+| Odoo Model | Integration Type | Purpose |
+|------------|------------------|---------|
+| `account.account` | Write | The 248 imported accounts with their target `code`, `name`, `account_type`, `company_ids` and the stored legacy-code cross-reference |
+| `account.move` | Write | The single balanced opening entry per company, dated 01 January 2026, refused unless total debits equal total credits at a difference of USD 0.00 |
+| `account.move.line` | Write | The 12 opening journal items of fixture M-1, the open-item detail that ties to each control account, and the records every Trial Balance line in the tie-out is reconciled against |
+| `account.journal` | Read | The Miscellaneous journal (journal type `general`) the opening entry is posted in, with its own sequence |
+| `res.company` | Read and write | Acme Group NV and Acme Industries Inc.; the opening-entry link and opening-entry date that register the migrated position, and the fiscal-year and lock-date fields that gate its posting |
+| `res.currency` | Read | The `USD` and `EUR` definitions, the cut-over rate of 1 EUR = 1.0850 USD and the 2-decimal precision every amount is rounded to |
+| `account.tax` | Read | Tax code `VAT-STD-21` and the base-and-tax split the opening VAT liability in Scenario 8 is recorded under; the code itself is configured by FEATURE-001-05 |
+| Odoo base import facility | Read | Column mapping, type coercion and row-level error reporting for the extract, together with the ingestion-boundary checks of C-015 |
+| `ir.attachment` | Read and write | The extract file retained with the run, subject to the permitted-type, permitted-extension and maximum-size checks applied before any row is parsed |
+
+---
+
+## Estimation
+
+| Dimension | Rating | Basis |
+|-----------|--------|-------|
+| **Effort** | High | A mapping workbook covering 248 legacy rows, an import definition with row-level validation and a rejection report, opening-entry generation for two companies, open-item loading against three control accounts, a dry-run and rollback path, eight acceptance tests and the hostile-input tests C-022 requires |
+| **Complexity** | High | Three mechanisms have to hold together: the balance rule that refuses an unbalanced entry, the currency translation that produces a USD 0.01 residual needing disclosure rather than absorption, and the lock-date check that blocks a back-dated entry. Layered over them are merge rules where more than one legacy code maps to one target code, and idempotency on re-run so a partial failure cannot yield a duplicate account or a second opening entry |
+| **Uncertainty** | Medium | The Odoo fields, constraints and messages this story relies on were read during discovery and are present in the repository. The open unknowns are in the legacy data: how many of the 248 rows carry an ambiguous mapping, how clean the open-item detail is against its control account, and how many review cycles the audit sign-off takes — none of which changes the assertions, only the elapsed time to satisfy them |
+| **Story Points** | **8** (Fibonacci: 1, 2, 3, 5, 8, 13) | |
+
+Eight points is the largest estimate in FEATURE-001-01, and four things push it above the 5-point stories in this folder. The **row volume** is an order of magnitude larger — 248 accounts and 12 opening lines against ten configured accounts. The **mapping ambiguity in the legacy data** is discovered rather than designed: a many-to-one merge and a duplicate legacy code are both present in fixture M-1's source, and each has to be resolved and signed off before cut-over rather than at run time. The **balance and FX rules** make the posting itself a gate, not a write: the entry is refused at a USD 1.00 imbalance, and a translation produces a USD 0.01 residual that has to be disclosed. Finally the **audit sign-off loop** is inside the story — the line-by-line tie-out at a USD 0.00 tolerance is countersigned by the Finance SME before the story is Done, and a single disagreeing line sends the mapping back a cycle. Thirteen points would overstate a story whose every mechanism already exists in `account`; five would understate the data volume and the sign-off loop. The estimate assumes the audited cut-over balances are delivered at the start of the sprint, and it excludes the target-code configuration, the fiscal calendar, the lock-date administration and the settlement of the loaded open items, which are sibling stories and downstream features.
+
+---
+
+
+## Test Requirements
+
+### Coverage Requirement
+
+| Metric | Requirement | Notes |
+|--------|-------------|-------|
+| **Minimum Test Coverage** | **80%** | Mandatory for all new functionality delivered by this story (C-007) |
+| Unit Test Coverage | 80% or higher | Target-code resolution, `account_type` validation, legacy-code capture and uniqueness, merge arithmetic, translation and rounding, balance computation |
+| Integration Test Coverage | 80% or higher | End-to-end load of the extract, opening-entry posting, lock-date interaction, Trial Balance tie-out, open-item to control-account agreement |
+| Accounting assertion style | Numeric | Every monetary, count and debits-equal-credits assertion is compared as an amount or a count at 2 decimal places with half-up rounding, never inspected by eye (C-009) |
+| Traceability | One test per criterion | Each of the eight scenarios maps to exactly one named acceptance test (C-008) |
+| Hostile-input coverage | Mandatory | The extract crosses a trust boundary, so the tests named under § Hostile-Input Test Requirements are part of this story's coverage, not an optional extra (C-022) |
+
+### Unit Test Scenarios
+
+| Acceptance Scenario | Unit Test Focus | Key Assertions |
+|---------------------|-----------------|----------------|
+| Scenario 1 | Chart import and legacy cross-reference | 248 `account.account` records exist in Acme Group NV; each `account_type` equals the extract value; the untyped count is 0 and the count with no legacy code is 0; a search on legacy code `4010-01` returns exactly 1 account; account 1210 exists; 0 `account.move` records created |
+| Scenario 2 | Opening-entry generation and balance | The entry holds 12 lines; total debits equal USD 4,875,300.00 and total credits equal USD 4,875,300.00 at a difference of USD 0.00, at 2 decimal places with half-up rounding; the entry is registered as the company's opening journal entry; a second opening entry for the same company is refused |
+| Scenario 3 | Row-level validation and rejection reporting | 2 rows rejected and 246 created; each rejection carries a row number, a legacy code and the failed check; 0 accounts exist with an empty `account_type`; 0 accounts exist under the unmatched target code |
+| Scenario 4 | Balance refusal on post | Posting a staged entry whose credits total USD 4,875,299.00 against debits of USD 4,875,300.00 raises the not-balanced error naming the USD 1.00 difference; the entry state stays `draft`; the account balances are USD 0.00; the corrected entry posts at USD 4,875,300.00 on each side |
+| Scenario 5 | Legacy-code uniqueness inside a company | The first `4010` row is created and the second is rejected with both row numbers named; 247 created and 1 rejected; exactly 1 account in Acme Group NV carries legacy code `4010` |
+| Scenario 6 | Translation and residual recognition | EUR 1,000,000.00 at 1 EUR = 1.0850 USD equals USD 1,085,000.00 at 2 decimal places with half-up rounding; the source amount and the rate are retained on the journal item; a USD 0.01 residual is posted to account 3100; total debits equal total credits at a difference of USD 0.00 |
+| Scenario 7 | Lock-date block and release | Posting an entry dated 31 December 2025 against a fiscal-year lock date of 31 December 2025 raises the lock-date error naming that date; the entry state stays `draft` with both totals at USD 4,875,300.00; after the lock date moves to 30 November 2025 the entry posts at a difference of USD 0.00 |
+| Scenario 8 | Tax split on the opening liability | Account 2200 in Acme Group NV carries a credit of USD 21,000.00; tax code `VAT-STD-21` records a base amount of USD 100,000.00 and a tax amount of USD 21,000.00 on separate values; account 2200 in Acme Industries Inc. equals USD 0.00; total debits equal total credits at USD 4,875,300.00 each |
+
+### Integration Test Considerations
+
+- [ ] Load the full 248-row extract into a seeded company holding the ten baseline accounts, then generate and post the opening entry, and assert the posted entry's total debits equal its total credits at a difference of USD 0.00 **before** any report is read from it.
+- [ ] Run the **Trial Balance** for 01 January 2026 to 01 January 2026 and reconcile every reported line to its counterpart line in the legacy closing trial balance at a **USD 0.00** tolerance, then reconcile each line to the sum of the `account.move.line` records beneath it at a **USD 0.00** tolerance.
+- [ ] Load the open-item detail — 412 open customer invoices against control account 1200, the open vendor bills against control account 2000, and the asset net book value against control accounts 1500 and 1590 — and assert each detail sum equals its control-account opening line at a difference of **USD 0.00**.
+- [ ] Post an opening entry for a second company, **Acme Industries Inc.**, and assert that a role restricted to **Acme Group NV** can neither read nor post it, and that the balances of **Acme Group NV** are unchanged by the second run (C-014, D-007).
+- [ ] Exercise the re-run path: fail the load after 246 accounts, re-run it, and assert that no `account.account` record is duplicated on its legacy code, that exactly one opening entry exists for the company, and that the two totals are equal at USD 4,875,300.00 each.
+- [ ] Exercise the rollback path: abort an unrecoverable run and assert **0** imported accounts and **0** journal entries remain, with the Trial Balance reporting total debits of USD 0.00 equal to total credits of USD 0.00.
+- [ ] Re-run the taxonomy mapping-completeness check of [STORY-001-01-02](./STORY-001-01-02-map-accounts-ifrs-gaap-taxonomy.md) after the load and assert an unmapped-account count of **0**, with account 1210 presented on the lines inherited from account 1200.
+- [ ] Time a load of 2,000 opening lines against the parent Feature's target of under 60 seconds, ending in one posted balanced entry whose difference is USD 0.00.
+
+### Hostile-Input Test Requirements (C-022)
+
+The extract crosses the trust boundary, so the tests below are mandatory and each asserts a named rejection together with a ledger left unchanged.
+
+| Hostile Input | Test Method Name | Key Assertions |
+|---------------|------------------|----------------|
+| A file whose extension or MIME type is outside the declared allowlist | `test_disallowed_file_type_rejected_at_ingestion_boundary` | The run is rejected before any row is parsed with an error naming the file and the permitted-type check; 0 `account.account` and 0 `account.move` records created; the service remains available |
+| A file above the declared maximum size | `test_oversized_extract_rejected_before_parsing` | Rejection names the file and the maximum-size check; 0 records created; server memory and time bounded |
+| A malformed row structure — a truncated header, an unterminated quoted field, or a row with fewer columns than the header | `test_malformed_extract_rejected_without_partial_import` | Rejection names the row and the structural check; no partial `account.account` record exists; 0 `account.move` records created |
+| A cell value beginning with `=`, `+`, `-` or `@` in the account-name column | `test_formula_injection_cell_value_neutralized_as_text` | The value is stored and re-exported as text rather than as a formula, on read and on any CSV or XLSX export of the mapping workbook or tie-out worksheet (C-017) |
+| A rejection message inspected for disclosure | `test_rejection_message_discloses_no_internal_detail` | The message names the rejected file or row, the failed check and the remedial action, and contains no stack trace, no SQL, no file-system path and no credential; the diagnostic detail is present in the server log instead (C-020) |
+
+### Acceptance Test Mapping
+
+| BDD Scenario | Test Method Name | Test Type |
+|--------------|------------------|-----------|
+| Scenario 1: Legacy chart of 248 accounts imported into the target chart | `test_legacy_chart_import_creates_248_accounts_with_cross_reference` | Acceptance |
+| Scenario 2: Opening entry posts balanced and ties to the legacy closing trial balance | `test_opening_entry_posts_balanced_and_ties_to_legacy_trial_balance` | Acceptance |
+| Scenario 3: Rows with a missing account type or an unmatched target code are rejected without a partial record | `test_invalid_rows_rejected_without_partial_account_record` | Acceptance |
+| Scenario 4: An unbalanced opening entry is refused and left in Draft | `test_unbalanced_opening_entry_refused_and_left_in_draft` | Acceptance |
+| Scenario 5: A duplicate legacy code is rejected with its row number named | `test_duplicate_legacy_code_rejected_with_row_number` | Acceptance |
+| Scenario 6: A foreign-currency legacy balance is translated at the cut-over rate and its rounding residual is posted | `test_foreign_currency_opening_balance_translated_with_residual` | Acceptance |
+| Scenario 7: A fiscal-year lock date blocks the back-dated opening entry until the Group Controller releases it | `test_fiscalyear_lock_date_blocks_backdated_opening_entry` | Acceptance |
+| Scenario 8: A legacy VAT liability is opened with its tax code, base amount and tax amount held apart | `test_legacy_vat_liability_opened_with_base_and_tax_split` | Acceptance |
+
+---
+
+## Definition of Done
+
+### Implementation Checklist
+
+- [ ] All **eight** acceptance-criteria scenarios pass, each proved by its named automated test in § Acceptance Test Mapping.
+- [ ] **80% minimum test coverage achieved** for the functionality delivered by this story, reported by the repository's coverage tooling (C-007).
+- [ ] Unit tests written and passing for target-code resolution, `account_type` validation, legacy-code capture and uniqueness, merge arithmetic, currency translation and rounding, and the balance computation that gates the post.
+- [ ] Integration tests written and passing for the full 248-row load, opening-entry posting, the lock-date block and release, the Trial Balance tie-out, and open-item agreement with each control account.
+- [ ] The five hostile-input tests under § Hostile-Input Test Requirements pass, each asserting a named rejection with **0** accounts and **0** journal entries created (C-022).
+- [ ] The dry-run, re-run and rollback paths are covered by tests: a dry run writes nothing, a re-run duplicates no account and creates no second opening entry, and an aborted run leaves 0 accounts and 0 journal entries behind.
+- [ ] The mapping workbook records every one of the 248 legacy rows with an unmapped legacy-account count of **0**, and every merge rule it declares is signed off before cut-over.
+
+### Accounting Reconciliation Gate
+
+This gate is the accounting contract of the story and the reason it is estimated at 8 points. Each item is asserted as an amount, at 2 decimal places using half-up rounding, in the currency named.
+
+- [ ] **Debits equal credits on the opening entry.** The opening entry of **Acme Group NV** posts with **total debits of USD 4,875,300.00 equal to total credits of USD 4,875,300.00** — a difference of **USD 0.00** — across its 12 journal items, and the same assertion is made in its own functional currency for every other migrated company, including **Acme Industries Inc.**
+- [ ] **An unbalanced entry never reaches a balance.** The refusal path is proved: staged credits of **USD 4,875,299.00** against debits of **USD 4,875,300.00** leave the entry in **Draft** with the **USD 1.00** difference named, and no journal item reaches any account balance.
+- [ ] **The tax amount ties to its tax code and its base amount.** The credit of **USD 21,000.00** on account **2200 Tax Payable** equals the tax amount recorded against tax code **`VAT-STD-21`** at a difference of **USD 0.00**, its **base amount of USD 100,000.00** is recorded separately, and no part of the base amount reaches the account 2200 balance.
+- [ ] **Every Trial Balance line ties to the legacy trial balance and to the sub-ledger.** Each line of the **Trial Balance** for **01 January 2026 to 01 January 2026** equals its counterpart line in the audited legacy closing trial balance at a **USD 0.00** tolerance, and equals the sum of the `account.move.line` records beneath it at a **USD 0.00** tolerance — account 1010 at USD 152,400.00 debit, account 1200 at USD 1,048,600.00 debit, account 2000 at USD 540,400.00 credit and account 3100 at USD 1,238,900.00 credit among them.
+- [ ] **Control accounts agree with their open-item detail.** The open-item sums equal their control-account opening lines at a difference of **USD 0.00**: open customer invoices against account 1200, open vendor bills against account 2000, and asset net book value against accounts 1500 and 1590 (D-010).
+- [ ] **Contra-asset presentation preserved.** Account **1500 Fixed Assets** is opened at **USD 500,000.00** debit against account **1590 Accumulated Depreciation** at **USD 75,000.00** credit, so property, plant and equipment nets to **USD 425,000.00** on presentation and nothing is netted inside the ledger.
+- [ ] **Translation residuals are disclosed, not absorbed.** The **USD 0.01** residual arising from **EUR 1,000,000.00** translated at 1 EUR = 1.0850 USD is posted to account **3100 Retained Earnings** and disclosed as a translation difference in the tie-out worksheet, with the source amount and the rate retained beside the translated figure.
+- [ ] **No unexplained suspense balance.** Every suspense and clearing account reports **USD 0.00** for 01 January 2026 to 01 January 2026, or its balance is explained in the retained reconciliation, so the migration leaves nothing for a later period to absorb (SM-006).
+- [ ] **The tie-out worksheet is signed and retained.** The line-by-line reconciliation at a **USD 0.00** tolerance is countersigned by the Finance SME and retained as migration evidence readable by the External Auditor without a data request (D-010, ISA 510).
+
+### Compliance Checklist
+
+- [ ] Licence compatibility verified per C-001 and C-002: an AGPL-3.0 compatible licence declared, and the LGPL-3 licence of `account` respected by every derived work.
+- [ ] No parallel staging ledger survives cut-over; the migrated position lives on `account.account`, `account.move` and `account.move.line` (C-012).
+- [ ] Ingestion-boundary checks in place and tested: permitted MIME types, permitted extensions and a declared maximum size, each rejection naming the file and the failed check (C-015, C-020).
+- [ ] Formula-injection neutralization applied on read from the extract and on write to every CSV and XLSX export of the mapping workbook and the tie-out worksheet (C-017).
+- [ ] All data access expressed through the Odoo ORM or parameterized SQL, with no string-concatenated queries, no shell invocation, and no file path derived from an uploaded document's name (C-019).
+- [ ] Multi-company record rules exercised by test: a role restricted to **Acme Group NV** can neither read nor post the opening entry of **Acme Industries Inc.** (C-014, D-007).
+- [ ] Static analysis passes with the repository's configured tooling at zero violations, and the code follows Odoo and OCA standards (C-005, C-006).
+- [ ] The confirmed platform version and edition, once DEC-001 and DEC-002 are recorded, are restated in the parent Feature and the field and message names asserted here are re-checked against them (C-010, C-011).
+- [ ] Code reviewed and approved, with the mapping workbook and the cut-over date countersigned by the Group Controller and the External Auditor.
+
+### Documentation Checklist
+
+- [ ] Docstrings and inline comments complete for every public method delivered by the load and the opening-entry generation.
+- [ ] The legacy-to-target mapping workbook is retained alongside the code that applies it, including every many-to-one merge rule and the legacy codes each merge absorbed.
+- [ ] The cut-over runbook is documented: the rehearsal on a copy of the production database, the dry run, the load, the opening-entry post, the tie-out, the sign-off and the rollback procedure.
+- [ ] The FX rate basis and the treatment of translation residuals are documented, with the **USD 0.01** residual of **Acme Industries Inc.** recorded as a worked example.
+- [ ] The open-item treatment is documented per category — unpaid vendor bills, unpaid customer invoices, unreconciled bank lines, asset net book value and accumulated depreciation — with the control account each ties to (D-010).
+- [ ] Finance-facing notes explain how to search an account by its legacy code, so a figure in the retired system can be traced without a data request.
+
+### Quality Checklist
+
+- [ ] No critical or high-severity defect open against the load, the opening entry or the tie-out.
+- [ ] The opening-balance import completes in under **60 seconds** for a load of 2,000 lines, the parent Feature's performance target for this path, ending in one posted balanced entry.
+- [ ] Access rights verified per finance role: the Chief Accountant runs the migration, the Group Controller releases the lock date, the Finance SME countersigns the tie-out, and the External Auditor holds read-only access to the mapping workbook, the opening entry and the tie-out worksheet.
+- [ ] Every mapping decision, every rejected row and the lock-date release are retained with their author and timestamp and are readable by the External Auditor without a data request.
+- [ ] The import was rehearsed end to end on a copy of the production database before the cut-over, and the rehearsal produced the same two totals of **USD 4,875,300.00**.
+- [ ] **Demonstrated in the Odoo user interface to the Finance Controller and the Product Owner** by walking the six steps of § Demonstration — the Chart of Accounts at 248 accounts, the import summary and rejection report, the opening entry in the Miscellaneous journal, the Trial Balance for 01 January 2026 to 01 January 2026 beside the legacy trial balance, the three refusals, and the signed tie-out worksheet — with the walkthrough recorded against this story.
+
+---
+
+## References
+
+### Accounting Standards
+
+| Standard | Reference | Application to This Story |
+|----------|-----------|---------------------------|
+| IAS 1 | Presentation of Financial Statements, IFRS Foundation | The opening position supplies the comparative figures the first published statement presents, and fixes the current-versus-non-current classification each opening balance is loaded under |
+| ASC 210 | FASB Accounting Standards Codification, Balance Sheet | US GAAP balance-sheet classification of the same opening balances for the group's US entities, with cost (1500) and accumulated depreciation (1590) opened on separate lines |
+| ISA 510 | Initial Audit Engagements — Opening Balances, IAASB | The audit-evidence expectation over opening balances that the signed line-by-line tie-out worksheet, the mapping workbook with an unmapped count of 0, and the disclosed translation difference are produced to satisfy |
+| IAS 21 | The Effects of Changes in Foreign Exchange Rates, IFRS Foundation | The translation of the **EUR 1,000,000.00** legacy balance at the stated cut-over rate and the recognition of the **USD 0.01** residual as a translation difference |
+| IFRS Foundation standards | <https://www.ifrs.org/issued-standards/list-of-standards/> | The presentation taxonomy the imported accounts inherit through [STORY-001-01-02](./STORY-001-01-02-map-accounts-ifrs-gaap-taxonomy.md) |
+| FASB Accounting Standards Codification | <https://asc.fasb.org/> | The US GAAP classification carried as the second presentation dimension on each imported account |
+
+### OCA Modules (Reference)
+
+| Repository | Module | Relevance |
+|------------|--------|-----------|
+| OCA/server-tools | `base_import_match` | Matches an imported row to an existing record on a stated field set, the candidate mechanism for idempotency on the legacy cross-reference |
+| OCA/account-financial-tools | `account_chart_update` | Keeps an installed chart reconciled with its country template after a legacy load has deliberately diverged from it |
+| OCA/account-financial-tools | `account_move_line_import` | Imports journal items from a file, the alternative to generating the opening entry from the mapped trial balance |
+| OCA/account-financial-reporting | `account_financial_report` | Renders the Trial Balance and General Ledger the tie-out is read from under the OCA path of DEC-002 |
+
+### Source Code References
+
+| Path | Relevance |
+|------|-----------|
+| `addons/account/models/company.py` | `account_opening_move_id` ("Opening Journal Entry"), `account_opening_journal_id` and `account_opening_date` ("Opening Entry"), the constraint declared `@api.constrains('account_opening_move_id', 'fiscalyear_last_day', 'fiscalyear_last_month')` that evaluates the fiscal-year end day against the opening-entry year, and the `fiscalyear_lock_date`, `tax_lock_date` and `hard_lock_date` fields with the lock-date violation and formatting routines behind Scenario 7 |
+| `addons/account/models/account_move.py` | The balance validation that refuses an unbalanced entry with the not-balanced error, the routine that computes the unbalanced difference per entry, the lock-date check invoked on post, and the tax-driven line synchronization — the platform behaviour Scenarios 4 and 7 are asserted against |
+| `addons/account/models/account_account.py` | `code` as a `Char(64)` with tracking whose value is company-dependent, `name`, the required `account_type` selection, `include_initial_balance` ("Bring Accounts Balance Forward"), `company_ids`, and the code-uniqueness check inside a company |
+| `addons/account/models/account_move_line.py` | The journal item the 12 opening lines and the open-item detail are written as, and the records every tie-out figure is reconciled against |
+| `addons/base_import/models/base_import.py`, `addons/base_import/models/odf_ods_reader.py` | Odoo's base import facility: column mapping, type coercion, row-level error reporting, and the spreadsheet reader for ODS and XLSX sources |
+| `addons/account/models/account_document_import_mixin.py` | The accounting document-import pipeline with its attachment handling and transaction-safe record creation, the pattern the ingestion boundary of C-015 is applied at |
+| `addons/account/models/chart_template.py`, `addons/account/models/template_generic_coa.py` | How a chart template is instantiated into a company and how it behaves against a company that already holds accounts or postings |
+| `addons/account/__manifest__.py` | The `account` module identity cited throughout: "Invoicing", version 1.4, category `Accounting/Accounting`, licence LGPL-3 |
+| `addons/l10n_*/` | The 209 localization packs supplying each jurisdiction's statutory chart, which the mapping workbook reconciles the legacy codes against (D-006) |
+| `addons/account_financial_report_ce/models/trial_balance.py` | The AGPL-3 Trial Balance present in this repository: `account.trial.balance.report` with its `date_from` and `date_to` parameters and its opening-balance, period-movement and closing-balance columns, the surface the tie-out is read from |
+| `odoo/addons/base/models/res_currency.py` | The rate record and rounding routine behind the 1 EUR = 1.0850 USD translation and the 2-decimal precision of each currency |
+| `odoo/release.py` | The platform baseline `version_info = (19, 0, 0, FINAL, 0, '')` with `MIN_PY_VERSION = (3, 10)`, `MAX_PY_VERSION = (3, 13)` and `MIN_PG_VERSION = 13`, cited by DEC-001 |
+
+### Ticket References
+
+| Document | Link |
+|----------|------|
+| Parent Feature | [FEATURE-001-01: Chart of Accounts & Fiscal Year](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) |
+| Parent Epic | [EPIC-001: Enterprise Accounting in Odoo](../../EPIC-001-enterprise-accounting-odoo.md) |
+| Persona register the WHO is drawn from | [EPIC-001 §3.1 User Personas](../../EPIC-001-enterprise-accounting-odoo.md#31-user-personas) |
+| Success metric SM-006, which this story is measured on | [EPIC-001 §4.1 Measurable Outcomes](../../EPIC-001-enterprise-accounting-odoo.md#41-measurable-outcomes) |
+| Authoring bounds: 4-to-8 criteria, coverage distribution, Fibonacci scale | [EPIC-001 §5.3 Decomposition Guidelines](../../EPIC-001-enterprise-accounting-odoo.md#53-feature-and-story-decomposition-guidelines) |
+| Ordering rule ORD-001, which sequences the features that consume this opening position | [EPIC-001 §6.2 Inter-Feature Ordering](../../EPIC-001-enterprise-accounting-odoo.md#62-inter-feature-ordering) |
+| Constraint set C-001 to C-014 | [EPIC-001 §7 Constraints](../../EPIC-001-enterprise-accounting-odoo.md#7-constraints) |
+| Untrusted-input constraints C-015 to C-022, which the legacy extract crosses | [EPIC-001 §7.7 Security and Untrusted-Input Handling](../../EPIC-001-enterprise-accounting-odoo.md#77-security-and-untrusted-input-handling) |
+| Discovery item D-010, the migration reconciliation approach this story realizes | [EPIC-001 §9.10 D-010](../../EPIC-001-enterprise-accounting-odoo.md#910-d-010-migration-reconciliation-approach) |
+| Epic-level data-migration dependency | [EPIC-001 §10.1 External Dependencies](../../EPIC-001-enterprise-accounting-odoo.md#101-external-dependencies) |
+| Open decisions DEC-001 and DEC-002 | [EPIC-001 Appendix B: Open Decisions Register](../../EPIC-001-enterprise-accounting-odoo.md#appendix-b-open-decisions-register) |
+| Sibling stories | [STORY-001-01-01](./STORY-001-01-01-configure-coa-hierarchy.md) · [STORY-001-01-02](./STORY-001-01-02-map-accounts-ifrs-gaap-taxonomy.md) · [STORY-001-01-03](./STORY-001-01-03-define-fiscal-year-periods.md) · [STORY-001-01-05](./STORY-001-01-05-configure-period-lock-dates.md) |
+
+---
+
+## Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-01-01 | Enterprise Accounting Team | Initial story creation |
+
+---
+
+## Notes
+
+**No user-specified rules govern this file.** The rules input for this change returned an empty set, so no project-specific rule constrains this ticket, none has been invented, and the authoring bar is not lowered on that account. The governing constraints applied here are the Epic's own: the decomposition and authoring bounds of [§5.3](../../EPIC-001-enterprise-accounting-odoo.md#53-feature-and-story-decomposition-guidelines), the constraint set of [§7](../../EPIC-001-enterprise-accounting-odoo.md#7-constraints) including the untrusted-input constraints of §7.7, and the parent Feature's acceptance criteria.
+
+**Platform version and edition remain open (DEC-001, DEC-002).** The originating programme request names Odoo 17, this repository is Odoo 19.0 Community, and the prior superseded backlog targeted 18.0. This story states the field names, validation messages and menu paths as they exist in the 19.0 baseline it was verified against — the opening-entry link and date on the company record, the fiscal-year and hard lock dates, the not-balanced refusal and the lock-date refusal — and flags the mismatch for stakeholder confirmation rather than choosing a target. The figures are unaffected by the choice; only the names the tests assert against change. On DEC-002: the Trial Balance the tie-out is read from is supplied by the Enterprise module `account_reports`, which is **absent** from this Community repository, so the story is demonstrated today against the AGPL-3 `account_financial_report_ce` implementation present here, whose `account.trial.balance.report` carries the `date_from` and `date_to` parameters cited above.
+
+**This story realizes the Epic's data-migration dependency.** The legacy chart-of-accounts, opening-balance and open-item extracts named as an external dependency in the Epic's [§10.1](../../EPIC-001-enterprise-accounting-odoo.md#101-external-dependencies), and the reconciliation approach recorded as discovery item [D-010](../../EPIC-001-enterprise-accounting-odoo.md#910-d-010-migration-reconciliation-approach), are discharged here: the mapping, the balanced opening journal per company, the line-by-line tie-out at a USD 0.00 tolerance, the treatment of open items, and the retained sign-off. No other story in EPIC-001 carries them.
+
+**Rehearse the import on a copy before the cut-over.** The load writes the first entry of the production ledger, and a company's opening journal entry is registered once, so a failed cut-over is expensive to unwind. The recommendation carried into the cut-over runbook is a full rehearsal on a restored copy of the production database — dry run, load, opening-entry post and tie-out — repeated until the rehearsal reproduces total debits of USD 4,875,300.00 equal to total credits of USD 4,875,300.00, with the rollback procedure exercised at least once before the live run.
+
+**Opening-entry figures are the tree's reference set.** The totals of USD 4,875,300.00 on each side, and the 12 lines of fixture M-1, are the deterministic migration figures for EPIC-001 (D-009): they are cited by the parent Feature's opening-balance criterion and by [STORY-001-01-03](./STORY-001-01-03-define-fiscal-year-periods.md), whose Scenario 4 asserts that a refused fiscal-year change leaves this entry intact. An earlier draft of those two files carried a different total; the figure was harmonized to USD 4,875,300.00 across the feature so one value governs the tree, and any future restatement is applied to all three files together. The figures are verification fixtures rather than a forecast of the group's actual balances.
+
+**Company names and dates.** Acme Group NV (parent, functional currency `USD`) and Acme Industries Inc. (subsidiary, functional currency `USD`) are the reference entities used across the criteria so that every multi-company assertion names the books it affects; they stand for the legal-entity register enumerated during discovery, and substituting the confirmed names changes the names in the criteria and nothing else. The cut-over date of 01 January 2026 is the first day of fiscal year FY2026 as defined by [STORY-001-01-03](./STORY-001-01-03-define-fiscal-year-periods.md); 31 December 2025, the day before it, is the back-dated variant exercised in Scenario 7 against a fiscal-year lock date of that same date.
+
+**Scope of this ticket.** This file is a planning artifact. It states the migration outcome finance requires and the assertions that prove it; it contains no module, model, view, import definition, data file or fixture, and it prescribes none. The mechanism — Odoo's base import facility, a bespoke migration routine, or an OCA add-on — is chosen by the implementing agent from the discovery recorded above.
+

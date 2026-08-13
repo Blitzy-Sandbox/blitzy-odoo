@@ -1,0 +1,472 @@
+# STORY-001-04-01 Import Bank Statements in CSV, OFX, QIF and CAMT.053
+
+| Attribute | Value |
+|-----------|-------|
+| **Story ID** | `STORY-001-04-01` |
+| **Title** | Import Bank Statements in CSV, OFX, QIF and CAMT.053 |
+| **Parent Feature** | [FEATURE-001-04: Bank Reconciliation & Cash Management](../FEATURE-001-04-bank-reconciliation-cash-management.md) |
+| **Parent Epic** | [EPIC-001: Enterprise Accounting in Odoo](../../EPIC-001-enterprise-accounting-odoo.md) |
+| **Persona** | Treasury Analyst |
+| **Status** | Draft |
+| **Priority** | 🔴 Critical |
+| **Estimate** | 8 story points (Fibonacci) |
+
+---
+
+## User Story
+
+**As a** Treasury Analyst
+
+**I want** to load a bank's own record of a period into the **Bank** journal of a named company from a CSV, OFX, QIF or CAMT.053 file, with duplicate lines detected before anything is written and a failed file leaving no trace
+
+**So that** the bank's version of events becomes 8 verifiable `account.bank.statement.line` records whose opening balance of `$10,000.00 USD` and closing balance of `$15,331.00 USD` — each rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 — can be reconciled against the ledger instead of re-keyed by hand, which is the precondition for the 95%-or-higher auto-match rate the Epic measures as SM-002 and for a cash balance the CFO / Finance Director can read without waiting on a spreadsheet
+
+---
+
+## Acceptance Criteria
+
+All 8 criteria below are written against one deterministic artifact set, so every assertion has exactly one pass-or-fail reading. The set is the one fixed by the parent feature and is not restated per scenario:
+
+| Artifact | Value | Role in these criteria |
+|----------|-------|------------------------|
+| Companies | `US-01` (United States parent, functional currency USD, also the group reporting currency), `NL-01` (Netherlands, EUR), `GB-01` (United Kingdom, GBP) | Each entity holds its own **Bank** journal, so every criterion names the company whose books are affected. `US-01` is the importing entity throughout; `NL-01` appears only where a foreign-currency line or a wrong-entity file is asserted |
+| Accounts | Bank 1010, Cash 1000, Suspense / Outstanding Payments 1099, Accounts Receivable 1200, Accounts Payable 2000, Bank Charges 6800, FX Gain/Loss 7100 | Bank 1010 is the account an imported line debits or credits; Suspense / Outstanding Payments 1099 is the contra account of the provisional posting; Bank Charges 6800 receives the `FEE-0208` service fee once it is reconciled in `STORY-001-04-02`; FX Gain/Loss 7100 absorbs an exchange difference at settlement |
+| Journals | **Bank** (the journal every statement in this story is imported into) and **Cash** | Two of the five journal types [FEATURE-001-01](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) defines per company |
+| Fixtures | `test_data/bank_statements/sample.csv`, `test_data/bank_statements/sample.ofx`, `test_data/bank_statements/sample.qif`, `test_data/bank_statements/sample.xml` — read-only under D-009 | One fixture per supported format. All four describe the same 8 transactions over 2024-02-01 to 2024-02-28, so a cross-format import must produce the same 8 lines and the same totals from each |
+| The 8 transactions | 2024-02-01 `REF-0201` "Invoice Payment INV/2024/0201" `+$1,250.00 USD` Acme Corp; 2024-02-03 `PUR-0203` "Office Supplies Purchase" `−$180.50 USD` Office Depot LLC; 2024-02-05 `CNS-0205` "Consulting Fee Received" `+$3,500.00 USD` Global Consulting Inc; 2024-02-08 `FEE-0208` "Monthly Bank Service Fee" `−$35.00 USD` with no counterparty; 2024-02-12 `UTL-0212` "Utility Bill Payment" `−$425.75 USD` City Power and Water; 2024-02-15 `REF-0215` "Customer Payment INV/2024/0215" `+$2,100.00 USD` Beta Industries Ltd; 2024-02-20 `VND-0220` "Vendor Payment" `−$890.25 USD` Hardware Supplies Co; 2024-02-28 `INT-0228` "Interest Earned" `+$12.50 USD` First National Bank | The line-level expectation of every import criterion, with each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01. A statement credit is money into the account and a statement debit is money out of it |
+| Totals | 4 statement credits totalling `$6,862.50 USD`, 4 statement debits totalling `$1,531.50 USD`, a net movement of `$5,331.00 USD`, an absolute line total of `$8,394.00 USD`, an opening balance of `$10,000.00 USD` and a closing balance of `$15,331.00 USD` | The balance equation `10,000.00 + 6,862.50 − 1,531.50 = 15,331.00` holds at a difference of `0.00 USD`. The absolute line total of `$8,394.00 USD` is the total debits and the total credits of the 8 provisional postings taken together, with each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+| Report | **Bank Reconciliation Statement**, run for the `US-01` **Bank** journal with the date-range parameter 2024-02-01 to 2024-02-29 | Its expected statement closing balance line is `$15,331.00 USD` after a completed import and `$0.00 USD` where nothing was ingested, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+| Rounding | 2 decimal places at a rounding increment of 0.01, rounded half-up, per the ISO 4217 minor unit of USD, EUR and GBP as held on `res.currency` | Applied to every amount asserted below, including every converted amount |
+
+**Coverage distribution.** Scenarios 1 to 4 are the valid-input path, one per supported format; Scenario 5 is the data-integrity case; Scenario 6 is the invalid and incomplete input case; Scenario 7 is the error-handling case; and Scenario 8 is the accounting edge case. Scenarios 6 and 7 are written as the hostile-input cases C-022 requires of an ingestion surface.
+
+### Scenario 1: A CSV statement is imported as 8 statement lines whose balance equation holds
+
+- **Given** `test_data/bank_statements/sample.csv` carrying the header row `Date,Label,Amount,Reference,Partner` and the 8 transaction rows dated 2024-02-01 to 2024-02-28, and a **Bank**-type journal of company `US-01` whose default debit and credit account is Bank 1010 and whose suspense account is Suspense / Outstanding Payments 1099, and the fiscal period containing 2024-02 open with no journal-entry lock date on or after 2024-02-01 for `US-01`
+- **When** the Treasury Analyst imports that file against the `US-01` **Bank** journal under the column mapping `Date` → transaction date, `Label` → payment reference, `Amount` → signed amount, `Reference` → bank reference and `Partner` → counterparty name
+- **Then** one `account.bank.statement` record exists for the `US-01` **Bank** journal holding 8 `account.bank.statement.line` records dated 2024-02-01 to 2024-02-28, with an opening balance of `$10,000.00 USD` and a closing balance of `$15,331.00 USD`; the 4 statement credits total `$6,862.50 USD` and the 4 statement debits total `$1,531.50 USD`, so `10,000.00 + 6,862.50 − 1,531.50 = 15,331.00` holds at a difference of `0.00 USD`; the row whose `Partner` field is empty — the `FEE-0208` service fee of `−$35.00 USD` — is stored with an empty counterparty name rather than rejected; and each line's provisional posting through the **Bank** journal debits Bank 1010 and credits Suspense / Outstanding Payments 1099 for an inbound line, or debits Suspense / Outstanding Payments 1099 and credits Bank 1010 for an outbound line, so that across the 8 postings total debits of `$8,394.00 USD` equal total credits of `$8,394.00 USD` at a difference of `0.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+
+### Scenario 2: An OFX statement is imported with its transaction identifiers and its stated ledger balance
+
+- **Given** `test_data/bank_statements/sample.ofx`, an OFX 1.x document whose header declares `OFXHEADER:100`, `DATA:OFXSGML` and `VERSION:102`, carrying `<CURDEF>USD`, a `BANKTRANLIST` spanning `DTSTART` 20240201 to `DTEND` 20240228 with 8 `STMTTRN` entries whose `FITID` values run `OFX20240201001` to `OFX20240228001`, and a `LEDGERBAL` of `$5,331.00 USD` as of 2024-02-28, together with the `US-01` **Bank** journal whose preceding statement closed at `$10,000.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+- **When** the Treasury Analyst imports that file against the `US-01` **Bank** journal
+- **Then** 8 statement lines exist whose bank reference is each entry's `FITID` value, so those identifiers are the values the duplicate fingerprint of Scenario 5 reads; each entry's `TRNTYPE` code — `CREDIT` or `DEBIT` — is recorded as the line's transaction type and resolves the sign of the line amount, giving the same 4 statement credits totalling `$6,862.50 USD` and 4 statement debits totalling `$1,531.50 USD` as Scenario 1, line for line; the statement records the file's stated ledger balance of `$5,331.00 USD` as of 2024-02-28, a ledger start balance of `$10,000.00 USD` carried from the journal's preceding closing balance and a ledger end balance of `$15,331.00 USD`, so `10,000.00 + 5,331.00 = 15,331.00` holds at a difference of `0.00 USD`; each line's provisional posting debits Bank 1010 against credit Suspense / Outstanding Payments 1099, or the reverse for an outbound line, with total debits of `$8,394.00 USD` equal total credits of `$8,394.00 USD` at a difference of `0.00 USD`; and an OFX 2.x document declaring the same statement in its XML-conformant form is read by the same parser and yields the identical 8 lines and the identical totals, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+
+### Scenario 3: A QIF statement is imported with its United States dates converted and its absent closing balance recorded as absent
+
+- **Given** `test_data/bank_statements/sample.qif`, a QIF (Quicken Interchange Format) document opening with the account-type header `!Type:Bank` and carrying 8 `^`-terminated records whose fields use the `D` (date), `T` (amount), `P` (payee), `N` (reference) and `M` (memo) prefixes, with the `D` values written in the United States `MM/DD/YYYY` form from `02/01/2024` to `02/28/2024`, together with the `US-01` **Bank** journal
+- **When** the Treasury Analyst imports that file against the `US-01` **Bank** journal under the field mapping `D` → transaction date, `T` → signed amount, `P` → counterparty name, `N` → bank reference and `M` → line narration
+- **Then** 8 statement lines exist whose transaction dates are the ISO calendar dates 2024-02-01 to 2024-02-28, inside the statement period 2024-02-01 to 2024-02-28 and with no date read as 2024-01-02 or any other transposition of month and day; each record's `P` text is stored as the counterparty name and its `M` text as the line narration; the 8 `T` values are stored as 4 statement credits totalling `$6,862.50 USD` and 4 statement debits totalling `$1,531.50 USD`, matching Scenario 1 line for line; the statement records that the format states no closing balance, holding that balance as absent rather than inferring one, and is flagged as carrying no bank-stated closing figure; and each line's provisional posting debits Bank 1010 against credit Suspense / Outstanding Payments 1099, or the reverse for an outbound line, so total debits of `$8,394.00 USD` equal total credits of `$8,394.00 USD` at a difference of `0.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+
+### Scenario 4: A CAMT.053 statement is imported at entry and detail level and proves its stated balances
+
+- **Given** `test_data/bank_statements/sample.xml`, an ISO 20022 `camt.053.001.02` document under the namespace `urn:iso:std:iso:20022:tech:xsd:camt.053.001.02` whose root element is `BkToCstmrStmt`, carrying statement `Id` `STMT2024-02`, account `IBAN` `US89021000021234567890`, `Ccy` `USD`, an `OPBD` balance of `$10,000.00 USD` as of 2024-01-31, 8 `Ntry` elements and a `CLBD` balance of `$15,331.00 USD` as of 2024-02-28, together with the `US-01` **Bank** journal whose bank account identifier is that IBAN, with each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+- **When** the Treasury Analyst imports that file against the `US-01` **Bank** journal
+- **Then** 8 statement lines exist, each built from both the entry level (`Ntry`) and the detail level (`NtryDtls/TxDtls`) of its entry; each entry's `CdtDbtInd` value — `CRDT` or `DBIT` — resolves the sign of the absolute `Amt` the standard carries, giving 4 statement credits totalling `$6,862.50 USD` and 4 statement debits totalling `$1,531.50 USD`; `BookgDt` is stored as the transaction date and `ValDt` as the value date in a separate field, so the two dates remain distinguishable; `Refs/EndToEndId` and `AcctSvcrRef` are stored as the line's references; `RmtInf/Ustrd` is stored as the line narration; `RltdPties/Dbtr/Nm` and `RltdPties/Cdtr/Nm` are stored as the counterparty name, and the one entry carrying no `RltdPties` — the `FEE-0208` service fee of `−$35.00 USD` — is stored with an empty counterparty name rather than rejected; the statement records `$10,000.00 USD` as its opening balance and `$15,331.00 USD` as its stated closing balance, and `10,000.00 + 6,862.50 − 1,531.50 = 15,331.00` holds at a difference of `0.00 USD`; each line's provisional posting debits Bank 1010 against credit Suspense / Outstanding Payments 1099, or the reverse for an outbound line, so total debits of `$8,394.00 USD` equal total credits of `$8,394.00 USD` at a difference of `0.00 USD`; and a statement line whose `Amt Ccy` differs from the journal currency — a `€1,000.00 EUR` entry on the `US-01` **Bank** journal — is stored with its foreign amount, its ISO 4217 currency code and its company-currency amount converted at the `res.currency.rate` effective on that line's own transaction date, with the rate and that rate date stored on the line so the conversion is reproducible, each amount rounded to 2 decimal places at its currency's `res.currency` rounding increment of 0.01
+
+### Scenario 5: Re-importing the same file reports 8 duplicates and writes nothing when the Treasury Analyst skips them
+
+- **Given** the 8 statement lines of Scenario 1 are already imported on the `US-01` **Bank** journal, whose statement carries a closing balance of `$15,331.00 USD` rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+- **When** the Treasury Analyst imports the same `test_data/bank_statements/sample.csv` against that same `US-01` **Bank** journal a second time
+- **Then** all 8 rows are reported as duplicates of existing lines on the fingerprint of transaction date, signed amount and bank reference, in a message naming the file, the `US-01` **Bank** journal and the count of 8 matching lines; the Treasury Analyst is offered a skip decision before any record is written; and on choosing skip the count of statement lines created is 0, the count of journal entries created is 0, the journal still holds exactly 8 statement lines, the statement's closing balance is unchanged at `$15,331.00 USD`, and the Bank 1010 and Suspense / Outstanding Payments 1099 balances of `US-01` are unchanged at a difference of `0.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+
+### Scenario 6: A CSV missing its amount column and carrying an unparsable date creates no statement and no line
+
+- **Given** a CSV variant of `test_data/bank_statements/sample.csv`, held in the hostile-input fixture set apart from the valid fixtures, from which the `Amount` column is absent and whose row 4 carries the date value `31/02/2024`, together with the `US-01` **Bank** journal holding 0 statement lines and a Bank 1010 balance of `$10,000.00 USD` rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+- **When** the Treasury Analyst attempts to import that variant against the `US-01` **Bank** journal
+- **Then** a validation report names the missing required column `Amount` and names the unparsable date value `31/02/2024` against its row number 4, and names the check each one failed; the count of `account.bank.statement.line` records created is 0 and the count of `account.bank.statement` records created is 0, the attempt having been rolled back as one unit so no partial statement survives; and the `US-01` **Bank** journal still holds 0 statement lines with its Bank 1010 balance unchanged at `$10,000.00 USD` and 0 journal entries created, at a difference of `0.00 USD` against the balance held before the attempt, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+
+### Scenario 7: A file failing an ingestion check is refused, commits nothing and leaves an audit entry
+
+- **Given** a statement file presented to the import of the `US-01` **Bank** journal that fails one of the two ingestion checks C-015 requires — its size exceeds the configured maximum upload size for statement import, or the extension it declares does not match the content type detected from its bytes
+- **When** the Treasury Analyst attempts to import that file against the `US-01` **Bank** journal
+- **Then** the import is refused with a message naming the rejected file and which of the two checks failed, and that message discloses no stack trace, no SQL, no file-system path and no credential; the count of `account.bank.statement`, `account.bank.statement.line` and `ir.attachment` records committed is 0 and the count of journal entries created is 0, so the Bank 1010 and Suspense / Outstanding Payments 1099 balances of `US-01` are unchanged at a difference of `0.00 USD` against the balances held before the attempt, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01; an audit entry records the attempt with the acting Treasury Analyst, the target company `US-01`, the target **Bank** journal, the file name, its checksum and the timestamp; the import service stays available so the next file can be presented without a restart; and text carried into a line narration or a counterparty name is stored as inert text, so a value opening with `=`, `+`, `-`, `@`, a tab or a carriage return is neutralized before it reaches a view, a QWeb template, a PDF or a CSV or XLSX export, and control characters are escaped or stripped rather than stored raw
+
+### Scenario 8: An import dated inside a locked period is blocked and the Bank Reconciliation Statement shows nothing was ingested
+
+- **Given** a journal-entry lock date of 2024-02-29 configured for company `US-01`, closing the fiscal period that contains 2024-02, and the `US-01` **Bank** journal holding 0 statement lines
+- **When** the Treasury Analyst imports `test_data/bank_statements/sample.csv`, whose 8 rows fall between 2024-02-01 and 2024-02-28, against the `US-01` **Bank** journal
+- **Then** the import is blocked before any journal entry is created, with an Odoo validation message naming the journal-entry lock date 2024-02-29 and the affected company `US-01`; the count of statement lines written is 0 and the count of journal entries created is 0; the **Bank Reconciliation Statement** run for the `US-01` **Bank** journal with the date-range parameter 2024-02-01 to 2024-02-29 presents a statement closing balance line of `$0.00 USD` for that journal, nothing having been ingested; and once the Group Controller lifts the lock date for `US-01` and the same file is imported again, that same report over that same date range presents a statement closing balance line of `$15,331.00 USD`, behind which the 8 suspense clearing postings carry total debits of `$8,394.00 USD` equal to total credits of `$8,394.00 USD` at a difference of `0.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+
+---
+
+## Sub-Tasks
+
+| # | Sub-Task | Assignee |
+|---|----------|----------|
+| 1 | Confirm the per-format column and field mapping with the bank for each of the four supported formats, and record the CSV column mapping, the accepted date formats and the character encoding as configuration of the import rather than as assumptions of a parser | `@functional-consultant` |
+| 2 | Confirm the duplicate fingerprint — transaction date, signed amount and bank reference — with the bank, and confirm which reference each format supplies for it: the CSV `Reference` column, the OFX `FITID`, the QIF `N` field and the CAMT.053 `EndToEndId` and `AcctSvcrRef` | `@functional-consultant` |
+| 3 | Confirm the skip-or-write decision the Treasury Analyst is offered on a duplicate, and the wording of the validation, refusal and lock-date messages so each names the file, the failing check and the affected company | `@functional-consultant` |
+| 4 | Analyse the existing document-import pipeline and the statement and statement-line field surface, and record which fields a parser may write for each format | `@developer` |
+| 5 | Implement the four format parsers so that each of the four repository fixtures yields the same 8 lines, the same 4 credits totalling `$6,862.50 USD` and the same 4 debits totalling `$1,531.50 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 | `@developer` |
+| 6 | Implement the statement balance handling: the CAMT.053 `OPBD` and `CLBD` balances, the OFX `LEDGERBAL`, the absence of a QIF closing balance recorded as absent, and the balance-equation check that flags a statement whose stated closing balance disagrees with its own line movements | `@developer` |
+| 7 | Implement duplicate detection on the agreed fingerprint, with the count of matching lines reported before any record is written | `@developer` |
+| 8 | Implement the all-or-nothing rollback so a failed import commits no statement, no statement line and no attachment, and implement the ingestion checks C-015 requires on type, extension and size | `@developer` |
+| 9 | Implement the CAMT.053 parser configuration C-016 requires — document type definitions and external-entity resolution disabled, entity expansion bounded, and the document validated against the schema for its declared version before any field is read | `@developer` |
+| 10 | Implement the sanitization C-017 and C-018 require of narration and counterparty text, and the audit entry recording the file, its checksum, the acting role, the target company and journal, and the resulting line count | `@developer` |
+| 11 | Build the per-format regression suite over `test_data/bank_statements/sample.csv`, `sample.ofx`, `sample.qif` and `sample.xml`, asserting the 8 lines, the totals and the balance equation numerically for each format and comparing the four line sets field by field | `@qa-engineer` |
+| 12 | Build the malformed-variant suite: the missing `Amount` column, the `31/02/2024` date, a truncated document, a schema-invalid CAMT.053, an external-entity payload, an oversized file, a disallowed type, a formula-injection cell value and an over-long field, each asserting a named error, 0 records created and the service still available | `@qa-engineer` |
+| 13 | Run the volume and rollback tests: a 500-line file per format under 10 seconds, a 5,000-line CAMT.053 under 120 seconds, a 1,000-line file whose failure injected part way through rolls back to 0 created records, and a query count that stays constant from 100 to 1,000 lines | `@qa-engineer` |
+| 14 | Run the multi-company isolation test proving that a file whose account identifier belongs to `NL-01` is refused on the `US-01` **Bank** journal, and that a role restricted to `US-01` can neither import for nor read the statement lines of `NL-01` | `@qa-engineer` |
+| 15 | Sign off that the imported opening balance of `$10,000.00 USD` and closing balance of `$15,331.00 USD` tie to the bank's own statement for 2024-02-01 to 2024-02-28 at a difference of `0.00 USD`, and that the 8 provisional suspense postings carry total debits of `$8,394.00 USD` equal to total credits of `$8,394.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 | `@finance-sme` |
+| 16 | Sign off the account pairing of each provisional posting — Bank 1010 against Suspense / Outstanding Payments 1099 — and confirm that the `FEE-0208` service fee of `−$35.00 USD`, rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01, is destined for Bank Charges 6800 at reconciliation rather than at import | `@finance-sme` |
+
+---
+
+## Edge Cases
+
+| # | Edge Case | Expected Handling |
+|---|-----------|-------------------|
+| 1 | A statement carries lines denominated in a currency other than the journal currency — a `€1,000.00 EUR` line on the `US-01` **Bank** journal whose functional currency is USD | The line stores the foreign amount `€1,000.00 EUR`, its ISO 4217 code and the company-currency amount converted at the `res.currency.rate` effective on that line's own transaction date, not on the import date and not on the statement date; the rate and that rate date are stored on the line so the conversion is reproducible after the fact; and the exchange difference arising when the line is later settled is posted to FX Gain/Loss 7100 at reconciliation in `STORY-001-04-02` rather than at import, each amount rounded half-up to 2 decimal places at its currency's `res.currency` rounding increment of 0.01 |
+| 2 | The statement states a negative opening or closing balance — an overdrawn `US-01` bank account opening at `−$4,200.00 USD` | The negative balance is stored and reported as stated, with no absolute value taken and no sign inversion; the balance equation is asserted on the signed figures, so an opening balance of `−$4,200.00 USD` plus statement credits of `$6,862.50 USD` less statement debits of `$1,531.50 USD` gives a closing balance of `$1,131.00 USD` at a difference of `0.00 USD`; and the provisional postings still carry total debits equal to total credits, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+| 3 | Narration and counterparty text carry non-ASCII characters and control characters — an accented counterparty name, a right-to-left mark, a NUL byte or an embedded newline | The text is stored as inert sanitized text: the document's declared encoding is honoured so accented and non-Latin names survive intact, control characters are escaped or stripped rather than stored raw, a value opening with `=`, `+`, `-`, `@`, a tab or a carriage return is neutralized so a spreadsheet application treats it as text, and the value is context-encoded before it reaches a view, a QWeb template or a PDF; the line is imported rather than rejected, because a counterparty name is not a reason to lose a bank transaction |
+| 4 | A statement of 1,000 or more lines is imported, and a failure is injected part way through | The all-or-nothing rollback holds at that volume: the count of statement, statement-line and attachment records created by the failed import is 0, and the rollback completes in under 10 seconds. A successful import of a 500-line file completes in under 10 seconds in each of the four formats, a 5,000-line CAMT.053 document completes in under 120 seconds, and the query count stays constant as the file grows from 100 lines to 1,000 lines rather than rising per record |
+| 5 | A statement line carries a zero amount — a `$0.00 USD` memo entry the bank issued for information | The line is retained for audit continuity, so the imported line count still matches the bank's own line count and no gap appears in the statement's sequence; it generates no unbalanced posting, because a provisional posting of `$0.00 USD` on both sides carries total debits of `$0.00 USD` equal to total credits of `$0.00 USD` at a difference of `0.00 USD`, and it does not move the statement's closing balance of `$15,331.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+
+---
+
+## Constraints
+
+### License and Compliance
+
+- [ ] **C-001 — Licence compatibility.** Work delivered for this story is distributed under an AGPL-3.0 compatible licence, matching the AGPL-3 `account_bank_reconciliation_ce` already present in this repository at version 19.0.1.0.0
+- [ ] **C-002 — Existing licence respected.** Extension of `account` — the "Invoicing" application, version 1.4, category `Accounting/Accounting`, licence LGPL-3 — and of `account_payment` at version 2.0 under LGPL-3 stays licence-compatible with the LGPL-3 code it derives from
+- [ ] **C-005 and C-006 — Coding standards and static analysis.** Python follows Odoo and OCA module guidelines including PEP 8, and static analysis passes with the repository's configured tooling in `ruff.toml` with zero violations
+- [ ] **C-012 — Build on the existing models.** The statement and its lines are expressed on `account.bank.statement` and `account.bank.statement.line` rather than on a parallel structure, and the work extends the import path already present in `account_bank_reconciliation_ce` rather than opening a second one, so two import paths cannot both claim the same file
+- [ ] **C-014 and D-007 — Multi-company isolation and role separation.** The Treasury Analyst imports statements for the companies that role is allowed; a file whose account identifier belongs to `NL-01` is refused on the `US-01` **Bank** journal with a message naming both identifiers; and a role restricted to one company can neither import a statement for another nor read its statement lines
+- [ ] **C-015 — Ingestion checks.** Every file is checked at the ingestion boundary against an allowlist of permitted MIME types and extensions and against a declared maximum size, and is refused with a named validation error when either check fails
+- [ ] **C-016 — XML parsing discipline.** CAMT.053 documents are parsed with document type definitions and external-entity resolution disabled and entity expansion bounded, and each document is validated against the schema for its declared version before any field is read
+- [ ] **C-017 and C-018 — Output neutralization.** Values written to a CSV or XLSX export are neutralized against formula injection, and statement labels, references, narration and counterparty names are sanitized and context-encoded before they render into a QWeb template or a PDF
+- [ ] **C-019 — Data access discipline.** Parsing and duplicate detection run through the Odoo ORM or parameterized SQL with no string-concatenated query construction and no shell invocation, and no file path is derived from an uploaded file's name and then opened on disk
+- [ ] **C-020 — Error disclosure.** A refusal names the rejected document, the check that failed and the remedial action, and discloses no stack trace, SQL, file-system path or credential; diagnostic detail goes to the server log under an access-controlled channel
+- [ ] **C-021 — Credential custody.** Any bank-feed or statement-retrieval credential, API key or certificate used to obtain a statement is held in Odoo system parameters or an external secret manager, scoped per company, with a recorded rotation owner and interval, and appears in no module source, version control, log, fixture or export
+- [ ] **C-022 — Hostile-input tests.** This story carries at least one acceptance test per hostile case on the import path — a malformed document, a schema-invalid CAMT.053, an oversized file, a disallowed type, an external-entity payload, a formula-injection value in a label and an over-long field — each asserting a named refusal, 0 statement lines and 0 journal entries created, and the service still available
+
+### Version Compatibility
+
+- [ ] **C-010 — Platform version target is an open decision (DEC-001).** Three targets are on record and they are mutually exclusive: the originating programme request names **Odoo 17**; this repository is **Odoo 19.0 Community**, where `odoo/release.py` declares `version_info = (19, 0, 0, FINAL, 0, '')`; and the superseded flat-layout backlog targeted **18.0**. The mismatch is recorded here as an **open item awaiting stakeholder confirmation**, owned by the Group Controller with IT Operations in the Epic's open decisions register, and it is not resolved inside this story
+- [ ] **C-011 — Language and database versions follow the confirmed target.** The Odoo 19.0 baseline in this repository declares `MIN_PY_VERSION = (3, 10)`, `MAX_PY_VERSION = (3, 13)` and `MIN_PG_VERSION = 13` in `odoo/release.py`; an earlier platform target carries a different supported matrix
+- [ ] **Impact if DEC-001 resolves to a version other than 19.0.** The `account.bank.statement` and `account.bank.statement.line` field surface a parser writes is restated for the confirmed version, the document-import pipeline is re-examined against that series, and the version of `account_bank_reconciliation_ce` is re-selected for it. The four fixtures in `test_data/bank_statements/` are version-independent and stay the import corpus in every case
+- [ ] **Edition source is an Epic-level dependency (DEC-002), not a decision of this story.** Whether the Enterprise-only capability set arrives through an Odoo Enterprise subscription or through OCA add-ons is owned by the CFO / Finance Director with the Group Controller at Epic level. This story is **not gated** by that decision: every module it needs is present here — `account` 1.4 and `account_payment` 2.0 under LGPL-3, and `account_bank_reconciliation_ce` 19.0.1.0.0 under AGPL-3 — and Enterprise `account_accountant` is absent from this repository
+
+---
+
+## Technical Discovery Notes
+
+> **Purpose:** this section directs the codebase analysis that precedes implementation. It records what to investigate and what the outcome must prove. It does not choose the model, the module structure, the parser library, the wizard architecture or the schema.
+
+### Codebase Analysis Areas
+
+| Area | Files/Modules to Examine | Analysis Focus |
+|------|--------------------------|----------------|
+| Statement object and its balances | `addons/account/models/account_bank_statement.py` | Which fields hold the opening balance, the stated closing balance and the computed closing balance; which computed field expresses whether a statement is internally consistent, so a stated closing balance that disagrees with the line movements can be flagged as incomplete; how statements on one journal are sequenced so a gap between two of them is detectable; and what links a statement to its journal and therefore to its company |
+| Statement line object | `addons/account/models/account_bank_statement_line.py` | Which fields hold the payment reference, the signed amount, the transaction and value dates, the counterparty name, the counterparty account identifier and the transaction type, and which of them a parser may write; whether the line inherits from the journal-entry model and therefore what a provisional posting against Bank 1010 and Suspense / Outstanding Payments 1099 actually creates; and how `amount_residual` and the reconciled state are represented, stored or computed |
+| Document-import pipeline | `addons/account/models/account_document_import_mixin.py` | What the existing pipeline supplies for attachment handling, file-data extraction and transaction-safe record creation, and where a failure is rolled back to zero created records; where a per-format parser would register itself; how the format of a presented file is detected from its bytes rather than trusted from its extension; and which type and size checks already exist against what C-015 still requires |
+| Journal configuration and statement sources | `addons/account/models/account_journal.py` | How a journal declares the statement sources available to it; how a file's account identifier is checked against the journal's own bank account so an `NL-01` statement is refused on a `US-01` **Bank** journal; and which journal setting names the suspense account an unmatched line lands in |
+| Lock date enforcement | `addons/account/models/company.py` | Which lock-date field refuses a statement-line posting dated inside a closed period, whether the refusal happens before or after the statement record is created, and whether the whole import is refused or the affected lines are skipped and reported |
+| Rate application and rounding | `odoo/addons/base/models/res_currency.py` | How a rate is selected for a given date and whether it is expressed as units of the foreign currency per unit of the company currency or the reverse; which rounding method the currency's rounding increment applies and whether it rounds half-up; and where the rate date is stored so a converted statement line can be reproduced later |
+| Attachment retention | `odoo/addons/base/models/ir_attachment.py` | How the presented file is retained against the statement it produced, how its checksum is computed for the audit entry, and how its name is kept out of any path opened on disk as C-019 requires |
+| Wizard and mapping patterns | `addons/account/wizard/` and `addons/base_import/` | Which existing wizards perform a file upload, a column-mapping step and a confirmation step, and which of them roll back cleanly on failure; and which generic import patterns already handle delimiter detection, character encoding and header-row detection so the CSV path follows them rather than reimplementing them |
+| The Community implementation already present | `addons/account_bank_reconciliation_ce/models/bank_statement_import.py`, its `wizard/` and its `tests/` | Which of this story's 8 criteria the existing multi-format import already satisfies, file by file; whether its test suite in `tests/test_statement_import.py` already asserts the 8 lines and the balance equation; how its own corpus in `tests/test_files/` (`sample.csv`, `sample.ofx`, `sample.qif`, `sample_camt053.xml`) differs from the read-only fixtures in `test_data/bank_statements/`; and which of the residual concerns D-003 names for this feature the import path does not yet demonstrate — the C-015 to C-022 hardening and the multi-company proof |
+| XML parser configuration | The XML handling reachable from Odoo's existing dependency set | Where an inbound document is parsed today, whether document type definitions and external-entity resolution are already disabled, whether entity expansion is bounded, and where a schema for a declared CAMT.053 version would be held so validation precedes field access |
+| Fixture corpus | `test_data/bank_statements/` | Whether all four fixtures parse to the identical 8 lines with identical dates, labels, references, counterparty names and signed amounts; where the formats differ in what they can carry — the balances CAMT.053 and OFX state and QIF does not, the unique identifier OFX carries, the structured references CAMT.053 carries; and where the hostile-input fixtures required by C-022 are held so a hostile document is never mistaken for sample data (D-009) |
+
+### Relevant Existing Modules
+
+- `addons/account/` — the "Invoicing" application, version 1.4, licence LGPL-3. Supplies `account.bank.statement` and `account.bank.statement.line` as the objects an imported file becomes, the document-import pipeline the four parsers can be built on, `account.move` and `account.move.line` as the provisional postings a statement line carries, `account.journal` for the **Bank** journal held per company, `account.account` for Bank 1010 and Suspense / Outstanding Payments 1099, and the lock-date fields on `res.company`
+- `addons/account_payment/` — "Payment - Account", version 2.0, licence LGPL-3. Holds the customer receipts and vendor payments waiting in Suspense / Outstanding Payments 1099 for a statement line to present them; this story creates the lines that present them, and `STORY-001-04-02` clears them
+- `addons/account_bank_reconciliation_ce/` — "Bank Reconciliation for Community Edition", version 19.0.1.0.0, licence AGPL-3, category `Accounting/Reconciliation`, depending on `account` alone. Already implements multi-format statement import in `models/bank_statement_import.py` with import wizards under `wizard/`, a test suite under `tests/` and a fixture corpus under `tests/test_files/`. Under D-003 import is **reuse rather than build**, and the work commissioned here is the C-015 to C-022 hardening of that path, the multi-company proof and the balance tie-out evidence
+- `addons/base_import/` — the generic column-mapping, delimiter, encoding and header-detection patterns the CSV path follows rather than reimplements
+- `odoo/addons/base/` — `res.company` for `US-01`, `NL-01` and `GB-01` and their lock dates, `res.currency` for rate selection and the rounding increment behind every amount asserted above, `res.partner` for the counterparty a line names, and `ir.attachment` for the retained file
+- `addons/account_financial_report_ce/` — version 19.0.1.1.0, AGPL-3. Examined so the **Bank Reconciliation Statement** asserted in Scenario 8 follows the same report object and export conventions FEATURE-001-07 owns rather than a second convention
+- Enterprise `account_accountant` is **absent** from this repository, which is consistent with the edition question left open as DEC-002 at Epic level
+
+### OCA Module Compatibility
+
+| OCA Repository | Module | Compatibility Consideration |
+|----------------|--------|-----------------------------|
+| OCA/account-reconcile | `account_statement_import` | The base import framework and its wizard interface. Determine whether the four parsers register against it, against the document-import pipeline in `addons/account/`, or against the import path already present in `account_bank_reconciliation_ce` |
+| OCA/account-reconcile | `account_statement_import_file` | The generic file-import base. Determine whether extending it or standing apart from it better preserves the all-or-nothing rollback this story asserts |
+| OCA/account-reconcile | `account_statement_import_ofx` | An existing OFX parser covering the tag-based 1.x and the XML-conformant 2.x forms. Evaluate its handling of `FITID` and of the stated `LEDGERBAL` against `test_data/bank_statements/sample.ofx` |
+| OCA/account-reconcile | `account_statement_import_qif` | An existing QIF parser. Evaluate its field-prefix mapping, its handling of United States `MM/DD/YYYY` dates and its behaviour where the format states no closing balance |
+| OCA/account-reconcile | `account_statement_import_camt` | An existing CAMT.053 parser. Evaluate its namespace handling per declared version, its extraction at both entry and detail level, and whether it parses with external-entity resolution disabled as C-016 requires |
+| OCA/account-reconcile | `account_reconcile_oca` | The closest OCA equivalent of the reconciliation interface that consumes the lines this story creates. Determine whether the imported line shape stays consumable by it, which C-004 requires whichever edition path DEC-002 confirms |
+| OCA/account-financial-reporting | `account_financial_report` | A candidate engine for the **Bank Reconciliation Statement** asserted in Scenario 8, under the OCA path of DEC-002 |
+
+The decision to adopt, extend or replace any add-on above belongs to DEC-002 in the Epic and is not taken in this story.
+
+### Format-Specific Considerations
+
+| Format | Standard Reference | Elements the Analysis Must Account For | Fixture |
+|--------|--------------------|----------------------------------------|---------|
+| CSV | RFC 4180, with a per-bank column mapping | Header-row detection; delimiter and quoting rules; more than one accepted date format; a declared character encoding; a configurable mapping for date, label, amount, reference and counterparty; a signed amount column as against separate debit and credit columns; and an empty counterparty field stored as empty rather than treated as a parse failure | `test_data/bank_statements/sample.csv` |
+| OFX | Open Financial Exchange, versions 1.x and 2.x | The tag-based 1.x form declared by `OFXHEADER:100`, `DATA:OFXSGML` and `VERSION:102` alongside the XML-conformant 2.x form; `CURDEF` as the statement currency; `BANKACCTFROM` as the account identifier checked against the journal; `STMTTRN` with `TRNTYPE`, `DTPOSTED`, `TRNAMT`, `NAME` and `MEMO`; `FITID` as the unique identifier carried onto the line for duplicate detection; and `LEDGERBAL` with its `DTASOF` as the balance the file states | `test_data/bank_statements/sample.ofx` |
+| QIF | Quicken Interchange Format | The `!Type:Bank` account-type header; the `^` record terminator; the `D`, `T`, `P`, `N` and `M` field prefixes; United States `MM/DD/YYYY` date conversion to ISO calendar dates without transposing month and day; and the absence of any stated balance, which is recorded as absent rather than inferred | `test_data/bank_statements/sample.qif` |
+| CAMT.053 | ISO 20022, `camt.053.001.02` | The declared version's namespace as the format's identity; `BkToCstmrStmt` as the root; `GrpHdr` and `Stmt/Id` as statement identity; `Acct/Id/IBAN` and `Acct/Ccy` as the account identifier and currency; extraction at both `Ntry` and `NtryDtls/TxDtls` level; `CdtDbtInd` applied to the absolute `Amt` the standard carries; `BookgDt` and `ValDt` held apart; `Refs/EndToEndId` and `AcctSvcrRef` as references; `RmtInf/Ustrd` as narration; `RltdPties/Dbtr/Nm` and `RltdPties/Cdtr/Nm` as the counterparty; and the `OPBD` and `CLBD` balance codes proved against the entry movements | `test_data/bank_statements/sample.xml` |
+
+---
+
+## Dependencies
+
+### Story Dependencies
+
+| Dependency Type | Story ID | Story Title | Relationship |
+|-----------------|----------|-------------|--------------|
+| Parent Feature | FEATURE-001-04 | [Bank Reconciliation & Cash Management](../FEATURE-001-04-bank-reconciliation-cash-management.md) | This story delivers CAP-001 of the feature: import in all four supported formats with duplicate detection and rollback on failure |
+| Blocked By | None | N/A | This is the foundational story of the feature. No sibling story blocks it, which is why it is genuinely Independent under INVEST |
+| Blocks | STORY-001-04-02 | [Auto-Match Statement Lines with Reconciliation Rules](./STORY-001-04-02-auto-match-statement-lines.md) | Matching scores imported statement lines against open journal items. Without the lines this story creates there is nothing to score and no auto-match rate to measure against SM-002 |
+| Blocks | STORY-001-04-03 | [Manually Reconcile Unmatched and Partial Lines](./STORY-001-04-03-manual-reconciliation.md) | The exception queue worked by hand is the residue of the lines this story imports, so the import precedes it |
+| Related | STORY-001-04-04 | [Manage Cash Registers and Petty Cash](./STORY-001-04-04-manage-cash-registers.md) | Independent of this story — a register is opened, counted and closed without any statement — but its banked surplus becomes a statement credit that a later import presents, and it shares Suspense / Outstanding Payments 1099 with the provisional postings asserted here |
+| Related — cross-feature prerequisite | FEATURE-001-01 | [Chart of Accounts & Fiscal Year](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) | Defines Bank 1010 as one of the ten deterministic group codes, registers Suspense / Outstanding Payments 1099 and Bank Charges 6800 into the same chart, and defines the **Bank** journal per company. A line cannot post to an account that does not exist (ORD-001) |
+| Related — cross-feature prerequisite | STORY-001-01-03 | [Define Fiscal Year and Accounting Periods](../FEATURE-001-01/STORY-001-01-03-define-fiscal-year-periods.md) | The statement period 2024-02-01 to 2024-02-28 must fall inside a defined accounting period before a line dated in it can be imported |
+| Related — cross-feature prerequisite | STORY-001-01-05 | [Configure Period Lock Dates and Closing Controls](../FEATURE-001-01/STORY-001-01-05-configure-period-lock-dates.md) | Supplies the journal-entry lock date of 2024-02-29 for `US-01` that Scenario 8 asserts, and the Group Controller who lifts it |
+| Related — downstream consumer | STORY-001-02-04 | [Schedule and Batch Vendor Payments](../FEATURE-001-02/STORY-001-02-04-batch-vendor-payments.md) | The vendor payments batched there are the movements a statement debit line presents once imported here |
+| Related — downstream consumer | STORY-001-03-02 | [Register Customer Payments and Allocations](../FEATURE-001-03/STORY-001-03-02-register-customer-payments.md) | The customer receipts registered there are the movements a statement credit line presents once imported here |
+| Related — downstream consumer | STORY-001-07-03 | [Generate Cash Flow Statement](../FEATURE-001-07/STORY-001-07-03-generate-cash-flow-statement.md) | Consumes the reconciled Bank 1010 balance that begins with the lines imported here as its opening and closing cash (ORD-004) |
+
+### External Dependencies
+
+| Dependency | Type | Notes |
+|------------|------|-------|
+| ISO 20022 CAMT.053 | Standard | The bank-to-customer statement message. `camt.053.001.02` is the version the repository fixture declares; the declared version's namespace identifies the format on import, and its balance codes `OPBD` and `CLBD` carry the balances proved in Scenario 4 |
+| Open Financial Exchange | Standard | The OFX specification for versions 1.x and 2.x, behind the transaction-type mapping, the `FITID` unique identifier and the `LEDGERBAL` figure asserted in Scenario 2 |
+| Quicken Interchange Format | Standard | The QIF specification behind the `!Type:Bank` header, the `D`, `T`, `P`, `N` and `M` field prefixes and the absence of a stated closing balance asserted in Scenario 3 |
+| RFC 4180 | Standard | The delimiter, quoting and record-separation rules the CSV path follows beneath its per-bank column mapping |
+| ISO 4217 | Standard | Currency codes and minor units — the source of the 2-decimal-place, 0.01-increment rounding applied to every amount in this story, and the code shown alongside a foreign-currency amount |
+| Python `lxml` | Library | The XML parsing library already available to Odoo, used for CAMT.053 under the C-016 configuration; no new runtime dependency is introduced by this story |
+| Bank statement delivery channel | External system | The bank portal, secure file transfer or feed from which the Treasury Analyst obtains the file. Any credential it requires is held under C-021 and never committed |
+| `test_data/bank_statements/` fixtures | Repository data | Read-only under D-009. Hostile-input fixtures required by C-022 are authored alongside them, held apart so a hostile document is never mistaken for sample data |
+
+### Integration Points
+
+| Odoo Model/Module | Integration Type | Purpose |
+|-------------------|------------------|---------|
+| `account.bank.statement` | Write | One statement record per imported file, carrying `name`, `reference`, `date`, `balance_start`, `balance_end_real` and `line_ids`, with the source file retained and the balance equation asserted against the stated closing balance |
+| `account.bank.statement.line` | Write | One line per parsed transaction, carrying `payment_ref`, `amount`, `partner_name`, `account_number` and `transaction_type`, with `amount_residual` and `is_reconciled` left for `STORY-001-04-02` and `STORY-001-04-03` to change |
+| `account.move` | Write | The provisional posting a statement line carries, created only when total debits equal total credits |
+| `account.move.line` | Write | The two sides of that posting — Bank 1010 against Suspense / Outstanding Payments 1099 for an inbound line, and the reverse for an outbound line |
+| `account.journal` | Read | The **Bank** journal of the named company, its bank account identifier checked against the file's own, its default debit and credit account Bank 1010, and its suspense account Suspense / Outstanding Payments 1099 |
+| `account.payment` | Read | The receipts and payments waiting in Suspense / Outstanding Payments 1099 that the imported lines will present; read for context only, and cleared in `STORY-001-04-02` |
+| `res.currency` | Read | Rate selection at the line's own transaction date for a foreign-currency line, and the decimal precision and rounding increment behind every amount asserted in this story |
+| `res.company` | Read | The company whose books carry the statement — `US-01`, `NL-01` or `GB-01` — its functional currency and its journal-entry lock date |
+| `res.partner` | Read | The counterparty a line names, stored as `partner_name` without overwriting a partner the ledger already holds |
+| `ir.attachment` | Write and read | The retained source file stored against the statement it produced, with its checksum recorded in the audit entry and its name never used to derive a path opened on disk |
+
+---
+
+## Estimation
+
+| Dimension | Rating | Basis |
+|-----------|--------|-------|
+| **Effort** | High | Four independent format parsers — a delimiter-separated file with a configurable mapping, a tag-based SGML document and its XML-conformant successor, a line-prefixed legacy text format, and a namespaced ISO 20022 document read at two levels — plus duplicate fingerprinting, balance extraction and validation, an audit entry, and 8 acceptance criteria each asserted numerically |
+| **Complexity** | High | Transactional all-or-nothing rollback across statement, line and attachment records; a per-format balance model that differs by format (CAMT.053 states both balances, OFX states one, QIF states none); sign resolution from three different conventions (a signed CSV amount, an OFX `TRNTYPE`, a CAMT.053 `CdtDbtInd` applied to an absolute amount); date conversion from United States `MM/DD/YYYY`; foreign-currency conversion at the line's own transaction date; and the C-015 to C-022 hardening of an untrusted ingestion surface |
+| **Uncertainty** | Low | The four fixtures already exist in the repository with known expected values, and `account_bank_reconciliation_ce` 19.0.1.0.0 already implements multi-format import with its own test suite, so this is a hardening and proof exercise against a known baseline rather than a green-field parser build. The residual uncertainty is DEC-001, which changes the field surface but not the expected values |
+| **Story Points (Fibonacci)** | **8** | High effort and high complexity against low uncertainty. Below 13 because the fixtures, the expected totals and an existing import implementation are all in hand; above 5 because four parsers, a transactional rollback and a hostile-input surface cannot be delivered as one narrow change |
+
+**Rationale.** The 8 points sit on the four independent format parsers, the duplicate fingerprint and the transactional rollback. What holds the estimate at 8 rather than 13 is that the four fixtures in `test_data/bank_statements/` already exist with a known 8 lines, known credits of `$6,862.50 USD`, known debits of `$1,531.50 USD` and a known balance equation `10,000.00 + 6,862.50 − 1,531.50 = 15,331.00` — each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 — so there is nothing to discover about what a passing import looks like. The superseded flat-layout backlog sized this work as "L (Large)" on a T-shirt scale; that estimate is restated here on the Fibonacci scale the Epic mandates. If refinement finds the C-015 to C-022 hardening larger than assessed, the overflow is raised as a backlog change rather than absorbed silently.
+
+---
+
+## INVEST Principles Compliance
+
+| Principle | Compliance | Justification |
+|-----------|------------|---------------|
+| **Independent** | ☑ Yes | No sibling story blocks this one. `STORY-001-04-02` and `STORY-001-04-03` both consume its output, and `STORY-001-04-04` runs on a parallel track, so this is the foundational story of the feature. Its only prerequisites are configuration owned elsewhere — Bank 1010, Suspense / Outstanding Payments 1099 and the **Bank** journal from FEATURE-001-01 — and the four read-only fixtures already in the repository |
+| **Negotiable** | ☑ Yes | Every criterion states an outcome — 8 lines exist, the balance equation holds, the count of created records is 0 — and none names a model to add, a field to define, a parser library to adopt, a wizard architecture or a module structure. Those decisions are deferred to discovery under D-003, D-005 and DEC-002 and are recorded as questions in the Technical Discovery Notes above |
+| **Valuable** | ☑ Yes | Loading a statement by hand is the transcription cost the feature exists to remove. This story converts the bank's record of a period into 8 verifiable statement lines whose balances tie to the bank's own figures, which is the precondition for the 95%-or-higher auto-match rate the Epic measures as SM-002 and for the Epic Definition of Done item that requires every bank account to agree to its statement closing balance at a difference of `0.00` in the company currency |
+| **Estimable** | ☑ Yes | The scope is bounded by four named formats, four existing fixtures, one deterministic transaction set and 8 criteria whose expected values are all stated as amounts. That is enough to size at 8 Fibonacci points with Effort, Complexity and Uncertainty rated separately in the Estimation table above |
+| **Small** | ☑ Yes | One workflow — getting a statement file into a **Bank** journal — held to a single sprint. Matching, manual reconciliation and cash registers are three separate stories, and nothing in this story reconciles a line, scores a candidate, applies a rule or posts a write-off |
+| **Testable** | ☑ Yes | All 8 criteria are objectively pass-or-fail: a line count of 8, credits of `$6,862.50 USD`, debits of `$1,531.50 USD`, an opening balance of `$10,000.00 USD`, a closing balance of `$15,331.00 USD`, total debits of `$8,394.00 USD` equal to total credits of `$8,394.00 USD` at a difference of `0.00 USD`, a created-record count of 0 on every refusal, and a named report line of `$0.00 USD` or `$15,331.00 USD` — each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01. Each criterion maps to one automated acceptance test in the mapping table below |
+
+---
+
+## Test Requirements
+
+### Coverage Requirement
+
+| Metric | Requirement | Notes |
+|--------|-------------|-------|
+| **Minimum Test Coverage** | **80%** | Mandatory for all functionality delivered by this story, per C-007. Measured by the repository's configured coverage tooling |
+| Unit Test Coverage | 80% or higher | The four format parsers, date and sign resolution, balance extraction and validation, the duplicate fingerprint, and the ingestion checks |
+| Integration Test Coverage | 80% or higher | The full import path from presented file to statement, statement lines, provisional postings and retained attachment, including rollback and lock-date refusal |
+| Accounting assertion coverage | Every amount asserted numerically | Per C-009, every balance, total and difference in the criteria above is asserted as an amount rather than inspected by eye |
+| Traceability | 1 acceptance test per criterion | Per C-008, each of the 8 Given/When/Then criteria maps to exactly one acceptance test in the mapping table below |
+
+### Unit Test Scenarios
+
+| Acceptance Scenario | Unit Test Focus | Key Assertions |
+|---------------------|-----------------|----------------|
+| Scenario 1: CSV import | Delimiter, header-row and encoding handling; column mapping; signed-amount parsing; empty counterparty field | 8 rows parsed; ISO dates 2024-02-01 to 2024-02-28; 4 credits summing to `$6,862.50 USD` and 4 debits summing to `$1,531.50 USD`; the `FEE-0208` row parsed with an empty counterparty rather than raising; each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+| Scenario 2: OFX import | OFX 1.x header and tag parsing; `TRNTYPE` to sign mapping; `FITID` extraction; `LEDGERBAL` extraction; OFX 2.x XML acceptance by the same parser | 8 `STMTTRN` entries parsed; `FITID` values `OFX20240201001` to `OFX20240228001` present as the bank reference; `CREDIT` and `DEBIT` resolving the sign; `LEDGERBAL` read as `$5,331.00 USD` as of 2024-02-28, and a derived ledger end balance of `$15,331.00 USD`; the same totals as Scenario 1; the 2.x form yielding an identical line set; each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+| Scenario 3: QIF import | `!Type:Bank` header detection; `^` record splitting; `D`, `T`, `P`, `N`, `M` prefix mapping; `MM/DD/YYYY` to ISO date conversion; absent-balance handling | 8 records parsed; `02/01/2024` resolving to 2024-02-01 and never to 2024-01-02; `P` text as counterparty and `M` text as narration; the same totals as Scenario 1; the closing balance held as absent and the statement flagged as carrying no bank-stated closing figure |
+| Scenario 4: CAMT.053 import | Namespace detection for the declared version; `Ntry` and `NtryDtls/TxDtls` traversal; `CdtDbtInd` applied to an absolute `Amt`; `BookgDt` and `ValDt` separation; reference, narration and counterparty extraction; `OPBD` and `CLBD` extraction; foreign-currency conversion at the line's transaction date | 8 entries parsed at both levels; `CRDT` and `DBIT` resolving the sign of the absolute amounts; booking and value dates held in separate fields; `EndToEndId` and `AcctSvcrRef` present; `Ustrd` as narration; `Dbtr`/`Cdtr` names as counterparty and the `FEE-0208` entry with no `RltdPties` parsed with an empty counterparty; `10,000.00 + 6,862.50 − 1,531.50 = 15,331.00` at a difference of `0.00 USD`; a `€1,000.00 EUR` line storing its foreign amount, its ISO 4217 code, its converted company-currency amount, the rate and the rate date; each amount rounded half-up to 2 decimal places at its currency's `res.currency` rounding increment of 0.01 |
+| Scenario 5: Duplicate detection | Fingerprint computation over transaction date, signed amount and bank reference; comparison against existing lines; the skip decision | 8 of 8 rows flagged as duplicates; the message naming the file, the journal and the count 8; 0 records created on skip; the closing balance unchanged at `$15,331.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+| Scenario 6: Invalid and incomplete input | Required-column validation; date-value validation; row-number reporting; transactional rollback | The missing `Amount` column named; `31/02/2024` named against row 4; created statement count 0 and created line count 0; the Bank 1010 balance unchanged at `$10,000.00 USD` at a difference of `0.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+| Scenario 7: Ingestion refusal | Maximum-size check; extension against detected content type; message content; audit entry; text sanitization | A named refusal identifying the failing check; no stack trace, SQL, path or credential in the message; committed statement, line and attachment counts all 0; an audit entry carrying the acting role, `US-01`, the journal, the file name, its checksum and the timestamp; a value opening with `=`, `+`, `-`, `@`, a tab or a carriage return stored inert; control characters escaped or stripped |
+| Scenario 8: Locked-period refusal | Lock-date evaluation before record creation; message content; report line values before and after the lock is lifted | The message naming the lock date 2024-02-29 and the company `US-01`; written line count 0 and created journal-entry count 0; the **Bank Reconciliation Statement** for 2024-02-01 to 2024-02-29 showing a statement closing balance line of `$0.00 USD`, then `$15,331.00 USD` after the lock is lifted and the file re-imported, with total debits of `$8,394.00 USD` equal total credits of `$8,394.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+
+### Integration Test Considerations
+
+- [ ] Import each of the four fixtures into a `US-01` **Bank** journal and compare the four resulting line sets field by field — transaction date, label, reference, counterparty name and signed amount — proving cross-format equivalence across all four supported formats
+- [ ] Assert the statement-to-journal-to-company chain, so the statement created from a file belongs to the `US-01` **Bank** journal and to no other journal or company
+- [ ] Assert that each statement line's provisional posting pairs Bank 1010 with Suspense / Outstanding Payments 1099 in the stated direction, and that total debits of `$8,394.00 USD` equal total credits of `$8,394.00 USD` at a difference of `0.00 USD` across the 8 postings, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+- [ ] Assert that the retained `ir.attachment` matches the presented file byte for byte and that its checksum matches the value recorded in the audit entry
+- [ ] Refuse a file whose account identifier belongs to `NL-01` on the `US-01` **Bank** journal, with the message naming both identifiers and the created-line count asserted at 0
+- [ ] Refuse a statement whose stated closing balance disagrees with its own line movements, flagging it as incomplete rather than importing it as complete
+- [ ] Import a statement carrying a `€1,000.00 EUR` line into the USD-functional `US-01` **Bank** journal and recompute the company-currency amount from the stored rate and rate date, confirming the rate date is the line's own transaction date and that each amount is rounded half-up to 2 decimal places at its currency's `res.currency` rounding increment of 0.01
+- [ ] Prove company isolation: a role restricted to `US-01` can neither import a statement for `NL-01` nor read its statement lines
+- [ ] Prove the lock-date path end to end: refuse the import with the lock date of 2024-02-29 in force for `US-01`, lift it, re-import, and assert both **Bank Reconciliation Statement** line values for the range 2024-02-01 to 2024-02-29
+- [ ] Time a 500-line file per format under 10 seconds, a 5,000-line CAMT.053 document under 120 seconds, and a rollback of a failed 1,000-line import under 10 seconds with the created-record count asserted at 0
+- [ ] Capture the query count at 100 lines and at 1,000 lines and assert it stays constant rather than rising per record
+
+### Acceptance Test Mapping
+
+| BDD Scenario | Test Method Name | Test Type |
+|--------------|------------------|-----------|
+| Scenario 1: A CSV statement is imported as 8 statement lines whose balance equation holds | `test_import_csv_statement_eight_lines_balance_equation` | Acceptance |
+| Scenario 2: An OFX statement is imported with its transaction identifiers and its stated ledger balance | `test_import_ofx_statement_fitid_and_ledger_balance` | Acceptance |
+| Scenario 3: A QIF statement is imported with its United States dates converted and its absent closing balance recorded as absent | `test_import_qif_statement_dates_and_absent_balance` | Acceptance |
+| Scenario 4: A CAMT.053 statement is imported at entry and detail level and proves its stated balances | `test_import_camt053_statement_entry_detail_and_balances` | Acceptance |
+| Scenario 5: Re-importing the same file reports 8 duplicates and writes nothing when the Treasury Analyst skips them | `test_reimport_reports_duplicates_and_skip_writes_nothing` | Acceptance |
+| Scenario 6: A CSV missing its amount column and carrying an unparsable date creates no statement and no line | `test_import_missing_column_and_bad_date_rolls_back` | Acceptance |
+| Scenario 7: A file failing an ingestion check is refused, commits nothing and leaves an audit entry | `test_import_rejected_file_commits_nothing_and_audits` | Acceptance |
+| Scenario 8: An import dated inside a locked period is blocked and the Bank Reconciliation Statement shows nothing was ingested | `test_import_into_locked_period_blocked_and_report_line_zero` | Acceptance |
+
+### Sample Test Data
+
+| Purpose | Path or Description | Expected Outcome |
+|---------|---------------------|------------------|
+| CSV corpus | `test_data/bank_statements/sample.csv` — read-only under D-009 | 8 lines; 4 credits `$6,862.50 USD`; 4 debits `$1,531.50 USD`; closing balance `$15,331.00 USD`; each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+| OFX corpus | `test_data/bank_statements/sample.ofx` — read-only under D-009 | 8 lines with `FITID` references; stated ledger balance `$5,331.00 USD` as of 2024-02-28; derived ledger end balance `$15,331.00 USD`; each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+| QIF corpus | `test_data/bank_statements/sample.qif` — read-only under D-009 | 8 lines; ISO dates 2024-02-01 to 2024-02-28; closing balance recorded as absent |
+| CAMT.053 corpus | `test_data/bank_statements/sample.xml` — read-only under D-009 | 8 lines at entry and detail level; `OPBD` `$10,000.00 USD`; `CLBD` `$15,331.00 USD`; equation holding at a difference of `0.00 USD`; each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01 |
+| Community-edition comparison corpus | `addons/account_bank_reconciliation_ce/tests/test_files/` — `sample.csv`, `sample.ofx`, `sample.qif`, `sample_camt053.xml` | Compared against the four repository fixtures during discovery so any divergence in expected values is resolved before implementation rather than after |
+| Hostile-input fixtures (C-022) | Authored alongside the valid fixtures and held apart from them, per D-009: a CSV with the `Amount` column absent and the date `31/02/2024` in row 4; a truncated CAMT.053; a schema-invalid CAMT.053; a CAMT.053 carrying an external-entity payload; a file exceeding the configured maximum upload size; a file whose declared extension contradicts its detected content; a cell value opening with `=`; and an over-long field | Each refused with a named error; created statement, line, attachment and journal-entry counts all 0; the service still available |
+| Volume fixtures | Seeded 500-line files in each of the four formats, a seeded 1,000-line file and a seeded 5,000-entry CAMT.053 document | 500 lines under 10 seconds per format; 5,000 entries under 120 seconds; a failure injected part way through the 1,000-line import rolling back to 0 created records in under 10 seconds |
+| Multi-company fixture | A statement whose account identifier belongs to `NL-01`, presented against the `US-01` **Bank** journal | Refused with a message naming both account identifiers; created-line count 0 |
+| Foreign-currency fixture | A statement carrying a `€1,000.00 EUR` line presented against the USD-functional `US-01` **Bank** journal | The foreign amount, its ISO 4217 code, the converted company-currency amount, the applied rate and the rate date all stored, with the rate date equal to the line's own transaction date and each amount rounded half-up to 2 decimal places at its currency's `res.currency` rounding increment of 0.01 |
+
+---
+
+## Demo Path
+
+The outcome is demonstrated to the **Finance Controller** and the **Product Owner** in a recorded walkthrough. The primary route is the Odoo user interface; the alternative route through the public API is offered so the same assertions can be replayed without a screen.
+
+**Route 1 — Odoo user interface.**
+
+1. Sign in as the Treasury Analyst with company `US-01` active, and open the Accounting application's bank and cash overview, where the `US-01` **Bank** journal is shown with its Bank 1010 account and its Suspense / Outstanding Payments 1099 suspense account.
+2. Import `test_data/bank_statements/sample.csv` against that journal, confirming the column mapping `Date` → transaction date, `Label` → payment reference, `Amount` → signed amount, `Reference` → bank reference and `Partner` → counterparty name. Show the resulting statement: 8 lines dated 2024-02-01 to 2024-02-28, an opening balance of `$10,000.00 USD` and a closing balance of `$15,331.00 USD`, each rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01.
+3. Open one inbound line and one outbound line and show the provisional posting behind each — Bank 1010 against Suspense / Outstanding Payments 1099 in the stated direction — with total debits equal to total credits at a difference of `0.00 USD`.
+4. Repeat the import with `test_data/bank_statements/sample.ofx`, `sample.qif` and `sample.xml` against a fresh `US-01` **Bank** journal and place the four line sets side by side, showing the same 8 lines, the same credits of `$6,862.50 USD` and the same debits of `$1,531.50 USD` from each of the four supported formats, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01.
+5. Re-present `sample.csv` to the journal that already holds it, show all 8 rows reported as duplicates on the fingerprint of transaction date, signed amount and bank reference, choose skip, and show the line count still at 8 with the closing balance still `$15,331.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01.
+6. Present the hostile-input CSV whose `Amount` column is absent and whose row 4 reads `31/02/2024`; show the validation report naming the missing column and the row number, then show the journal still holding its original line count with no new statement.
+7. Present the oversized file and the file whose extension contradicts its content; show each refusal naming the failing check, and show the audit entry carrying the acting Treasury Analyst, `US-01`, the target journal, the file name, its checksum and the timestamp.
+8. Set the journal-entry lock date for `US-01` to 2024-02-29, attempt the `sample.csv` import, and show the refusal naming that lock date and that company with 0 lines written. Run the **Bank Reconciliation Statement** for the `US-01` **Bank** journal over 2024-02-01 to 2024-02-29 and show the statement closing balance line at `$0.00 USD`. Lift the lock date, re-import, and run the same report over the same range to show the statement closing balance line at `$15,331.00 USD`, each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01.
+
+**Route 2 — public API alternative.** Against a test database seeded with the `US-01` **Bank** journal, drive the same steps through Odoo's external API: create the attachment from each fixture, invoke the import against the journal, then read back the `account.bank.statement` record with its `balance_start` of `$10,000.00 USD` and `balance_end_real` of `$15,331.00 USD`, count its `line_ids` at 8, sum the signed `amount` values to a net movement of `$5,331.00 USD`, and read the `account.move.line` records behind the lines to confirm total debits of `$8,394.00 USD` equal total credits of `$8,394.00 USD` at a difference of `0.00 USD`. Each refusal path is replayed by invoking the same import with a hostile fixture and asserting the returned error message together with a created-record count of 0. Every amount is rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01.
+
+**Definition of demonstrated.** The Finance Controller and the Product Owner have seen all 8 criteria exercised, have seen the imported opening and closing balances agree with the bank's own statement for 2024-02-01 to 2024-02-28 at a difference of `0.00 USD`, and have seen every refusal leave the ledger unchanged. The walkthrough is recorded against this story.
+
+---
+
+## Definition of Done
+
+### Implementation Checklist
+
+- [ ] All 8 acceptance criteria pass, each demonstrated in the Odoo user interface or through its public API to the Finance Controller and the Product Owner and recorded against this story
+- [ ] All four supported formats import without data loss: each of `test_data/bank_statements/sample.csv`, `sample.ofx`, `sample.qif` and `sample.xml` produces the same 8 statement lines with the same dates, labels, references and counterparty names
+- [ ] Duplicate detection reports every matching row on the fingerprint of transaction date, signed amount and bank reference before any record is written, and the skip decision leaves the created-record count at 0
+- [ ] The all-or-nothing rollback is proved: a failed import commits no `account.bank.statement`, no `account.bank.statement.line`, no `ir.attachment` and no journal entry, at 8 lines and at 1,000 lines
+- [ ] The retained source file is stored against its statement and matches the presented file byte for byte, with its checksum recorded in the audit entry
+- [ ] **Minimum 80% test coverage** is achieved for all functionality delivered by this story and reported by the repository's configured coverage tooling (C-007)
+- [ ] Unit tests are written and passing for each of the four format parsers, for date and sign resolution, for balance extraction and validation, for the duplicate fingerprint and for the ingestion checks
+- [ ] Integration tests are written and passing for the full path from presented file to statement, statement lines, provisional postings and retained attachment, including the rollback and lock-date paths
+- [ ] Each of the 8 criteria maps to exactly one automated acceptance test, named as in the mapping table above (C-008)
+- [ ] The performance targets are met: a 500-line file under 10 seconds in each format, a 5,000-entry CAMT.053 document under 120 seconds, a failed 1,000-line import rolled back in under 10 seconds, and a query count constant from 100 to 1,000 lines
+
+### Accounting Reconciliation Gate
+
+This gate is the accounting contract of the story. Every item is asserted as an amount rather than inspected by eye (C-009), and no item may be signed off on a narrative statement.
+
+- [ ] **Debits equal credits on every posting.** Each imported statement line's provisional posting through the **Bank** journal of the named company debits Bank 1010 and credits Suspense / Outstanding Payments 1099 for an inbound line, or debits Suspense / Outstanding Payments 1099 and credits Bank 1010 for an outbound line, and across the 8 postings total debits of `$8,394.00 USD` equal total credits of `$8,394.00 USD` at a difference of `0.00 USD`. No posting with a non-zero difference is created, at any line count and in any of the four formats, with each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+- [ ] **The statement's balance equation holds.** The imported opening balance of `$10,000.00 USD` plus statement credits of `$6,862.50 USD` less statement debits of `$1,531.50 USD` equals the stated closing balance of `$15,331.00 USD` at a difference of `0.00 USD`; a statement whose stated closing balance disagrees with its own line movements is flagged as incomplete rather than accepted, with each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+- [ ] **The import ties to the bank's own statement.** The `@finance-sme` has confirmed that the imported opening and closing balances agree with the bank's own statement for 2024-02-01 to 2024-02-28 at a difference of `0.00 USD`, and that the imported line count equals the bank's own line count with no line dropped and none added
+- [ ] **Tax amounts match.** No line imported by this story carries a tax determination — a statement line records the amount the bank presents, and any tax treatment of a bank charge or an interest credit is determined at reconciliation under FEATURE-001-05. The gate is therefore discharged by asserting that the tax amount on every provisional posting created here is `$0.00 USD`, rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01, and that no tax control account balance moves on import
+- [ ] **Report lines tie to the sub-ledger.** The **Bank Reconciliation Statement** run for the `US-01` **Bank** journal over 2024-02-01 to 2024-02-29 presents a statement closing balance line of `$15,331.00 USD` that equals the sum of the 8 imported statement lines over the seeded opening balance, and presents `$0.00 USD` where nothing was ingested; each figure is traceable from the report line to the statement line and onward to its provisional posting, with each amount rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01
+- [ ] **Foreign-currency lines carry their rate basis.** Every line denominated in a currency other than the journal currency stores its foreign amount, its ISO 4217 code, its company-currency amount, the applied rate and the rate date, and that rate date is the line's own transaction date, so the conversion is reproducible after the fact
+- [ ] **Every amount states its rounding.** Each amount above is rounded half-up to 2 decimal places at its currency's `res.currency` rounding increment of 0.01, and no assertion is satisfied by a figure whose rounding is unstated
+
+### Compliance Checklist
+
+- [ ] Work delivered under this story declares an AGPL-3.0 compatible licence in its manifest, and no derived work misstates the licence of the LGPL-3 `account` or `account_payment` code or the AGPL-3 `account_bank_reconciliation_ce` code it extends (C-001, C-002)
+- [ ] Python follows Odoo and OCA module guidelines including PEP 8, and static analysis reports zero violations under the repository's `ruff.toml` configuration (C-005, C-006)
+- [ ] The statement and its lines are expressed on `account.bank.statement` and `account.bank.statement.line`, and no parallel import path is opened alongside the one already present (C-012)
+- [ ] Ingestion checks on permitted MIME type, permitted extension and declared maximum size are in force, and each failure returns a named validation error (C-015)
+- [ ] CAMT.053 documents are parsed with document type definitions and external-entity resolution disabled and entity expansion bounded, and each document is validated against the schema for its declared version before any field is read (C-016)
+- [ ] Export cells are neutralized against formula injection, and narration, references and counterparty names are sanitized and context-encoded before rendering into a view, a QWeb template or a PDF (C-017, C-018)
+- [ ] All data access runs through the Odoo ORM or parameterized SQL, with no string-concatenated query construction, no shell invocation and no file path derived from an uploaded file's name (C-019)
+- [ ] Refusal messages name the rejected document and the failing check and disclose no stack trace, SQL, file-system path or credential (C-020)
+- [ ] No statement-retrieval credential, API key or certificate appears in module source, version control, a log, a fixture or an export; each is held per company with a recorded rotation owner and interval (C-021)
+- [ ] Hostile-input tests are present and passing for a malformed document, a schema-invalid CAMT.053, an oversized file, a disallowed type, an external-entity payload, a formula-injection value and an over-long field, each asserting a named refusal, 0 records created and the service still available (C-022)
+- [ ] Access rights are defined so the Treasury Analyst imports statements only for the companies that role is allowed, and a role restricted to `US-01` can neither import for nor read the statement lines of `NL-01` (C-014, D-007)
+- [ ] Code is reviewed and approved, with the review confirming that no criterion in this story was satisfied by relaxing a check
+
+### Documentation Checklist
+
+- [ ] Docstrings are complete for every public method and model delivered by this story
+- [ ] The per-format mapping is documented per bank: the CSV column mapping, its accepted date formats and its character encoding; the OFX field mapping including `FITID`; the QIF field-prefix mapping; and the CAMT.053 element mapping at entry and detail level
+- [ ] The duplicate fingerprint is documented — transaction date, signed amount and bank reference — together with the reference each format supplies for it
+- [ ] The balance model is documented per format: CAMT.053 states both `OPBD` and `CLBD`, OFX states `LEDGERBAL`, and QIF states no closing balance, which is recorded as absent
+- [ ] The error and refusal message catalogue is documented, each entry naming the failing check and the affected company and journal
+- [ ] The retained-file and audit-entry contents are documented for the External Auditor: the file, its checksum, the acting role, the target company and journal, the timestamp and the resulting line count
+- [ ] The open platform decision DEC-001 and the Epic-level edition decision DEC-002 are recorded against this story as open items rather than presented as settled
+
+### Quality Checklist
+
+- [ ] No critical or high-severity defect is open against the import path
+- [ ] The 8 acceptance tests are deterministic: two runs over the same fixture produce the same 8 lines, the same totals and the same balances
+- [ ] Every refusal path leaves the ledger unchanged, proved by comparing the Bank 1010 and Suspense / Outstanding Payments 1099 balances of the named company before and after the attempt at a difference of `0.00 USD`
+- [ ] Refusal messages name the failing check and the affected row or element, so a Treasury Analyst can act on the message without reading a log
+- [ ] Security items are discharged: the ingestion checks, the XML parser configuration, the sanitization of imported text, the audit entry and the company isolation are each covered by a passing test
+- [ ] The 500-line, 1,000-line and 5,000-line runs meet their stated elapsed-time targets, and no repeated per-record query pattern remains in the parsing or duplicate-detection path
+
+---
+
+## Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1 | 2026-08-13 | Enterprise Accounting Team | Initial draft authored under the nested layout as `STORY-001-04-01`, the foundational story of FEATURE-001-04 and the delivery of its CAP-001. Persona set to the Treasury Analyst; priority Critical; estimate restated from the retired backlog's T-shirt size "L (Large)" to **8** Fibonacci points with Effort, Complexity and Uncertainty rated separately. Eight Given/When/Then criteria authored inside the Epic's 4-to-8 bound with the required coverage distribution: four valid-input format criteria, one data-integrity criterion, one invalid-and-incomplete-input criterion, one error-handling criterion and one accounting edge case. All criteria written against the deterministic set the parent feature fixes — companies `US-01`, `NL-01` and `GB-01`, accounts Bank 1010, Cash 1000, Suspense / Outstanding Payments 1099, Accounts Receivable 1200, Accounts Payable 2000, Bank Charges 6800 and FX Gain/Loss 7100, the **Bank** and **Cash** journals, the four read-only fixtures in `test_data/bank_statements/` and their 8 transactions, credits of `$6,862.50 USD`, debits of `$1,531.50 USD`, an absolute line total of `$8,394.00 USD`, an opening balance of `$10,000.00 USD` and a closing balance of `$15,331.00 USD`, and the **Bank Reconciliation Statement** run over 2024-02-01 to 2024-02-29 — with every amount rounded to 2 decimal places at its currency's `res.currency` rounding increment of 0.01 and every posting asserting total debits equal to total credits at a difference of `0.00 USD`. Untrusted-input governance C-015 through C-022 carried into the criteria, the constraints and the Definition of Done, a requirement the retired story did not hold. Platform-version ambiguity carried forward as the open decision DEC-001 and the edition question as the Epic-level DEC-002, neither closed here. |
+
+---
+
+## Notes
+
+### Governance of This Story
+
+`review_rules` returns **"No user rules provided."** — no user-specified implementation rules accompany this work, so the Agent Action Plan's own output requirements and Validation-Before-Output gates (R-A through R-K, together with the inherited structure, coverage and precedence constraints) are the authoritative governing constraints for this file, and the bar is held at enterprise best practice rather than lowered by their absence.
+
+### Migration From the Superseded Backlog
+
+This story supersedes the retired flat-layout story `tickets/stories/bank-reconciliation/BR-001-statement-import.md`, which the Epic's retirement map records as rehomed one-to-one to this path. Its domain content — the four supported formats and their parsing elements, duplicate detection and rollback on failure — is carried forward and re-authored, and three of its conventions are deliberately superseded: its generic "Accountant / Bookkeeper" persona becomes the named **Treasury Analyst**; its T-shirt estimate becomes 8 Fibonacci points; and its flat "Odoo 18.0" target becomes the Epic-inherited platform statement with the version mismatch flagged as an open decision. Its blanket prohibition on Enterprise dependencies is withdrawn at Epic level and replaced by the open edition decision.
+
+### Business Context
+
+Statement import is the first movement in the reconciliation chain and the point at which the bank's version of a period enters the system of record. Nothing downstream in this feature exists without it: there is no line to score in `STORY-001-04-02`, no exception to resolve in `STORY-001-04-03`, and no cash figure for the Cash Flow Statement in FEATURE-001-07. That is why the story is Critical and why its refusal paths are asserted as strictly as its happy paths — a statement that half-imported is worse than one that did not import at all, because a partial statement looks reconcilable and is not.
+
+### Why the Four Formats
+
+Each format answers a different counterparty. CSV is the universal fallback that every bank can produce, which is why its column mapping is configuration rather than an assumption of the parser. CAMT.053 is the ISO 20022 structured statement used by European SEPA banks and increasingly beyond them, and it is the only one of the four that states both an opening and a closing balance, which is why the balance equation is proved against it. OFX is the format United States and Canadian banks offer, and its `FITID` is the one identifier a bank guarantees to be unique per transaction, which makes it the strongest input to the duplicate fingerprint. QIF is the legacy text format still emitted by older systems; it states no balance at all, so a QIF import records that absence rather than inventing a figure to fill it.
+
+### Scope Boundary
+
+This story creates statement lines and their provisional postings. It does not match a line to a journal item, score a candidate, evaluate a reconciliation rule, write a difference off to Bank Charges 6800, post an exchange difference to FX Gain/Loss 7100 or open a cash register — those are `STORY-001-04-02`, `STORY-001-04-03` and `STORY-001-04-04`. The `FEE-0208` service fee of `−$35.00 USD`, rounded to 2 decimal places at the USD `res.currency` rounding increment of 0.01, is imported here as a statement debit against Suspense / Outstanding Payments 1099 and reaches Bank Charges 6800 only when it is reconciled.
+
+### Open Items Carried by This Story
+
+| Item | Owner | Status |
+|------|-------|--------|
+| **DEC-001** — platform version target: Odoo 17 as requested, 18.0 from the superseded backlog, or 19.0 as this repository stands | Group Controller with IT Operations | Open at Epic level. Changes the statement and statement-line field surface a parser writes, not the expected values asserted above |
+| **DEC-002** — edition source for the Enterprise-only capability set: an Odoo Enterprise subscription or OCA add-ons with bespoke development for the gaps | CFO / Finance Director with Group Controller | Open at Epic level. This story is **not gated** by it, because every module it needs is present in this repository |
+| **D-003** — the residual gap on the import path, given that `account_bank_reconciliation_ce` already implements multi-format import | Implementing agent, at discovery | To be recorded before implementation, so no bespoke parser is built where the existing path can be hardened instead |
+| Per-bank CSV column layout and the reference field each bank populates | `@functional-consultant` with the bank | To be confirmed during Sub-Task 1 and 2; the mapping is configuration, so a change of bank does not change this story's criteria |

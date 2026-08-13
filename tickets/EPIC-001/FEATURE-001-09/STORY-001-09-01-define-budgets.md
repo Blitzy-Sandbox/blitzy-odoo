@@ -1,0 +1,487 @@
+# STORY-001-09-01: Define Budgets by Account and Analytic Dimension
+
+---
+
+## Metadata
+
+| Attribute | Value |
+|-----------|-------|
+| **Story ID** | `STORY-001-09-01` |
+| **Title** | Define Budgets by Account and Analytic Dimension |
+| **Parent Feature** | [FEATURE-001-09: Budgeting & Variance Analysis](../FEATURE-001-09-budgeting-variance-analysis.md) |
+| **Parent Epic** | [EPIC-001: Enterprise Accounting in Odoo](../../EPIC-001-enterprise-accounting-odoo.md) |
+| **Persona** | FP&A Analyst |
+| **Status** | Draft |
+| **Priority** | 🟠 High |
+| **Story Points** | **5** (Fibonacci: 1, 2, 3, 5, 8, 13) |
+| **Feature Capability** | CAP-001 — define budgets by general-ledger account, analytic account and analytic plan, per company and fiscal year |
+| **Epic Success Metric** | SM-014 — budget variance reporting published within 24 hours of period close and available on demand for the open period |
+| **Owner/Author** | Enterprise Accounting Team |
+
+This story is the root of the `FEATURE-001-09/` folder. The three account codes it budgets against — Revenue 4000, Expense 6100 and Depreciation Expense 6500 — the per-company and per-fiscal-year scoping it fixes, and the analytic dimensions it holds a budget line against are the vocabulary the other three stories of this feature consume: [STORY-001-09-02](./STORY-001-09-02-allocate-budget-periods.md) spreads the amounts this story records across the fiscal calendar, [STORY-001-09-03](./STORY-001-09-03-report-budget-vs-actual.md) places a posted actual beside them, and [STORY-001-09-04](./STORY-001-09-04-analyze-variances.md) signs and polices the difference. Nothing in that chain writes to the general ledger; the ledger is its input.
+
+---
+
+## User Story
+
+**As a** FP&A Analyst
+
+**I want** to define a budget held against one named company and one fiscal year — company `US-01`, the group's United States entity whose functional currency is USD and which carries the group reporting currency, for fiscal year 2025 running 2025-01-01 to 2025-12-31 — carrying budget lines against the general-ledger accounts Revenue 4000, Expense 6100 and Depreciation Expense 6500 and against the analytic accounts of the group's analytic plans, and to confirm that budget once every line carries a dimension and a period range inside its fiscal year
+
+**So that** a measurable revenue and spending target exists inside the accounting system rather than beside it in a spreadsheet, giving [STORY-001-09-02](./STORY-001-09-02-allocate-budget-periods.md) an amount to spread across the fiscal calendar and [STORY-001-09-03](./STORY-001-09-03-report-budget-vs-actual.md) a plan figure to set against the actual amounts aggregated from posted journal entries whose total debits equal their total credits at a difference of `$0.00 USD`, so that the variance management acts on and the general ledger behind it cannot disagree (SM-014).
+
+### Business Context
+
+Budget definition is the foundational step of this feature: an allocation has nothing to spread, a comparison has nothing to compare and a threshold has nothing to police until a budget record and its lines exist. Today the group's plan is held in spreadsheets and re-keyed against Odoo actuals after each period end, so the comparison lands after the spend it would have questioned was already committed, and the approval, the thresholds and the explanations that evidence budget control exist as spreadsheet history at best.
+
+This story moves the plan itself into the system of record. It delivers the budget header — its name, its company, its fiscal year, its responsible owner and its state — and the budget lines that carry a general-ledger account, an analytic distribution, a planned amount and a period range. It delivers the confirm-time validation that refuses an incomplete plan, and it delivers the per-company reference numbering that makes a budget citable in an audit file.
+
+**A budget is a plan, not a posting.** Recording and confirming a budget creates, alters and reverses no journal entry, and it leaves every account balance and the Trial Balance of the affected company unchanged. That boundary is deliberate and is asserted as an acceptance criterion below: budget figures are management information presented beside a statutory statement, never inside one, as §7.3 of the parent feature records. The actual amounts this budget will later be measured against are aggregated from `account.move.line` records belonging to journal entries in the posted state, each of which balances with total debits equal to total credits at a difference of `0.00` in the company currency.
+
+### Persona Value
+
+The primary and secondary roles below are the ones the parent feature's persona-to-story mapping assigns to this story; the remaining rows are named as beneficiaries of its outcome rather than as actors inside it.
+
+| Persona | Role | Value Delivered by This Story |
+|---------|------|-------------------------------|
+| **FP&A Analyst** | Primary — builds the plan | Records a budget for `US-01` and fiscal year 2025 against Revenue 4000, Expense 6100 and Depreciation Expense 6500 and against the analytic accounts of the Departments and Projects plans; confirms it once every line carries a dimension and an in-calendar period range; duplicates a prior-year plan instead of re-keying it |
+| **Group Controller** | Secondary — approves and governs | Reads a confirmed budget against the group budget policy before the allocated plan is approved in [STORY-001-09-02](./STORY-001-09-02-allocate-budget-periods.md); owns the account and dimension policy that a budget line is held to; relies on the per-company scoping that keeps each legal entity's plan separate |
+| **Chief Accountant** | Secondary — stands behind the accounts | Confirms that every budget line resolves to a live account in the `US-01` chart with a general-ledger account type, and that budget definition leaves the ledger and the Trial Balance untouched |
+| **Financial Reporting Manager** | Downstream beneficiary — presents the plan | Depends on the account and dimension structure fixed here so that the budget column presented beside the Profit & Loss in FEATURE-001-07 aligns to the same classification as the actual column it sits next to (ORD-004) |
+| **External Auditor** | Assurance consumer — tests the control | Reads the budget reference, its state history, its author and timestamp, and the link from a duplicated budget to its source, as the in-system evidence that a budget existed and was governed for the period under audit |
+| **CFO / Finance Director** | Consuming stakeholder | Receives the variance published downstream from the plan recorded here; co-owns the edition decision DEC-002 that determines where the budgeting capability comes from |
+
+---
+
+## INVEST Principles Compliance
+
+| Principle | Compliance | Notes |
+|-----------|------------|-------|
+| **Independent** | ✅ | This story has **no blocking predecessor inside FEATURE-001-09**. A budget record and its lines can be recorded and confirmed before any period allocation, any budget-versus-actual report or any threshold alert exists, and before a single actual has posted into fiscal year 2025 — a plan needs no actuals to be a plan. Its external prerequisites are configuration rather than code: the accounts and the fiscal calendar published by [FEATURE-001-01](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) under ORD-001, and the analytic plans and analytic accounts covered by the Epic's master-data readiness dependency. It **blocks** [STORY-001-09-02](./STORY-001-09-02-allocate-budget-periods.md), because an allocation distributes the total of a budget line that must already exist; that is sequencing of data, not shared implementation. |
+| **Negotiable** | ✅ | The outcome is fixed and the mechanism is open. What must hold is that a budget is held against one company and one fiscal year, that every line carries at least one of a general-ledger account or an analytic distribution, that the plan is refused while it is incomplete, and that nothing posts. Whether that arrives by extending the `account_budget_management` add-on already present in this repository, by adopting an Odoo Community Association add-on, or by a new model is deferred to discovery under D-003 and D-005 and to the edition decision DEC-002. The budget name, the responsible-owner field and the ordering of the confirm-time checks remain open with the Group Controller. |
+| **Valuable** | ✅ | Without this story the whole feature is inert: CAP-002, CAP-003 and CAP-004 each act on the budget record created here, and the Epic gates budget-versus-actual availability on it through SM-014. It converts the plan from a spreadsheet that is reconciled by hand after each period into a record the ledger can be read against, and it is the point at which budget approval becomes in-system evidence an External Auditor can test rather than correspondence. |
+| **Estimable** | ✅ | The deliverable is countable: one budget header with its company, fiscal year, owner, reference and two-state transition; budget lines across three named account codes and two analytic plans; four confirm-time refusal paths; one duplication path; and a company-scoped reference sequence. Every model, field and constraint it builds on is present in this repository and was read during discovery, so nothing in the estimate waits on an open decision. Sized at 5 Fibonacci points, with the reasoning recorded in § Estimation. |
+| **Small** | ✅ | Bounded to definition and confirmation of a budget. Period allocation belongs to [STORY-001-09-02](./STORY-001-09-02-allocate-budget-periods.md), the budget-versus-actual comparison to [STORY-001-09-03](./STORY-001-09-03-report-budget-vs-actual.md), and variance signing with threshold alerting to [STORY-001-09-04](./STORY-001-09-04-analyze-variances.md). No report, no scheduled action, no alert and no ledger write is in scope, and the whole story is demonstrated in one walkthrough of the budget list, one budget form and one Trial Balance run that proves the ledger did not move. |
+| **Testable** | ✅ | Every criterion below resolves to a number, a state value, a stored JSON value, a reference string or a named refusal: a header total of `$6,240,000.00 USD`, a distribution totalling 100.00% within each analytic plan, attributed amounts of `$720,000.00 USD` and `$480,000.00 USD` summing back at a difference of `$0.00 USD`, a state that is `draft` or `confirmed`, a dimensionless-line count of 1, a journal-entry count identical before and after. Each of the eight scenarios maps to one named automated test in § Test Requirements, so pass or fail is decided without judgement. |
+
+---
+
+## Acceptance Criteria
+
+Eight criteria are authored, inside the 4-to-8 bound the Epic sets in [§5.3](../../EPIC-001-enterprise-accounting-odoo.md#53-feature-and-story-decomposition-guidelines), and they carry the mandated coverage distribution: Scenarios 1 and 2 are the valid-input cases (a budget defined and confirmed, then a line held against analytic dimensions), Scenario 3 is the invalid and incomplete-input case, Scenarios 4 and 5 are the error-handling cases, and Scenarios 6, 7 and 8 are the accounting edge cases — the fiscal-calendar lock, multi-company scoping and duplication of a prior-year plan.
+
+Every scenario states a single trigger. Every monetary figure names its currency, its amount and its rounding. Every scenario that could be mistaken for a posting states what the ledger did instead: **nothing**. The budget currency throughout is USD at 2 decimal places, rounded half-up at the USD rounding increment of 0.01, except where company `NL-01` is named, whose functional currency is EUR at 2 decimal places at the EUR rounding increment of 0.01.
+
+The baseline for Scenarios 1 to 7 is company `US-01` with fiscal year 2025 defined as 2025-01-01 to 2025-12-31 under CAP-003 of [FEATURE-001-01](../FEATURE-001-01-chart-of-accounts-fiscal-year.md), and the three general-ledger accounts Revenue 4000 (`account_type` `income`), Expense 6100 (`account_type` `expense`) and Depreciation Expense 6500 (`account_type` `expense_depreciation`) present and live in the `US-01` chart of accounts.
+
+### Scenario 1: Budget defined and confirmed for one company and one fiscal year, with no journal entry created
+
+- **Given** the FP&A Analyst holds budget-management rights in company `US-01`, fiscal year 2025 is defined for `US-01` as 2025-01-01 to 2025-12-31 and is open for planning, the accounts Revenue 4000, Expense 6100 and Depreciation Expense 6500 are live in the `US-01` chart, and `US-01` holds a budget named "FY2025 Operating Budget" in state `draft` carrying three lines whose period ranges each fall inside 2025-01-01 to 2025-12-31 — Revenue 4000 at a planned amount of `$4,800,000.00 USD`, Expense 6100 at a planned amount of `$1,200,000.00 USD` and Depreciation Expense 6500 at a planned amount of `$240,000.00 USD`, each amount stored to 2 decimal places rounded half-up at the USD rounding increment of 0.01
+- **When** the FP&A Analyst requests confirmation of the "FY2025 Operating Budget" of company `US-01`
+- **Then** the budget state moves from `draft` to `confirmed`; the budget carries a reference generated from the budget reference sequence resolved with company `US-01`, which reads `BUD/00001` for the first budget recorded in that company and advances by 1 for each subsequent budget of the same company; the budget header total reads `$6,240,000.00 USD`, equal to the arithmetic sum of `$4,800,000.00 USD`, `$1,200,000.00 USD` and `$240,000.00 USD` at a difference of `$0.00 USD`, stated to 2 decimal places at the USD rounding increment of 0.01; the budget is scoped to company `US-01` and to fiscal year 2025 and to no other company or year; the count of its lines carrying neither a general-ledger account nor an analytic distribution is 0; the transition is recorded with its author and its timestamp; and **no journal entry is created, altered or reversed by the confirmation** — the journal-entry count of `US-01` for 2025-01-01 to 2025-12-31, the balances of accounts 4000, 6100 and 6500, and the Trial Balance of `US-01` for that range reporting total debits equal to total credits at a difference of `$0.00 USD`, are each identical before and after the confirmation
+
+### Scenario 2: Budget line held against analytic dimensions from two analytic plans
+
+- **Given** company `US-01` holds the analytic plan "Departments" with the analytic accounts Marketing (identifier 123) and Sales (identifier 124) beneath it, and the analytic plan "Projects" with the analytic account Website Redesign (identifier 125) beneath it, and the "FY2025 Operating Budget" of `US-01` stands in state `draft` with its Expense 6100 line carrying a planned amount of `$1,200,000.00 USD` stored to 2 decimal places at the USD rounding increment of 0.01 and no analytic distribution
+- **When** the FP&A Analyst saves that Expense 6100 budget line with an analytic distribution that attributes 60.00% of the line to Marketing and 40.00% of the line to Sales, with the whole line attributed to the Website Redesign project
+- **Then** the line stores the distribution in the `analytic_distribution` JSON shape carried by the `analytic.mixin` model, whose keys are analytic-account identifiers — comma-separated where one percentage covers a combination of accounts drawn from more than one plan — and whose values are percentages, so the stored value reads `{"123,125": 60.0, "124,125": 40.0}`; the distribution totals 100.00% within the Departments plan, being 60.00% on Marketing plus 40.00% on Sales, and 100.00% within the Projects plan, being 60.00% plus 40.00% on Website Redesign, so the count of plans addressed by the line whose percentages do not total 100.00% is 0; the line's planned amount of `$1,200,000.00 USD` attributes `$720,000.00 USD` to the Marketing and Website Redesign combination and `$480,000.00 USD` to the Sales and Website Redesign combination, each amount rounded to 2 decimal places half-up at the USD rounding increment of 0.01 and the two summing back to `$1,200,000.00 USD` at a difference of `$0.00 USD`; the analytic accounts are resolved from `account.analytic.account` and their plans from `account.analytic.plan` rather than from a dimension model held alongside them (C-013); and no journal entry is created by the save
+
+### Scenario 3: Confirmation refused while a budget line carries no dimension of any kind
+
+- **Given** company `US-01` holds a budget named "FY2025 Marketing Plan" in state `draft` for fiscal year 2025, carrying the reference generated on creation, whose single line carries no general-ledger account, an empty analytic distribution, and a planned amount of `$50,000.00 USD` stored to 2 decimal places at the USD rounding increment of 0.01
+- **When** the FP&A Analyst requests confirmation of the "FY2025 Marketing Plan" of company `US-01`
+- **Then** the transition is refused and the budget persists in state `draft` with the reference it was generated on creation; an Odoo validation message names the budget "FY2025 Marketing Plan", the ordinal position of the offending line, and the rule that a budget line carries at least one of a general-ledger account or an analytic distribution; the count of the budget's lines carrying neither is still 1 and the line is neither altered nor deleted by the refused attempt; the budget header total is unchanged at `$50,000.00 USD` stated to 2 decimal places at the USD rounding increment of 0.01; and no journal entry is created in `US-01` by the refused attempt
+
+### Scenario 4: Confirmation refused while the budget total is zero
+
+- **Given** company `US-01` holds a budget named "FY2025 Contingency Plan" in state `draft` for fiscal year 2025, whose two lines are held against Expense 6100 and Depreciation Expense 6500 with a period range inside 2025-01-01 to 2025-12-31, each carrying a planned amount of `$0.00 USD` stored to 2 decimal places at the USD rounding increment of 0.01, so that the budget header total reads `$0.00 USD`
+- **When** the FP&A Analyst requests confirmation of the "FY2025 Contingency Plan" of company `US-01`
+- **Then** the transition is refused and the budget persists in state `draft`; an Odoo validation message names the budget "FY2025 Contingency Plan", its header total of `$0.00 USD`, and the failed condition that a budget header total exceeds `$0.00 USD` before the budget is confirmed; the two lines are retained in `draft` so the FP&A Analyst can enter amounts without re-creating them; the message discloses no stack trace, no query text and no file-system path (C-019, C-020); and no journal entry is created in `US-01` by the refused attempt
+
+### Scenario 5: Confirmation refused while an analytic distribution does not total one hundred per cent within its plan
+
+- **Given** company `US-01` holds a budget named "FY2025 Department Plan" in state `draft` for fiscal year 2025, whose Expense 6100 line carries a planned amount of `$900,000.00 USD` stored to 2 decimal places at the USD rounding increment of 0.01 and an analytic distribution of 60.00% to Marketing and 30.00% to Sales, both analytic accounts belonging to the Departments plan, so that the Departments plan totals 90.00% on that line
+- **When** the FP&A Analyst requests confirmation of the "FY2025 Department Plan" of company `US-01`
+- **Then** the transition is refused and the budget persists in state `draft`; an Odoo validation message names the budget "FY2025 Department Plan", the Expense 6100 line, the Departments plan, the total it reached of 90.00%, and the failed condition that an analytic distribution totals 100.00% within each plan it addresses; the stored distribution is unchanged and the line's planned amount is unchanged at `$900,000.00 USD` stated to 2 decimal places at the USD rounding increment of 0.01; the count of lines whose distribution fails the per-plan total is reported as 1 rather than left for the FP&A Analyst to find; and no journal entry is created in `US-01` by the refused attempt
+
+### Scenario 6: Budget line refused for a period range closed by the company's fiscal-year lock date
+
+- **Given** the journal-entry lock date administered for company `US-01` under CAP-005 of [FEATURE-001-01](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) stands at 2024-12-31, closing every period on or before that date to further posting, and company `US-01` holds the "FY2025 Operating Budget" in state `draft` for fiscal year 2025 defined as 2025-01-01 to 2025-12-31
+- **When** the FP&A Analyst saves a budget line on Expense 6100 of that budget with a period range of 2024-11-01 through 2024-11-30 and a planned amount of `$95,000.00 USD` stored to 2 decimal places at the USD rounding increment of 0.01
+- **Then** the save is refused; an Odoo validation message names company `US-01`, the lock date of 2024-12-31, the period range 2024-11-01 to 2024-11-30 that was rejected, and the fiscal-year boundary of 2025-01-01 to 2025-12-31 the line must fall inside; no budget line is created by the refused attempt, so the budget still carries its three original lines and its header total is unchanged at `$6,240,000.00 USD` stated to 2 decimal places at the USD rounding increment of 0.01; the budget persists in state `draft` with the reference it was generated on creation; and because a budget line is planning data rather than a posting, the refusal comes from the fiscal-calendar control that governs the closed period and not from the ledger — no journal entry is created, altered or reversed, and the balances of accounts 4000, 6100 and 6500 in `US-01` for 2024-11-01 to 2024-11-30 are identical before and after the refused attempt
+
+### Scenario 7: Budget scoped to the books of one company only
+
+- **Given** the group holds company `US-01`, whose functional currency is USD, and company `NL-01`, the Netherlands operating company whose functional currency is EUR; `NL-01` holds exactly one budget of its own for fiscal year 2025 with a header total of `€3,000,000.00 EUR` stated to 2 decimal places at the EUR rounding increment of 0.01; the FP&A Analyst's allowed companies include both; and the "FY2025 Operating Budget" of `US-01` stands in state `draft` with its three lines and a header total of `$6,240,000.00 USD`
+- **When** the FP&A Analyst requests confirmation of the "FY2025 Operating Budget" in company `US-01`
+- **Then** the confirmed budget and its three lines are held against company `US-01` alone and are readable in the books of `US-01` alone; the budget count of company `NL-01` is unchanged at 1 and its FY2025 header total is unchanged at `€3,000,000.00 EUR` stated to 2 decimal places at the EUR rounding increment of 0.01; the reference is drawn from the budget reference sequence resolved with company `US-01`, so the `US-01` numbering advances by 1 while the `NL-01` numbering is unchanged; a persona whose allowed companies are restricted to `NL-01` can neither read nor report the `US-01` budget, its lines or its planned amounts (C-014, D-007); and no journal entry is created in either `US-01` or `NL-01` by the confirmation, the Trial Balance of each company reporting total debits equal to total credits at a difference of `$0.00 USD` for `US-01` and `€0.00 EUR` for `NL-01`, unchanged before and after
+
+### Scenario 8: Prior-year budget duplicated into a new draft with its structure and its audit link
+
+- **Given** company `US-01` holds a budget named "FY2024 Operating Budget" in state `confirmed` for fiscal year 2024, carrying three lines with the analytic distributions of Scenario 2 — Revenue 4000 at a planned amount of `$4,500,000.00 USD`, Expense 6100 at a planned amount of `$1,100,000.00 USD` and Depreciation Expense 6500 at a planned amount of `$220,000.00 USD`, each stored to 2 decimal places at the USD rounding increment of 0.01, giving a header total of `$5,820,000.00 USD`
+- **When** the FP&A Analyst duplicates the "FY2024 Operating Budget" of company `US-01` for fiscal year 2025
+- **Then** a new budget is created in state `draft` for company `US-01` and fiscal year 2025, carrying the same three general-ledger accounts and the same analytic distribution keys and percentages as its source so that the Departments plan and the Projects plan each still total 100.00% on the copied Expense 6100 line; the copy carries a new reference drawn from the budget reference sequence resolved with company `US-01`, distinct from the reference of its source; the copy records its source budget so that the path from copy to source is readable by the External Auditor without a data request; the copied planned amounts are editable while the copy stands in `draft`, so the FP&A Analyst re-bases the amounts for 2025 rather than re-keying the structure; the source budget is untouched, remaining in state `confirmed` with its three lines and a header total of `$5,820,000.00 USD` stated to 2 decimal places at the USD rounding increment of 0.01, a difference of `$0.00 USD` against its value before the duplication; and no journal entry is created in `US-01` by the duplication
+
+---
+
+
+## Sub-Tasks
+
+- [ ] **Confirm the budget dimension model and the per-company, per-fiscal-year scoping with Finance.** Agree with the Group Controller and the Chief Accountant which general-ledger account types a budget line may be held against — the `income` and `income_other` types for revenue lines and the `expense`, `expense_other`, `expense_depreciation` and `expense_direct_cost` types for cost lines — and record that one budget belongs to exactly one company and one fiscal year, so a group view is a roll-up of entity budgets rather than a re-keyed summary. — `@functional-consultant`
+- [ ] **Agree the analytic dimension policy against the group's analytic plans.** Confirm with the Group Controller that the Departments and Projects plans are the budget dimensions, that a line may address a combination drawn from more than one plan, and that each plan a line addresses totals 100.00%; record the policy alongside the group budget policy it belongs to (C-013). — `@functional-consultant`
+- [ ] **Assess what the present `account_budget_management` add-on already satisfies before any build is authorized.** Compare its budget header, budget line, reference sequence and state machine against Scenarios 1 to 8, and record which criteria are already met, which are met for a single company only, and what remains as the residual gap under D-003. — `@functional-consultant`
+- [ ] **Deliver the budget header and budget line structure with its per-company reference sequence and its two-state transition.** The header carries the company, the fiscal year, the responsible owner, the state and the reference; the line carries the general-ledger account, the analytic distribution, the planned amount in the budget currency and the period range; the reference is drawn from the budget reference sequence resolved with the budget's company so numbering advances per company. — `@developer`
+- [ ] **Deliver the confirm-time validation as four named refusals.** A line with neither a general-ledger account nor an analytic distribution, a header total that does not exceed `$0.00 USD`, an analytic distribution that does not total 100.00% within a plan it addresses, and a line period range outside the budget's fiscal year or on or before the company's journal-entry lock date. Each refusal names the budget, the offending line and the condition that failed, and discloses no stack trace, query text or file-system path (C-019, C-020). — `@developer`
+- [ ] **Deliver duplication of a budget into a new draft.** The copy carries the account and analytic structure of its source, a new reference from the same per-company sequence, editable amounts, and a stored link back to its source for the audit trail; the source is left unmodified. — `@developer`
+- [ ] **Prove the ledger is untouched by every path in this story.** Add the assertion that budget creation, confirmation, line save, refusal and duplication each leave the journal-entry count and the account balances of the affected company identical before and after, and that no code path in this story writes to `account.move` or `account.move.line`. — `@developer`
+- [ ] **Automate the eight acceptance scenarios, one named test per scenario.** Every monetary assertion is written as an amount with its currency and rounded to 2 decimal places at that currency's rounding increment, every percentage to 2 decimal places, and the stored analytic distribution asserted as its JSON value rather than inspected by eye (C-008, C-009). — `@qa-engineer`
+- [ ] **Automate the negative and isolation paths.** The four refusals of Scenarios 3 to 6; multi-company isolation proving a persona restricted to `NL-01` can neither read nor report the `US-01` budget; and at least one hostile-input test that submits a malformed, an out-of-range and an over-long value to the fields this story accepts, asserting a named rejection with no journal entry created and the service still available (C-014, C-022). — `@qa-engineer`
+- [ ] **Validate the account selection against the group chart of accounts and sign off the confirmed figures.** Confirm that Revenue 4000, Expense 6100 and Depreciation Expense 6500 are the correct targets for the FY2025 plan of `US-01`, that each resolves to a live account with a general-ledger account type, and sign off the confirmed header total of `$6,240,000.00 USD` against the group budget policy, together with the Trial Balance of `US-01` reporting total debits equal to total credits at a difference of `$0.00 USD` before and after confirmation. — `@finance-sme`
+
+---
+
+## Edge Cases
+
+| # | Edge Case | Expected Handling |
+|---|-----------|-------------------|
+| 1 | **Zero-amount or dimensionless line.** A budget line on Expense 6100 of company `US-01` carrying a planned amount of `$0.00 USD`, or a line carrying an empty analytic distribution and no general-ledger account | A `$0.00 USD` line is accepted and retained in `draft`, because a placeholder line is a normal step in building a plan, and it contributes `$0.00 USD` to the header total at 2 decimal places at the USD rounding increment of 0.01. Confirmation is what refuses it: a header total that does not exceed `$0.00 USD` is refused under Scenario 4, and a line carrying neither a general-ledger account nor an analytic distribution is refused under Scenario 3, each with a message naming the budget and the offending line. A `$0.00 USD` line that survives on a budget whose total does exceed `$0.00 USD` is retained and is reported downstream as a budget of `$0.00 USD` with a variance equal to the actual amount and no variance percentage, which is the guard [STORY-001-09-04](./STORY-001-09-04-analyze-variances.md) carries rather than a division result. No journal entry arises in any branch |
+| 2 | **Fiscal-period lock closes the range a line is dated into.** The journal-entry lock date of company `US-01` stands at 2024-12-31 and a budget line is dated 2024-11-01 to 2024-11-30 | The line save is refused with a message naming company `US-01`, the lock date of 2024-12-31 and the rejected range, and no budget line is created, as Scenario 6 asserts. The refusal is the fiscal-calendar control operating on planning data, not a ledger rule: no journal entry is created, altered or reversed, and the account balances of `US-01` for the closed range are identical before and after. Where the group budget policy requires a plan for a closed comparative period — a prior-year baseline loaded for trend analysis — the exception is raised to the Group Controller, who releases the lock date under CAP-005 of [FEATURE-001-01](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) with an expiry, rather than the budget bypassing the control |
+| 3 | **Multi-currency rounding on a budget held in a currency other than the group reporting currency.** A budget of `€1,000,000.00 EUR` recorded for company `NL-01`, whose functional currency is EUR, presented in a group view whose reporting currency is USD | The budget is stored in the currency of its own company and every amount on it is rounded to 2 decimal places half-up at the EUR rounding increment of 0.01, so `€1,000,000.00 EUR` is the authoritative figure and is never overwritten by a translated value. A group presentation translates it at the rate basis the group budget policy names — the closing rate of the last day of the budget's fiscal year for a balance-style roll-up, and the period-average rate for a flow-style roll-up — and the translated figure is rounded to 2 decimal places half-up at the USD rounding increment of 0.01, so `€1,000,000.00 EUR` at a closing rate of 1.1000 USD per EUR presents as `$1,100,000.00 USD`. Each amount is rounded at its own currency's rounding increment rather than one being derived by re-rounding the other, the rate and its basis are retained beside the translated figure for the External Auditor, and a rounding residual in the group view is disclosed as a translation difference rather than pushed back onto the `NL-01` budget line |
+| 4 | **Analytic account retired while it is still carried on a budget line.** The Marketing analytic account of the Departments plan is archived mid-year while the confirmed FY2025 budget of `US-01` still holds `$720,000.00 USD` attributed to it | The budget line retains the historical dimension: the stored `analytic_distribution` keeps the archived analytic account's identifier and its 60.00% value, and the planned amount of `$720,000.00 USD` stays attributed to it at 2 decimal places at the USD rounding increment of 0.01, so the plan the closed periods were measured against does not change retrospectively. Reporting resolves and displays the archived account's name rather than showing a bare identifier or an empty dimension, and the archived state is shown beside it so a reader is not left to infer it. The archived account is refused as the target of a **new** budget line, with a message naming the account and its archived state; re-basing an existing line onto a live analytic account is an edit made in `draft` and is recorded with its author and timestamp |
+| 5 | **Line period range inside an open fiscal calendar but outside the budget's own fiscal year.** A line on the FY2025 budget of `US-01` dated 2026-01-15 to 2026-01-31, a range no lock date closes | The save is refused with a message naming the budget, the offending line, its rejected range of 2026-01-15 to 2026-01-31 and the fiscal-year boundary of 2025-01-01 to 2025-12-31 it must fall inside, and no budget line is created — the same feature-level refusal as Scenario 6 reached by a different cause, so a plan cannot straddle two fiscal years and be double-counted in both. The FP&A Analyst records the 2026 amount on a FY2026 budget instead, which duplication under Scenario 8 produces from the FY2025 structure. The header total of the FY2025 budget is unchanged at `$6,240,000.00 USD` at 2 decimal places at the USD rounding increment of 0.01, and no journal entry arises |
+
+---
+
+## Demonstration
+
+The story is accepted when the FP&A Analyst walks the **Finance Controller** and the **Product Owner** through the path below in the Odoo user interface, with the Group Controller present to sign off the account and dimension policy. Where a reviewer prefers the public API, the same seven steps are demonstrated through JSON-RPC against the same records; either way the walkthrough is recorded against this story (R-G).
+
+1. **The budget list of company `US-01`** — filtered to company `US-01`, showing that no budget exists for fiscal year 2025 before the walkthrough begins.
+2. **A new budget recorded as "FY2025 Operating Budget"** — for company `US-01` and fiscal year 2025 spanning 2025-01-01 to 2025-12-31, with the FP&A Analyst as its responsible owner, saved in state `draft` and showing the reference generated on creation.
+3. **Three budget lines added** — Revenue 4000 at `$4,800,000.00 USD`, Expense 6100 at `$1,200,000.00 USD` and Depreciation Expense 6500 at `$240,000.00 USD`, each stored to 2 decimal places at the USD rounding increment of 0.01, with the header total shown accumulating to `$6,240,000.00 USD`.
+4. **An analytic distribution set on the Expense 6100 line** — 60.00% to the Marketing department and 40.00% to the Sales department, both against the Website Redesign project, with the stored value shown as `{"123,125": 60.0, "124,125": 40.0}`, each plan shown totalling 100.00%, and the attributed amounts shown as `$720,000.00 USD` and `$480,000.00 USD`.
+5. **The budget confirmed** — showing the state moving from `draft` to `confirmed`, the reference `BUD/00001` of company `US-01`, the header total of `$6,240,000.00 USD` and the transition recorded with its author and timestamp.
+6. **The negative walkthrough** — a dimensionless line refused, a `$0.00 USD` header total refused, a 90.00% Departments distribution refused, and a line dated 2024-11-01 to 2024-11-30 refused against the `US-01` lock date of 2024-12-31; after all four attempts the budget of company `US-01` is shown still holding three lines and a header total of `$6,240,000.00 USD`.
+7. **The Trial Balance of company `US-01` for 2025-01-01 to 2025-12-31, run before and after the walkthrough** — showing identical figures on both runs, with total debits equal to total credits at a difference of `$0.00 USD`, which is the proof that defining and confirming a budget wrote nothing to the ledger.
+
+---
+
+## Constraints
+
+### License and Compliance
+
+- [ ] **C-001 — AGPL-3.0 compatible licence.** Any module delivering the budget header, the budget line, the reference sequence or the confirm-time validation is distributed under an AGPL-3.0 compatible licence, matching `account_budget_management` at AGPL-3 and the other Community-edition accounting add-ons already present in this repository.
+- [ ] **C-002 — Existing licences respected.** Extension of `account` and `analytic` respects their LGPL-3 licence, declared in `addons/account/__manifest__.py` and `addons/analytic/__manifest__.py`; extension of `account_budget_management` respects its AGPL-3 licence. An AGPL-3 extension is not redistributed under weaker terms.
+- [ ] **C-003 — Edition source is an open decision, not a prohibition.** The Enterprise-only budgeting capability named in the Epic's module scope arrives either through an Odoo Enterprise subscription or through the Odoo Community Association route. `account_budget` is **absent from `addons/`** in this repository and is an Enterprise module: that is recorded here as a fact of the platform, and the earlier backlog's blanket prohibition on the module by name is superseded. The choice is DEC-002 in the Epic's open decisions register, owned by the CFO / Finance Director with the Group Controller, and it is confirmed before this story enters development. No module delivered by this story declares a dependency on a module absent from the configuration DEC-002 confirms.
+- [ ] **C-004 — Odoo Community Association ecosystem compatibility.** Whichever edition path is confirmed, the budget header, the budget line and the analytic dimension structure stay consumable by Odoo Community Association add-ons, so that `mis_builder` remains an option for rendering the plan beside actuals, and the present `account_budget_management` add-on remains usable against the same accounts and dimensions.
+- [ ] **C-005, C-006 — Coding standards and static analysis.** Python follows Odoo and Odoo Community Association module guidelines including PEP 8, and static analysis passes with the repository's configured tooling, whose lint configuration is declared in `ruff.toml` at the repository root.
+- [ ] **C-013 — Analytic layer rather than a parallel one.** Budget and cost-centre dimensions are expressed on `account.analytic.account` and `account.analytic.plan`. No parallel dimension model is introduced, because a budget dimension and a posted dimension that can diverge make a variance figure depend on which of the two was read.
+- [ ] **C-014, D-007 — Company isolation and role separation.** A budget belongs to one company; record rules keep a persona's reach inside its allowed companies; and the role that builds a budget is kept apart from the role that approves it and sets its thresholds.
+- [ ] **C-019, C-020, C-022 — Input validation and hostile-input tests.** Every value this story accepts — budget name, period range, planned amount, analytic distribution — is validated before use; a rejected value returns an error naming the field and the check that failed and discloses no stack trace, query text, file-system path or credential; and at least one acceptance test submits a malformed, an out-of-range and an over-long value and asserts the rejection with no journal entry created and the service still available.
+- [ ] **C-007 — Minimum 80% test coverage** for the functionality this story delivers, reported by the repository's coverage tooling.
+
+### Version Compatibility
+
+The platform target is an **open decision** and is stated here as the Epic states it, not chosen inside this story. Three targets are on record and they are mutually exclusive.
+
+- [ ] **C-010 — Platform version target (DEC-001).** The originating programme request names **Odoo 17**; this repository is **Odoo 19.0 Community**, where `odoo/release.py` declares `version_info = (19, 0, 0, FINAL, 0, '')`; and the prior, superseded backlog targeted **18.0**. The three imply different API surfaces and different migration effort, so the target is confirmed with stakeholders and recorded in the Epic's open decisions register before development starts. The story template's hardcoded "Odoo 18.0 compatibility required" line is superseded by this decision and is not applied here.
+- [ ] **C-011 — Language and database versions follow the confirmed target.** The Odoo 19.0 baseline in this repository declares `MIN_PY_VERSION = (3, 10)`, `MAX_PY_VERSION = (3, 13)` and `MIN_PG_VERSION = 13` in `odoo/release.py`; an earlier platform target carries a different supported matrix.
+- [ ] **Edition baseline recorded as fact.** `account` is present as the "Invoicing" application at version 1.4 under LGPL-3 and `analytic` as "Analytic Accounting" at version 1.2 under LGPL-3; `account_budget` is absent; `account_budget_management` is present at version 19.0.1.0.0 under AGPL-3 and declares `depends` of `account` and `analytic`.
+- [ ] **Impact on this story if DEC-001 resolves to a version other than 19.0.** The `analytic_distribution` storage this story asserts in Scenario 2 is re-checked for the confirmed version, because analytic-distribution storage on the journal item and on models inheriting `analytic.mixin` differs across the three candidate releases; and the credit given to `account_budget_management` under D-003 is re-assessed, since a 19.0-series add-on is not directly installable on an earlier target.
+
+### Accounting Standards Compliance
+
+- [ ] **Budget figures are management information, not statutory amounts.** They are presented beside the actual column of a management report and are excluded from the statutory Balance Sheet and Profit & Loss that FEATURE-001-07 publishes, consistent with IAS 1 presentation of financial statements, under which supplementary information does not alter a statutory caption or its amount. This is why no path in this story posts to the ledger.
+- [ ] **Variance convention inherited, not defined here.** Absolute variance is stated as an amount in the budget currency and percentage variance to 2 decimal places, with favourable and unfavourable signing taken from the account type; the convention follows Institute of Management Accountants practice and is applied in [STORY-001-09-04](./STORY-001-09-04-analyze-variances.md). This story fixes only the accounts and dimensions that signing will be read from — the `income` type of Revenue 4000 against the `expense` and `expense_depreciation` types of Expense 6100 and Depreciation Expense 6500.
+- [ ] **Budget control is an internal control that must be evidenced.** The existence of an approved budget, its reference, its state history with author and timestamp, and the link from a duplicated budget to its source are the monitoring-activity evidence tested under the COSO Internal Control — Integrated Framework and section 404 of the Sarbanes-Oxley Act, which is why each is recorded in-system rather than in correspondence.
+
+---
+
+
+## Technical Discovery Notes
+
+> **Purpose:** these notes direct the codebase analysis that precedes implementation. This story records what to investigate and what the outcome must prove; it does not choose the implementation. Model names, field definitions, inheritance approach, view architecture and database schema are discovery outcomes, not requirements of this ticket.
+
+### Codebase Analysis Areas
+
+| Area | Files/Modules to Examine | Analysis Focus |
+|------|--------------------------|----------------|
+| Analytic plan hierarchy — the third budget dimension | `addons/analytic/models/analytic_plan.py` | `account.analytic.plan` stores its tree with `_parent_store` and a `parent_path` field, carries `parent_id`, a computed `root_id`, an `account_ids` relation to its analytic accounts, a `default_applicability` selection and `children_count` and `all_account_count` counters. Determine which level of a plan a budget line may be held against, whether a parent level aggregates the budget lines of its descendants through the stored path without a query per level, and what `default_applicability` implies for the per-plan 100.00% total Scenario 2 asserts |
+| Analytic account structure and company scope | `addons/analytic/models/analytic_account.py` | `account.analytic.account` links to its plan through a required `plan_id`, exposes `root_plan_id` related to `plan_id.root_id`, carries `company_id` for multi-company scope, and computes `balance`, `debit` and `credit` through `_compute_debit_credit_balance`. Determine how an analytic account whose `company_id` differs from the budget's company must be treated on a budget line, and whether archiving an analytic account leaves its name resolvable for the retained-dimension handling in Edge Case 4 |
+| Analytic distribution storage and validation | `addons/analytic/models/analytic_mixin.py` | `analytic.mixin` supplies `analytic_distribution` as a `fields.Json` value with a compute and a search method, an `analytic_precision` integer, a computed `distribution_analytic_account_ids` relation for display, and a GIN index built over the distribution keys. Determine how the comma-separated key form that expresses a combination across plans is written and read, where the per-plan percentage total is validated, and where rounding is applied so that attributed amounts sum back to the line's planned amount at a `$0.00 USD` difference as Scenario 2 requires |
+| Budgetable accounts and their types | `addons/account/models/account_account.py` | `account.account` carries `code`, `name` and a required `account_type` whose selection includes `income` and `income_other` for revenue, `expense`, `expense_other`, `expense_depreciation` and `expense_direct_cost` for cost, plus a computed `internal_group` and a `company_ids` relation. Determine which types a budget line may target, how a per-company code divergence is resolved so that Revenue 4000, Expense 6100 and Depreciation Expense 6500 are unambiguous in every entity, and whether `internal_group` or `account_type` is the correct basis for the revenue-versus-cost distinction a budget line is validated against |
+| Company fiscal calendar and lock dates | `addons/account/models/company.py` | `res.company` carries `fiscalyear_last_day` and `fiscalyear_last_month` for the fiscal-year boundary, and the lock-date fields `fiscalyear_lock_date`, `tax_lock_date`, `sale_lock_date`, `purchase_lock_date` and `hard_lock_date`. Determine how the fiscal-year boundary a budget line must fall inside is derived when no fiscal-year record model exists, and which lock-date field governs the refusal Scenario 6 asserts |
+| The present Community-edition budgeting implementation | `addons/account_budget_management/models/budget_budget.py`, `budget_budget_line.py`, `budget_period.py` | `budget.budget` already carries `name`, `reference`, `user_id`, `company_id`, `currency_id`, `date_from`, `date_to`, a `period_type` selection, `total_planned` and `copied_from_id`, with a `state` selection of `draft`, `confirmed`, `closed` and `cancelled` defaulting to `draft` and tracked. `budget.budget.line` declares `_name = 'budget.budget.line'` with `_inherit = ['analytic.mixin']` and carries `account_id`, `planned_amount`, `date_from` and `date_to`. Determine which of Scenarios 1 to 8 this already satisfies, which it satisfies for a single company only, and what remains as the residual gap under D-003 — the assessment is made before any bespoke model is authorized |
+| Reference numbering per company | `addons/account_budget_management/data/budget_data.xml` | The budget reference sequence is declared with code `budget.budget`, prefix `BUD/`, padding 5 and a no-gap implementation, and is consumed with the budget's company so that Odoo resolves a per-company sequence on first use. Determine whether the resulting numbering advances independently per company as Scenario 7 asserts, and how a no-gap implementation behaves under concurrent creation |
+| Access rules and record rules already shipped | `addons/account_budget_management/security/` | Determine whether the existing rules separate the role that builds a budget from the role that approves it, and whether the record rules isolate budgets per company as C-014 and D-007 require, including for a persona whose allowed companies are restricted to `NL-01` |
+| The posted-actuals source consumed downstream | `addons/account/models/account_move_line.py` | `account.move.line` carries `account_id`, `date`, `balance`, a stored related `parent_state` taken from `move_id.state`, `analytic_distribution` and `analytic_line_ids`. This story reads nothing from it and writes nothing to it; the analysis is limited to confirming that the account and dimension structure fixed here is the same structure the actual column is aggregated by in [STORY-001-09-03](./STORY-001-09-03-report-budget-vs-actual.md), so a budget and an actual are never grouped two different ways |
+
+### Relevant Existing Modules
+
+- `addons/account/` — the **"Invoicing"** application, version **1.4**, category `Accounting/Accounting`, licence **LGPL-3**, present in this repository. Supplies `account.account` with the `account_type` selection a budget line is validated against, the fiscal-year and lock-date fields on `res.company`, and `account.move` with `account.move.line` as the posted-actuals source this story does not touch.
+- `addons/analytic/` — **"Analytic Accounting"**, version **1.2**, licence **LGPL-3**, present in this repository. Supplies `account.analytic.account`, `account.analytic.plan` and the `analytic.mixin` model whose `analytic_distribution` JSON field carries the dimension assignment of Scenario 2; required by C-013.
+- `addons/account_budget_management/` — **"Budget Management"**, version **19.0.1.0.0**, licence **AGPL-3**, `depends` of `account` and `analytic`, present in this repository from an earlier programme phase. Holds budget records, budget lines, period allocation, a budget-versus-actual report and threshold alerts, and is credited under D-003 with the capability it already delivers.
+- `odoo/addons/base/` — `res.company` for the company a budget belongs to and `res.currency` for the rounding increment and decimal precision every amount on it is rounded to.
+
+### OCA Module Compatibility
+
+| OCA Repository | Module | Compatibility Consideration |
+|----------------|--------|-----------------------------|
+| OCA/mis-builder | `mis_builder` | Builds management statements and budget columns from account-code expressions. Determine whether the budget header and line structure defined here feeds it without a translation layer under the Odoo Community Association path of DEC-002, and how it treats an analytic dimension that is not expressible as an account code — which is exactly the Scenario 2 case |
+| OCA/account-budgeting | `account_budget_oca` | An Odoo Community Association budgeting implementation. Determine whether it overlaps, competes with or complements the present `account_budget_management` add-on, and whether running both against the same accounts would produce two budget records for one plan and so two answers to the same variance question |
+| OCA/account-financial-reporting | `account_financial_report` | Renders the statement set the budget column sits beside. Determine whether its grouping matches the account and dimension grouping fixed here, so that a budget column and an actual column on one statement line come from the same classification (ORD-004) |
+
+The decision to integrate, extend or replace any add-on above belongs to DEC-002 in the Epic and is not taken in this story.
+
+---
+
+## Dependencies
+
+### Story Dependencies
+
+| Dependency Type | Reference | Title | Relationship |
+|-----------------|-----------|-------|--------------|
+| Parent Feature | [FEATURE-001-09](../FEATURE-001-09-budgeting-variance-analysis.md) | Budgeting & Variance Analysis | This story is story 1 of the 4 in this feature and delivers its CAP-001 |
+| Parent Epic | [EPIC-001](../../EPIC-001-enterprise-accounting-odoo.md) | Enterprise Accounting in Odoo | Carries the Epic's third objective and is measured on SM-014 |
+| Blocked By | None | — | This is the foundational story of `FEATURE-001-09/`; it has no blocking predecessor inside the feature |
+| Blocks | [STORY-001-09-02](./STORY-001-09-02-allocate-budget-periods.md) | Allocate Budget Amounts Across Periods | An allocation distributes the total of a budget line across the periods of a fiscal year, so the budget and its lines must exist first. The Group Controller's approval of the **allocated** plan belongs to that story, not to this one |
+| Blocks — transitively | [STORY-001-09-03](./STORY-001-09-03-report-budget-vs-actual.md) | Report Budget vs. Actual | Its direct predecessor is STORY-001-09-02 under the linear chain recorded in [FEATURE-001-09 §3.3](../FEATURE-001-09-budgeting-variance-analysis.md), so the block reaches it through that story rather than directly. The comparison sets a posted actual beside the plan recorded here and groups both by the accounts and analytic dimensions fixed here |
+| Blocks — transitively | [STORY-001-09-04](./STORY-001-09-04-analyze-variances.md) | Analyse Variances and Configure Threshold Alerts | Its direct predecessor is STORY-001-09-03 under the same chain. Variance signing reads the account type of the accounts budgeted here, and a threshold is a percentage of a budget amount recorded here |
+| Related | [FEATURE-001-01](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) | Chart of Accounts & Fiscal Year | Publishes Revenue 4000, Expense 6100 and their account types under CAP-001, the fiscal year 2025 calendar of 2025-01-01 to 2025-12-31 under CAP-003, and the journal-entry lock date under CAP-005 that Scenario 6 is refused against; this feature consumes all three under ordering rule ORD-001 |
+| Related | FEATURE-001-08 | Fixed Assets & Depreciation | Defines Depreciation Expense 6500 as the account its depreciation board posts to; this story budgets against that account without altering how it is posted |
+| Related | FEATURE-001-07 | Financial Reporting & Period Close | Presents the budget column beside the Profit & Loss and carries the budget review inside the close checklist, so the classification fixed here must align to the statement grouping used there (ORD-004) |
+
+### External Dependencies
+
+| Dependency | Type | Notes |
+|------------|------|-------|
+| GAAP and IFRS chart-of-accounts taxonomy | Standard | A budget line resolves to an account whose type and reporting taxonomy were fixed by CAP-001 and CAP-002 of [FEATURE-001-01](../FEATURE-001-01-chart-of-accounts-fiscal-year.md); the taxonomy is consumed here rather than defined here, so that a plan and the statement it is later presented beside classify the same account the same way |
+| IAS 1 — Presentation of Financial Statements | Standard | Governs the statutory presentation the budget column sits beside; a budget is supplementary information and does not alter a statutory caption or amount, which is why this story posts nothing |
+| Institute of Management Accountants practice | Standard | Supplies the management-reporting convention that variance is stated as an amount in the budget currency and a percentage to 2 decimal places, applied downstream in [STORY-001-09-04](./STORY-001-09-04-analyze-variances.md) |
+| COSO Internal Control — Integrated Framework, and section 404 of the Sarbanes-Oxley Act | Standard | Budget existence, approval and change history are monitoring-activity evidence, which is why the reference, the state transition, its author and its timestamp are retained in-system |
+| Group budget policy | Organizational | Names the account codes and the analytic plans an entity budget is held to, and the currency-translation rate basis of Edge Case 3; owned by the Group Controller and confirmed before this story is accepted |
+| Analytic master-data readiness | Organizational | The Departments and Projects analytic plans and their analytic accounts must exist for the entities in scope, under the Epic's master-data readiness dependency; a budget dimension cannot be assigned before the dimension exists |
+| DEC-001 and DEC-002 | Programme decision | The platform version and the edition source are confirmed and recorded in the Epic's open decisions register before this story enters development |
+
+### Integration Points
+
+| Odoo Model/Module | Integration Type | Purpose |
+|-------------------|------------------|---------|
+| `account.account` | Read | Resolves the budgeted account and its `account_type`, so a budget line targets a live general-ledger account — Revenue 4000, Expense 6100 or Depreciation Expense 6500 — and a line targeting an archived or non-general-ledger account is refused |
+| `account.analytic.account` | Read | Resolves the analytic account a budget line is held against, including the archived-account handling of Edge Case 4 |
+| `account.analytic.plan` | Read | Resolves the plan an analytic account belongs to, which is the level the per-plan 100.00% total of Scenario 2 is evaluated at |
+| `analytic.mixin` / `analytic_distribution` | Reference | Supplies the JSON distribution shape a budget line stores its dimension assignment in, including the comma-separated key form that expresses a combination across plans; reused rather than re-invented (C-013) |
+| `res.company` | Read | Supplies the company a budget belongs to, its functional currency and its fiscal-year and lock-date configuration; the source of the per-company scoping of Scenario 7 |
+| `res.currency` | Read | Supplies the decimal precision and rounding increment every planned amount, header total and translated figure is rounded at — 2 decimal places at 0.01 for both USD and EUR |
+| `ir.sequence` | Read and write | Supplies the budget reference, drawn with the budget's company so numbering advances per company; the write is the sequence's own counter, not a ledger write |
+| `account.move.line` | Read — downstream only | Named here as the single source of the actual amounts this budget will be measured against, aggregated by account, by analytic distribution and by date and restricted to entries in the posted state. **This story neither reads nor writes it**; the aggregation belongs to [STORY-001-09-03](./STORY-001-09-03-report-budget-vs-actual.md). `account.analytic.line` is a secondary read there, not the primary source |
+| `account.move` | Not integrated | No path in this story creates, alters or reverses a journal entry. The model is named so the exclusion is explicit and testable rather than assumed |
+
+---
+
+## Estimation
+
+| Dimension | Rating | Basis |
+|-----------|--------|-------|
+| **Effort** | Medium | One budget header with its company, fiscal year, owner, reference and state; budget lines carrying an account, an analytic distribution, an amount and a period range; four confirm-time refusal paths; one duplication path with an audit link; a per-company reference sequence; and eight acceptance tests plus the negative, isolation and hostile-input tests. Every model and field it builds on already exists in this repository |
+| **Complexity** | Medium | The dimension model is where the difficulty sits. A distribution has to total 100.00% within **each plan it addresses**, which means evaluating the comma-separated key form that expresses a combination across plans, and the attributed amounts have to sum back to the line's planned amount at a `$0.00 USD` difference after rounding at the currency's own increment. Beside that, the fiscal-year boundary and the company lock date both gate a line's period range, and the per-company sequence has to hold under concurrent creation. None of it requires new infrastructure, and none of it requires a report engine |
+| **Uncertainty** | Low | Every field, constraint, sequence and state value this story relies on was read in this repository during discovery. The residual unknowns are scoped and named rather than open-ended: how much of the story the present `account_budget_management` add-on already satisfies, which is the D-003 assessment carried as a sub-task, and whether DEC-001 confirms a platform version other than 19.0, which would change the analytic-distribution storage assertion of Scenario 2 |
+| **Story Points** | **5** (Fibonacci: 1, 2, 3, 5, 8, 13) | |
+
+Five points reflects the dimension model and the validation surface, **not** reporting work — there is no report, no scheduled action, no alert and no aggregation over posted journal items anywhere in this story. Three points would understate the analytic-distribution arithmetic, the four distinct refusal paths, the duplication path with its audit link and the multi-company isolation proof, which are five separate outcomes each needing its own demonstration. Eight points would overstate a story whose every mechanism already exists in `account`, `analytic` and the present budgeting add-on, and whose acceptance needs no posted data at all. The estimate assumes the account and dimension policy is signed off by the Group Controller during the sprint, and it excludes period allocation, the budget-versus-actual comparison and variance analysis with alerting, which are the three sibling stories.
+
+---
+
+
+## Test Requirements
+
+### Coverage Requirement
+
+| Metric | Requirement | Notes |
+|--------|-------------|-------|
+| **Minimum Test Coverage** | **80%** | Mandatory for the functionality this story delivers, reported by the repository's configured coverage tooling (C-007) |
+| Unit Test Coverage | 80% or higher | The confirm-time validation set, the per-plan distribution total, the reference-sequence assignment and the per-company scoping |
+| Integration Test Coverage | 80% or higher | Interaction with `account.account`, `account.analytic.account`, `account.analytic.plan`, `res.company` and `res.currency`, and multi-company isolation |
+| Assertion style | Numeric | Every monetary assertion is written as an amount with its currency rounded to 2 decimal places at that currency's rounding increment, every percentage to 2 decimal places, and every stored analytic distribution asserted as its JSON value (C-009) |
+| Traceability | One acceptance test per criterion | Each of the eight Given/When/Then scenarios maps to exactly one named acceptance test (C-008) |
+
+### Unit Test Scenarios
+
+| Acceptance Scenario | Unit Test Focus | Key Assertions |
+|---------------------|-----------------|----------------|
+| Scenario 1 | Confirm transition and header aggregation | State moves `draft` to `confirmed`; header total equals `$6,240,000.00 USD` at 2 decimal places at the USD rounding increment of 0.01, being the sum of `$4,800,000.00 USD`, `$1,200,000.00 USD` and `$240,000.00 USD` at a difference of `$0.00 USD`; the dimensionless-line count is 0; the transition records its author and timestamp |
+| Scenario 1 | Reference-sequence assignment | The reference is drawn from the budget reference sequence resolved with company `US-01` and reads `BUD/00001` for the first budget of that company; a second budget of the same company advances by 1 |
+| Scenario 2 | Analytic distribution storage and per-plan total | The stored JSON equals `{"123,125": 60.0, "124,125": 40.0}`; the Departments plan totals 100.00% and the Projects plan totals 100.00%; the count of addressed plans not totalling 100.00% is 0 |
+| Scenario 2 | Attribution arithmetic and rounding | `$1,200,000.00 USD` attributes `$720,000.00 USD` and `$480,000.00 USD`, each rounded to 2 decimal places half-up at the USD rounding increment of 0.01, and the two sum back to `$1,200,000.00 USD` at a difference of `$0.00 USD` |
+| Scenario 3 | Dimensionless-line refusal | Confirmation raises a validation error; state remains `draft`; the reference generated on creation is unchanged; the message names the budget and the offending line's ordinal position; the dimensionless-line count is still 1 |
+| Scenario 4 | Zero-total refusal | Confirmation raises a validation error naming the header total of `$0.00 USD` and the condition that the total exceeds `$0.00 USD`; state remains `draft`; both lines are retained; the message text contains no stack trace, query text or file-system path |
+| Scenario 5 | Per-plan distribution refusal | Confirmation raises a validation error naming the Departments plan and the 90.00% total reached; the stored distribution and the planned amount of `$900,000.00 USD` are unchanged; the failing-line count is reported as 1 |
+| Scenario 6 | Lock-date refusal on a line period range | The line save raises a validation error naming company `US-01`, the lock date 2024-12-31, the rejected range 2024-11-01 to 2024-11-30 and the fiscal-year boundary 2025-01-01 to 2025-12-31; the budget line count is unchanged at 3; the header total is unchanged at `$6,240,000.00 USD` |
+| Scenario 7 | Per-company scoping and sequence independence | The confirmed budget's company equals `US-01`; the `NL-01` budget count is 1 and its total is `€3,000,000.00 EUR` at 2 decimal places at the EUR rounding increment of 0.01, unchanged; the `US-01` sequence advances by 1 and the `NL-01` sequence does not |
+| Scenario 8 | Duplication into draft with audit link | The copy's state is `draft`, its company is `US-01`, its fiscal year is 2025, its account set and distribution keys and percentages equal the source's, its reference differs from the source's, and its recorded source resolves to the FY2024 budget; the source stays `confirmed` with a total of `$5,820,000.00 USD` at a difference of `$0.00 USD` |
+| Edge Case 5 | Out-of-fiscal-year line range refusal | A line dated 2026-01-15 to 2026-01-31 on the FY2025 budget raises a validation error naming the range and the fiscal-year boundary; no budget line is created |
+| Edge Cases 1 to 5 | Ledger immutability across every path | For creation, confirmation, line save, each refusal and duplication: the journal-entry count and the balances of accounts 4000, 6100 and 6500 for company `US-01` are identical before and after, and no code path in this story writes to `account.move` or `account.move.line` |
+
+### Integration Test Considerations
+
+- [ ] Test resolution of a budget line against `account.account`, including refusal of a line whose target account is archived and refusal of a line whose account carries an account type outside the revenue and cost types the group budget policy permits.
+- [ ] Test resolution of an analytic distribution against `account.analytic.account` and `account.analytic.plan`, including a combination drawn from two plans, and the retained-dimension behaviour when an analytic account is archived while budgeted (Edge Case 4).
+- [ ] Test the fiscal-calendar interaction with `res.company`: the fiscal-year boundary derived from `fiscalyear_last_day` and `fiscalyear_last_month`, and the refusal driven by `fiscalyear_lock_date` (Scenario 6).
+- [ ] Test multi-company isolation end to end: a persona whose allowed companies are restricted to `NL-01` can neither read nor report the `US-01` budget, its lines or its planned amounts (C-014, D-007).
+- [ ] Test currency behaviour against `res.currency`: a budget of `€1,000,000.00 EUR` on company `NL-01` retained at the EUR rounding increment of 0.01 and presented in a USD group view at the policy rate basis, with each amount rounded at its own currency's increment (Edge Case 3).
+- [ ] Test per-company reference numbering under concurrent creation, confirming no duplicate reference within a company and independent advancement between `US-01` and `NL-01`.
+- [ ] Test that installing and running this story's functionality creates no dependency on a module absent from the platform configuration DEC-002 confirms.
+- [ ] Test the hostile-input surface required by C-022: a malformed period range, an out-of-range planned amount, an over-long budget name and a malformed analytic distribution each rejected with a named error, with no journal entry created and the service still available.
+
+### Acceptance Test Mapping
+
+| BDD Scenario | Test Method Name | Test Type |
+|--------------|------------------|-----------|
+| Scenario 1: Budget defined and confirmed for one company and one fiscal year, with no journal entry created | `test_confirm_budget_scoped_to_company_and_fiscal_year_creates_no_journal_entry` | Acceptance |
+| Scenario 2: Budget line held against analytic dimensions from two analytic plans | `test_budget_line_analytic_distribution_totals_hundred_per_plan_and_splits_amount` | Acceptance |
+| Scenario 3: Confirmation refused while a budget line carries no dimension of any kind | `test_confirm_refused_when_line_has_no_account_and_no_analytic_distribution` | Acceptance |
+| Scenario 4: Confirmation refused while the budget total is zero | `test_confirm_refused_when_budget_total_is_zero` | Acceptance |
+| Scenario 5: Confirmation refused while an analytic distribution does not total one hundred per cent within its plan | `test_confirm_refused_when_analytic_distribution_totals_ninety_percent_in_plan` | Acceptance |
+| Scenario 6: Budget line refused for a period range closed by the company's fiscal-year lock date | `test_budget_line_refused_for_period_range_before_fiscalyear_lock_date` | Acceptance |
+| Scenario 7: Budget scoped to the books of one company only | `test_budget_visible_only_in_owning_company_and_reference_sequence_per_company` | Acceptance |
+| Scenario 8: Prior-year budget duplicated into a new draft with its structure and its audit link | `test_duplicate_prior_year_budget_into_draft_with_new_reference_and_source_link` | Acceptance |
+| Edge Case 5: Line period range outside the budget's fiscal year | `test_budget_line_refused_for_period_range_outside_budget_fiscal_year` | Acceptance |
+| Edge Case 3: Multi-currency retention and translation | `test_eur_budget_retained_at_eur_precision_and_translated_at_policy_rate` | Integration |
+| Edge Case 4: Analytic account archived while budgeted | `test_archived_analytic_account_retained_on_line_and_refused_for_new_line` | Integration |
+| Cross-cutting: ledger immutability | `test_no_code_path_creates_alters_or_reverses_a_journal_entry` | Integration |
+| Cross-cutting: hostile input (C-022) | `test_malformed_out_of_range_and_over_long_inputs_rejected_without_ledger_change` | Acceptance |
+
+---
+
+## Definition of Done
+
+### Implementation Checklist
+
+- [ ] All eight acceptance-criteria scenarios pass, each proved by its named automated test in § Acceptance Test Mapping.
+- [ ] **80% minimum test coverage achieved** for the functionality delivered by this story, reported by the repository's coverage tooling (C-007).
+- [ ] Unit tests written and passing for the confirm-time validation set, the per-plan analytic-distribution total, the attribution arithmetic, the reference-sequence assignment and the per-company scoping.
+- [ ] Integration tests written and passing for `account.account` resolution, analytic-account and analytic-plan resolution, the `res.company` fiscal-calendar and lock-date interaction, `res.currency` rounding, and multi-company isolation.
+- [ ] The four refusal paths are covered by tests: a dimensionless line, a `$0.00 USD` header total, an analytic distribution that does not total 100.00% within a plan, and a line period range outside the fiscal year or closed by the lock date.
+- [ ] The five edge cases are covered by tests, including the archived-analytic-account retention and the EUR-against-USD translation.
+- [ ] The assessment of what `account_budget_management` already satisfies is complete and recorded, and the residual gap under D-003 is agreed before any bespoke model is merged.
+- [ ] The story is demonstrated in the Odoo user interface, or through JSON-RPC, to the Finance Controller and the Product Owner along the seven steps of § Demonstration, and the walkthrough is recorded against this story (R-G).
+
+### Accounting Reconciliation Gate
+
+This gate is the accounting contract of the story. Each item is asserted as an amount, at 2 decimal places rounded half-up at the named currency's rounding increment of 0.01, in the currency named.
+
+- [ ] **Budget definition writes no journal entry.** Creating, confirming, editing, refusing and duplicating a budget each leave the journal-entry count of company `US-01` and the balances of Revenue 4000, Expense 6100 and Depreciation Expense 6500 identical before and after, and no code path in this story creates, alters or reverses an `account.move` or an `account.move.line`.
+- [ ] **Trial-balance totals are unchanged.** The Trial Balance of company `US-01` for 2025-01-01 to 2025-12-31, run before and after the whole walkthrough, reports the same figures on both runs, with total debits equal to total credits at a difference of `$0.00 USD`; the same assertion holds for company `NL-01` at a difference of `€0.00 EUR`.
+- [ ] **Debits equal credits on the postings this budget will be measured against.** The actual amounts this budget is later compared with are aggregated only from `account.move.line` records whose journal entry is in the posted state, and every such entry balances with total debits equal to total credits at a difference of `0.00` in the company currency; entries in draft or cancelled state contribute `0.00`. No entry is created by this story to satisfy that condition — it is a property of the ledger this story reads against, asserted where the comparison is built in [STORY-001-09-03](./STORY-001-09-03-report-budget-vs-actual.md).
+- [ ] **Every budget line resolves to a live general-ledger account.** The count of budget lines on the confirmed FY2025 budget of `US-01` whose account cannot be resolved in the group chart of accounts is 0, and each of Revenue 4000, Expense 6100 and Depreciation Expense 6500 resolves to a live account carrying the account type recorded for it — `income`, `expense` and `expense_depreciation`.
+- [ ] **Header total ties to its lines.** The header total of `$6,240,000.00 USD` equals the arithmetic sum of its three line amounts at a difference of `$0.00 USD`, and the attributed amounts of a distributed line — `$720,000.00 USD` and `$480,000.00 USD` on the Expense 6100 line — sum back to that line's planned amount of `$1,200,000.00 USD` at a difference of `$0.00 USD`.
+- [ ] **Tax amounts are out of this story's scope and stay out.** No budget line records a tax code, a base amount or a tax amount, and no tax control-account balance moves as a result of this story; where a tax expense account is budgeted, it is budgeted as an expense account and the tax determination that populates it remains the work of FEATURE-001-05, whose tax code, base amount and tax amount are recorded separately there.
+- [ ] **Report lines will tie to the sub-ledger.** The account and analytic-dimension structure fixed here is the same structure the actual column is aggregated by downstream, so a budget line and the journal items reported against it group the same way and a budget-versus-actual line ties to its sub-ledger detail at a difference of `$0.00 USD` when [STORY-001-09-03](./STORY-001-09-03-report-budget-vs-actual.md) is accepted.
+- [ ] **The Group Controller and the Chief Accountant have signed off** the account selection, the dimension policy and the confirmed FY2025 header total of `$6,240,000.00 USD` for company `US-01` against the group budget policy.
+
+### Compliance Checklist
+
+- [ ] No module delivered by this story declares a dependency on a module absent from the platform configuration DEC-002 confirms; the absence of `account_budget` from `addons/` is recorded as a platform fact and DEC-002 is confirmed before development starts (C-003).
+- [ ] AGPL-3.0 compatible licence declared in the manifest of every module delivered, and the LGPL-3 licence of `account` and `analytic` and the AGPL-3 licence of `account_budget_management` are not misstated by any derived work (C-001, C-002).
+- [ ] Budget and cost-centre dimensions are expressed on `account.analytic.account` and `account.analytic.plan`, with no parallel dimension model introduced (C-013).
+- [ ] Code follows Odoo and Odoo Community Association standards including PEP 8, and static analysis reports zero violations under the repository's `ruff.toml` configuration (C-005, C-006).
+- [ ] Access rights are defined per finance role and verified by a test matrix: the FP&A Analyst builds budgets, the Group Controller approves them, the Chief Accountant and the Financial Reporting Manager read them, the External Auditor holds read-only access, and no role reads a company outside its allowed companies (C-014, D-007).
+- [ ] Every value accepted is validated before use; a rejected value returns an error naming the field and the failed check and discloses no stack trace, query text, file-system path or credential; and the hostile-input tests are present and passing (C-019, C-020, C-022).
+- [ ] Budget names and analytic account names are context-encoded before being rendered into a view or a document, and are rendered as escaped text rather than raw markup (C-018).
+- [ ] Code reviewed and approved.
+
+### Documentation Checklist
+
+- [ ] Docstrings complete on every public model and method delivered.
+- [ ] The group budget policy — the permitted account types, the analytic plans that serve as dimensions, the per-plan 100.00% rule and the currency-translation rate basis — is recorded alongside the code that applies it.
+- [ ] The confirm-time validation set and its four messages are documented so a finance reader can predict a refusal before attempting it.
+- [ ] The D-003 assessment of the present `account_budget_management` add-on is recorded, stating what was credited and what was built.
+- [ ] User-facing documentation for recording, confirming and duplicating a budget updated.
+
+### Quality Checklist
+
+- [ ] No critical or high-severity defects open.
+- [ ] Recording and confirming a budget of 500 lines completes without breaching the feature's performance envelope in [FEATURE-001-09 §4.4](../FEATURE-001-09-budgeting-variance-analysis.md), and the per-company reference sequence holds under concurrent creation with no duplicate reference inside a company.
+- [ ] Security reviewed: record rules isolate budgets per company, the building role is separated from the approving role, and no credential is held in module source (C-014, C-021).
+- [ ] The budget reference, the state transition, its author and its timestamp are readable by the External Auditor without a data request.
+
+---
+
+## References
+
+### Accounting and Management-Reporting Standards
+
+| Standard | Reference | Application to This Story |
+|----------|-----------|---------------------------|
+| IAS 1 | Presentation of Financial Statements | A budget is supplementary management information presented beside a statutory statement; it does not alter a statutory caption or amount, which is why nothing here posts |
+| US GAAP | FASB Accounting Standards Codification, <https://asc.fasb.org/> | Source for the statutory presentation the budget column sits beside |
+| IFRS | IFRS Foundation list of standards, <https://www.ifrs.org/issued-standards/list-of-standards/> | Source for the statutory presentation under IFRS, including IAS 1 |
+| Management accounting practice | Institute of Management Accountants statements on management accounting | Convention that variance is an amount in the budget currency and a percentage to 2 decimal places, applied in [STORY-001-09-04](./STORY-001-09-04-analyze-variances.md) |
+| Internal control | COSO Internal Control — Integrated Framework, <https://www.coso.org/guidance-on-ic>; Sarbanes-Oxley Act section 404 | Budget existence, approval and change history as monitoring-activity evidence retained in-system |
+
+### OCA Modules (Reference)
+
+| Module | Repository | Reference Purpose |
+|--------|------------|-------------------|
+| `mis_builder` | <https://github.com/OCA/mis-builder> | Management and budget reporting patterns under the Odoo Community Association path of DEC-002 |
+| `account_budget_oca` | <https://github.com/OCA/account-budgeting> | Budgeting add-on patterns, assessed for overlap with the present `account_budget_management` add-on |
+| `account_financial_report` | <https://github.com/OCA/account-financial-reporting> | Statement grouping the budget column must align to (ORD-004) |
+
+### Source Code References
+
+| Path | Relevance |
+|------|-----------|
+| `addons/account/__manifest__.py` | "Invoicing", version 1.4, category `Accounting/Accounting`, licence LGPL-3 — present in this repository |
+| `addons/analytic/__manifest__.py` | "Analytic Accounting", version 1.2, licence LGPL-3 — present in this repository |
+| `addons/account/models/account_account.py` | `account.account` with the `account_type` selection a budget line is validated against |
+| `addons/account/models/company.py` | `res.company` fiscal-year fields and the `fiscalyear_lock_date` that Scenario 6 is refused against |
+| `addons/analytic/models/analytic_plan.py` | `account.analytic.plan` and its stored parent hierarchy |
+| `addons/analytic/models/analytic_account.py` | `account.analytic.account` with `plan_id`, `root_plan_id` and `company_id` |
+| `addons/analytic/models/analytic_mixin.py` | `analytic.mixin` with the `analytic_distribution` JSON field, its comma-separated key form and its GIN index |
+| `addons/account_budget_management/__manifest__.py` | "Budget Management", version 19.0.1.0.0, licence AGPL-3, `depends` of `account` and `analytic` — present in this repository |
+| `addons/account_budget_management/models/budget_budget.py` | Existing budget header with its `draft`, `confirmed`, `closed` and `cancelled` state selection and its `copied_from_id` link |
+| `addons/account_budget_management/models/budget_budget_line.py` | Existing budget line declaring `_inherit = ['analytic.mixin']` |
+| `addons/account_budget_management/data/budget_data.xml` | Existing budget reference sequence: code `budget.budget`, prefix `BUD/`, padding 5, no-gap implementation |
+| `odoo/release.py` | `version_info = (19, 0, 0, FINAL, 0, '')`, `MIN_PY_VERSION = (3, 10)`, `MAX_PY_VERSION = (3, 13)`, `MIN_PG_VERSION = 13` |
+| `ruff.toml` | Static-analysis configuration in force for the repository (C-006) |
+
+### Ticket References
+
+| Document | Link |
+|----------|------|
+| Parent Feature | [FEATURE-001-09: Budgeting & Variance Analysis](../FEATURE-001-09-budgeting-variance-analysis.md) |
+| Parent Epic | [EPIC-001: Enterprise Accounting in Odoo](../../EPIC-001-enterprise-accounting-odoo.md) |
+| Next story in this feature, blocked by this one | [STORY-001-09-02: Allocate Budget Amounts Across Periods](./STORY-001-09-02-allocate-budget-periods.md) |
+| Budget-versus-actual comparison | [STORY-001-09-03: Report Budget vs. Actual](./STORY-001-09-03-report-budget-vs-actual.md) |
+| Variance analysis and threshold alerts | [STORY-001-09-04: Analyse Variances and Configure Threshold Alerts](./STORY-001-09-04-analyze-variances.md) |
+| Accounts, fiscal calendar and lock dates consumed by this story | [FEATURE-001-01: Chart of Accounts & Fiscal Year](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) |
+| Epic success metric SM-014 | [EPIC-001 §4.1 Measurable Outcomes](../../EPIC-001-enterprise-accounting-odoo.md#41-measurable-outcomes) |
+| Epic constraint set C-001 to C-022 | [EPIC-001 §7 Constraints](../../EPIC-001-enterprise-accounting-odoo.md#7-constraints) |
+| Open decisions DEC-001 and DEC-002 | [EPIC-001 Appendix B: Open Decisions Register](../../EPIC-001-enterprise-accounting-odoo.md#appendix-b-open-decisions-register) |
+| Discovery note D-003, crediting the present Community-edition add-ons | [EPIC-001 §9.3](../../EPIC-001-enterprise-accounting-odoo.md#93-d-003-reuse-of-the-existing-community-edition-accounting-add-ons) |
+
+---
+
+## Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-08-13 | Enterprise Accounting Team | Initial story creation in the nested `EPIC-001/FEATURE-001-09/` layout. Migrated the domain content of the superseded flat-layout budget-definition story and re-authored every sentence to the Epic's §0.7 gates: the persona narrowed from a three-role WHO to the FP&A Analyst alone, the prior art's unset story-point value replaced with the Fibonacci value 5, the six prior scenarios rebuilt as eight Given/When/Then criteria with a single trigger each and the mandated coverage distribution, every monetary assertion given a currency, an amount and a rounding basis, company `US-01` named in every multi-company criterion, the deterministic codes Revenue 4000, Expense 6100 and Depreciation Expense 6500 adopted, the "writes no journal entry" boundary asserted explicitly, and the flat prohibition on the Enterprise `account_budget` module restated as a platform fact pointing at open decision DEC-002 |
+
+---
+
+## Notes
+
+**Platform facts, recorded without judgement.** `account_budget` is **absent from `addons/`** in this repository. It is an Odoo Enterprise module, and this Odoo 19.0 Community checkout does not ship it — that is a fact of the environment, **not** a prohibition on using it. The superseded flat-layout backlog forbade the module by name; that blanket restriction is retired here. Which source supplies the budgeting capability — an Odoo Enterprise subscription, or the Odoo Community Association route with `mis_builder` alongside bespoke work — is **DEC-002** in the Epic's open decisions register, owned by the CFO / Finance Director with the Group Controller, and it is confirmed before this story enters development.
+
+**`account_budget_management` is present as Community context.** Version 19.0.1.0.0 under AGPL-3, declaring `depends` of `account` and `analytic`, delivered by an earlier programme phase. It already holds budget records, budget lines, period allocation, a budget-versus-actual report and threshold alerts, and discovery note **D-003** in the Epic credits it with that capability. Its `budget.budget` model already carries the company, the currency, the date range, the `draft` / `confirmed` / `closed` / `cancelled` state selection and a `copied_from_id` link, and its `budget.budget.line` already inherits `analytic.mixin`. This story therefore begins with an assessment of what is already satisfied rather than with a new model: building what exists would split the budget record in two and give a single plan two answers.
+
+**State names reconciled with the feature lifecycle.** This story delivers the `draft` to `confirmed` transition — the FP&A Analyst completing the definition, which is what makes a budget eligible for allocation. The `Approved`, `Active`, `Revised` and `Closed` states of the budget lifecycle in [FEATURE-001-09 §8.1](../FEATURE-001-09-budgeting-variance-analysis.md) are the feature's target lifecycle and sit beyond this story: the Group Controller's approval is an approval of the **allocated** plan and therefore follows [STORY-001-09-02](./STORY-001-09-02-allocate-budget-periods.md), and only a budget past that gate contributes to threshold evaluation and variance reporting. Nothing in this story approves a plan or activates one.
+
+**Why the analytic distribution of Scenario 2 uses the combination key form.** A bare 60.00% to a Departments account and 40.00% to a Projects account would leave the Departments plan at 60.00% and the Projects plan at 40.00% — neither at the 100.00% per-plan total the feature requires. Expressing the assignment as `{"123,125": 60.0, "124,125": 40.0}`, the comma-separated key form that `analytic.mixin` supports, splits the line 60.00% / 40.00% across the two Departments accounts while attributing the whole line to the Projects account, so each plan totals 100.00% and the attributed amounts of `$720,000.00 USD` and `$480,000.00 USD` still sum back to `$1,200,000.00 USD`. The exact key values are illustrative identifiers; what the criterion fixes is the shape, the per-plan total and the arithmetic.
+
+**Posted actuals come from journal items, not analytic lines.** The superseded backlog aggregated budget actuals from `account.analytic.line`. In this backlog the primary source is **`account.move.line`**, aggregated by account, by analytic distribution and by date and restricted to entries in the posted state; analytic lines are a secondary read. This story writes neither, and names the distinction so that the structure fixed here matches the structure the comparison in [STORY-001-09-03](./STORY-001-09-03-report-budget-vs-actual.md) groups by.
+
+**Identifier retirement.** The flat-layout identifier that previously carried budget definition does not survive into this tree, in this file or in any dependency table. `STORY-001-09-01` is the only identifier for this work, and the sibling stories of this feature are `STORY-001-09-02`, `STORY-001-09-03` and `STORY-001-09-04`.
+
+**Governing rules.** No project-specific implementation rules were supplied for this work — the rules input returns "No user rules provided." The authoritative constraints for this file are therefore the Epic's own output requirements and validation gates, §0.7 R-A through R-K with the prior-art constraints of §0.7.2, and this story is held to them: deterministic naming and identifiers, the 4-to-8 criterion bound with its coverage distribution, zero vague qualifiers in the criteria, currency and rounding on every monetary assertion, the explicit "no journal entry" boundary in place of a debits-equal-credits assertion that a plan cannot make, INVEST compliance, demonstrability to the Finance Controller and the Product Owner, a single named finance persona, resolvable relative links, and deterministic account codes, company names and dates. The story template's own guidance is followed except where those gates supersede it: its 3-to-6 scenario range, its `../features/…` parent-link convention, its hardcoded Odoo 18.0 target and its stale rule citation are each superseded, as recorded above.

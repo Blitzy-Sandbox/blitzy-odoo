@@ -85,7 +85,7 @@ The tree self-documents its Epic → Feature → Story hierarchy through a fixed
 
 ### Understanding the Format
 
-All user stories follow this structure:
+All user stories follow this structure, abridged here to the sections a reader meets first — the full section set every story carries is listed after the block:
 
 ```markdown
 # STORY-001-NN-SS: [Action + Object + Outcome]
@@ -95,10 +95,13 @@ All user stories follow this structure:
 | Attribute | Value |
 |-----------|-------|
 | **Story ID** | `STORY-001-NN-SS` |
+| **Title** | [Action + Object + Outcome, repeating the H1 heading] |
 | **Parent Feature** | [FEATURE-001-NN: Feature Name](../FEATURE-001-NN-slug.md) |
 | **Parent Epic** | [EPIC-001](../../EPIC-001-enterprise-accounting-odoo.md) |
-| **Primary Persona** | [named finance role] |
+| **Status** | Draft |
+| **Priority** | [🔴 Critical, 🟠 High or 🟡 Medium] |
 | **Estimate** | [Fibonacci: 1, 2, 3, 5, 8 or 13] story points |
+| **Persona** | [named finance role] |
 
 ## User Story
 
@@ -138,6 +141,12 @@ All user stories follow this structure:
 ```
 
 Each story carries 4 to 8 Given/When/Then acceptance criteria, `@assignee` sub-tasks across the Functional Consultant, Developer, QA and Finance SME roles, 3 to 5 accounting edge cases, its Odoo dependencies, estimation guidance (Effort, Complexity and Uncertainty plus a Fibonacci point value), and a Definition of Done whose accounting-reconciliation gate asserts that debits equal credits, that tax amounts reconcile, and that report lines tie to the sub-ledger.
+
+The eight metadata rows above are the mandatory spine, present in that order in all 41 story files: **Story ID**, **Title**, **Parent Feature**, **Parent Epic**, **Status**, **Priority**, **Estimate**, **Persona**. The metadata row is named `Persona`, not **Primary Persona**; where a story involves more than one finance role it adds a separate `Secondary Personas` row rather than renaming this one. "Primary persona" remains the right words for the *concept* — each story has exactly one, and the epic's [§3.2 persona notes](EPIC-001-enterprise-accounting-odoo.md#32-persona-notes) publish the census of which stories each role is the primary persona of, while each feature's persona-to-story map sets a Primary Persona column beside a Secondary Personas column — but the field a story file carries is `Persona`. `Status` is `Draft` for every ticket in this backlog, since none has been accepted by the Finance Controller yet, and `Priority` is one of `🔴 Critical`, `🟠 High` or `🟡 Medium`, matching the priority the parent feature carries in the [Feature Index](#feature-index). A story may add further rows: `Feature Capability`, `Epic Success Metric`, `Secondary Personas`, `Story Position`, `Platform Target`, `Last Updated` and `Owner/Author`. All nine feature files carry a spine of their own — **Feature ID**, **Title**, **Parent Epic**, **Status**, **Priority**, **Story Count**, **Last Updated**, **Owner/Author** — which names no persona, because a feature aggregates the personas of its stories rather than owning one.
+
+The block above is abridged. All 41 story files carry the same fourteen top-level sections: **Metadata**, **User Story**, **INVEST Principles Compliance**, **Acceptance Criteria**, **Sub-Tasks**, **Edge Cases**, **Demonstration Path**, **Constraints**, **Technical Discovery Notes**, **Dependencies**, **Estimation**, **Test Requirements**, **Definition of Done** and **Revision History**, with **Notes** and **References** present where the story has either to record.
+
+Each level of the tree closes on its own Definition of Done, under the name that level uses: the **Epic-Level Definition of Done** is [§13 of the epic](EPIC-001-enterprise-accounting-odoo.md#13-epic-level-definition-of-done); the **Feature Definition of Done** is section 4.1 of each feature file, headed `Feature-Level Acceptance Criteria` and labelled in place, so a reader searching for either name finds the one gate; and the **Story Definition of Done** is the `Definition of Done` section of each story, whose accounting-reconciliation gate asserts that debits equal credits, that tax amounts reconcile and that report lines tie to the sub-ledger. The epic states this vocabulary once, in [§5.3](EPIC-001-enterprise-accounting-odoo.md#53-feature-and-story-decomposition-guidelines).
 
 ### Navigation Tips
 
@@ -203,8 +212,8 @@ Story files are grouped one directory per feature under `EPIC-001/`. The persona
 
 ### FEATURE-001-01 Chart of Accounts & Fiscal Year (5 Stories)
 
-| Story ID | Title | Primary Persona |
-|----------|-------|-----------------|
+| Story ID | Title | Persona |
+|----------|-------|---------|
 | [STORY-001-01-01](EPIC-001/FEATURE-001-01/STORY-001-01-01-configure-coa-hierarchy.md) | Configure Multi-Level Chart of Accounts Hierarchy | Chief Accountant |
 | [STORY-001-01-02](EPIC-001/FEATURE-001-01/STORY-001-01-02-map-accounts-ifrs-gaap-taxonomy.md) | Map Accounts to IFRS and GAAP Reporting Taxonomy | Financial Reporting Manager |
 | [STORY-001-01-03](EPIC-001/FEATURE-001-01/STORY-001-01-03-define-fiscal-year-periods.md) | Define Fiscal Year and Accounting Periods | Chief Accountant |
@@ -213,8 +222,8 @@ Story files are grouped one directory per feature under `EPIC-001/`. The persona
 
 ### FEATURE-001-02 Accounts Payable & Vendor Bills (5 Stories)
 
-| Story ID | Title | Primary Persona |
-|----------|-------|-----------------|
+| Story ID | Title | Persona |
+|----------|-------|---------|
 | [STORY-001-02-01](EPIC-001/FEATURE-001-02/STORY-001-02-01-capture-vendor-bills.md) | Capture and Digitize Vendor Bills | Accounts Payable Clerk |
 | [STORY-001-02-02](EPIC-001/FEATURE-001-02/STORY-001-02-02-three-way-match.md) | Perform Three-Way Match Across Purchase Order, Receipt and Bill | Accounts Payable Clerk |
 | [STORY-001-02-03](EPIC-001/FEATURE-001-02/STORY-001-02-03-post-vendor-bill-entries.md) | Post Vendor Bill Journal Entries | Chief Accountant |
@@ -223,8 +232,8 @@ Story files are grouped one directory per feature under `EPIC-001/`. The persona
 
 ### FEATURE-001-03 Accounts Receivable & Customer Invoices (5 Stories)
 
-| Story ID | Title | Primary Persona |
-|----------|-------|-----------------|
+| Story ID | Title | Persona |
+|----------|-------|---------|
 | [STORY-001-03-01](EPIC-001/FEATURE-001-03/STORY-001-03-01-generate-customer-invoices.md) | Generate and Post Customer Invoices | Accounts Receivable Specialist |
 | [STORY-001-03-02](EPIC-001/FEATURE-001-03/STORY-001-03-02-register-customer-payments.md) | Register Customer Payments and Allocations | Accounts Receivable Specialist |
 | [STORY-001-03-03](EPIC-001/FEATURE-001-03/STORY-001-03-03-manage-customer-credit-notes.md) | Manage Customer Credit Notes and Refunds | Accounts Receivable Specialist |
@@ -233,8 +242,8 @@ Story files are grouped one directory per feature under `EPIC-001/`. The persona
 
 ### FEATURE-001-04 Bank Reconciliation & Cash Management (4 Stories)
 
-| Story ID | Title | Primary Persona |
-|----------|-------|-----------------|
+| Story ID | Title | Persona |
+|----------|-------|---------|
 | [STORY-001-04-01](EPIC-001/FEATURE-001-04/STORY-001-04-01-import-bank-statements.md) | Import Bank Statements in CSV, OFX, QIF and CAMT.053 | Treasury Analyst |
 | [STORY-001-04-02](EPIC-001/FEATURE-001-04/STORY-001-04-02-auto-match-statement-lines.md) | Auto-Match Statement Lines with Reconciliation Rules | Treasury Analyst |
 | [STORY-001-04-03](EPIC-001/FEATURE-001-04/STORY-001-04-03-manual-reconciliation.md) | Manually Reconcile Unmatched and Partial Lines | Chief Accountant |
@@ -242,8 +251,8 @@ Story files are grouped one directory per feature under `EPIC-001/`. The persona
 
 ### FEATURE-001-05 Tax Configuration & Compliance (4 Stories)
 
-| Story ID | Title | Primary Persona |
-|----------|-------|-----------------|
+| Story ID | Title | Persona |
+|----------|-------|---------|
 | [STORY-001-05-01](EPIC-001/FEATURE-001-05/STORY-001-05-01-configure-tax-codes-fiscal-positions.md) | Configure Tax Codes and Fiscal Positions | Tax Accountant |
 | [STORY-001-05-02](EPIC-001/FEATURE-001-05/STORY-001-05-02-compute-transaction-tax.md) | Compute Tax on Transactions with Base and Tax Split | Tax Accountant |
 | [STORY-001-05-03](EPIC-001/FEATURE-001-05/STORY-001-05-03-generate-vat-return.md) | Generate VAT Return Report | Tax Accountant |
@@ -251,8 +260,8 @@ Story files are grouped one directory per feature under `EPIC-001/`. The persona
 
 ### FEATURE-001-06 Multi-Company & Intercompany Consolidation (5 Stories)
 
-| Story ID | Title | Primary Persona |
-|----------|-------|-----------------|
+| Story ID | Title | Persona |
+|----------|-------|---------|
 | [STORY-001-06-01](EPIC-001/FEATURE-001-06/STORY-001-06-01-configure-company-hierarchy.md) | Configure Company Hierarchy and Currencies | Group Controller |
 | [STORY-001-06-02](EPIC-001/FEATURE-001-06/STORY-001-06-02-post-intercompany-transactions.md) | Post Intercompany Transactions | Consolidation Accountant |
 | [STORY-001-06-03](EPIC-001/FEATURE-001-06/STORY-001-06-03-define-consolidation-rules.md) | Define Consolidation Rules | Group Controller |
@@ -261,8 +270,8 @@ Story files are grouped one directory per feature under `EPIC-001/`. The persona
 
 ### FEATURE-001-07 Financial Reporting & Period Close (5 Stories)
 
-| Story ID | Title | Primary Persona |
-|----------|-------|-----------------|
+| Story ID | Title | Persona |
+|----------|-------|---------|
 | [STORY-001-07-01](EPIC-001/FEATURE-001-07/STORY-001-07-01-generate-balance-sheet.md) | Generate Balance Sheet | Financial Reporting Manager |
 | [STORY-001-07-02](EPIC-001/FEATURE-001-07/STORY-001-07-02-generate-profit-loss.md) | Generate Profit & Loss Statement | Financial Reporting Manager |
 | [STORY-001-07-03](EPIC-001/FEATURE-001-07/STORY-001-07-03-generate-cash-flow-statement.md) | Generate Cash Flow Statement | Financial Reporting Manager |
@@ -271,8 +280,8 @@ Story files are grouped one directory per feature under `EPIC-001/`. The persona
 
 ### FEATURE-001-08 Fixed Assets & Depreciation (4 Stories)
 
-| Story ID | Title | Primary Persona |
-|----------|-------|-----------------|
+| Story ID | Title | Persona |
+|----------|-------|---------|
 | [STORY-001-08-01](EPIC-001/FEATURE-001-08/STORY-001-08-01-register-fixed-assets.md) | Register Fixed Assets with Acquisition Detail | Fixed-Asset Accountant |
 | [STORY-001-08-02](EPIC-001/FEATURE-001-08/STORY-001-08-02-configure-depreciation-methods.md) | Configure Depreciation Methods and Projected Board | Fixed-Asset Accountant |
 | [STORY-001-08-03](EPIC-001/FEATURE-001-08/STORY-001-08-03-post-depreciation-entries.md) | Post Automated Depreciation Entries | Chief Accountant |
@@ -280,8 +289,8 @@ Story files are grouped one directory per feature under `EPIC-001/`. The persona
 
 ### FEATURE-001-09 Budgeting & Variance Analysis (4 Stories)
 
-| Story ID | Title | Primary Persona |
-|----------|-------|-----------------|
+| Story ID | Title | Persona |
+|----------|-------|---------|
 | [STORY-001-09-01](EPIC-001/FEATURE-001-09/STORY-001-09-01-define-budgets.md) | Define Budgets by Account and Analytic Dimension | FP&A Analyst |
 | [STORY-001-09-02](EPIC-001/FEATURE-001-09/STORY-001-09-02-allocate-budget-periods.md) | Allocate Budget Amounts Across Periods | FP&A Analyst |
 | [STORY-001-09-03](EPIC-001/FEATURE-001-09/STORY-001-09-03-report-budget-vs-actual.md) | Report Budget vs. Actual | FP&A Analyst |
@@ -308,7 +317,7 @@ What the three retained templates supply, and what this backlog adds on top of t
 | **INVEST Principles**: Independent, Negotiable, Valuable, Estimable, Small, Testable | Yes — the story template carries an INVEST compliance section | Each story states its compliance per principle rather than asserting the set |
 | **BDD Format**: Given/When/Then acceptance criteria | Yes — the story template's scenario skeleton | The coverage distribution and the accounting-determinism rules below |
 | **Business Value**: explicit "So that" clause | Yes — the "As a / I want / So that" skeleton | The measurable finance outcome the clause has to state |
-| **Persona Focus**: a named finance role as the story's WHO | **No.** `story-template.md` offers a generic role placeholder and carries no persona field and no enforcement | This backlog supersedes that gap: every story carries a **Primary Persona** metadata row drawn from the twelve named roles in [Target Users](#target-users), and the epic's [§3.2 persona notes](EPIC-001-enterprise-accounting-odoo.md#32-persona-notes) publish the primary-persona census that proves it |
+| **Persona Focus**: a named finance role as the story's WHO | **No.** `story-template.md` offers a generic role placeholder and carries no persona field and no enforcement | This backlog supersedes that gap: every story carries a **Persona** metadata row drawn from the twelve named roles in [Target Users](#target-users), and the epic's [§3.2 persona notes](EPIC-001-enterprise-accounting-odoo.md#32-persona-notes) publish the primary-persona census that proves it |
 
 The three template files are retained unmodified and remain the authoritative source for section ordering. Two pieces of counting guidance inside them are **superseded for this backlog** by the bounds the epic sets in [§5.3 of EPIC-001](EPIC-001-enterprise-accounting-odoo.md#53-feature-and-story-decomposition-guidelines), and the templates are not edited to reflect that:
 
@@ -483,9 +492,9 @@ Before submitting documentation changes:
 - [ ] Every journal-entry criterion asserts that total debits equal total credits
 - [ ] Tax criteria split tax code, base amount and tax amount; report criteria name the report, a date-range parameter and one expected line value; multi-company criteria name the affected company
 - [ ] Estimate is a Fibonacci value (1, 2, 3, 5, 8, 13) with Effort, Complexity and Uncertainty recorded
-- [ ] Story is demonstrable in the Odoo user interface, or over the JSON web-service surface **C-007** governs, to the Finance Controller and Product Owner
+- [ ] Story is demonstrable in the Odoo user interface, or over the JSON web-service surface the epic's **C-023** governs — summarized in this index as [C-007 External Interface and Access Contract](#constraints-summary) — to the Finance Controller and Product Owner
 - [ ] No UI/implementation details in criteria
-- [ ] Constraints section includes all C-001 through C-010 requirements, and a constraint that does not apply to the story's surfaces is restated with the reason and the evidence rather than omitted
+- [ ] Constraints section restates, in the epic's own identifiers from its **C-001 to C-029** register rather than this index's summary IDs, every constraint that bears on the story's surfaces — licence, standards, platform target, models and access rights, the ingestion and output contracts, and the interface, artifact, resilience and ceiling contracts — and where a constraint governs an area the story touches but does not apply to it, records that with the reason and the evidence rather than omitting it
 - [ ] File name follows the `EPIC-001` / `FEATURE-001-NN` / `STORY-001-NN-SS` convention, and links to related stories and features resolve
 
 ---
@@ -524,5 +533,5 @@ Documentation URLs cite the 19.0 series because that is the repository baseline.
 ---
 
 - **Document Status:** Draft
-- **Last Updated:** 2026-08-15
+- **Last Updated:** 2026-08-16
 - **Maintained By:** Blitzy Platform — Finance Transformation Programme

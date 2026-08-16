@@ -41,7 +41,7 @@ This documentation suite defines the requirements for turning Odoo's invoicing l
 
 ### Documentation Structure
 
-```
+```text
 tickets/
 ├── README.md                                                # This file - navigation index
 ├── EPIC-001-enterprise-accounting-odoo.md                   # Master epic document
@@ -119,7 +119,7 @@ All user stories follow this structure:
 
 - [ ] @functional-consultant [configuration task]
 - [ ] @developer [implementation task]
-- [ ] @qa [test task]
+- [ ] @qa-engineer [test task]
 - [ ] @finance-sme [reconciliation sign-off]
 
 ## Edge Cases
@@ -165,7 +165,7 @@ The epic document serves as the authoritative source for:
 - **Platform version and edition lock-in** — the Odoo version target (DEC-001) and the Enterprise-versus-OCA edition source (DEC-002) are recorded as epic dependencies, not resolved here
 - Country localization, data migration, banking and tax-authority integration, and master-data dependencies
 - Codebase discovery notes for implementing agents
-- **Open decisions register** — DEC-001 through DEC-011, each flagged for stakeholder confirmation with a named owner and a gate
+- **Open decisions register** — DEC-001 through DEC-011, each with a named owner and a gate. Ten are **open** and awaiting stakeholder confirmation; **DEC-003** (disposition of the superseded flat-layout backlog) is **decided and closed** — remove — because the repository already reflects it, and the register keeps the row with its chosen option rather than dropping it
 - External references (OCA repositories, official Odoo documentation, accounting standards, data formats)
 
 ---
@@ -301,12 +301,14 @@ Reusable templates for creating consistent documentation:
 
 ### Template Standards
 
-All templates enforce:
+What the three retained templates supply, and what this backlog adds on top of them:
 
-- **INVEST Principles**: Independent, Negotiable, Valuable, Estimable, Small, Testable
-- **BDD Format**: Given/When/Then acceptance criteria
-- **Persona Focus**: a named finance role identified as the story's WHO
-- **Business Value**: Explicit "So that" clause
+| Requirement | Supplied by the retained template | Added by this backlog |
+|-------------|-----------------------------------|-----------------------|
+| **INVEST Principles**: Independent, Negotiable, Valuable, Estimable, Small, Testable | Yes — the story template carries an INVEST compliance section | Each story states its compliance per principle rather than asserting the set |
+| **BDD Format**: Given/When/Then acceptance criteria | Yes — the story template's scenario skeleton | The coverage distribution and the accounting-determinism rules below |
+| **Business Value**: explicit "So that" clause | Yes — the "As a / I want / So that" skeleton | The measurable finance outcome the clause has to state |
+| **Persona Focus**: a named finance role as the story's WHO | **No.** `story-template.md` offers a generic role placeholder and carries no persona field and no enforcement | This backlog supersedes that gap: every story carries a **Primary Persona** metadata row drawn from the twelve named roles in [Target Users](#target-users), and the epic's [§3.2 persona notes](EPIC-001-enterprise-accounting-odoo.md#32-persona-notes) publish the primary-persona census that proves it |
 
 The three template files are retained unmodified and remain the authoritative source for section ordering. Two pieces of counting guidance inside them are **superseded for this backlog** by the bounds the epic sets in [§5.3 of EPIC-001](EPIC-001-enterprise-accounting-odoo.md#53-feature-and-story-decomposition-guidelines), and the templates are not edited to reflect that:
 
@@ -421,7 +423,7 @@ Every persona below is a named finance role. The WHO of each user story is drawn
 
 ### Story Distribution
 
-```
+```text
 FEATURE-001-01  Chart of Accounts & Fiscal Year             ██████████████████████████████░░░  5 (12%)
 FEATURE-001-02  Accounts Payable & Vendor Bills             ██████████████████████████████░░░  5 (12%)
 FEATURE-001-03  Accounts Receivable & Customer Invoices     ██████████████████████████████░░░  5 (12%)
@@ -438,9 +440,12 @@ FEATURE-001-09  Budgeting & Variance Analysis               ██████�
 
 | Priority | Features | Stories |
 |----------|:--------:|:-------:|
-| 🔴 Critical | 6 | 28 |
-| 🟠 High | 3 | 13 |
+| 🔴 Critical | 6 | 21 |
+| 🟠 High | 3 | 18 |
+| 🟡 Medium | 0 | 2 |
 | **Total** | **9** | **41** |
+
+Story priority is set per story and does not simply inherit its feature's priority: a Critical feature can carry a High story where that story consumes rather than creates the posted record, which is why the story column reads 21 / 18 / 2 while the feature column reads 6 / 3 / 0. The two Medium stories are [STORY-001-08-04](EPIC-001/FEATURE-001-08/STORY-001-08-04-dispose-assets.md) (asset disposal) and [STORY-001-09-04](EPIC-001/FEATURE-001-09/STORY-001-09-04-analyze-variances.md) (variance analysis and threshold alerts); each is a metadata value in its own file, and this table is the count of those values.
 
 ---
 
@@ -487,14 +492,14 @@ Before submitting documentation changes:
 
 | Resource | URL |
 |----------|-----|
-| Odoo Developer Documentation | https://www.odoo.com/documentation/19.0/developer.html |
-| Odoo Accounting User Documentation | https://www.odoo.com/documentation/19.0/applications/finance/accounting.html |
-| Odoo Editions Comparison (Community versus Enterprise) | https://www.odoo.com/page/editions |
-| OCA Development Guidelines | https://odoo-community.org/page/development-guidelines |
+| Odoo Developer Documentation | <https://www.odoo.com/documentation/19.0/developer.html> |
+| Odoo Accounting User Documentation | <https://www.odoo.com/documentation/19.0/applications/finance/accounting.html> |
+| Odoo Editions Comparison (Community versus Enterprise) | <https://www.odoo.com/page/editions> |
+| OCA Contribution and Development Guidelines | <https://github.com/OCA/odoo-community.org/blob/master/website/Contribution/CONTRIBUTING.rst> — the maintained GitHub-hosted source, cited here and in [§11.2 of EPIC-001](EPIC-001-enterprise-accounting-odoo.md#112-official-odoo-documentation); the former `odoo-community.org/page/development-guidelines` page is no longer served and is not cited anywhere in this tree |
 | Odoo Contributing Guidelines | [CONTRIBUTING.md](../CONTRIBUTING.md) |
-| OCA Account Financial Reporting | https://github.com/OCA/account-financial-reporting |
-| OCA Account Reconcile | https://github.com/OCA/account-reconcile |
-| OCA MIS Builder | https://github.com/OCA/mis-builder |
+| OCA Account Financial Reporting | <https://github.com/OCA/account-financial-reporting> |
+| OCA Account Reconcile | <https://github.com/OCA/account-reconcile> |
+| OCA MIS Builder | <https://github.com/OCA/mis-builder> |
 
 Documentation URLs cite the 19.0 series because that is the repository baseline. If DEC-001 confirms another platform version (see **C-005** in [Constraints Summary](#constraints-summary)), every URL and API reference is restated for that version.
 
@@ -514,6 +519,6 @@ Documentation URLs cite the 19.0 series because that is the repository baseline.
 
 ---
 
-**Document Status:** Draft  
-**Last Updated:** 2026-08-13  
-**Maintained By:** Blitzy Platform — Finance Transformation Programme
+- **Document Status:** Draft
+- **Last Updated:** 2026-08-15
+- **Maintained By:** Blitzy Platform — Finance Transformation Programme

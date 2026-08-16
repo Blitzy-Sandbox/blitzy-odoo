@@ -10,10 +10,10 @@
 | **Title** | Configure Multi-Level Chart of Accounts Hierarchy |
 | **Parent Feature** | [FEATURE-001-01: Chart of Accounts & Fiscal Year](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) |
 | **Parent Epic** | [EPIC-001: Enterprise Accounting in Odoo](../../EPIC-001-enterprise-accounting-odoo.md) |
-| **Persona** | Chief Accountant |
 | **Status** | Draft |
 | **Priority** | 🔴 Critical |
 | **Estimate** | 5 story points (Fibonacci) |
+| **Persona** | Chief Accountant |
 | **Feature Capability** | CAP-001 — define a multi-level Chart of Accounts with account types, codes and hierarchy across all legal entities |
 | **Epic Success Metric** | SM-006 — Trial Balance integrity, with the difference column asserted at 0.00 in the company currency |
 | **Owner/Author** | Enterprise Accounting Team |
@@ -47,9 +47,9 @@ This story is the root of the `FEATURE-001-01/` folder and the first ticket of E
 
 ## Acceptance Criteria
 
-Six criteria are authored, inside the 4-to-8 bound the Epic sets in [§5.3](../../EPIC-001-enterprise-accounting-odoo.md#53-feature-and-story-decomposition-guidelines), and they carry the mandated coverage distribution: Scenarios 1 and 2 are valid-input cases (configuration, then a report that proves the roll-up), Scenario 3 is the invalid and incomplete-input case, Scenario 4 is the error-handling case, and Scenarios 5 and 6 are accounting edge cases (multi-company sharing and a foreign-currency account).
+Seven criteria are authored, inside the 4-to-8 bound the Epic sets in [§5.3](../../EPIC-001-enterprise-accounting-odoo.md#53-feature-and-story-decomposition-guidelines), and they carry the mandated coverage distribution: Scenarios 1 and 2 are valid-input cases (configuration, then a report that proves the roll-up), Scenario 3 is the invalid-input case (a code already in use), Scenario 4 is the incomplete-input case (a required field left empty), Scenario 5 is the error-handling case (a guarded deletion), and Scenarios 6 and 7 are accounting edge cases (multi-company sharing and a foreign-currency account). Each criterion states one trigger in its **When**, so the refusal that a criterion asserts is the refusal that trigger produced.
 
-Scenarios 1 to 5 are asserted against the ten-account baseline. Scenario 6 adds account 1015 Bank EUR to that baseline as the group's foreign-currency bank account, so the eleventh-account refusal in Scenario 3 and the eleventh account created in Scenario 6 are two separate states of the chart rather than a contradiction.
+Scenarios 1 to 6 are asserted against the ten-account baseline. Scenario 7 adds account 1015 Bank EUR to that baseline as the group's foreign-currency bank account, so the refused eleventh accounts of Scenarios 3 and 4 and the eleventh account created in Scenario 7 are separate states of the chart rather than a contradiction: Scenario 4 refuses code `1015` because it carries no `account_type`, and Scenario 7 creates code `1015` with `account_type` `asset_cash` and Account Currency `EUR`.
 
 ### Scenario 1: Ten baseline accounts created under the account-group hierarchy
 
@@ -63,25 +63,31 @@ Scenarios 1 to 5 are asserted against the ten-account baseline. Scenario 6 adds 
 - **When** the Chief Accountant runs the Trial Balance for Acme Group NV over the date range 01 January 2026 to 31 January 2026
 - **Then** the Trial Balance reports account 1010 Bank at a debit of USD 10,000.00 and account 3000 Share Capital at a credit of USD 10,000.00, group `1 Assets` at a debit subtotal of USD 10,000.00 and group `3 Equity` at a credit subtotal of USD 10,000.00, and total debits of USD 10,000.00 equal to total credits of USD 10,000.00 — a difference of USD 0.00 — with every amount rounded to 2 decimal places using half-up rounding
 
-### Scenario 3: Duplicate account code and missing account type both refused
+### Scenario 3: Duplicate account code refused
 
 - **Given** the ten baseline accounts exist in Acme Group NV and the Chief Accountant is creating an eleventh account in that company
 - **When** the Chief Accountant saves the eleventh account with code `1010`, the code account 1010 Bank already occupies in Acme Group NV
-- **Then** the save is refused with a validation message that names the duplicate code `1010` and the company Acme Group NV, no eleventh `account.account` record is created, and the Chart of Accounts of Acme Group NV still lists exactly ten accounts; by the same required-field rule, an account saved with an unused code but with `account_type` left empty is also refused and no record is created, so the account count of Acme Group NV stays at ten in both cases
+- **Then** the save is refused with a validation message that names the duplicate code `1010` and the company Acme Group NV, no eleventh `account.account` record is created, and the Chart of Accounts of Acme Group NV still lists exactly ten accounts
 
-### Scenario 4: Deletion of an account carrying journal items is blocked
+### Scenario 4: Account saved with no account type refused
+
+- **Given** the ten baseline accounts exist in Acme Group NV, the Chief Accountant is creating an eleventh account in that company, and the code `1015` is unused by any account of Acme Group NV
+- **When** the Chief Accountant saves that eleventh account with code `1015` and with `account_type` left empty
+- **Then** the save is refused with a validation message that names the required `account_type` field, no eleventh `account.account` record is created, and the Chart of Accounts of Acme Group NV still lists exactly ten accounts — so a code that is free is not on its own enough to create an account, because an account with no type reaches no statement section and no group subtotal
+
+### Scenario 5: Deletion of an account carrying journal items is blocked
 
 - **Given** account 1200 Accounts Receivable in Acme Group NV carries posted journal items whose debit total is USD 48,750.00, rounded to 2 decimal places using half-up rounding
 - **When** the Chief Accountant requests deletion of account 1200 Accounts Receivable
 - **Then** the deletion is refused with a message stating that the account contains journal items, account 1200 remains in the Chart of Accounts of Acme Group NV with its debit balance held at USD 48,750.00, no journal item is removed, the Trial Balance for 01 January 2026 to 31 January 2026 reports the same total debits and total credits as it did before the attempt and they stay equal at a difference of USD 0.00, every amount rounded to 2 decimal places using half-up rounding, and the message directs the Chief Accountant to the account deactivation flag as the retirement path — the flag labelled Deprecated in the Odoo 17 series named by DEC-001, and the `active` archive flag in the Odoo 19.0 baseline present in this repository
 
-### Scenario 5: Payable account shared with the subsidiary company
+### Scenario 6: Payable account shared with the subsidiary company
 
 - **Given** Acme Group NV (parent, functional currency `USD`) and Acme Industries Inc. (subsidiary) both exist, and account 2000 Accounts Payable carries a credit balance of USD 312,480.00 in Acme Group NV, rounded to 2 decimal places using half-up rounding
 - **When** the Chief Accountant adds Acme Industries Inc. to the `company_ids` of account 2000 Accounts Payable
 - **Then** account 2000 Accounts Payable becomes selectable on journal items in Acme Industries Inc. and carries a code in that company, the balance of account 2000 in **Acme Industries Inc.** is USD 0.00 against 0 journal items, the balance of account 2000 in **Acme Group NV** is held at USD 312,480.00 credit, and the Trial Balance for 01 January 2026 to 31 January 2026 run separately for each company reports total debits equal to total credits at a difference of USD 0.00 in **Acme Group NV** and a difference of USD 0.00 in **Acme Industries Inc.**, every amount rounded to 2 decimal places using half-up rounding
 
-### Scenario 6: Foreign-currency bank account reported at the closing rate
+### Scenario 7: Foreign-currency bank account reported at the closing rate
 
 - **Given** account 1015 Bank EUR exists in Acme Group NV alongside the ten baseline accounts, carrying `account_type` `asset_cash`, Account Currency `EUR` and a position under group `10 Bank and Cash` (1000–1099), while the functional currency of Acme Group NV is `USD` and the rate recorded for 31 January 2026 is 1 EUR = 1.1000 USD
 - **When** an entry dated 31 January 2026 is posted in the Miscellaneous journal (journal type `general`) debiting account 1015 Bank EUR by EUR 1,000.00 against a credit of EUR 1,000.00 to account 4000 Revenue, each amount rounded to 2 decimal places using half-up rounding
@@ -221,7 +227,7 @@ The decision to integrate, extend or replace any add-on above belongs to DEC-002
 | Group chart-of-accounts policy | Governance artifact | Owned by the Group Controller and approved before the chart is released; it is the authority the ten codes and the prefix ranges are drawn from |
 | Country localization pack per operating country | Odoo module (`l10n_*`) | 209 packs are present here; the pack per country supplies the statutory chart this policy reconciles against, and each divergence is recorded as a per-company account code mapping (D-006) |
 | Legal-entity register | Master data | Acme Group NV and Acme Industries Inc. exist as company records with their functional currency set before the chart is applied to them |
-| Exchange-rate source | Master data / integration | Supplies the 1 EUR = 1.1000 USD rate that Scenario 6 translates at, and the decimal precision of 2 places per currency that every amount is rounded to |
+| Exchange-rate source | Master data / integration | Supplies the 1 EUR = 1.1000 USD rate that Scenario 7 translates at, and the decimal precision of 2 places per currency that every amount is rounded to |
 | Platform version and edition confirmation | Open decision (DEC-001, DEC-002) | Recorded in the Epic's [Open Decisions Register](../../EPIC-001-enterprise-accounting-odoo.md#appendix-b-open-decisions-register); DEC-001 fixes the field and view names this story is implemented against, and DEC-002 fixes which engine renders the Trial Balance it is verified through |
 | IAS 1 and ASC 210 | Accounting standard | Fix the presentation classification each `account_type` value has to support |
 
@@ -233,7 +239,7 @@ The decision to integrate, extend or replace any add-on above belongs to DEC-002
 | `account.group` | Define | The three-level hierarchy whose `code_prefix_start`-to-`code_prefix_end` ranges roll every code up to a statement section |
 | `account.journal` | Define | The five journal types per company — `sale`, `purchase`, `bank`, `cash` and `general` — that entries against these accounts are routed through |
 | `res.company` | Read | Acme Group NV and Acme Industries Inc., their parent-and-subsidiary relationship and their functional currency |
-| `account.move.line` | Read | The journal items whose debit and credit totals the Trial Balance assertions in Scenarios 2, 4, 5 and 6 are read from, and the records whose presence blocks the deletion in Scenario 4 |
+| `account.move.line` | Read | The journal items whose debit and credit totals the Trial Balance assertions in Scenarios 2, 5, 6 and 7 are read from, and the records whose presence blocks the deletion in Scenario 5 |
 | `account.move` | Read | The verification entries posted during acceptance, each proved balanced before its totals are read back |
 | `account.code.mapping` | Write | The per-company statutory code divergence recorded against one account rather than duplicated as a second account |
 | `res.currency` | Read | The `USD` and `EUR` definitions and the 2-decimal precision every monetary assertion is rounded to |
@@ -245,7 +251,7 @@ The decision to integrate, extend or replace any add-on above belongs to DEC-002
 
 | Dimension | Rating | Basis |
 |-----------|--------|-------|
-| **Effort** | Medium | Nine account groups, ten accounts with one `account_type` each, two Allow Reconciliation flags and five journal types, made repeatable per company and covered by six acceptance tests plus four negative tests |
+| **Effort** | Medium | Nine account groups, ten accounts with one `account_type` each, two Allow Reconciliation flags and five journal types, made repeatable per company and covered by seven acceptance tests plus four negative tests |
 | **Complexity** | Medium | The prefix ranges have to partition the code space so that every code resolves to exactly one most-specific group, and the per-company code mapping and multi-company sharing paths both have to hold; each mechanism is supplied by existing Odoo models rather than invented here |
 | **Uncertainty** | Low | Every field, constraint and message this story relies on is present in the repository and was read during discovery; the residual unknown is whether the group subtotal is rendered from `account.group` or from the internal group, which is a reporting question that does not change the structure delivered |
 | **Story Points** | **5** (Fibonacci: 1, 2, 3, 5, 8, 13) | |
@@ -264,7 +270,7 @@ Five points reflects breadth against low technical risk. The configuration itsel
 | Unit Test Coverage | 80% or higher | Group-to-code resolution, `account_type` assignment, reconciliation flag defaults, per-company code behaviour |
 | Integration Test Coverage | 80% or higher | Posting into the baseline accounts, Trial Balance grouping and totals, multi-company sharing |
 | Accounting assertion style | Numeric | Every monetary and balance assertion is compared as an amount at 2 decimal places with half-up rounding, never inspected by eye (C-009) |
-| Traceability | One test per criterion | Each of the six scenarios maps to exactly one named acceptance test (C-008) |
+| Traceability | One test per criterion | Each of the seven scenarios maps to exactly one named acceptance test (C-008) |
 
 ### Unit Test Scenarios
 
@@ -272,10 +278,11 @@ Five points reflects breadth against low technical risk. The configuration itsel
 |---------------------|-----------------|----------------|
 | Scenario 1 | Account and group creation from the policy | Ten accounts exist; each `account_type` equals its baseline value; each account's group is the most specific one whose prefix range contains its code; groups `10`, `12`, `15` resolve to `1 Assets` and `20`, `22` to `2 Liabilities`; the untyped count is 0; Allow Reconciliation is enabled on 1200 and 2000 |
 | Scenario 2 | Group roll-up computation | Group `1 Assets` debit subtotal equals USD 10,000.00 and group `3 Equity` credit subtotal equals USD 10,000.00 at 2 decimal places with half-up rounding; the report's total debits equal its total credits with a difference of USD 0.00 |
-| Scenario 3 | Uniqueness and required-field validation | Saving a second account with code `1010` in Acme Group NV raises a validation error naming the code; saving with an empty `account_type` raises a required-field error; the account count stays at ten in both cases |
-| Scenario 4 | Deletion guard | Deleting account 1200 while `account.move.line` records reference it raises the journal-items error; the record still exists; its debit balance still equals USD 48,750.00 at 2 decimal places with half-up rounding |
-| Scenario 5 | Multi-company sharing | Adding Acme Industries Inc. to `company_ids` of account 2000 leaves the Acme Group NV balance at USD 312,480.00 credit and yields USD 0.00 with 0 journal items in Acme Industries Inc., at 2 decimal places with half-up rounding |
-| Scenario 6 | Foreign-currency translation | Account 1015 carries Account Currency `EUR`; the journal item retains EUR 1,000.00; the reported figure equals USD 1,100.00 at the 1.1000 rate, rounded to 2 decimal places with half-up rounding, and the report's total debits equal its total credits |
+| Scenario 3 | Code uniqueness validation | Saving a second account with code `1010` in Acme Group NV raises a validation error naming the code and the company; the account count stays at ten |
+| Scenario 4 | Required-field validation | Saving an account with the unused code `1015` and an empty `account_type` raises a required-field error naming that field; the account count stays at ten |
+| Scenario 5 | Deletion guard | Deleting account 1200 while `account.move.line` records reference it raises the journal-items error; the record still exists; its debit balance still equals USD 48,750.00 at 2 decimal places with half-up rounding |
+| Scenario 6 | Multi-company sharing | Adding Acme Industries Inc. to `company_ids` of account 2000 leaves the Acme Group NV balance at USD 312,480.00 credit and yields USD 0.00 with 0 journal items in Acme Industries Inc., at 2 decimal places with half-up rounding |
+| Scenario 7 | Foreign-currency translation | Account 1015 carries Account Currency `EUR`; the journal item retains EUR 1,000.00; the reported figure equals USD 1,100.00 at the 1.1000 rate, rounded to 2 decimal places with half-up rounding, and the report's total debits equal its total credits |
 
 ### Integration Test Considerations
 
@@ -292,10 +299,11 @@ Five points reflects breadth against low technical risk. The configuration itsel
 |--------------|------------------|-----------|
 | Scenario 1: Ten baseline accounts created under the account-group hierarchy | `test_baseline_accounts_created_under_group_hierarchy` | Acceptance |
 | Scenario 2: Group roll-up proved on the Trial Balance | `test_group_rollup_subtotals_on_trial_balance` | Acceptance |
-| Scenario 3: Duplicate account code and missing account type both refused | `test_duplicate_code_and_missing_account_type_refused` | Acceptance |
-| Scenario 4: Deletion of an account carrying journal items is blocked | `test_delete_account_with_journal_items_blocked` | Acceptance |
-| Scenario 5: Payable account shared with the subsidiary company | `test_payable_account_shared_with_subsidiary_company` | Acceptance |
-| Scenario 6: Foreign-currency bank account reported at the closing rate | `test_foreign_currency_account_translated_at_closing_rate` | Acceptance |
+| Scenario 3: Duplicate account code refused | `test_duplicate_account_code_refused` | Acceptance |
+| Scenario 4: Account saved with no account type refused | `test_account_without_account_type_refused` | Acceptance |
+| Scenario 5: Deletion of an account carrying journal items is blocked | `test_delete_account_with_journal_items_blocked` | Acceptance |
+| Scenario 6: Payable account shared with the subsidiary company | `test_payable_account_shared_with_subsidiary_company` | Acceptance |
+| Scenario 7: Foreign-currency bank account reported at the closing rate | `test_foreign_currency_account_translated_at_closing_rate` | Acceptance |
 
 ---
 
@@ -303,7 +311,7 @@ Five points reflects breadth against low technical risk. The configuration itsel
 
 ### Implementation Checklist
 
-- [ ] All six acceptance-criteria scenarios pass, each proved by its named automated test in § Acceptance Test Mapping.
+- [ ] All seven acceptance-criteria scenarios pass, each proved by its named automated test in § Acceptance Test Mapping.
 - [ ] **80% minimum test coverage achieved** for the functionality delivered by this story, reported by the repository's coverage tooling (C-007).
 - [ ] Unit tests written and passing for group-to-code resolution, `account_type` assignment, the reconciliation-flag constraint on 1200 and 2000, and per-company code behaviour.
 - [ ] Integration tests written and passing for posting into the baseline accounts, Trial Balance grouping, multi-company sharing and localization-pack reconciliation.
@@ -314,7 +322,7 @@ Five points reflects breadth against low technical risk. The configuration itsel
 
 This gate is the accounting contract of the story. Each item is asserted as an amount, at 2 decimal places using half-up rounding, in the currency named.
 
-- [ ] **Debits equal credits on every entry posted during verification.** Each verification entry — including the Scenario 2 entry of USD 10,000.00 and the Scenario 6 entry of EUR 1,000.00 translated to USD 1,100.00 — posts with total debits equal to total credits and a difference of USD 0.00.
+- [ ] **Debits equal credits on every entry posted during verification.** Each verification entry — including the Scenario 2 entry of USD 10,000.00 and the Scenario 7 entry of EUR 1,000.00 translated to USD 1,100.00 — posts with total debits equal to total credits and a difference of USD 0.00.
 - [ ] **Trial Balance balances for the reported range.** The Trial Balance for Acme Group NV over 01 January 2026 to 31 January 2026 reports total debits equal to total credits at a difference of USD 0.00, and the same assertion holds for Acme Industries Inc. over the same range.
 - [ ] **Report lines tie to the sub-ledger.** Every Trial Balance and Balance Sheet line, and every group subtotal, equals the sum of the `account.move.line` records beneath it at a difference of USD 0.00 — group `1 Assets` at USD 10,000.00 debit and group `3 Equity` at USD 10,000.00 credit for the verification range.
 - [ ] **Tax amounts tie to their tax lines.** Where a verification entry carries tax, its tax code, base amount and tax amount are recorded separately, and the tax amount equals the movement on the tax control account Tax Payable 2200 for the same date range at a difference of USD 0.00.
@@ -404,6 +412,7 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 |---------|------|--------|---------|
 | 1.0 | 2026-08-13 | Enterprise Accounting Team | Initial story creation |
 | 1.1 | 2026-08-13 | Enterprise Accounting Team | Review remediation. Demonstrability section heading normalized to `## Demonstration Path`, the form used across all seventeen stories of this epic, so a reader arrives at the same section name in every story. Revision date aligned to the tree-wide authoring date. Trailing blank line removed at end of file. No acceptance criterion, fixture value or estimate changed |
+| 1.1 | 2026-08-15 | Blitzy Platform — Finance Transformation Programme | Code-review remediation. **Scenario 3 is split in two.** It previously asserted a duplicate-code refusal and a missing-`account_type` refusal under one trigger, which is two rules and two messages: the duplicate `1010` save is now Scenario 3 and the empty-`account_type` save on the unused code `1015` is a new Scenario 4, taking the story to **seven** criteria with the coverage-distribution sentence, the unit-test rows, the acceptance-test mapping and the Definition of Done all renumbered to match. Scenario 7's foreign-currency baseline is stated explicitly — account **1015 Bank EUR** added to the ten-account baseline, so the "eleventh account" the refusals count against is unambiguous — and the 1 EUR = 1.1000 USD rate is attributed to the exchange-rate master-data dependency rather than appearing without a source. `account.move.line` is added to § Integration Points as the read behind the Trial Balance assertions and the deletion guard, and § Notes states the functional currency of both reference companies. |
 
 ---
 
@@ -413,6 +422,6 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 
 **Report engine for the verification reports (DEC-002).** The Trial Balance and Balance Sheet used to verify the roll-up in Scenario 2 and in the reconciliation gate are supplied by the Enterprise module `account_reports`, which is **absent** from this Community repository. An AGPL-3 Community implementation is present instead — `account_financial_report_ce` version 19.0.1.1.0, whose `account.trial.balance.report` model carries the date-range parameters this story cites — so the story is demonstrable today under the OCA path. Its hierarchy mode groups on the internal account group rather than on `account.group` prefixes, which is why the rendering question is recorded as a discovery item: the structure this story delivers is the same under either engine, and only the presentation of the group subtotal depends on the choice.
 
-**Company names.** Acme Group NV (parent, functional currency `USD`) and Acme Industries Inc. (subsidiary) are the reference entities used across the criteria so that every multi-company assertion names the books it affects. They stand for the group's legal-entity register, which is enumerated during discovery; substituting the confirmed entity names changes the names in the criteria and nothing else.
+**Company names.** Acme Group NV (parent, functional currency `USD`) and Acme Industries Inc. (subsidiary, functional currency `USD`) are the companies every criterion of this story is asserted in, so that each multi-company assertion names the books it affects. They are a **separate foundation fixture pair**, recorded as `AC-01` and `AC-02` in the Epic's register of [foundation and migration fixture companies](../../EPIC-001-enterprise-accounting-odoo.md#e5-foundation-and-migration-fixture-companies), and they are not stand-ins for the group: `AC-01` is not Global Holdings Inc. under another name, neither company is a member of the consolidation scope of [E.4](../../EPIC-001-enterprise-accounting-odoo.md#e4-canonical-legal-entity-register), and the fixture codes `AC-01` and `AC-02` never resolve to a group code nor a group code to a fixture name. What crosses out of this Feature is the configuration — the baseline codes with their account groups and types, the five journal types, the presentation taxonomy, the fiscal-calendar fields and the five lock-date fields — which ORD-001 applies to every entity of E.4. The balances, dates and entries of the fixture pair stay inside this Feature, which is why substituting a group name into a criterion here is not a permitted edit.
 
 **Scope of this ticket.** This file is a planning artifact. It states the account structure finance requires and the assertions that prove it; it contains no module, model, view or data definition, and it prescribes none. The mechanism — chart template, localization-pack reconciliation or configuration data — is chosen by the implementing agent from the discovery recorded above.

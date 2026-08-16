@@ -10,10 +10,10 @@
 | **Title** | Map Accounts to IFRS and GAAP Reporting Taxonomy |
 | **Parent Feature** | [FEATURE-001-01: Chart of Accounts & Fiscal Year](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) |
 | **Parent Epic** | [EPIC-001: Enterprise Accounting in Odoo](../../EPIC-001-enterprise-accounting-odoo.md) |
-| **Persona** | Financial Reporting Manager |
 | **Status** | Draft |
 | **Priority** | 🔴 Critical |
 | **Estimate** | 5 story points (Fibonacci) |
+| **Persona** | Financial Reporting Manager |
 | **Feature Capability** | CAP-002 — map every account to the IFRS and US GAAP reporting taxonomy used by the statement generators |
 | **Epic Success Metric** | SM-001 — 100% of the seven named statements producible per entity and per period, which requires every account to resolve to a statement line before a statement can be generated |
 | **Owner/Author** | Enterprise Accounting Team |
@@ -182,22 +182,57 @@ The platform target of this programme is an **open decision (DEC-001)** recorded
 
 ### The Mapping Matrix
 
-This matrix is the presentation policy the story delivers. Each row states the account code, the `account_type` value fixed by [STORY-001-01-01](./STORY-001-01-01-configure-coa-hierarchy.md), the IAS 1 line the code is presented on under IFRS, and the ASC 210/220 line it is presented on under US GAAP. Rows 1200, 1500, 1590 and 2200 are the rows asserted directly in § Acceptance Criteria.
+This matrix is the presentation policy the story delivers, and it is the **complete** policy: it carries a row for every one of the thirty-one codes the Epic's [canonical group chart of accounts](../../EPIC-001-enterprise-accounting-odoo.md#e2-canonical-group-chart-of-accounts) and the [FEATURE-001-01 §7.4 extension registry](../FEATURE-001-01-chart-of-accounts-fiscal-year.md#74-group-chart-of-accounts-extension-registry) hold, so no consumer in FEATURE-001-06 or FEATURE-001-07 asserts a caption this story has not assigned. Each row states the account code, the `account_type` value fixed by [STORY-001-01-01](./STORY-001-01-01-configure-coa-hierarchy.md) or by the feature that owns the extension code, the IAS 1 line the code is presented on under IFRS, and the ASC 210/220 line it is presented on under US GAAP. The ten baseline rows are released with the chart; each extension row is released by this policy in the same change the owning feature adds the code, which is why the row exists here before that feature's criteria read it. Rows 1200, 1500, 1590 and 2200 are the rows asserted directly in § Acceptance Criteria.
 
 | Code | Account | `account_type` | IFRS (IAS 1) line | US GAAP (ASC 210/220) line |
 |---|---|---|---|---|
+| 1000 | Cash | `asset_cash` | Cash and cash equivalents | Cash and cash equivalents |
 | 1010 | Bank | `asset_cash` | Cash and cash equivalents | Cash and cash equivalents |
+| 1015 | Bank EUR | `asset_cash` | Cash and cash equivalents | Cash and cash equivalents |
+| 1020 | Petty Cash | `asset_cash` | Cash and cash equivalents | Cash and cash equivalents |
+| 1099 | Suspense / Outstanding Payments | `asset_current` | Other current assets | Other current assets |
+| 1100 | Inventory | `asset_current` | Inventories | Inventories |
 | 1200 | Accounts Receivable | `asset_receivable` | Trade and other receivables | Accounts receivable, net |
+| 1210 | Trade Receivables — Retail | `asset_receivable` | Trade and other receivables | Accounts receivable, net |
+| 1290 | Input Tax Receivable | `asset_current` | Current tax assets | Taxes receivable |
+| 1300 | Intercompany Receivable | `asset_receivable` | Trade and other receivables — related party | Due from affiliates |
+| 1400 | Prepaid / Deferred Expense | `asset_current` | Prepayments | Prepaid expenses and other current assets |
 | 1500 | Fixed Assets | `asset_fixed` | Property, plant and equipment | Property and equipment, gross |
 | 1590 | Accumulated Depreciation | `asset_fixed` | Property, plant and equipment (contra, net presentation) | Less: accumulated depreciation |
+| 1700 | Investment in Subsidiary | `asset_non_current` | Investments in subsidiaries — eliminated on consolidation | Investments in subsidiaries — eliminated on consolidation |
 | 2000 | Accounts Payable | `liability_payable` | Trade and other payables | Accounts payable |
+| 2100 | Intercompany Payable | `liability_payable` | Trade and other payables — related party | Due to affiliates |
 | 2200 | Tax Payable | `liability_current` | Current tax liabilities | Taxes payable |
+| 2300 | Deferred Revenue | `liability_current` | Contract liabilities | Deferred revenue |
 | 3000 | Share Capital | `equity` | Issued capital | Common stock |
 | 3100 | Retained Earnings | `equity` | Retained earnings | Retained earnings |
+| 3200 | Currency Translation Adjustment | `equity` | Reserves — foreign currency translation reserve | Accumulated other comprehensive income — cumulative translation adjustment |
+| 3210 | Revaluation Reserve | `equity` | Reserves — revaluation surplus | No ASC 210 caption: an upward revaluation of a long-lived asset is not recognized under US GAAP, so the code carries an amount in the IFRS column only and the US GAAP column presents `$0.00` |
 | 4000 | Revenue | `income` | Revenue | Revenues |
-| 6100 | Expense | `expense` | Operating expenses | Operating expenses |
+| 6100 | Expense | `expense` | Cost of sales, or Operating expenses, per the line-level cost-classification tag below | Cost of revenues, or Operating expenses, per the same tag |
+| 6500 | Depreciation Expense | `expense_depreciation` | Depreciation and amortisation | Depreciation and amortization |
+| 6510 | Impairment Loss | `expense` | Impairment losses | Impairment of long-lived assets |
+| 6800 | Bank Charges | `expense` | Operating expenses | Operating expenses |
+| 6900 | Bad Debt Expense | `expense` | Impairment losses on trade receivables | Provision for credit losses |
+| 7100 | FX Gain/Loss on Settlement | `income_other` | Other income and expenses — net foreign exchange result on settlement | Other income (expense), net — foreign currency transaction gain or loss |
+| 7200 | Foreign Exchange Gain/Loss | `income_other` | Other income and expenses — net foreign exchange result on remeasurement | Other income (expense), net — foreign currency remeasurement gain or loss |
+| 7210 | Gain/Loss on Disposal | `income_other` | Other income or other expenses — gain or loss on disposal of property, plant and equipment | Other income (expense), net — gain or loss on sale of property and equipment |
 
-Two rows carry the presentation nuance that drives the estimate. **Row 1590** is the only code whose treatment differs structurally between the frameworks: netted into a single IAS 1 line under IFRS, and given its own subtractive caption under ASC 210. **Row 2200** is the only code whose reported figure has to be reconciled to a tax code rather than to a single account balance, which is why its criterion separates the base amount from the tax amount.
+Three rows carry the presentation nuance that drives the estimate. **Row 1590** is the only code whose treatment differs structurally between the frameworks: netted into a single IAS 1 line under IFRS, and given its own subtractive caption under ASC 210. **Row 2200** is the only code whose reported figure has to be reconciled to a tax code rather than to a single account balance, which is why its criterion separates the base amount from the tax amount. **Row 3210** is the only code whose amount is framework-dependent rather than caption-dependent, and the divergence is a recognition difference measured in [FEATURE-001-08](../FEATURE-001-08-fixed-assets-depreciation.md) rather than a presentation choice made here.
+
+### The Line-Level Cost Classification of Expense 6100
+
+Expense **6100** is the one code in the matrix whose journal items reach two different income-statement captions, so the caption cannot be resolved from the account alone. It is resolved from a second, line-level dimension released with this policy: a mandatory two-value account tag family — `Cost of sales` and `Operating expenses`, `applicability = accounts` — assigned to **each `account.move.line` posted to 6100** rather than to the account, and derived deterministically at posting time in this order:
+
+1. The product category of the bill or invoice line, where the line carries a product: a category flagged as a cost-of-sales category yields `Cost of sales`, every other category yields `Operating expenses`.
+2. The analytic distribution of the line, where the line carries no product: a distribution whose analytic account belongs to the cost-of-sales analytic group yields `Cost of sales`, any other distribution yields `Operating expenses`.
+3. `Operating expenses`, where the line carries neither a product nor an analytic distribution.
+
+Three properties make this dimension deterministic, and each is asserted where 6100 is presented split — [STORY-001-07-02](../FEATURE-001-07/STORY-001-07-02-generate-profit-loss.md) for the single-entity Profit & Loss and [STORY-001-06-05](../FEATURE-001-06/STORY-001-06-05-generate-consolidated-financials.md) for the group presentation:
+
+- **Exactly one tag per line.** Every `account.move.line` on 6100 carries exactly one of the two values, so the count of 6100 items carrying zero tags and the count carrying two tags are both 0.
+- **The two captions sum to the account.** Cost of sales plus operating expenses equals the 6100 balance for the same company and date range at a difference of `$0.00 USD`, so the split reclassifies and never restates.
+- **One account, one framework pair.** The IFRS caption and the US GAAP caption move together: a line tagged `Cost of sales` is presented as "Cost of sales" under IAS 1 and "Cost of revenues" under ASC 220, and a line tagged `Operating expenses` is presented as "Operating expenses" under both, so the one-line-per-framework property of every other row holds at line level for this one.
 
 ### Codebase Analysis Areas
 
@@ -456,6 +491,7 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 |---------|------|--------|---------|
 | 1.0 | 2026-08-13 | Enterprise Accounting Team | Initial story creation |
 | 1.1 | 2026-08-13 | Enterprise Accounting Team | Review remediation. Tax code `VAT-STD-21` replaced throughout by `VAT-21-S`, the 21% output-tax code in the governed tax-code set owned by [FEATURE-001-05](../FEATURE-001-05-tax-configuration-compliance.md); the rate, the base amount, the tax amount and the postings are unchanged, only the code name now resolves against the one governed vocabulary. Demonstrability section heading normalized to `## Demonstration Path`. Revision date aligned to the tree-wide authoring date. Trailing blank line removed at end of file |
+| 1.1 | 2026-08-15 | Blitzy Platform — Finance Transformation Programme | Code-review remediation. **The taxonomy matrix is completed to every code the tree consumes.** It carried the ten baseline codes; downstream features presented balances on 1015, 1020, 1099, 1100, 1210, 1290, 1300, 1400, 1700, 2100, 2300, 3200, 3210, 6500, 6510, 6800, 6900, 7100, 7200 and 7210 with no authoritative caption pair, so the matrix now carries **thirty-one rows** — one for every code in the Epic's canonical chart and the FEATURE-001-01 §7.4 extension registry — each with its `account_type`, its IFRS caption and its US GAAP caption, including the two rows where the frameworks diverge rather than differ in wording (**1590**, netted under IFRS and presented gross under US GAAP; **3210**, which has no US GAAP caption because an upward revaluation of a long-lived asset is not recognized). **New § The Line-Level Cost Classification of Expense 6100** publishes the one dimension the account cannot resolve on its own: a three-step deterministic rule — product category, then analytic distribution, then operating expenses — with exactly one tag per journal item, the two captions summing to the account balance at a `$0.00 USD` difference, and the IFRS and US GAAP captions moving together. Anchor `#the-line-level-cost-classification-of-expense-6100`, cited by STORY-001-07-02 and FEATURE-001-09 where 6100 is presented split. |
 
 ---
 
@@ -469,6 +505,6 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 
 **Why IFRS and US GAAP are one story.** Splitting them would permit a code to be classified under one framework and left unclassified under the other, and the completeness gate in Scenario 3 would then be satisfiable while half the mapping was missing. Holding them together is also what makes account 1590 Accumulated Depreciation verifiable at all, since its net treatment under IAS 1 and its subtractive caption under ASC 210 are only meaningful against each other. Recognition and measurement differences between the two frameworks are deliberately out of scope: this story presents one set of posted amounts two ways and never restates an amount.
 
-**Company names and reference figures.** Acme Group NV (parent, functional currency `USD`, IFRS) and Acme Industries Inc. (subsidiary, functional currency `USD`, US GAAP) are the reference entities used across the criteria so that every framework and multi-company assertion names the books it affects. They stand for the group's legal-entity register, which is enumerated during discovery; substituting the confirmed entity names changes the names in the criteria and nothing else. The balances used — USD 48,750.00 on account 1200, USD 500,000.00 on account 1500, USD 75,000.00 on account 1590, and the USD 100,000.00 base with USD 21,000.00 tax on tax code `VAT-21-S` — are the deterministic verification fixtures for this story (D-009) and are not a forecast of production volumes.
+**Company names and reference figures.** Acme Group NV (parent, functional currency `USD`, IFRS) and Acme Industries Inc. (subsidiary, functional currency `USD`, US GAAP) are the companies every criterion of this story is asserted in, so that each framework and multi-company assertion names the books it affects. They are a **separate foundation fixture pair**, recorded as `AC-01` and `AC-02` in the Epic's register of [foundation and migration fixture companies](../../EPIC-001-enterprise-accounting-odoo.md#e5-foundation-and-migration-fixture-companies), and they are not stand-ins for the group: `AC-01` is not Global Holdings Inc. under another name, neither company is a member of the consolidation scope of [E.4](../../EPIC-001-enterprise-accounting-odoo.md#e4-canonical-legal-entity-register), and the fixture codes `AC-01` and `AC-02` never resolve to a group code nor a group code to a fixture name. What crosses out of this Feature is the configuration — the baseline codes with their account groups and types, the five journal types, the presentation taxonomy, the fiscal-calendar fields and the five lock-date fields — which ORD-001 applies to every entity of E.4. The balances, dates and entries of the fixture pair stay inside this Feature, which is why substituting a group name into a criterion here is not a permitted edit. The balances used — USD 48,750.00 on account 1200, USD 500,000.00 on account 1500, USD 75,000.00 on account 1590, and the USD 100,000.00 base with USD 21,000.00 tax on tax code `VAT-21-S` — are the deterministic verification fixtures for this story (D-009) and are not a forecast of production volumes.
 
 **Scope of this ticket.** This file is a planning artifact. It states the presentation classification finance requires and the assertions that prove it; it contains no module, model, view, report or data definition, and it prescribes none. The mechanism — an account-tag family, a report-line set sourced from account-code prefixes, or a combination of the two — is chosen by the implementing agent from the discovery recorded above.

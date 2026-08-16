@@ -10,10 +10,10 @@
 | **Title** | Define Fiscal Year and Accounting Periods |
 | **Parent Feature** | [FEATURE-001-01: Chart of Accounts & Fiscal Year](../FEATURE-001-01-chart-of-accounts-fiscal-year.md) |
 | **Parent Epic** | [EPIC-001: Enterprise Accounting in Odoo](../../EPIC-001-enterprise-accounting-odoo.md) |
-| **Persona** | Chief Accountant |
 | **Status** | Draft |
 | **Priority** | 🔴 Critical |
 | **Estimate** | 3 story points (Fibonacci) |
+| **Persona** | Chief Accountant |
 | **Feature Capability** | CAP-003 — define the fiscal year, its accounting periods and the fiscal-year-end date per company |
 | **Epic Success Metric** | SM-006 — Trial Balance integrity, asserted per company **and per period** with the difference column at 0.00 in the company currency; the calendar fixed here is also the unit of measure of SM-003 (close within 5 business days of period end) and SM-005 (under 5 minutes per statement) |
 | **Owner/Author** | Enterprise Accounting Team |
@@ -157,7 +157,6 @@ The platform target of this programme is an **open decision (DEC-001)** recorded
 
 ---
 
-
 ## Technical Discovery Notes
 
 > **Purpose:** these notes direct the codebase analysis that precedes implementation. This story states WHAT calendar finance needs and WHY; the surface the setting is maintained on, the way the derived periods are exposed, and the view architecture emerge from discovery and are deliberately not prescribed here.
@@ -250,7 +249,6 @@ The decision to integrate, extend or replace any add-on above belongs to DEC-002
 Three points reflects a small, well-bounded configuration surface carrying one non-obvious constraint path. Two points would understate the two refusal paths, the two-company case and the year-end presentation that all have to be proved; five would overstate work with no new model, no new posting logic and no open technical decision, and would put it level with the ten-account, nine-group chart of [STORY-001-01-01](./STORY-001-01-01-configure-coa-hierarchy.md), which is materially broader. The estimate assumes each entity's year-end date is confirmed by the Group Controller during the sprint, and it excludes the opening-balance load and the lock-date administration, which are the two stories this one unblocks.
 
 ---
-
 
 ## Test Requirements
 
@@ -412,6 +410,7 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 |---------|------|--------|---------|
 | 1.0 | 2026-08-13 | Enterprise Accounting Team | Initial story creation |
 | 1.1 | 2026-08-13 | Enterprise Accounting Team | Review remediation. Demonstrability section heading normalized to `## Demonstration Path`. Revision date aligned to the tree-wide authoring date. Trailing blank line removed at end of file. No acceptance criterion, fixture value or estimate changed. Both OCA/account-closing rows naming `account_cutoff_start_end_dates` now carry branch evidence — published on the 14.0, 17.0 and 18.0 series, on top of `account_cutoff_base` — with availability on the branch DEC-001 confirms verified before adoption, any port scoped as migration work in the adopting story's estimate, and the residual falling to the locally present `addons/account_deferred_revenue/` add-on or to bespoke scope under DEC-002, so the row asserts precedent rather than installability (C-003, C-004). |
+| 1.1 | 2026-08-15 | Blitzy Platform — Finance Transformation Programme | Code-review remediation. § Notes stated the two reference companies without the two attributes every criterion of this story depends on. It now names the functional currency **and the fiscal-year shape** of each — Acme Group NV on a calendar fiscal year and Acme Industries Inc. on an 01 April to 31 March year — which is what makes the non-calendar fiscal-year criteria constructible from the note rather than from inference, and it identifies them as the companies this story's criteria are asserted in rather than as backlog-wide reference entities. |
 
 ---
 
@@ -423,6 +422,6 @@ This gate is the accounting contract of the story. Each item is asserted as an a
 
 **Two refusal surfaces, two messages.** The month-length check exists both on the company record and on the financial-year opening wizard, and the wizard's own check evaluates the day-and-month pair against a leap year while the company check evaluates it against the year of the opening entry or the current year. Scenarios 3 and 4 assert the refusal and the unchanged stored values rather than one message string, so either surface satisfies them; the tests exercise both.
 
-**Company names.** Acme Group NV (parent, functional currency `USD`) and Acme Industries Inc. (subsidiary) are the reference entities used across this backlog so that every multi-company assertion names the books it affects. They stand for the group's legal-entity register, which is enumerated during discovery; substituting the confirmed entity names changes the names in the criteria and nothing else.
+**Company names.** Acme Group NV (parent, functional currency `USD`, calendar fiscal year) and Acme Industries Inc. (subsidiary, functional currency `USD`, fiscal year 01 April to 31 March) are the companies every criterion of this story is asserted in, so that each multi-company assertion names the books it affects. They are a **separate foundation fixture pair**, recorded as `AC-01` and `AC-02` in the Epic's register of [foundation and migration fixture companies](../../EPIC-001-enterprise-accounting-odoo.md#e5-foundation-and-migration-fixture-companies), and they are not stand-ins for the group: `AC-01` is not Global Holdings Inc. under another name, neither company is a member of the consolidation scope of [E.4](../../EPIC-001-enterprise-accounting-odoo.md#e4-canonical-legal-entity-register), and the fixture codes `AC-01` and `AC-02` never resolve to a group code nor a group code to a fixture name. What crosses out of this Feature is the configuration — the baseline codes with their account groups and types, the five journal types, the presentation taxonomy, the fiscal-calendar fields and the five lock-date fields — which ORD-001 applies to every entity of E.4. The balances, dates and entries of the fixture pair stay inside this Feature, which is why substituting a group name into a criterion here is not a permitted edit.
 
 **Scope of this ticket.** This file is a planning artifact. It states the fiscal calendar finance requires and the assertions that prove it; it contains no module, model, view or data definition, and it prescribes none. No Odoo module is created, installed or configured by authoring it.

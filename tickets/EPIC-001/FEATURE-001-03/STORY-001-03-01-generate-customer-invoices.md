@@ -188,17 +188,6 @@ The release of the invoice under an override is a second trigger and is asserted
 
 ---
 
-## Estimation
-
-| Dimension | Rating | Justification |
-|-----------|--------|---------------|
-| **Effort** | Medium | The delivered surface is one document lifecycle — Draft to Posted — with its completeness checks, its due-date derivation, its residual initialisation, its two refusal paths and its credit-limit control, all expressed on `account.move` and `account.move.line`, which this repository already provides under LGPL-3 rather than requiring new machinery |
-| **Complexity** | Medium | Three behaviours each carry an accounting consequence: the entry must balance to `0.00` in the company's functional currency after half-up rounding at the currency's 0.01 rounding precision; the tax code, base amount and tax amount must stay separate journal-item values; and a refusal must leave no entry and consume no sequence number. None of them requires a new report engine, a new posting engine or an external integration |
-| **Uncertainty** | Low | The behaviour can be inspected before development starts: `addons/account/models/account_move.py` holds the state field, the posting entry points, the sequence mixin, the balance check and the lock-date check, and `addons/account/models/partner.py` holds the credit-limit fields. The one open question is the shape of the Credit Controller override, because the shipped control is a Draft-state warning rather than a block — recorded in [Open Questions](#open-questions) |
-| **Story Points** | **5** | Fibonacci scale (1, 2, 3, 5, 8, 13). Above a **3** because the story delivers a posting path with two refusal paths, a residual and due-date derivation, a tax triple and a credit-control gate across two companies and two currencies rather than one field or one screen. Below an **8** because receipt allocation, credit notes, the dunning ladder and the Aged Receivable report are the other four stories of this feature — `STORY-001-03-02` through `STORY-001-03-05` — and no report engine or external integration is built here |
-
----
-
 ## INVEST Principles Compliance
 
 | Principle | Compliance | Justification |
@@ -348,6 +337,17 @@ This story states WHAT the Accounts Receivable Specialist needs and WHY. It does
 | `account.payment.term` | Read | The payment term that produces the due date of 2025-03-12 from an invoice date of 2025-02-10 under Net 30, including the multi-instalment case |
 | `res.company` | Read | The company whose books carry the entry — `US-01` or Global Europe SARL (`NL-01`) — its functional currency, its journal-entry lock date and its tax-rounding method |
 | `res.currency` | Read | The decimal precision and the 0.01 rounding increment every amount is rounded half-up to, and the rate and rate date recorded when the invoice currency differs from the functional currency |
+
+---
+
+## Estimation
+
+| Dimension | Rating | Justification |
+|-----------|--------|---------------|
+| **Effort** | Medium | The delivered surface is one document lifecycle — Draft to Posted — with its completeness checks, its due-date derivation, its residual initialisation, its two refusal paths and its credit-limit control, all expressed on `account.move` and `account.move.line`, which this repository already provides under LGPL-3 rather than requiring new machinery |
+| **Complexity** | Medium | Three behaviours each carry an accounting consequence: the entry must balance to `0.00` in the company's functional currency after half-up rounding at the currency's 0.01 rounding precision; the tax code, base amount and tax amount must stay separate journal-item values; and a refusal must leave no entry and consume no sequence number. None of them requires a new report engine, a new posting engine or an external integration |
+| **Uncertainty** | Low | The behaviour can be inspected before development starts: `addons/account/models/account_move.py` holds the state field, the posting entry points, the sequence mixin, the balance check and the lock-date check, and `addons/account/models/partner.py` holds the credit-limit fields. The one open question is the shape of the Credit Controller override, because the shipped control is a Draft-state warning rather than a block — recorded in [Open Questions](#open-questions) |
+| **Story Points** | **5** | Fibonacci scale (1, 2, 3, 5, 8, 13). Above a **3** because the story delivers a posting path with two refusal paths, a residual and due-date derivation, a tax triple and a credit-control gate across two companies and two currencies rather than one field or one screen. Below an **8** because receipt allocation, credit notes, the dunning ladder and the Aged Receivable report are the other four stories of this feature — `STORY-001-03-02` through `STORY-001-03-05` — and no report engine or external integration is built here |
 
 ---
 
@@ -553,6 +553,7 @@ All paths below were read in this repository at the Odoo 19.0 Community baseline
 | 1.4 | 2026-08-16 | Blitzy Platform — Finance Transformation Programme | Residual demonstrability wording closed against MJ-01. The headless-demonstration bullet already stated the C-023 surface and the `ar-invoice` principal, but its trailing clause still read "over the public API by XML-RPC or JSON-RPC" and so contradicted its own lead; the read-back of the posted records now happens **over that same C-023 surface under the `ar-invoice` principal**, and the deprecated XML-RPC and JSON-RPC transports are excluded from every acceptance path. No acceptance criterion, edge case, estimate or fixture amount changed |
 | 1.5 | 2026-08-16 | Blitzy Platform — Finance Transformation Programme | Metadata correction of the `Last Updated` field, which still read **2026-08-15** while revision **1.4** of **2026-08-16** was already recorded above it, so a reader comparing the field with the history was given two dates for one state of the file and could not tell which revision the field described. The field now carries the date of the newest revision row, and this row records the correction so the discrepancy is visible in the history rather than silently overwritten. No acceptance criterion, edge case, estimate, fixture amount, constraint or link in this file changed |
 | 1.6 | 2026-08-16 | Blitzy Platform — Finance Transformation Programme | QA remediation of finding `F-VOCAB-01`, with no change to any amount, tax code, base or tax amount, account, company, date, journal entry, scenario count or estimate. One occurrence in this file were written as `Tax Report (VAT Return)`, a form the Epic's [canonical report-label register](../../EPIC-001-enterprise-accounting-odoo.md#e7-canonical-report-display-labels) does not publish and its compatibility note does not admit, which under rule **R-E6** made one report read as two. Every one of them now reads **VAT/Tax Return**, the label E.7 publishes for the report that states tax base and tax amount per tax code for a company and a tax period. |
+| 1.7 | 2026-08-16 | Blitzy Platform — Finance Transformation Programme | QA schema remediation of section order. The unchanged Estimation block now follows Dependencies and precedes Test Requirements, matching the canonical story schema published in `tickets/README.md`. No criterion, amount, account, estimate or link changed. |
 
 ---
 

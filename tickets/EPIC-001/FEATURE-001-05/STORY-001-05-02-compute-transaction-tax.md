@@ -129,17 +129,6 @@ All seven criteria run in company `US-01` (**Global Holdings Inc.**), the United
 
 ---
 
-## Estimation
-
-| Dimension | Rating | Justification |
-|-----------|--------|---------------|
-| **Effort** | Medium | Two document types, two control accounts, two rounding methods, a foreign-currency path and a lock-date guard — a contained surface, but each one carries its own test set and each must be proven on a posted entry rather than on a computed preview |
-| **Complexity** | Medium | The accounting consequence sits in the detail: which leg absorbs a residual minor unit, how a tax-inclusive gross price is split before it becomes a base amount, and how the document-currency triple and its functional-currency equivalent stay consistent on one entry. None of it requires a new posting engine, because `account.move` already refuses an unbalanced entry |
-| **Uncertainty** | Low | The computation, the tax distribution, the rounding methods and the Tax Return Lock Date guard are all present in this repository under LGPL-3 and were read at the 19.0 baseline, and the determinants this story consumes are fixed by `STORY-001-05-01`, so the behaviour is inspectable before development starts |
-| **Story Points** | **5** | Fibonacci scale (1, 2, 3, 5, 8, 13). Above a 3 because the posting shapes are multiplied by the multi-currency and rounding-method interactions, which add real test surface rather than repetition; below an 8 because the posting shapes themselves are well understood, the configuration already exists from `STORY-001-05-01`, and no statutory report or external integration is built here |
-
----
-
 ## Constraints
 
 The constraint identifiers below are the Epic's own, restated for this story rather than renumbered, so one constraint set reads across the whole ticket tree.
@@ -261,6 +250,17 @@ This story describes WHAT the finance function needs the posted entry to contain
 | `account.journal` | Read | The Sales, Purchase and Miscellaneous journals through which output tax, input tax and manual tax adjustments post |
 | `res.company` | Read | The entity whose books carry the entry, its functional currency, its tax-calculation rounding method and its Tax Return Lock Date |
 | `res.currency` | Read | The decimal precision and rounding increment every base amount and tax amount is rounded to, and the rate that translates a foreign-currency triple into the functional currency |
+
+---
+
+## Estimation
+
+| Dimension | Rating | Justification |
+|-----------|--------|---------------|
+| **Effort** | Medium | Two document types, two control accounts, two rounding methods, a foreign-currency path and a lock-date guard — a contained surface, but each one carries its own test set and each must be proven on a posted entry rather than on a computed preview |
+| **Complexity** | Medium | The accounting consequence sits in the detail: which leg absorbs a residual minor unit, how a tax-inclusive gross price is split before it becomes a base amount, and how the document-currency triple and its functional-currency equivalent stay consistent on one entry. None of it requires a new posting engine, because `account.move` already refuses an unbalanced entry |
+| **Uncertainty** | Low | The computation, the tax distribution, the rounding methods and the Tax Return Lock Date guard are all present in this repository under LGPL-3 and were read at the 19.0 baseline, and the determinants this story consumes are fixed by `STORY-001-05-01`, so the behaviour is inspectable before development starts |
+| **Story Points** | **5** | Fibonacci scale (1, 2, 3, 5, 8, 13). Above a 3 because the posting shapes are multiplied by the multi-currency and rounding-method interactions, which add real test surface rather than repetition; below an 8 because the posting shapes themselves are well understood, the configuration already exists from `STORY-001-05-01`, and no statutory report or external integration is built here |
 
 ---
 
@@ -448,6 +448,7 @@ All paths below were read in this repository at the Odoo 19.0 Community baseline
 | 1.3 | 2026-08-16 | Blitzy Platform — Finance Transformation Programme | Code-review remediation of CR-01 and MJ-01. **MJ-01**: the headless demonstration is restated on the C-023 JSON web-service surface under the named integration principal `tax-computation-read` — recorded owner, declared expiry and rotation, revocation effective next call, scope confined to `US-01` and `NL-01`, execution under access rights rather than `sudo`, per-principal rate ceiling and per-call audit — and the deprecated XML-RPC and JSON-RPC transports carry no criterion, test or integration of this story. **Interface, Artifact, Evidence and Resilience Contracts added**: C-023 machine access, C-026 append-only computation trail with a non-cascading retention lock, C-027 atomic confirmation and recoverable batch, C-028 confirm-once episode identity not overridable by the confirming role, C-029 bulk ceilings, and the hardened C-020 outcome-not-machinery disclosure. CR-01 verified rather than changed: the lock-date test cites L-1 for the re-dated posting and L-5 for the change to a posted tax-bearing line, with 0 citations of L-9. No figure, account, company, date, scenario count or trigger changed |
 | 1.4 | 2026-08-16 | Blitzy Platform — Finance Transformation Programme | Metadata correction of the `Last Updated` field, which still read **2026-08-15** while revision **1.3** of **2026-08-16** was already recorded above it, so a reader comparing the field with the history was given two dates for one state of the file and could not tell which revision the field described. The field now carries the date of the newest revision row, and this row records the correction so the discrepancy is visible in the history rather than silently overwritten. No acceptance criterion, edge case, estimate, fixture amount, constraint or link in this file changed |
 | 1.5 | 2026-08-16 | Blitzy Platform — Finance Transformation Programme | QA remediation of finding `F-VOCAB-01`, with no change to any amount, tax code, base or tax amount, account, company, date, journal entry, scenario count or estimate. Seven occurrences in this file were written as `Tax Report (VAT Return)`, a form the Epic's [canonical report-label register](../../EPIC-001-enterprise-accounting-odoo.md#e7-canonical-report-display-labels) does not publish and its compatibility note does not admit, which under rule **R-E6** made one report read as two. Every one of them now reads **VAT/Tax Return**, the label E.7 publishes for the report that states tax base and tax amount per tax code for a company and a tax period. |
+| 1.6 | 2026-08-16 | Blitzy Platform — Finance Transformation Programme | QA schema remediation of section order. The unchanged Estimation block now follows Dependencies and precedes Test Requirements, matching the canonical story schema published in `tickets/README.md`. No criterion, tax figure, estimate or link changed. |
 
 ---
 

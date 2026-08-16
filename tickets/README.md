@@ -322,7 +322,7 @@ The three template files are retained unmodified and remain the authoritative so
 
 ## Constraints Summary
 
-All implementations under this epic must adhere to the following constraints. The identifiers below are this index's own summary IDs; each row cites the authoritative constraint in [§7 of EPIC-001](EPIC-001-enterprise-accounting-odoo.md#7-constraints), whose register runs from C-001 to C-022.
+All implementations under this epic must adhere to the following constraints. The identifiers below are this index's own summary IDs; each row cites the authoritative constraint in [§7 of EPIC-001](EPIC-001-enterprise-accounting-odoo.md#7-constraints), whose register runs from C-001 to C-029.
 
 | Constraint ID | Requirement | Description |
 |---------------|-------------|-------------|
@@ -332,6 +332,10 @@ All implementations under this epic must adhere to the following constraints. Th
 | **C-004** | ✅ **80% Test Coverage** | Minimum test coverage for all new functionality, with accounting assertions tested numerically: debits equal credits, tax amounts reconcile to tax control accounts, report lines tie to sub-ledger totals (epic C-007, C-008, C-009) |
 | **C-005** | ❓ **Platform Version Target — Open Decision** | Three platform targets are on record and they are mutually exclusive: the programme request names **Odoo 17**, the prior superseded backlog targeted **Odoo 18.0**, and this repository is **Odoo 19.0 Community** (`version_info = (19, 0, 0, FINAL, 0, '')` in `odoo/release.py`). Odoo 19.0 Community is therefore the baseline present here, while the programme target is decision **DEC-001**, flagged for stakeholder confirmation. Every version-bearing statement in the tree — including the documentation URLs in [References](#references) — cites the 19.0 baseline and is restated if DEC-001 confirms another version (epic C-010, C-011) |
 | **C-006** | 🗂️ **Nested Naming Convention** | Ticket files follow `EPIC-001-slug.md`, `EPIC-001/FEATURE-001-NN-slug.md` and `EPIC-001/FEATURE-001-NN/STORY-001-NN-SS-slug.md`, with zero-padded numbers, kebab-case slugs, and relative links that resolve inside `tickets/` |
+| **C-007** | 🔑 **External Interface and Access Contract** | Programmatic access — an integration, a headless acceptance test, a demonstration or an operator script — runs over the platform's current JSON web-service endpoint under a bearer API key held by a dedicated named integration principal, scoped per company, model and method, with a recorded expiry, rotation interval and revocation path, executing under access rights and record rules with no privilege escalation, rate-limited and audit-logged; the deprecated XML-RPC and JSON-RPC transports are not an acceptance path. A document issued to an external recipient is reachable only through an authenticated portal session or a single-document, short-lived, revocable token that leaks through no referrer, log or telemetry (epic C-023, C-024) |
+| **C-008** | 📎 **Artifact and Audit-Evidence Lifecycle** | A retained file — bill attachment, statement file, generated report, e-invoicing payload, dunning attachment — is served only after an authorization check on its parent record, from protected non-executable storage, under a system-fixed filename, with its access and deletion audited, its retention period and legal-hold treatment declared, its purge governed, and its publication atomic. Audit evidence is append-only, snapshots the values as they stood at the event, survives the deletion or anonymization of the record it references, and is exportable in full including failed attempts (epic C-025, C-026) |
+| **C-009** | ♻️ **Resilience and Durable Operation Identity** | Every external call declares its timeouts and every scheduled run its maximum duration; retries are bounded with exponential backoff and jitter behind a circuit breaker, exhausted work reaches a named terminal state that alerts an operator, and a commit and its external side effect are coupled through a transactional outbox. Every repeatable operation carries a database-enforced unique identity over its business episode key, takes an explicit row or advisory lock across the read-decide-write window, revalidates its preconditions inside that lock before committing, reclaims a stale lease, and admits no override of an idempotency guard by the actor it constrains (epic C-027, C-028) |
+| **C-010** | 📐 **Resource Ceilings on Reports, Exports and Files** | Every report, export and file-producing run declares hard maxima on date range, company count, result rows, output pages and file size and refuses a request beyond them with a named error before starting work; a request over the declared threshold runs asynchronously under a per-user job quota and queue depth, is cancellable, streams rather than materializing the whole result, declares a timeout, and publishes atomically so no partial artifact is ever downloadable (epic C-029) |
 
 ### Acceptance Criteria Constraint
 
@@ -479,9 +483,9 @@ Before submitting documentation changes:
 - [ ] Every journal-entry criterion asserts that total debits equal total credits
 - [ ] Tax criteria split tax code, base amount and tax amount; report criteria name the report, a date-range parameter and one expected line value; multi-company criteria name the affected company
 - [ ] Estimate is a Fibonacci value (1, 2, 3, 5, 8, 13) with Effort, Complexity and Uncertainty recorded
-- [ ] Story is demonstrable in the Odoo user interface, or through its public API, to the Finance Controller and Product Owner
+- [ ] Story is demonstrable in the Odoo user interface, or over the JSON web-service surface **C-007** governs, to the Finance Controller and Product Owner
 - [ ] No UI/implementation details in criteria
-- [ ] Constraints section includes all C-001 through C-006 requirements
+- [ ] Constraints section includes all C-001 through C-010 requirements, and a constraint that does not apply to the story's surfaces is restated with the reason and the evidence rather than omitted
 - [ ] File name follows the `EPIC-001` / `FEATURE-001-NN` / `STORY-001-NN-SS` convention, and links to related stories and features resolve
 
 ---

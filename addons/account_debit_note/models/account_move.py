@@ -10,7 +10,7 @@ class AccountMove(models.Model):
 
     debit_origin_id = fields.Many2one('account.move', 'Original Invoice Debited', readonly=True, copy=False, index='btree_not_null')
     debit_note_ids = fields.One2many('account.move', 'debit_origin_id', 'Debit Notes',
-                                     help="The debit notes and the linked vendor credit notes created for this invoice")
+                                     help="The debit notes created for this invoice")
     debit_note_count = fields.Integer('Number of Debit Notes', compute='_compute_debit_count')
 
     @api.depends('debit_note_ids')
@@ -36,14 +36,16 @@ class AccountMove(models.Model):
         return action
 
     def _check_vendor_credit_note_positive_total(self):
-        if not (self.env.su or self.env.user.has_group('account.group_account_invoice')):
-            return
+        """Refuse a credit note linked to a vendor bill whose total is not above zero.
+
+        A credit note carrying no value has nothing to reverse, so it must not reach
+        the payable sub-ledger; every other document is left to the checks of account.
+        """
         for move in self:
             if (
                 move.move_type == 'in_refund'
                 and move.debit_origin_id.move_type == 'in_invoice'
                 and move.currency_id.compare_amounts(move.amount_total, 0.0) <= 0
-                and move.has_access('write')
             ):
                 raise UserError(_(
                     "The vendor credit note %(document)s cannot be posted because its total must be greater than zero: "
@@ -53,13 +55,17 @@ class AccountMove(models.Model):
                 ))
 
     def _post(self, soft=True):
-        # A credit note linked to a vendor bill must carry a total above zero to have anything to reverse; validating before core posts and numbers leaves a refusal draft, unnumbered and without ledger movement.
+        # A credit note linked to a vendor bill must carry a total above zero to have
+        # anything to reverse; validating before core posts and numbers the document
+        # leaves a refusal draft, unnumbered and without ledger movement.
         self._check_vendor_credit_note_positive_total()
         return super()._post(soft=soft)
 
     def _get_last_sequence_domain(self, relaxed=False):
         where_string, param = super()._get_last_sequence_domain(relaxed)
-        # Refunds keep the single refund pool of account: its "R" prefix ignores debit_origin_id, so splitting refunds by that link would hand both pools the same next name.
+        # Refunds keep the single refund pool of account: its "R" prefix ignores
+        # debit_origin_id, so splitting refunds by that link would hand both pools the
+        # same next name.
         if self.journal_id.debit_sequence and self.move_type in ('in_invoice', 'out_invoice'):
             where_string += " AND debit_origin_id IS " + ("NOT NULL" if self.debit_origin_id else "NULL")
         return where_string, param
@@ -75,6 +81,7 @@ class AccountMove(models.Model):
         return starting_sequence
 
     def _get_copy_message_content(self, default):
+        """Override to handle debit note specific messages."""
         if default and default.get('debit_origin_id'):
             return _('This debit note was created from: %s', self._get_html_link())
         return super()._get_copy_message_content(default)

@@ -58,7 +58,8 @@ class AccountDebitNote(models.TransientModel):
 
     def _prepare_default_values(self, move):
         # Opt-in only: a posted vendor bill becomes a linked vendor credit note debiting the payable and crediting the expense; the falsy default preserves the debit-note path.
-        if self.create_vendor_credit_note and move.move_type == 'in_invoice':
+        vendor_credit_note = self.create_vendor_credit_note and move.move_type == 'in_invoice'
+        if vendor_credit_note:
             type = 'in_refund'
         elif move.move_type in ('in_refund', 'out_refund'):
             type = 'in_invoice' if move.move_type == 'in_refund' else 'out_invoice'
@@ -73,12 +74,62 @@ class AccountDebitNote(models.TransientModel):
                 'debit_origin_id': move.id,
                 'move_type': type,
             }
+        if vendor_credit_note:
+            # The credit note is handed over unnumbered, carrying the "/" a document reads until a journal numbers it at posting: a credit note refused for carrying no value must be readable as having drawn no number rather than as having lost one.
+            default_values['name'] = '/'
         if not self.copy_lines or move.move_type in [('in_refund', 'out_refund')]:
             default_values['line_ids'] = [(5, 0, 0)]
         return default_values
 
+    def _check_vendor_credit_note_request(self):
+        """Refuse a vendor-credit-note request that cannot produce one credit note for one bill.
+
+        A vendor credit note gives back the charge of exactly one posted vendor
+        bill and belongs in the journal that bill was recorded in, so the request
+        is settled here, before anything is copied: several selected bills would
+        be turned into several credit notes in one unreviewed operation, a source
+        that is not a posted vendor bill has no charge to give back, and a journal
+        other than the bill's own would record and number the credit note away
+        from the document it reverses.
+
+        The state and the type are checked here rather than relying on
+        ``default_get``, which only screens a selection made through the Debit
+        Note action; writing ``move_ids`` directly reaches this method with a
+        selection nothing has screened.
+        """
+        self.ensure_one()
+        if len(self.move_ids) != 1:
+            raise UserError(_(
+                "A vendor credit note gives back the charge of exactly one vendor bill, but %(count)s documents are selected.  "
+                "Select the single bill to credit, or leave Create Vendor Credit Note unticked to raise a debit note for each of them.",
+                count=len(self.move_ids),
+            ))
+        move = self.move_ids
+        if move.state != 'posted':
+            raise UserError(_(
+                "A vendor credit note can only give back the charge of a posted vendor bill, and %(document)s is not posted.  "
+                "Post that bill first, or leave Create Vendor Credit Note unticked.",
+                document=move.display_name,
+            ))
+        if move.move_type != 'in_invoice':
+            raise UserError(_(
+                "Only a vendor bill can be credited with a vendor credit note, and %(document)s is not one.  "
+                "Leave Create Vendor Credit Note unticked to raise a debit note from it instead.",
+                document=move.display_name,
+            ))
+        if self.journal_id and self.journal_id != move.journal_id:
+            raise UserError(_(
+                "A vendor credit note is recorded in the journal of the bill it credits, %(bill_journal)s, so it cannot be recorded in %(other_journal)s.  "
+                "Leave Use Specific Journal empty, or select %(bill_journal)s.",
+                bill_journal=move.journal_id.display_name,
+                other_journal=self.journal_id.display_name,
+            ))
+
     def create_debit(self):
         self.ensure_one()
+        # Opt-in only: the vendor credit note is one document reversing one posted bill in that bill's own journal, so the request is refused before any copy; leaving the opt-in off keeps the debit-note path, which does accept several sources and another journal.
+        if self.create_vendor_credit_note:
+            self._check_vendor_credit_note_request()
         new_moves = self.env['account.move']
         for move in self.move_ids.with_context(include_business_fields=True): #copy sale/purchase links
             default_values = self._prepare_default_values(move)

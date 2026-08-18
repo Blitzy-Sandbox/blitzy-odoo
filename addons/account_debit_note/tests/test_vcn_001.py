@@ -15,6 +15,14 @@ out of scope for this change and no test below asserts anything about them.
     T-VCN-001-05  Credit note sequence distinct from a plain unlinked refund
     T-VCN-001-06  Default vendor-bill path remains a debit note
 
+Scenario 1 states its outcome for one bill, one credit note and one journal, and
+the six cases above also guard that reading of it, inside the case each belongs
+to rather than as cases of their own: the request the mode accepts is settled in
+T-VCN-001-01, which reverses one bill in that bill's own journal and is refused
+when another journal is named, and in T-VCN-001-06, which is where the mode is
+asked for a source that is not one posted vendor bill and where the same
+selection is then shown still raising the debit notes the module shipped with.
+
 Each test method's docstring begins with its BDD identifier so that the Odoo test
 runner prints the scenario-to-method mapping in its log; a failing line is then
 traceable back to the story criterion it came from without opening this file.
@@ -30,6 +38,7 @@ install phase rather than during it.
 from odoo import Command, fields
 from odoo.exceptions import UserError
 from odoo.tests import tagged
+from odoo.tools.float_utils import float_compare
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 
@@ -79,10 +88,24 @@ ROUNDING_QUANTITY = 2.5
 ROUNDING_UNIT_PRICE = 4.01
 ROUNDING_LINE_AMOUNT = 10.025
 ROUNDING_EXPECTED_TOTAL = 10.05
+# The same tie taken the other way.  10.00 and 10.05 are two different multiples
+# of that currency's own increment, so naming the wrong outcome is what lets the
+# direction of the rounding be asserted in the currency the amount is stated in.
+ROUNDING_TIE_TOWARD_ZERO = 10.0
+# The cent, as a number of decimal places.  Amounts are asserted at this
+# precision as well as at their currency's increment, because 10.03 and 10.05 are
+# the same amount at an increment of 0.05 and different amounts to the cent.
+CENT_PRECISION_DIGITS = 2
 
 # T-VCN-001-05 -- the amount of the ordinary, unlinked vendor credit note that
 # competes with the linked one for the journal's refund sequence.
 AMOUNT_PLAIN_REFUND = 1000.0
+
+# T-VCN-001-01 -- a second Purchase journal.  The wizard's journal selector is
+# restricted to journals of the source's own type, so a journal that selector
+# accepts is still not necessarily the journal of the bill being credited.
+OTHER_PURCHASE_JOURNAL_NAME = 'Secondary Purchases'
+OTHER_PURCHASE_JOURNAL_CODE = 'BILL2'
 
 
 @tagged('post_install', '-at_install')
@@ -106,7 +129,13 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
     comparison happens at the rounding increment of the currency the amount is
     denominated in.  ``compare_amounts`` is used for "these two amounts are
     equal" and ``is_zero`` for "this difference is zero", because rounding before
-    the subtraction and rounding after it are not the same test.
+    the subtraction and rounding after it are not the same test.  Alongside those,
+    and only in ``test_vcn_001_04``, each amount is compared to the cent as well
+    with ``float_compare(..., precision_digits=2)``: the currency of that case
+    rounds to 0.05, at which increment 10.03 and 10.05 are one amount, and the
+    outcome under test is exactly 10.05.  A value keyed or copied unchanged --
+    a quantity, a unit price -- is compared exactly, being what was keyed rather
+    than an amount arrived at by arithmetic.
 
     Branch-to-test mapping
     ----------------------
@@ -116,9 +145,13 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
           -- the opt-in branch, ``create_vendor_credit_note`` true and the source
              ``move_type == 'in_invoice'``, producing ``in_refund``
              -> test_vcn_001_01 / 04 / 05
-          -- the falsy path, where the same source still produces the shipped
-             ``in_invoice`` debit note
+          -- the opt-in set on a source that is not a vendor bill, where the
+             shipped credit-note-to-bill mapping still decides the result
              -> test_vcn_001_06
+          -- the falsy path, where a vendor bill still produces the shipped
+             ``in_invoice`` debit note, for one selected bill and for several
+             -> test_vcn_001_06 (and, for the other source types, the module's
+                test_00_debit_note_out_invoice and test_10_debit_note_in_refund)
 
         * ``account.move._check_vendor_credit_note_positive_total``
           -- the raising path, a linked ``in_refund`` whose currency-rounded
@@ -126,19 +159,46 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
              -> test_vcn_001_02 (zero) / 03 (negative)
           -- the passing path, a linked ``in_refund`` with a positive total
              -> test_vcn_001_01 / 04 / 05
+          -- inapplicable because the document carries no source link, at a
+             total of zero and at a negative total
+             -> test_vcn_001_02 / 03
+          -- inapplicable because the document is a vendor bill rather than a
+             vendor credit note, at a total of zero
+             -> test_vcn_001_02
 
         * ``account.move._post`` override
           -- delegation to ``super()._post(soft=soft)`` after the guard passes
-             -> test_vcn_001_01 / 04 / 05
+             -> test_vcn_001_01 / 04 / 05 / 06
           -- refusal raised before ``super()._post`` is ever entered
              -> test_vcn_001_02 / 03
 
         * ``account.move._get_last_sequence_domain``
           -- the ``in_refund`` path, now excluded from the debit-note domain
              split so that linked and unlinked refunds share one refund pool
-             -> test_vcn_001_05
-          -- the retained invoice-type path, where a vendor-bill debit note
-             still receives its own domain
+             -> test_vcn_001_05, which reads the numbering range off both
+                refunds and compares the numbers they were issued
+          -- the retained invoice-type path, where a vendor bill is numbered
+             among the documents carrying no source link and its debit note
+             among those that do
+             -> test_vcn_001_06, which reads both ranges and posts the debit
+                note to compare its number with the bill's (and the module's
+                existing suite)
+
+        * ``account.debit.note._check_vendor_credit_note_request``
+          -- the accepting path, one posted vendor bill and the bill's own
+             journal, named or left empty
+             -> test_vcn_001_01 (names it) / 02 / 03 / 04 / 05 (leave it empty)
+          -- a journal other than the source bill's own
+             -> test_vcn_001_01
+          -- more than one selected source
+             -> test_vcn_001_06
+          -- a source that is not posted
+             -> test_vcn_001_06
+          -- a source that is not a vendor bill
+             -> test_vcn_001_06
+          -- never reached while the opt-in is off, which is what leaves the
+             shipped debit-note path free to take several sources and another
+             journal
              -> test_vcn_001_06 (and the module's existing suite)
     """
 
@@ -167,6 +227,36 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             reconcile=False,
         )
 
+        # Asking for the same code again must find the account that answers to it
+        # rather than add another one.  On a chart that already carries 2000 or
+        # 6100 that is the path taken from the outset, so it is exercised here on
+        # every chart: a fixture that put a second account on one of these codes
+        # would leave the assertions below reading whichever of the two a search
+        # happened to return, and this suite reads its accounts by code.
+        for account, code, account_type, reconcile in (
+            (cls.account_payable_2000, CODE_ACCOUNTS_PAYABLE, 'liability_payable', True),
+            (cls.account_expense_6100, CODE_EXPENSE, 'expense', False),
+        ):
+            located = cls._vcn_account(code=code, name=account.name, account_type=account_type, reconcile=reconcile)
+            assert located == account, (
+                f"Account {code} must be located rather than created a second time, but a second call returned "
+                f"{located.id} against the {account.id} the first one gave."
+            )
+            answering_code = cls.env['account.account'].with_company(cls.env.company).with_context(active_test=False).search([
+                *cls.env['account.account']._check_company_domain(cls.env.company),
+                ('code', '=', code),
+            ])
+            assert len(answering_code) == 1, (
+                f"Exactly one account of the test company must answer to code {code}, but {len(answering_code)} do: "
+                f"{answering_code.mapped('name')}."
+            )
+            assert account.active, f"Account {code} must stand active for the fixture to be usable, but it reads archived."
+            assert account.account_type == account_type, (
+                f"Account {code} must be typed {account_type!r} as the story names it, but it reads {account.account_type!r}."
+            )
+            if reconcile:
+                assert account.reconcile, f"Account {code} must allow reconciliation, which the story requires of the payable account."
+
         # The vendor of the archetype bill.  Its payable property is what puts
         # the bill's and the credit note's payable line on 2000 rather than on
         # the chart's own payable account.
@@ -189,16 +279,29 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
     def _vcn_account(cls, code, name, account_type, reconcile):
         """Return the account carrying ``code`` in the test company, creating it if absent.
 
-        An ``account.account`` code is unique per company and is stored as a
-        company-dependent value, so the lookup is scoped to the company before
-        anything is written.  A code that already exists is reused and only
-        renamed -- creating a second record on an existing code is refused
-        outright -- while a code the chart does not carry is created in full.
-        Written this way the fixture holds whichever chart template the test
-        company happens to load.
+        An ``account.account`` code is meant to name one account per company and
+        is stored as a company-dependent value, so the lookup is scoped to the
+        company before anything is written, and it is made with
+        ``active_test=False``: an archived account keeps its code, and a search
+        that skipped it would create a second record on the same code, leaving
+        two accounts answering to 2000 and the assertions below reading whichever
+        of them a search happens to return.  A code the chart does carry is
+        therefore reused and brought to what the story names -- unarchived,
+        renamed, retyped and, where the story needs it, made reconcilable --
+        while a code the chart does not carry is created in full.  Written this
+        way the fixture holds whichever chart template the test company happens
+        to load.
+
+        The reuse is a single ``write``.  A payable account that is not
+        reconcilable is refused by the platform, so the type and the
+        reconciliation flag have to reach the record in one operation rather than
+        leaving it momentarily in a state that cannot exist.  The flag is only
+        ever turned on: the expense account plays no part in reconciliation, and
+        turning the flag off is itself refused while partial reconciliations are
+        pending, neither of which is a change anything here asks for.
         """
         company = cls.env.company
-        AccountAccount = cls.env['account.account'].with_company(company)
+        AccountAccount = cls.env['account.account'].with_company(company).with_context(active_test=False)
         account = AccountAccount.search(
             [
                 *AccountAccount._check_company_domain(company),
@@ -207,14 +310,14 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             limit=1,
         )
         if account:
-            account.name = name
-            if account.account_type != account_type:
-                account.account_type = account_type
-            # Only ever turn reconciliation on, and only where the story
-            # requires it: the expense account plays no part in reconciliation
-            # and flipping its flag would be a change nothing here asks for.
+            reuse_values = {
+                'active': True,
+                'name': name,
+                'account_type': account_type,
+            }
             if reconcile and not account.reconcile:
-                account.reconcile = True
+                reuse_values['reconcile'] = True
+            account.write(reuse_values)
             return account
         return AccountAccount.create({
             'name': name,
@@ -296,14 +399,16 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             )
         return bill
 
-    def _create_vendor_credit_note(self, bill, keep_line=LINE_SUBSCRIPTION, reason=CREDIT_NOTE_REASON, date=CREDIT_NOTE_DATE):
+    def _create_vendor_credit_note(self, bill, keep_line=LINE_SUBSCRIPTION, reason=CREDIT_NOTE_REASON, date=CREDIT_NOTE_DATE, journal=None):
         """Raise a draft, linked vendor credit note from ``bill`` and return it.
 
         The shipped Debit Note wizard is opened the way the module's own suite
         opens it -- through the ``active_model``/``active_ids`` context that the
         Debit Note action supplies -- with the ``create_vendor_credit_note``
         opt-in set, so the copy comes out as an ``in_refund`` rather than as the
-        vendor debit note the same wizard produces by default.
+        vendor debit note the same wizard produces by default.  ``journal`` names
+        a journal under Use Specific Journal; left out, the field stays empty and
+        the credit note follows the bill's own journal either way.
 
         ``copy_lines`` brings across every line of the bill rather than only the
         credited one, so the copy is trimmed down to the line named
@@ -311,8 +416,12 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         ``keep_line=False`` to keep the copy exactly as the wizard produced it.
 
         The result is located through ``debit_origin_id`` -- the module's source
-        link -- and ``ensure_one`` proves that raising a credit note produced
-        exactly one linked move.
+        link -- and ``ensure_one`` proves that exactly one linked move stands for
+        the bill.  The count of journal entries is taken before and after the
+        operation as well, because "one linked move" and "one new move" are
+        different statements: a linked credit note plus an unlinked entry raised
+        alongside it would satisfy the first and not the second, and the story
+        allows one entry only.
         """
         wizard = self.env['account.debit.note'].with_context(
             active_model='account.move',
@@ -322,11 +431,24 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             'reason': reason,
             'copy_lines': True,
             'create_vendor_credit_note': True,
+            'journal_id': journal.id if journal else False,
         })
+        moves_before = self.env['account.move'].search([])
         wizard.create_debit()
 
+        created_moves = self.env['account.move'].search([('id', 'not in', moves_before.ids)])
+        self.assertEqual(
+            len(created_moves),
+            1,
+            f"Raising a vendor credit note must create exactly one journal entry, but it created {len(created_moves)}: {created_moves.mapped('display_name')}.",
+        )
         credit_note = self.env['account.move'].search([('debit_origin_id', '=', bill.id)])
         credit_note.ensure_one()
+        self.assertEqual(
+            created_moves,
+            credit_note,
+            f"The one entry the operation created must be the credit note linked to the bill, but the entry created reads {created_moves.mapped('display_name')} against a linked credit note of {credit_note.display_name!r}.",
+        )
         if keep_line:
             credit_note.invoice_line_ids.filtered(lambda line: line.name != keep_line).unlink()
         return credit_note
@@ -348,27 +470,145 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
     def _assert_unnumbered(self, move, document_label):
         """Assert that ``move`` carries no journal sequence number.
 
-        Odoo represents an unnumbered document either as the ``/`` placeholder or
-        as an empty number, and only assigns a real number when a move is posted.
-        Neither form is a sequence number issued by the journal, which is what
-        the story requires of a refused credit note.
+        One state is required here rather than any of several.  ``/`` is the
+        number a document reads until a journal numbers it at posting, and the
+        wizard states it on the credit note it raises, so a refused credit note
+        reads exactly that: an unnumbered document, not one whose number was
+        cleared.  The exact value is asserted, together with a sequence position
+        of 0 and a document that has never been posted, so that a change issuing
+        a real number fails on the first, a change consuming a position in the
+        journal's sequence fails on the second, and a document that had been
+        numbered and returned to draft -- which is not the case under test --
+        fails on the third.
         """
-        self.assertFalse(
-            move.name and move.name != '/',
-            f"A refused vendor credit note must receive no sequence number from the Purchase journal, but the {document_label} reads a number of {move.name!r}.",
+        self.assertEqual(
+            move.name,
+            '/',
+            f"A refused vendor credit note must be left reading the '/' of a document the journal has not numbered, but the {document_label} reads {move.name!r}.",
         )
         self.assertFalse(
             move.sequence_number,
             f"A refused vendor credit note must consume no position in the journal's sequence, but the {document_label} reads sequence number {move.sequence_number}.",
         )
+        self.assertFalse(
+            move.posted_before,
+            f"A refused vendor credit note must never have been posted, so it can never have been numbered, but the {document_label} reads posted_before {move.posted_before!r}.",
+        )
 
-    def _assert_refused_credit_note(self, credit_note, bill, payable_before, description):
+    def _snapshot_move_lines(self, move):
+        """Return the material state of every journal item of ``move``, keyed by line id.
+
+        Keying on the id is what makes the comparison an identity check as well as
+        a value check: a line that was replaced by another carrying the same
+        amount is a different record, and reversing a posted document must leave
+        the document itself alone rather than rewrite it.
+        """
+        return {
+            line.id: {
+                'name': line.name,
+                'display_type': line.display_type,
+                'account': line.account_id,
+                'partner': line.partner_id,
+                'product': line.product_id,
+                'currency': line.currency_id,
+                'quantity': line.quantity,
+                'price_unit': line.price_unit,
+                'price_subtotal': line.price_subtotal,
+                'amount_currency': line.amount_currency,
+                'debit': line.debit,
+                'credit': line.credit,
+                'balance': line.balance,
+            }
+            for line in move.line_ids
+        }
+
+    def _assert_move_lines_unchanged(self, move, snapshot, description):
+        """Assert that every journal item of ``move`` still reads what ``snapshot`` recorded.
+
+        The document's own currency measures the figures the document is
+        denominated in -- the line amount and ``amount_currency`` -- while the
+        company currency measures the figures the books are kept in, which are
+        ``debit``, ``credit`` and ``balance``.  The keyed values are compared
+        exactly: a quantity, a unit price, an account and a name are what was
+        keyed rather than amounts arrived at by arithmetic, so any difference at
+        all in them is a rewrite of the source document.
+        """
+        document_currency = move.currency_id
+        company_currency = self.company_currency
+        self.assertEqual(
+            set(move.line_ids.ids),
+            set(snapshot),
+            f"{description} must still carry exactly the journal items it carried before the operation: it held {sorted(snapshot)} and now holds {sorted(move.line_ids.ids)}.",
+        )
+        for line in move.line_ids:
+            before = snapshot[line.id]
+            self.assertEqual(
+                line.name,
+                before['name'],
+                f"Line {line.id} of {description} must still be named {before['name']!r}, but it reads {line.name!r}.",
+            )
+            self.assertEqual(
+                line.display_type,
+                before['display_type'],
+                f"Line {line.id} of {description} must still read display_type {before['display_type']!r}, but it reads {line.display_type!r}.",
+            )
+            self.assertEqual(
+                line.account_id,
+                before['account'],
+                f"Line {line.id} of {description} must still sit on account {before['account'].code}, but it reads {line.account_id.code}.",
+            )
+            self.assertEqual(
+                line.partner_id,
+                before['partner'],
+                f"Line {line.id} of {description} must still carry {before['partner'].display_name!r}, but it reads {line.partner_id.display_name!r}.",
+            )
+            self.assertEqual(
+                line.product_id,
+                before['product'],
+                f"Line {line.id} of {description} must still carry the product {before['product'].display_name!r}, but it reads {line.product_id.display_name!r}.",
+            )
+            self.assertEqual(
+                line.currency_id,
+                before['currency'],
+                f"Line {line.id} of {description} must still be denominated in {before['currency'].name}, but it reads {line.currency_id.name}.",
+            )
+            self.assertEqual(
+                line.quantity,
+                before['quantity'],
+                f"Line {line.id} of {description} must still read a quantity of {before['quantity']}, but it reads {line.quantity}.",
+            )
+            self.assertEqual(
+                line.price_unit,
+                before['price_unit'],
+                f"Line {line.id} of {description} must still read a unit price of {before['price_unit']}, but it reads {line.price_unit}.",
+            )
+            self.assertEqual(
+                document_currency.compare_amounts(line.price_subtotal, before['price_subtotal']),
+                0,
+                f"Line {line.id} of {description} must still amount to {before['price_subtotal']} {document_currency.name}, but it amounts to {line.price_subtotal}.",
+            )
+            self.assertEqual(
+                document_currency.compare_amounts(line.amount_currency, before['amount_currency']),
+                0,
+                f"Line {line.id} of {description} must still read {before['amount_currency']} {document_currency.name}, but it reads {line.amount_currency}.",
+            )
+            for field_name in ('debit', 'credit', 'balance'):
+                self.assertEqual(
+                    company_currency.compare_amounts(line[field_name], before[field_name]),
+                    0,
+                    f"Line {line.id} of {description} must still read a {field_name} of {before[field_name]} {company_currency.name}, but it reads {line[field_name]}.",
+                )
+
+    def _assert_refused_credit_note(self, credit_note, bill, payable_before, lines_before, description):
         """Assert the shared outcome of a refused linked vendor credit note.
 
-        A refusal leaves the credit note exactly where it stood -- draft and
-        unnumbered -- and leaves the payable sub-ledger untouched: not one of its
-        journal items is posted, and the movement the attempt contributed to
-        Accounts Payable 2000 measures 0.00 in the company currency.
+        A refusal leaves the credit note exactly where it stood -- draft,
+        unnumbered and linked to its source by nothing more than
+        ``debit_origin_id`` -- and leaves the source bill and the payable
+        sub-ledger untouched: not one of the credit note's journal items is
+        posted, every journal item of the bill still reads what ``lines_before``
+        recorded, and the movement the attempt contributed to Accounts Payable
+        2000 measures 0.00 in the company currency.
         """
         currency = self.company_currency
         self.assertEqual(
@@ -380,6 +620,10 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         self.assertFalse(
             credit_note.line_ids.filtered(lambda line: line.parent_state == 'posted'),
             f"A refused {description} vendor credit note must leave no posted journal item behind.",
+        )
+        self.assertFalse(
+            credit_note.reversed_entry_id,
+            f"A refused {description} vendor credit note must still carry no reversal link: reversed_entry_id must stay empty, because setting it would hand the document to the platform's automatic reconciliation, which is allocation and is out of scope here, but it reads {credit_note.reversed_entry_id.display_name!r}.",
         )
 
         payable_after = self._posted_movement(self.account_payable_2000, self.vendor)
@@ -407,6 +651,7 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             0,
             f"The source bill's total must be left at {AMOUNT_BILL_TOTAL:.2f} {currency.name} by a refused {description} credit note, but it reads {bill.amount_total}.",
         )
+        self._assert_move_lines_unchanged(bill, lines_before, f"the source bill of the refused {description} credit note")
 
     # =========================================================================
     # T-VCN-001-01: The returned line reverses as one balanced credit note
@@ -432,10 +677,23 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         payable line carrying the vendor and credits Expense 6100 by 4,200.00,
         its total debits equal its total credits at a difference of 0.00, and the
         source bill is left posted with its three lines unchanged.
+
+        The journal is settled here as well, because "the same Purchase journal"
+        is one of the things this scenario asserts.  A credit note carries the
+        sequence of the journal it is recorded in, so one recorded elsewhere would
+        be numbered away from the bill it reverses and read out of another
+        journal's books; the wizard's journal selector only narrows the choice to
+        journals of the source's own type, and a company may keep several Purchase
+        journals, so the selector alone does not settle it.  The reversal is
+        therefore asked for twice: once naming a second Purchase journal, which is
+        refused and records nothing there, and once naming the bill's own, which
+        is accepted -- what is refused is a journal other than the bill's, not the
+        Clerk's use of the field.
         """
         bill = self._create_story_bill()
         currency = bill.currency_id
         subtotals_before = {line.name: line.price_subtotal for line in bill.invoice_line_ids}
+        lines_before = self._snapshot_move_lines(bill)
         payable_before = self._posted_movement(self.account_payable_2000, self.vendor)
         self.assertEqual(
             currency.compare_amounts(payable_before, -AMOUNT_BILL_TOTAL),
@@ -443,7 +701,48 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             f"Before the reversal the vendor must owe {AMOUNT_BILL_TOTAL:.2f} {currency.name} on Accounts Payable {CODE_ACCOUNTS_PAYABLE}, but the sub-ledger reads {payable_before}.",
         )
 
-        credit_note = self._create_vendor_credit_note(bill)
+        # A journal other than the bill's own, refused before anything is copied.
+        other_journal = self.env['account.journal'].create({
+            'name': OTHER_PURCHASE_JOURNAL_NAME,
+            'code': OTHER_PURCHASE_JOURNAL_CODE,
+            'type': 'purchase',
+            'company_id': self.env.company.id,
+        })
+        self.assertEqual(
+            other_journal.type,
+            bill.journal_id.type,
+            f"The second journal must be of the source's own type, which is what the wizard's selector allows, but it reads {other_journal.type!r} against the bill's {bill.journal_id.type!r}.",
+        )
+        self.assertNotEqual(
+            other_journal,
+            bill.journal_id,
+            "The second journal must not be the bill's own journal, otherwise there is nothing to refuse.",
+        )
+        with self.assertRaises(UserError) as refusal:
+            self._create_vendor_credit_note(bill, journal=other_journal)
+
+        message = str(refusal.exception)
+        self.assertIn(
+            bill.journal_id.display_name,
+            message,
+            f"The refusal must name the journal the credit note belongs in ({bill.journal_id.display_name!r}), but it reads {message!r}.",
+        )
+        self.assertIn(
+            other_journal.display_name,
+            message,
+            f"The refusal must name the journal that was asked for ({other_journal.display_name!r}), but it reads {message!r}.",
+        )
+        self.assertFalse(
+            self.env['account.move'].search([('debit_origin_id', '=', bill.id)]),
+            "A refused journal must leave no credit note behind.",
+        )
+        self.assertFalse(
+            self.env['account.move'].search([('journal_id', '=', other_journal.id)]),
+            f"Nothing must be recorded in {OTHER_PURCHASE_JOURNAL_NAME}, so that no number is drawn from a journal the credit note does not belong to.",
+        )
+
+        # The bill's own journal, named rather than left empty, is accepted.
+        credit_note = self._create_vendor_credit_note(bill, journal=bill.journal_id)
 
         # One entry, and one only.
         self.assertEqual(
@@ -465,6 +764,15 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             len(credit_note.invoice_line_ids),
             1,
             f"Only the returned line is credited, so the draft must carry one product line but carries {len(credit_note.invoice_line_ids)}.",
+        )
+        self.assertEqual(
+            credit_note.name,
+            '/',
+            f"The draft handed to the Clerk must be unnumbered, reading the '/' of a document no journal has numbered yet, but it reads {credit_note.name!r}.",
+        )
+        self.assertFalse(
+            credit_note.sequence_number,
+            f"The draft must occupy no position in the journal's sequence before it is posted, but it reads sequence number {credit_note.sequence_number}.",
         )
 
         credit_note.action_post()
@@ -630,6 +938,11 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
                 0,
                 f"The bill line {line.name!r} must still read {subtotals_before[line.name]} {currency.name}, but it reads {line.price_subtotal}.",
             )
+        # Every journal item of the bill, taken as a whole: the same records, on
+        # the same accounts, for the same quantities, unit prices and amounts as
+        # before the reversal.  A line replaced by another of the same value would
+        # be a rewrite of a posted document even though the total still agrees.
+        self._assert_move_lines_unchanged(bill, lines_before, 'the reversed bill')
 
     # =========================================================================
     # T-VCN-001-02: A credit note carrying no value cannot post and nothing
@@ -650,9 +963,19 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         state 'draft' with no sequence number issued by the journal, and the
         movement the refused attempt contributed to Accounts Payable 2000
         measures 0.00.
+
+        The refusal belongs to the linked vendor credit note and to nothing else,
+        so the same 0.00 total is also carried past it twice: an ordinary vendor
+        credit note that reverses no bill of ours, and a vendor bill debit note,
+        which does carry the source link but is not a credit note.  Both post.
+        Without those two, a check that had lost either half of what it applies to
+        -- the document being a vendor credit note, and the document it is linked
+        to being a vendor bill -- would still be refusing exactly the one document
+        this scenario keys at zero, and nothing here would notice.
         """
         bill = self._create_story_bill()
         currency = bill.currency_id
+        lines_before = self._snapshot_move_lines(bill)
         payable_before = self._posted_movement(self.account_payable_2000, self.vendor)
 
         credit_note = self._create_vendor_credit_note(bill)
@@ -687,15 +1010,23 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             message,
             f"The refusal must state the check that failed -- the total must be greater than zero -- but it reads {message!r}.",
         )
+        # The remedy the story states is three things the Clerk must be told, so
+        # each is asserted on its own: what quantity to state, what amount to
+        # state, and that the document can then be posted.
         self.assertIn(
             'credited quantity',
             message,
-            f"The refusal must state the remedy, which is to state the credited quantity and amount, but it reads {message!r}.",
+            f"The refusal must tell the Clerk to state the credited quantity, but it reads {message!r}.",
+        )
+        self.assertIn(
+            'credited amount',
+            message,
+            f"The refusal must tell the Clerk to state the credited amount as well as the quantity, but it reads {message!r}.",
         )
         self.assertIn(
             'post it again',
             message,
-            f"The refusal must tell the Clerk to post again once the amount is stated, but it reads {message!r}.",
+            f"The refusal must tell the Clerk to post the credit note again once the credited quantity and amount are stated, but it reads {message!r}.",
         )
         self.assertNotIn(
             "Even magicians can't post nothing!",
@@ -703,7 +1034,79 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             f"The refusal proved here is the positive-total check on a document that does carry a line, not the platform's guard against an empty one, but the message reads {message!r}.",
         )
 
-        self._assert_refused_credit_note(credit_note, bill, payable_before, 'zero-value')
+        self._assert_refused_credit_note(credit_note, bill, payable_before, lines_before, 'zero-value')
+
+        # A vendor credit note of the same 0.00 that reverses no bill of ours: it
+        # carries no source link, so the credit-note check has nothing to say
+        # about it and the platform, which bans no zero-total document, posts it.
+        unlinked_zero_refund = self._create_invoice(
+            move_type='in_refund',
+            invoice_date=fields.Date.from_string(PLAIN_REFUND_DATE),
+            date=fields.Date.from_string(PLAIN_REFUND_DATE),
+            post=False,
+            partner_id=self.vendor,
+            journal_id=self.purchase_journal,
+            currency_id=self.company_currency,
+            invoice_line_ids=[
+                self._prepare_invoice_line(
+                    name='Unlinked vendor credit note carrying no value',
+                    price_unit=AMOUNT_SUBSCRIPTION,
+                    quantity=0.0,
+                    tax_ids=[],
+                    account_id=self.account_expense_6100,
+                ),
+            ],
+        )
+        self.assertFalse(
+            unlinked_zero_refund.debit_origin_id,
+            "The comparison document must carry no source link, which is the half of the check this case removes.",
+        )
+        self.assertTrue(
+            currency.is_zero(unlinked_zero_refund.amount_total),
+            f"The comparison document must total the same 0.00 {currency.name} as the refused credit note, but it totals {unlinked_zero_refund.amount_total}.",
+        )
+        unlinked_zero_refund.action_post()
+        self.assertEqual(
+            unlinked_zero_refund.state,
+            'posted',
+            f"An ordinary vendor credit note carrying no value is not what the credit-note check governs and the platform bans no zero-total document, so it must post, but it reads state {unlinked_zero_refund.state!r}.",
+        )
+
+        # A vendor bill debit note of the same 0.00: it does carry the source link,
+        # but it is a bill rather than a credit note, so the check is again silent.
+        second_bill = self._create_story_bill()
+        debit_note_wizard = self.env['account.debit.note'].with_context(
+            active_model='account.move',
+            active_ids=second_bill.ids,
+        ).create({
+            'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+            'reason': 'Freight undercharged on the original bill',
+            'copy_lines': True,
+        })
+        debit_note_wizard.create_debit()
+        zero_debit_note = self.env['account.move'].search([('debit_origin_id', '=', second_bill.id)])
+        zero_debit_note.ensure_one()
+        zero_debit_note.invoice_line_ids.quantity = 0.0
+        self.assertEqual(
+            zero_debit_note.move_type,
+            'in_invoice',
+            f"The comparison document must be a vendor bill debit note, which is the other half of the check this case removes, but it reads move_type {zero_debit_note.move_type!r}.",
+        )
+        self.assertEqual(
+            zero_debit_note.debit_origin_id,
+            second_bill,
+            "The comparison document must carry the source link to its own bill, so that only its type distinguishes it from the refused credit note.",
+        )
+        self.assertTrue(
+            currency.is_zero(zero_debit_note.amount_total),
+            f"The comparison document must total the same 0.00 {currency.name} as the refused credit note, but it totals {zero_debit_note.amount_total}.",
+        )
+        zero_debit_note.action_post()
+        self.assertEqual(
+            zero_debit_note.state,
+            'posted',
+            f"A linked vendor bill debit note carrying no value is not a vendor credit note, so the credit-note check must leave it alone and it must post, but it reads state {zero_debit_note.state!r}.",
+        )
 
     # =========================================================================
     # T-VCN-001-03: A credit note carrying a negative value cannot post and
@@ -723,9 +1126,18 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         the platform's own negative-total message, the record stays in state
         'draft' with no sequence number issued by the journal, and the movement
         the refused attempt contributed to Accounts Payable 2000 measures 0.00.
+
+        Which of the two refusals a Clerk reads is the point of this scenario, so
+        an ordinary vendor credit note carrying the same negative total is put
+        through the same attempt: it reverses no bill of ours, so the
+        credit-note check has nothing to say about it and the platform's own
+        negative-total refusal is what the Clerk reads instead.  A check that had
+        lost the requirement for a source bill would answer for that document too,
+        and would say so in its own words.
         """
         bill = self._create_story_bill()
         currency = bill.currency_id
+        lines_before = self._snapshot_move_lines(bill)
         payable_before = self._posted_movement(self.account_payable_2000, self.vendor)
 
         credit_note = self._create_vendor_credit_note(bill)
@@ -753,10 +1165,22 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             message,
             f"The refusal must state the check that failed -- the total must be greater than zero -- but it reads {message!r}.",
         )
+        # The same three-part remedy is required of the negative case: a Clerk who
+        # keyed a negative amount is told the same thing as one who keyed none.
         self.assertIn(
             'credited quantity',
             message,
-            f"The refusal must state the remedy, which is to state the credited quantity and amount, but it reads {message!r}.",
+            f"The refusal must tell the Clerk to state the credited quantity, but it reads {message!r}.",
+        )
+        self.assertIn(
+            'credited amount',
+            message,
+            f"The refusal must tell the Clerk to state the credited amount as well as the quantity, but it reads {message!r}.",
+        )
+        self.assertIn(
+            'post it again',
+            message,
+            f"The refusal must tell the Clerk to post the credit note again once the credited quantity and amount are stated, but it reads {message!r}.",
         )
         self.assertNotIn(
             'negative total amount',
@@ -764,7 +1188,58 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             f"The vendor-credit-note check runs before the platform's generic negative-total validation, so the Clerk must read the credit-note message rather than an instruction to create a credit note, but the message reads {message!r}.",
         )
 
-        self._assert_refused_credit_note(credit_note, bill, payable_before, 'negative-value')
+        self._assert_refused_credit_note(credit_note, bill, payable_before, lines_before, 'negative-value')
+
+        # The same negative total on a vendor credit note that reverses no bill of
+        # ours: the credit-note check does not govern it, so the refusal the Clerk
+        # reads is the platform's own, in the platform's own words.
+        unlinked_negative_refund = self._create_invoice(
+            move_type='in_refund',
+            invoice_date=fields.Date.from_string(PLAIN_REFUND_DATE),
+            date=fields.Date.from_string(PLAIN_REFUND_DATE),
+            post=False,
+            partner_id=self.vendor,
+            journal_id=self.purchase_journal,
+            currency_id=self.company_currency,
+            invoice_line_ids=[
+                self._prepare_invoice_line(
+                    name='Unlinked vendor credit note carrying a negative value',
+                    price_unit=-AMOUNT_SUBSCRIPTION,
+                    quantity=1.0,
+                    tax_ids=[],
+                    account_id=self.account_expense_6100,
+                ),
+            ],
+        )
+        self.assertFalse(
+            unlinked_negative_refund.debit_origin_id,
+            "The comparison document must carry no source link, which is the half of the check this case removes.",
+        )
+        self.assertEqual(
+            currency.compare_amounts(unlinked_negative_refund.amount_total, -AMOUNT_SUBSCRIPTION),
+            0,
+            f"The comparison document must carry the same {-AMOUNT_SUBSCRIPTION:.2f} {currency.name} as the refused credit note, but it totals {unlinked_negative_refund.amount_total}.",
+        )
+
+        with self.assertRaises(UserError) as platform_refusal:
+            unlinked_negative_refund.action_post()
+
+        platform_message = str(platform_refusal.exception)
+        self.assertIn(
+            'negative total amount',
+            platform_message,
+            f"An ordinary vendor credit note carrying a negative total must be refused by the platform's own validation, in its own words, but it reads {platform_message!r}.",
+        )
+        self.assertNotIn(
+            'greater than zero',
+            platform_message,
+            f"The vendor-credit-note check must not answer for a document that reverses no bill of ours, but the refusal reads {platform_message!r}.",
+        )
+        self.assertEqual(
+            unlinked_negative_refund.state,
+            'draft',
+            f"The comparison document must be left in state 'draft' by that refusal, but it reads {unlinked_negative_refund.state!r}.",
+        )
 
     # =========================================================================
     # T-VCN-001-04: The credit note posts in the bill's own currency and rounds
@@ -785,26 +1260,48 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         produces by taking the tie away from zero, and the entry balances at a
         difference of 0.00 in both the document currency and the company
         currency.
+
+        Every EUR figure below is compared through EUR itself, at the 0.05
+        increment the amount is actually stated in, and each is also compared to
+        the cent, because two amounts that differ by less than an increment are
+        one amount at that increment and a real difference to the cent.  The
+        company currency is used for the figures the books are kept in --
+        ``debit``, ``credit`` and ``balance`` -- and for nothing else, so that no
+        EUR claim here depends on what precision the company currency happens to
+        carry.
         """
         eur = self.setup_other_currency('EUR', rounding=ROUNDING_INCREMENT)
-        cents = self.company_currency
+        company_currency = self.company_currency
+        # The increment is a configuration figure rather than an amount in any
+        # currency, so it is compared at the precision of the field holding it.
         self.assertEqual(
-            cents.compare_amounts(eur.rounding, ROUNDING_INCREMENT),
+            float_compare(eur.rounding, ROUNDING_INCREMENT, precision_digits=6),
             0,
             f"The alternate currency must carry the non-standard rounding increment {ROUNDING_INCREMENT}, but it reads {eur.rounding}.",
         )
         self.assertNotEqual(
             eur,
-            cents,
-            f"The rounding fixture only proves anything if the document currency differs from the company currency {cents.name}.",
+            company_currency,
+            f"The rounding fixture only proves anything if the document currency differs from the company currency {company_currency.name}.",
         )
 
         # The rounding contract itself, stated independently of any document:
         # 10.025 / 0.05 = 200.5 is a tie, and half-up takes a tie away from zero.
+        rounded_line_amount = eur.round(ROUNDING_LINE_AMOUNT)
         self.assertEqual(
-            cents.compare_amounts(eur.round(ROUNDING_LINE_AMOUNT), ROUNDING_EXPECTED_TOTAL),
+            eur.compare_amounts(rounded_line_amount, ROUNDING_EXPECTED_TOTAL),
             0,
-            f"Rounding {ROUNDING_LINE_AMOUNT} at an increment of {ROUNDING_INCREMENT} must give {ROUNDING_EXPECTED_TOTAL:.2f} under half-up, but it gives {eur.round(ROUNDING_LINE_AMOUNT)}.",
+            f"Rounding {ROUNDING_LINE_AMOUNT} at an increment of {ROUNDING_INCREMENT} must give {ROUNDING_EXPECTED_TOTAL:.2f} under half-up, but it gives {rounded_line_amount}.",
+        )
+        self.assertEqual(
+            eur.compare_amounts(rounded_line_amount, ROUNDING_TIE_TOWARD_ZERO),
+            1,
+            f"Half-up must take the {ROUNDING_LINE_AMOUNT} tie away from zero, so the rounded figure must stand above {ROUNDING_TIE_TOWARD_ZERO:.2f} {eur.name} rather than at it, but it reads {rounded_line_amount}.",
+        )
+        self.assertEqual(
+            float_compare(rounded_line_amount, ROUNDING_EXPECTED_TOTAL, precision_digits=CENT_PRECISION_DIGITS),
+            0,
+            f"To the cent, rounding {ROUNDING_LINE_AMOUNT} at an increment of {ROUNDING_INCREMENT} must give exactly {ROUNDING_EXPECTED_TOTAL:.2f}, but it gives {rounded_line_amount}.",
         )
 
         bill = self._create_story_bill(
@@ -817,9 +1314,14 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             f"The bill must be denominated in {eur.name}, but it reads {bill.currency_id.name}.",
         )
         self.assertEqual(
-            cents.compare_amounts(bill.amount_total, ROUNDING_EXPECTED_TOTAL),
+            eur.compare_amounts(bill.amount_total, ROUNDING_EXPECTED_TOTAL),
             0,
             f"The bill's line amount of {ROUNDING_LINE_AMOUNT} must post as {ROUNDING_EXPECTED_TOTAL:.2f} {eur.name} under half-up rounding, but the bill totals {bill.amount_total}.",
+        )
+        self.assertEqual(
+            float_compare(bill.amount_total, ROUNDING_EXPECTED_TOTAL, precision_digits=CENT_PRECISION_DIGITS),
+            0,
+            f"To the cent, the bill must total exactly {ROUNDING_EXPECTED_TOTAL:.2f} {eur.name}, but it totals {bill.amount_total}.",
         )
 
         credit_note = self._create_vendor_credit_note(bill)
@@ -846,9 +1348,14 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             f"Compared at the {eur.name} increment of {ROUNDING_INCREMENT}, the credit note must total {ROUNDING_EXPECTED_TOTAL:.2f} but totals {credit_note.amount_total}.",
         )
         self.assertEqual(
-            cents.compare_amounts(credit_note.amount_total, ROUNDING_EXPECTED_TOTAL),
+            eur.compare_amounts(credit_note.amount_total, ROUNDING_TIE_TOWARD_ZERO),
+            1,
+            f"The credit note's total must be the tie taken away from zero rather than toward it, so at the {eur.name} increment it must stand above {ROUNDING_TIE_TOWARD_ZERO:.2f} rather than at it, but it totals {credit_note.amount_total}.",
+        )
+        self.assertEqual(
+            float_compare(credit_note.amount_total, ROUNDING_EXPECTED_TOTAL, precision_digits=CENT_PRECISION_DIGITS),
             0,
-            f"Compared to the cent, the credit note must total exactly {ROUNDING_EXPECTED_TOTAL:.2f} {eur.name} -- half-up takes the 10.025 tie away from zero -- but it totals {credit_note.amount_total}.",
+            f"To the cent, the credit note must total exactly {ROUNDING_EXPECTED_TOTAL:.2f} {eur.name} -- half-up takes the {ROUNDING_LINE_AMOUNT} tie away from zero -- but it totals {credit_note.amount_total}.",
         )
 
         # Direction, in the document currency.
@@ -865,19 +1372,38 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             f"The entry must carry exactly one line on Expense {CODE_EXPENSE}, but it carries {len(expense_lines)}.",
         )
         self.assertEqual(
-            cents.compare_amounts(payable_lines.amount_currency, ROUNDING_EXPECTED_TOTAL),
+            eur.compare_amounts(payable_lines.amount_currency, ROUNDING_EXPECTED_TOTAL),
             0,
             f"The entry must debit Accounts Payable {CODE_ACCOUNTS_PAYABLE} by {ROUNDING_EXPECTED_TOTAL:.2f} {eur.name}, but that line reads {payable_lines.amount_currency}.",
         )
         self.assertEqual(
-            cents.compare_amounts(expense_lines.amount_currency, -ROUNDING_EXPECTED_TOTAL),
+            float_compare(payable_lines.amount_currency, ROUNDING_EXPECTED_TOTAL, precision_digits=CENT_PRECISION_DIGITS),
+            0,
+            f"To the cent, the Accounts Payable {CODE_ACCOUNTS_PAYABLE} line must read exactly {ROUNDING_EXPECTED_TOTAL:.2f} {eur.name}, but it reads {payable_lines.amount_currency}.",
+        )
+        self.assertEqual(
+            eur.compare_amounts(expense_lines.amount_currency, -ROUNDING_EXPECTED_TOTAL),
             0,
             f"The entry must credit Expense {CODE_EXPENSE} by {ROUNDING_EXPECTED_TOTAL:.2f} {eur.name}, but that line reads {expense_lines.amount_currency}.",
         )
+        self.assertEqual(
+            float_compare(expense_lines.amount_currency, -ROUNDING_EXPECTED_TOTAL, precision_digits=CENT_PRECISION_DIGITS),
+            0,
+            f"To the cent, the Expense {CODE_EXPENSE} line must read exactly {-ROUNDING_EXPECTED_TOTAL:.2f} {eur.name}, but it reads {expense_lines.amount_currency}.",
+        )
 
-        # Balance in the source currency.
-        source_debit = sum(line.amount_currency for line in credit_note.line_ids if line.amount_currency > 0.0)
-        source_credit = -sum(line.amount_currency for line in credit_note.line_ids if line.amount_currency < 0.0)
+        # Balance in the source currency.  Which side a line falls on is decided
+        # at the EUR increment rather than by the sign of a raw float: a figure
+        # smaller than the increment is not a side of the entry, and reading it as
+        # one would count rounding noise as a debit or a credit.
+        sided_lines = credit_note.line_ids.filtered(lambda line: not eur.is_zero(line.amount_currency))
+        self.assertEqual(
+            len(sided_lines),
+            2,
+            f"Measured at the {eur.name} increment the entry must have exactly two sides, but {len(sided_lines)} of its {len(credit_note.line_ids)} journal items carry an amount.",
+        )
+        source_debit = sum(line.amount_currency for line in sided_lines if eur.compare_amounts(line.amount_currency, 0.0) > 0)
+        source_credit = -sum(line.amount_currency for line in sided_lines if eur.compare_amounts(line.amount_currency, 0.0) < 0)
         self.assertEqual(
             eur.compare_amounts(source_debit, source_credit),
             0,
@@ -892,18 +1418,23 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             0,
             f"Both sides of the entry must measure {ROUNDING_EXPECTED_TOTAL:.2f} {eur.name}, but its total debits measure {source_debit}.",
         )
+        self.assertEqual(
+            float_compare(source_debit, ROUNDING_EXPECTED_TOTAL, precision_digits=CENT_PRECISION_DIGITS),
+            0,
+            f"To the cent, both sides of the entry must measure exactly {ROUNDING_EXPECTED_TOTAL:.2f} {eur.name}, but its total debits measure {source_debit}.",
+        )
 
         # Balance in the company currency, where the books are kept.
         total_debit = sum(credit_note.line_ids.mapped('debit'))
         total_credit = sum(credit_note.line_ids.mapped('credit'))
         self.assertEqual(
-            cents.compare_amounts(total_debit, total_credit),
+            company_currency.compare_amounts(total_debit, total_credit),
             0,
-            f"In the company currency {cents.name} the entry must balance: total debits of {total_debit} must equal total credits of {total_credit}.",
+            f"In the company currency {company_currency.name} the entry must balance: total debits of {total_debit} must equal total credits of {total_credit}.",
         )
         self.assertTrue(
-            cents.is_zero(total_debit - total_credit),
-            f"The difference between the entry's total debits and total credits must measure 0.00 {cents.name}, but it measures {total_debit - total_credit}.",
+            company_currency.is_zero(total_debit - total_credit),
+            f"The difference between the entry's total debits and total credits must measure 0.00 {company_currency.name}, but it measures {total_debit - total_credit}.",
         )
 
     # =========================================================================
@@ -925,6 +1456,10 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         the platform keeps for them, and the debit-note domain split that would
         otherwise hand both of them the same next number is applied only to
         invoice-type documents.
+
+        Both the rule and its outcome are asserted: neither refund's numbering
+        range is narrowed by its source link, and the numbers the journal then
+        issued them differ.
 
         The unlinked refund is built directly rather than through the wizard,
         which by design produces only documents that carry a source link and
@@ -986,6 +1521,18 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             "The second document must carry no source link, so that the two documents fall on opposite sides of that split.",
         )
 
+        # The numbering rule itself, read off the documents rather than inferred
+        # from the numbers they came out with: neither refund is numbered within a
+        # range narrowed by its source link, which is what leaves them sharing the
+        # one refund pool that the platform keeps continuous.
+        for refund, label in ((linked_credit_note, 'linked'), (plain_refund, 'unlinked')):
+            refund_domain = refund._get_last_sequence_domain()[0]
+            self.assertNotIn(
+                'debit_origin_id',
+                refund_domain,
+                f"A vendor credit note must be numbered from the journal's whole refund pool, so its numbering range must not be narrowed by the source link, but the {label} credit note is numbered within {refund_domain!r}.",
+            )
+
         # Same journal, same period: neither the journal clause nor the date
         # range of the sequence domain can mask a collision here.
         self.assertEqual(
@@ -1036,13 +1583,48 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         When the Clerk runs the Debit Note wizard against it without asking for a
         vendor credit note,
         Then the opt-in reads false by default and the result is still a draft
-        vendor bill debit note linked to its source by ``debit_origin_id``, so
-        that the behaviour the module shipped is preserved for everyone who does
-        not ask for the new one.
+        vendor bill debit note linked to its source by ``debit_origin_id``, which
+        the journal then numbers in the debit-note range it has always kept for
+        such a document, apart from the range the bill itself was numbered in; so
+        the behaviour the module shipped is preserved for everyone who does not
+        ask for the new one.
 
-        This test uses its own bill: the wizard refuses a source that already
-        carries a source link, so the bill reversed by another scenario cannot be
-        reused here.
+        Three further things are settled here, because the shipped behaviour is
+        what they protect.
+
+        The first is that asking for the new mode is not by itself what produces a
+        credit note: the source has to be a vendor bill.  A posted vendor credit
+        note is put to the same wizard with the opt-in explicitly set, and the
+        result type it maps to is still the vendor bill the module has always
+        produced from a credit note, while the request as a whole is refused for
+        naming a source that is not a bill.  Read together those two say that the
+        mode is decided by the opt-in *and* the source type; a mode decided by the
+        opt-in alone would answer the first of them differently.
+
+        The second is that the debit-note range is still keyed on the source link
+        for invoice-type documents.  The range each of the two invoice-type
+        documents is numbered within is read off the documents themselves, and the
+        debit note is then posted so that the number it receives can be compared
+        with the bill's own.
+
+        The third is what the mode's own rules take away from nobody.  A credit
+        note gives back the charge of one named bill, so a source that is not
+        posted has no charge to give back and a selection of several bills does not
+        describe one operation a Clerk could review -- it describes as many credit
+        notes as there are bills, each linked to a different source and numbered in
+        the journal's refund sequence, out of a single unreviewed click.  Both are
+        refused, and refused server-side rather than by the form: the two bills
+        share a type, so the wizard reads that one type and offers the opt-in.  The
+        very same selection is then put through the wizard again with the opt-in
+        left alone, and it raises the two debit notes it always did.
+
+        This test raises its own bill rather than reusing one from another
+        scenario, which keeps each scenario's Given independent of what another
+        left behind.  The wizard screens the source link of the document actually
+        selected -- it refuses a selection in which any move carries a
+        ``debit_origin_id`` of its own, that is, a selection of debit notes or
+        credit notes rather than of bills -- so what a bill already carries on the
+        inverse side, in ``debit_note_ids``, is not what stands in the way.
         """
         bill = self._create_story_bill()
 
@@ -1105,3 +1687,273 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             'in_invoice',
             f"The source bill must still be a vendor bill, but its move_type reads {bill.move_type!r}.",
         )
+
+        # The opt-in on a source that is not a vendor bill.  A posted vendor credit
+        # note still maps to the vendor bill the module has always produced from
+        # one, so the new mode is decided by the opt-in together with the source
+        # type rather than by the opt-in alone.
+        posted_refund = self._create_invoice(
+            move_type='in_refund',
+            invoice_date=fields.Date.from_string(PLAIN_REFUND_DATE),
+            date=fields.Date.from_string(PLAIN_REFUND_DATE),
+            post=True,
+            partner_id=self.vendor,
+            journal_id=self.purchase_journal,
+            currency_id=self.company_currency,
+            invoice_line_ids=[
+                self._prepare_invoice_line(
+                    name='Unlinked vendor credit note',
+                    price_unit=AMOUNT_PLAIN_REFUND,
+                    quantity=1.0,
+                    tax_ids=[],
+                    account_id=self.account_expense_6100,
+                ),
+            ],
+        )
+        opt_in_wizard = self.env['account.debit.note'].with_context(
+            active_model='account.move',
+            active_ids=posted_refund.ids,
+        ).create({
+            'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+            'reason': CREDIT_NOTE_REASON,
+            'create_vendor_credit_note': True,
+        })
+        self.assertTrue(
+            opt_in_wizard.create_vendor_credit_note,
+            "The opt-in must be set for this case, which is what makes the source type the only thing left to decide the result.",
+        )
+        self.assertEqual(
+            opt_in_wizard.move_type,
+            'in_refund',
+            f"The source of this case must be a vendor credit note, but the wizard reads {opt_in_wizard.move_type!r}.",
+        )
+        self.assertEqual(
+            opt_in_wizard._prepare_default_values(posted_refund)['move_type'],
+            'in_invoice',
+            "A vendor credit note must still be corrected by a vendor bill, as the module has always done, even when the vendor-credit-note opt-in is set: the new mode applies to a vendor bill and to nothing else.",
+        )
+
+        with self.assertRaises(UserError) as refusal:
+            opt_in_wizard.create_debit()
+
+        message = str(refusal.exception)
+        self.assertIn(
+            posted_refund.display_name,
+            message,
+            f"The refusal must name the document it refuses ({posted_refund.display_name!r}), but it reads {message!r}.",
+        )
+        self.assertIn(
+            'vendor bill',
+            message,
+            f"The refusal must state the condition the source fails -- only a vendor bill can be credited this way -- but it reads {message!r}.",
+        )
+        self.assertFalse(
+            self.env['account.move'].search([('debit_origin_id', '=', posted_refund.id)]),
+            "A source that is not a vendor bill must be left with nothing linked to it.",
+        )
+        self.assertEqual(
+            posted_refund.state,
+            'posted',
+            f"That source must be left posted by the refusal, but it reads {posted_refund.state!r}.",
+        )
+
+        # The debit-note range is still keyed on the source link for invoice-type
+        # documents: the bill is numbered among the documents carrying no source
+        # link, and its debit note among those that do.
+        bill_domain = bill._get_last_sequence_domain()[0]
+        debit_note_domain = debit_note._get_last_sequence_domain()[0]
+        self.assertIn(
+            'debit_origin_id IS NULL',
+            bill_domain,
+            f"A vendor bill must be numbered among the documents of its journal that carry no source link, but it is numbered within {bill_domain!r}.",
+        )
+        self.assertIn(
+            'debit_origin_id IS NOT NULL',
+            debit_note_domain,
+            f"A vendor bill debit note must be numbered among the documents of its journal that do carry a source link, which is the range the module has always given it, but it is numbered within {debit_note_domain!r}.",
+        )
+
+        # And the numbers themselves: the debit note is given a line so that it
+        # can be posted, and the number it receives comes from its own range and
+        # not from the range the bill was numbered in.
+        debit_note.write({
+            'invoice_line_ids': [
+                Command.create({
+                    'name': 'Freight undercharged on the original bill',
+                    'quantity': 1.0,
+                    'price_unit': AMOUNT_FREIGHT,
+                    'tax_ids': [],
+                    'account_id': self.account_expense_6100.id,
+                }),
+            ],
+        })
+        debit_note.action_post()
+        self.assertEqual(
+            debit_note.state,
+            'posted',
+            f"The debit note must post, as it always did, but it reads state {debit_note.state!r}.",
+        )
+        self.assertEqual(
+            debit_note.sequence_prefix,
+            f'D{bill.sequence_prefix}',
+            f"A posted vendor bill debit note must be numbered in the journal's own debit-note range, D followed by the range the bill was numbered in ({bill.sequence_prefix!r}), but it reads {debit_note.sequence_prefix!r}.",
+        )
+        self.assertNotEqual(
+            debit_note.name,
+            bill.name,
+            f"The debit note must carry a number of its own rather than the bill's, but both read {debit_note.name!r}.",
+        )
+        self.assertEqual(
+            debit_note.debit_origin_id,
+            bill,
+            f"Posting must leave the debit note linked to the bill it corrects, but debit_origin_id reads {debit_note.debit_origin_id.display_name!r}.",
+        )
+
+        # A source that is not posted.  The wizard is reached with ``move_ids``
+        # written directly, which is the path on which the Debit Note action's own
+        # screening of the selection never runs.
+        draft_bill = self._create_invoice(
+            move_type='in_invoice',
+            invoice_date=fields.Date.from_string(BILL_DATE),
+            date=fields.Date.from_string(BILL_DATE),
+            post=False,
+            partner_id=self.vendor,
+            journal_id=self.purchase_journal,
+            currency_id=self.company_currency,
+            invoice_line_ids=[
+                self._prepare_invoice_line(
+                    name=LINE_SUBSCRIPTION,
+                    price_unit=AMOUNT_SUBSCRIPTION,
+                    quantity=1.0,
+                    tax_ids=[],
+                    account_id=self.account_expense_6100,
+                ),
+            ],
+        )
+        self.assertEqual(
+            draft_bill.state,
+            'draft',
+            f"This source must stand in state 'draft' for it to be the unposted case, but it reads {draft_bill.state!r}.",
+        )
+        draft_wizard = self.env['account.debit.note'].create({
+            'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+            'reason': CREDIT_NOTE_REASON,
+            'copy_lines': True,
+            'create_vendor_credit_note': True,
+            'move_ids': [Command.set(draft_bill.ids)],
+        })
+        with self.assertRaises(UserError) as refusal:
+            draft_wizard.create_debit()
+
+        message = str(refusal.exception)
+        self.assertIn(
+            draft_bill.display_name,
+            message,
+            f"The refusal must name the document it refuses ({draft_bill.display_name!r}), but it reads {message!r}.",
+        )
+        self.assertIn(
+            'not posted',
+            message,
+            f"The refusal must state the condition the source fails -- it is not posted -- but it reads {message!r}.",
+        )
+        self.assertFalse(
+            self.env['account.move'].search([('debit_origin_id', '=', draft_bill.id)]),
+            "A draft bill must be left with no credit note linked to it.",
+        )
+
+        # Several selected bills at once, refused in vendor-credit-note mode.
+        first_bill = self._create_story_bill()
+        second_bill = self._create_story_bill()
+        bills = first_bill + second_bill
+        multi_wizard = self.env['account.debit.note'].with_context(
+            active_model='account.move',
+            active_ids=bills.ids,
+        ).create({
+            'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+            'reason': CREDIT_NOTE_REASON,
+            'copy_lines': True,
+            'create_vendor_credit_note': True,
+        })
+        self.assertEqual(
+            multi_wizard.move_type,
+            'in_invoice',
+            f"A selection of vendor bills alone must read one source type, which is what exposes the opt-in and makes this refusal necessary, but the wizard reads {multi_wizard.move_type!r}.",
+        )
+        self.assertEqual(
+            len(multi_wizard.move_ids),
+            2,
+            f"The wizard must hold both selected bills for this to be the multi-source case, but it holds {len(multi_wizard.move_ids)}.",
+        )
+        with self.assertRaises(UserError) as refusal:
+            multi_wizard.create_debit()
+
+        message = str(refusal.exception)
+        self.assertIn(
+            'exactly one vendor bill',
+            message,
+            f"The refusal must state the rule that failed -- a vendor credit note credits exactly one bill -- but it reads {message!r}.",
+        )
+        self.assertIn(
+            'Create Vendor Credit Note',
+            message,
+            f"The refusal must state the remedy in the words of the control the Clerk ticked, but it reads {message!r}.",
+        )
+        self.assertFalse(
+            self.env['account.move'].search([('debit_origin_id', 'in', bills.ids)]),
+            "A refused multi-bill request must leave no credit note behind for either bill, not even one of the two.",
+        )
+        for refused_bill in bills:
+            self.assertEqual(
+                refused_bill.state,
+                'posted',
+                f"The bill {refused_bill.name} must be left posted by the refusal, but it reads {refused_bill.state!r}.",
+            )
+            self.assertEqual(
+                self.company_currency.compare_amounts(refused_bill.amount_total, AMOUNT_BILL_TOTAL),
+                0,
+                f"The bill {refused_bill.name} must still total {AMOUNT_BILL_TOTAL:.2f} {self.company_currency.name} after the refusal, but it totals {refused_bill.amount_total}.",
+            )
+
+        # The same selection with the opt-in left alone: one debit note per bill,
+        # exactly as the module shipped it.  The one-bill rule is a rule of the new
+        # mode and takes nothing away from the old one.
+        shipped_wizard = self.env['account.debit.note'].with_context(
+            active_model='account.move',
+            active_ids=bills.ids,
+        ).create({
+            'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+            'reason': 'Freight undercharged on both bills',
+        })
+        self.assertFalse(
+            shipped_wizard.create_vendor_credit_note,
+            "The opt-in must read false unless the Clerk sets it, which is what leaves the multi-document debit-note path open.",
+        )
+        shipped_wizard.create_debit()
+
+        debit_notes = self.env['account.move'].search([('debit_origin_id', 'in', bills.ids)])
+        self.assertEqual(
+            len(debit_notes),
+            2,
+            f"Both selected bills must receive a debit note, as they always did, but {len(debit_notes)} were created.",
+        )
+        self.assertEqual(
+            set(debit_notes.mapped('move_type')),
+            {'in_invoice'},
+            f"Without the opt-in every result must remain a vendor bill debit note, but the results read the types {set(debit_notes.mapped('move_type'))}.",
+        )
+        self.assertEqual(
+            set(debit_notes.mapped('state')),
+            {'draft'},
+            f"Every debit note must be created in draft, as it always was, but the results read the states {set(debit_notes.mapped('state'))}.",
+        )
+        for corrected_bill in bills:
+            self.assertEqual(
+                len(corrected_bill.debit_note_ids),
+                1,
+                f"The bill {corrected_bill.name} must carry exactly one debit note of its own, but it reports {len(corrected_bill.debit_note_ids)}.",
+            )
+            self.assertEqual(
+                corrected_bill.debit_note_ids.journal_id,
+                corrected_bill.journal_id,
+                f"The debit note of bill {corrected_bill.name} must sit in that bill's own journal, but it reads {corrected_bill.debit_note_ids.journal_id.display_name!r}.",
+            )

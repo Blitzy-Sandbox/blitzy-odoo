@@ -67,9 +67,6 @@ CENT_PRECISION_DIGITS = 2
 
 AMOUNT_PLAIN_REFUND = 1000.0
 
-OTHER_PURCHASE_JOURNAL_NAME = 'Secondary Purchases'
-OTHER_PURCHASE_JOURNAL_CODE = 'BILL2'
-
 # The wizard form the Debit Note action opens, named so that the form-level
 # assertions read the arch the Clerk is served.
 WIZARD_FORM_VIEW = 'account_debit_note.view_account_debit_note'

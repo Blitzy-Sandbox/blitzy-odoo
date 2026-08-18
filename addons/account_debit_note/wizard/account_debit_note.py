@@ -22,6 +22,11 @@ class AccountDebitNote(models.TransientModel):
     copy_lines = fields.Boolean("Copy Lines",
                                 help="In case you need to do corrections for every line, it can be in handy to copy them.  "
                                      "We won't copy them for debit notes from credit notes. ")
+    create_vendor_credit_note = fields.Boolean("Create Vendor Credit Note", default=False,
+                                               help="Only for a posted vendor bill: create a vendor credit note, which gives back the "
+                                                    "charge and reduces what you still owe the vendor, instead of a debit note, which "
+                                                    "increases it.  The credit note stays linked to the bill it credits.  "
+                                                    "Leave this off to keep creating debit notes from vendor bills. ")
     # computed fields
     move_type = fields.Char(compute="_compute_from_moves")
     journal_type = fields.Char(compute="_compute_journal_type")
@@ -52,7 +57,10 @@ class AccountDebitNote(models.TransientModel):
             record.journal_type = record.move_type in ['in_refund', 'in_invoice'] and 'purchase' or 'sale'
 
     def _prepare_default_values(self, move):
-        if move.move_type in ('in_refund', 'out_refund'):
+        # Opt-in only: a posted vendor bill becomes a linked vendor credit note debiting the payable and crediting the expense; the falsy default preserves the debit-note path.
+        if self.create_vendor_credit_note and move.move_type == 'in_invoice':
+            type = 'in_refund'
+        elif move.move_type in ('in_refund', 'out_refund'):
             type = 'in_invoice' if move.move_type == 'in_refund' else 'out_invoice'
         else:
             type = move.move_type

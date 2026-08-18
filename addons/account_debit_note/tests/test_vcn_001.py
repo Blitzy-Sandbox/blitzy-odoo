@@ -149,9 +149,11 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         cls.company_currency = cls.company_data['currency']
         cls.purchase_journal = cls.company_data['default_journal_purchase']
 
-        # Accounts Payable 2000 and Expense 6100.  The generic chart of accounts
-        # loaded by this test company offers neither in the shape the story
-        # names: its payable is 2110, and 6100 exists under another name.
+        # Accounts Payable 2000 and Expense 6100.  Loading a chart template pads
+        # every template code out to the chart's code width, so the generic chart
+        # carries 211000 and 610000 rather than the 2110 and 6100 of its own
+        # source data, and the two codes the story names are free to be created.
+        # The helper reuses either code where a chart does carry it.
         cls.account_payable_2000 = cls._vcn_account(
             code=CODE_ACCOUNTS_PAYABLE,
             name='Accounts Payable',

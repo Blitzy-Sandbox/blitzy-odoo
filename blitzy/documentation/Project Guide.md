@@ -2,542 +2,569 @@
 
 ## 1.1 Project Overview
 
-This project delivers the implementation-ready Agile backlog for an enterprise accounting programme on Odoo, authored as a navigable Markdown ticket tree under `tickets/`. One parent Epic decomposes into nine Features spanning chart of accounts, accounts payable, accounts receivable, bank reconciliation, tax and compliance, multi-company consolidation, financial reporting and period close, fixed assets, and budgeting — and those Features decompose into forty-one User Stories carrying 303 BDD acceptance criteria with deterministic account codes, currencies, rounding rules and balanced journal entries. Its users are the finance organisation that will commission the work: twelve named finance personas, from the Accounts Payable Clerk to the Group Controller and External Auditor. No Odoo application code is created or modified.
+Accounts Payable clerks can now credit back a posted vendor bill from inside the Debit Note wizard they already use. Ticking **Create Vendor Credit Note** produces exactly one linked vendor credit note (`in_refund`), posted in the bill's own journal and currency, debiting Accounts Payable 2000 and crediting Expense 6100 in balance. A total that is not above zero is refused before it can reach the ledger. The opt-in defaults off, so every existing debit-note path is unchanged. All of it is confined to the `account_debit_note` module.
 
 ## 1.2 Completion Status
 
 ```mermaid
-pie showData title Project Completion — 79.0% Complete
-    "Completed Work (hours)" : 233
-    "Remaining Work (hours)" : 62
+pie showData title AAP-Scoped Completion — 74.2% Complete
+    "Completed Work (hours)" : 167
+    "Remaining Work (hours)" : 58
 ```
 
-Chart colours: **Completed = Dark Blue `#5B39F3`**, **Remaining = White `#FFFFFF`**.
+Completed **Dark Blue `#5B39F3`**, Remaining **White `#FFFFFF`**.
 
 | Metric | Value |
-|--------|-------|
-| **Total Hours** | **295** |
-| **Completed Hours (AI + Manual)** | **233** (233 autonomous, 0 manual) |
-| **Remaining Hours** | **62** |
-| **Percent Complete** | **79.0%** |
+|---|---|
+| **Total Hours** | **225** |
+| Completed Hours (AI + Manual) | 167 (167 AI + 0 Manual) |
+| Remaining Hours | 58 |
+| **Percent Complete** | **74.2%** |
 
-`233 / (233 + 62) = 79.0%`. The denominator is the backlog the agreed plan defines plus the work needed to put it into service. Implementing the Odoo modules the backlog specifies is a separate programme and is excluded.
+`167 / (167 + 58) × 100 = 74.2%`. The denominator is the planned feature scope plus the path-to-production work to deploy it. Deferred accounting scenarios — allocation, tax reversal, cash refunds, lock dates — were out of scope by plan.
 
 ## 1.3 Key Accomplishments
 
-- ✅ **51 ticket files delivered** — 1 Epic, 9 Features, 41 Stories in the mandated nested layout.
-- ✅ **303 acceptance criteria** in Given/When/Then form, every Story inside the 4–8 band.
-- ✅ **Accounting determinism enforced** — 667 debits-equal-credits assertions, 15,380 currency-qualified amounts.
-- ✅ **Referential integrity proven** — 4,139 links and anchors resolve, zero broken targets.
-- ✅ **Zero forbidden qualifiers** in any acceptance criterion, across all thirteen banned terms.
-- ✅ **Canonical registers** bind one concept per account code and one legal identity per entity.
-- ✅ **Legacy backlog superseded** — 39 flat-layout files retired, each traced to its destination.
-- ✅ **Change set contained** — all 91 changed paths sit under `tickets/`; nothing executable touched.
+- ✅ One posted bill yields exactly one linked, balanced credit note in the bill's journal and currency.
+- ✅ Accounts Payable 2000 debited, Expense 6100 credited, debits equal to credits.
+- ✅ A zero or negative total is refused on every road into the posted state.
+- ✅ The source link is held to a vendor bill of the same company; allocation never triggers.
+- ✅ Amounts post at the currency's own increment: 10.025 becomes 10.05 at 0.05.
+- ✅ Linked and unlinked vendor refunds share one numbering pool without collision.
+- ✅ With the opt-in off, every pre-existing debit-note path behaves as before.
+- ✅ 14 tests pass; install, upgrade and static analysis are clean and unchanged from baseline.
 
 ## 1.4 Critical Unresolved Issues
 
+**34 of the 50** items raised across verification remain open, none rooted in the five delivered files. The groups below carry exact counts and sum to 34.
+
 | Issue | Impact | Owner | ETA |
-|-------|--------|-------|-----|
-| Platform version and edition target unconfirmed (`DEC-001`) | Every version-dependent contract — the JSON web-service endpoint, lock-date semantics, module coordinates — is written against the Odoo 19.0 Community baseline and must be restated if another version is chosen. Epic Definition of Done item 10 cannot be satisfied. | Group Controller with IT Operations | 1 week |
-| Capability source for Enterprise-only features unconfirmed (`DEC-002`) | Dynamic reports, fixed assets, budgeting and consolidation are Enterprise capabilities absent from this Community repository. FEATURE-001-06 through FEATURE-001-09 cannot be scheduled until the Enterprise-versus-OCA-versus-bespoke choice is made. | CFO with Group Controller | 2 weeks |
-| Backlog not yet accepted or scheduled | All 52 backlog documents carry `Status: Draft`, nothing is in a tracker, and the 278 Fibonacci story points cannot be assigned or burned down. Acceptance must also countersign the prior-art removal recorded as decided (`DEC-003`) and the four placement conventions set out in Section 5.2. | Product Owner with Finance Controller | 2 weeks |
-| Every acceptance criterion is a specification, not a passing test | The 303 scenarios name test methods that do not exist yet; the accounting figures are internally reconciled and grounded in this repository's Odoo 19.0 source but have never been executed against a running instance. | Delivery team (at implementation) | Implementation start |
-| Bank-identifier fixture does not match the register's domestic scheme (`FIX-001`) | `test_data/bank_statements/sample.xml` identifies the United States account by IBAN with a BIC rather than by account number plus ABA routing number under `USABA`. The criterion states the delivered state truthfully, so nothing is unsatisfiable, but the fixture exercises the IBAN branch of the parser until amended. | Named in `STORY-001-04-01` sub-task 14b | With implementation |
+|---|---|---|---|
+| Deployment and environment security posture (**13** items) — the application's database role holds superuser rights with a reachable command-execution primitive; RPC error envelopes carry tracebacks and absolute paths; response headers, cookie flags, credential handling and file permissions are all at development defaults | Blocks safe exposure of this application outside a local host. Not a property of the feature itself | DevOps / Platform | Before any deployment |
+| Stock-platform UX and accessibility (**16** items) — one HIGH: the notes field on a *posted* document accepts keystrokes and swallows Tab, marking a posted accounting document dirty. The rest are dialog and tab ARIA, focus and statusbar contrast, mobile clipping and touch-target sizes, list truncation | Keyboard and screen-reader users are impeded on the screens a clerk uses. Reproduces identically on untouched stock screens | Platform team | Backlog |
+| Cross-addon document classification (**2** items) — a vendor credit note carries the source link that EDI and localisation modules read as a debit-note signal, so it exports as a UBL `<DebitNote>`, and the module's three "Debit Notes" list filters return credit notes too | Downstream EDI recipients receive the wrong document type. Open by plan direction, deferred to its own ticket | Accounting / EDI | Next sprint |
+| Source link not shown on purchase documents (**1** item) — `debit_origin_id` is anchored after core's `invoice_origin`, which sits inside a customer-only group, so it never renders on a bill or a credit note | Navigational only; the link is reachable through the stat button and the chatter. Affects the pre-existing debit-note path identically | Accounting | Next sprint |
+| Accounting scope the plan deferred (**2** items) — nothing caps how much of a bill can be credited, and no lock-date rule applies to a credit note's date | Both are separate story scenarios, not gaps in what was delivered | Product / Accounting | Per roadmap |
 
 ## 1.5 Access Issues
 
-No access issue blocked this work; every system it needed was reachable and was exercised directly. The rows below are forward-looking prerequisites.
+No access issue blocked validation; every gate ran to completion. Two environment conditions shape how this project is run.
 
-| System/Resource | Type of Access | Issue Description | Resolution Status | Owner |
-|-----------------|----------------|-------------------|-------------------|-------|
-| Odoo Enterprise subscription (or the chosen OCA source) | Software licence / module source | Four in-scope capabilities are Enterprise features absent from this Community checkout; no subscription or OCA adoption decision is held. Blocks four Features at development start, not the backlog. | Open — decision `DEC-002` | CFO with Group Controller |
-| Banking, tax-authority and PEPPOL endpoints | Service credentials and certificates | Statement feeds, currency-rate providers and e-invoicing transmission are specified with full contracts, but no credentials, certificates or participant onboarding have been obtained. | Open — needed before the integration stories start | IT Operations with Tax Accountant |
-| Repository, Python, PostgreSQL, test databases | Working access, used directly | Branch checked out and readable, build and test suite executed, both databases queried, server started and reached over HTTP. | ✅ No issue | — |
+| System / Resource | Type of Access | Issue Description | Resolution Status | Owner |
+|---|---|---|---|---|
+| PostgreSQL 16.15 at `127.0.0.1:5432` | Database role | The `odoo` role the application connects as holds superuser rights (`pg_user.usesuper = t`), wider than the application needs | Open — must be narrowed before deployment; harmless for local validation | DevOps |
+| Odoo HTTP listener | Port allocation | `--test-enable` binds an HTTP port even under `--no-http`, so two test runs on one host collide and the loser exits 0 having executed nothing | Mitigated — every run is given its own `--http-port`/`--gevent-port` pair | Build / CI |
 
 ## 1.6 Recommended Next Steps
 
-1. **[High]** Confirm the platform version and edition (`DEC-001`), then restate the version-dependent contracts — 6h.
-2. **[High]** Decide the capability source for the four Enterprise-only capabilities (`DEC-002`), unblocking FEATURE-001-06 to FEATURE-001-09 — 8h.
-3. **[High]** Load all 51 tickets into the tracker of record with links, priorities and points, then groom and size them — 16h.
-4. **[High]** Obtain Finance sign-off against the Epic's Definition of Done and move each ticket off `Draft` — 12h.
-5. **[Medium]** Close `DEC-003` to `DEC-011` and propagate each outcome into the Story that gates on it — 9h.
+1. **[High]** Harden the deployment: least-privilege database role, credentials in `odoo.conf`, a production log level, and a reverse proxy supplying the missing headers and cookie flags. *(22h)*
+2. **[High]** Open the cross-addon ticket the plan calls for: classify document type by `move_type`, not by the presence of a source link. *(16h)*
+3. **[High]** Sign off the accounting behaviour and settle the three accepted compromises. *(6h)*
+4. **[Medium]** Wire the gate into CI so it asserts the expected test names and count, with a port per job. *(4h)*
+5. **[Medium]** Surface the source link on purchase-side documents. *(4h)*
 
 # 2. Project Hours Breakdown
 
 ## 2.1 Completed Work Detail
 
-Every row traces to a deliverable in the agreed plan. Line counts are the delivered artefacts on disk.
-
 | Component | Hours | Description |
-|-----------|------:|-------------|
-| Parent Epic — `tickets/EPIC-001-enterprise-accounting-odoo.md` | 24 | 2,025 lines. Verbatim programme objective, quantified business-value table (close 10 → 5 business days per entity, statements under 5 minutes, 50% fewer post-close adjustments), module scope in and out, five dependency groups, Features Index, exactly ten Definition-of-Done items, success metrics SM-001–SM-017, constraint register C-001–C-029, lock-date contract L-1–L-11, and Appendices A–F. |
-| Nine Feature tickets — `tickets/EPIC-001/FEATURE-001-NN-*.md` | 40 | 6,092 lines. Each names the Odoo modules it delivers against, indexes its exact Stories, carries its persona map, cross-story and cross-feature dependencies, inherited constraint restatements, a workflow diagram and a Feature Definition of Done. |
-| Forty-one User Story tickets — `tickets/EPIC-001/FEATURE-001-NN/STORY-*.md` | 113 | 24,373 lines. WHO/WHAT/WHY with a named finance persona, 303 Given/When/Then criteria across the four mandated coverage classes, `@assignee` sub-tasks, 4–5 accounting edge cases each, Odoo dependencies, Fibonacci estimation totalling 278 points, test requirements, and a Definition of Done carrying the reconciliation gate. |
-| Navigation index — `tickets/README.md` | 4 | 537 lines. Rewritten to the nine-Feature / forty-one-Story nested backlog with per-Feature counts, the mandatory eight-row story metadata spine, the fourteen universal story sections, the priority census, a worked format example and a review checklist. |
-| Legacy backlog retirement and migration traceability | 10 | 39 superseded flat-layout files retired, `tickets/features/` and `tickets/stories/` removed, and every retired artefact traced to its destination by a 39-row migration map plus a nine-entry carry-forward register that states each inherited obligation as mandatory. |
-| Canonical determinism registers and worked population | 16 | One concept per account code across 31 codes, one legal identity per entity code, canonical report display labels, per-jurisdiction bank-account identifier schemes, the foundation-fixture pair, and a worked group population whose balances, analytic subsets and tie-outs reconcile to the cent. |
-| Content-gate authoring and execution | 14 | Naming and coordinate agreement, referential integrity over 4,139 links and anchors, forbidden-qualifier lint, criteria-band and edge-case bounds, monetary-precision and debits-equal-credits checks, register set-equality and index child counts, all executed across the 52 live files. |
-| Odoo domain research and repository grounding | 8 | Community-versus-Enterprise capability split confirmed, the five absent Enterprise modules named, the eight present Community accounting modules and the six existing Community accounting add-ons assessed, module coordinates and platform behaviours checked against this repository's Odoo 19.0 source, and all five cited fixtures parsed. |
-| Rendered-output and navigation verification | 4 | The tree rendered and walked as a reader receives it: table structure, fragment resolution and every index-to-Epic-to-Feature-to-Story hop, plus diagram rendering for all 42 live diagrams. |
-| **Total Completed** | **233** | |
+|---|---|---|
+| Vendor-credit-note opt-in, direction branch and wizard form | 22 | The `create_vendor_credit_note` Boolean (default off) and the ordered result-type branch in `_prepare_default_values`; the single added field line in the wizard form; the wizard reading its source type off the selected documents rather than the list it was opened from; the three source preconditions bound to both the form and the direct-call route; requested source ids resolved before the relation row is written; the Reason folded free of control and bidirectional characters before it reaches the reference (`addons/account_debit_note/wizard/account_debit_note.py`) |
+| Posting rule, document constraints and refund sequence gate | 28 | The positive-total rule and the `_post` override that runs it before core posts or numbers anything, with the right to post read first on core's own terms; the rule restated as a constraint so it holds on every road into the posted state; a second constraint holding the source link to a vendor bill of the credit note's own company without disclosing anything about a refused source; the refusal quoting the actual total; the refund sequence pool gate (`addons/account_debit_note/models/account_move.py`) |
+| Acceptance and regression suite | 48 | 2,445 lines, 12 test methods and 23 named sub-cases on `AccountTestInvoicingCommon`: the fixture (archived-safe atomic accounts 2000 and 6100, the vendor, the three-line story bill, an alternate currency at rounding 0.05, wizard and line-snapshot helpers), the six scenario tests the plan names, and six further tests pinning behaviour that verification proved reachable (`addons/account_debit_note/tests/test_vcn_001.py`) |
+| Static code review cycles across the delivery | 14 | Line-by-line review of all five files through backend, database, frontend, tests, completeness, comments, cross-layer seam, security and whole-delivery lenses, with every claim cross-referenced against core's own accounting, currency, sequence and loader contracts |
+| Runtime accounting, test-harness and coverage verification | 16 | The accounting behaviour driven end to end over the ORM across nine feature groups; the suite executed repeatedly on fresh and upgraded databases to prove it is order-independent and not flaky; branch coverage measured, with every new branch exercised; test efficacy proven by mutation so no assertion is vacuous |
+| Runtime security verification | 10 | The posting rule, the source link and the wizard's inputs attacked over the same JSON-RPC surface the web client uses — direct state writes, re-pointed links, cross-company sources, hostile id shapes, control characters, injection and oversized input — as each of the roles concerned, with outcomes read back from the database rather than inferred |
+| Runtime UI, UX and responsive verification | 10 | The opt-in's visibility proven present for a vendor bill and absent from the DOM for every other source type across form, list and kanban entry routes, at desktop, tablet and mobile widths; label, help text, placement and default state measured against the specification and against the neighbouring stock control |
+| End-to-end clerk journey and core regression floor | 8 | The full clerk journey driven in a real browser as an ordinary Invoicing user — create, post, refuse a zero total, run the default-off path — plus the 962-test core accounting suite to confirm the posting override and sequence gate disturb nothing, and core's own Credit Note reversal exercised through the new rules |
+| Environment provisioning and gate execution | 11 | Python 3.13.7 and PostgreSQL 16.15 provisioned, the virtual environment built from the exact pins with the pinned PDF backend verified, and the install, upgrade, compile, lint and test gates executed and reproduced |
+| **Total** | **167** | |
 
 ## 2.2 Remaining Work Detail
 
 | Category | Hours | Priority |
-|----------|------:|----------|
-| Platform version and edition decision closure (`DEC-001`), and restating the version-dependent surfaces | 6 | High |
-| Capability-source decision (`DEC-002`) with the residual-gap confirmation against the six existing Community add-ons | 8 | High |
-| Backlog intake into the tracker of record and a grooming and sizing pass | 16 | High |
-| Finance sign-off of the forty-one Stories against the Epic's ten-item Definition of Done, including countersignature of the four placement conventions in Section 5.2 (constraint register placement, criteria-ceiling seams, payables-ageing ownership, two-timeline company convention) | 12 | High |
-| Prior-art disposition countersignature (`DEC-003`) | 1 | Medium |
-| Closure and propagation of the eight remaining programme decisions (`DEC-004`–`DEC-011`) | 8 | Medium |
-| Bank-identifier fixture conformance (`FIX-001`) | 2 | Medium |
-| Editorial consistency closure — one lead-in count, five duplicate revision rows, template placeholder targets | 3 | Low |
-| Documentation validation gate wired into CI to hold the tree's invariants | 6 | Low |
-| **Total Remaining** | **62** | |
+|---|---|---|
+| Deployment and environment security hardening — least-privilege database role; credentials in `odoo.conf`; production log level suppressing RPC debug payloads; reverse-proxy security headers; cookie `Secure` and `SameSite`; database manager, signup and database listing closed; data-directory, filestore and log permissions; ledger ACL aligned with its view gate; framework date-validation message | 22 | High |
+| Cross-addon document-type disambiguation — the UBL exporter, roughly fifteen localisation consumers that read the source link alone as a debit-note signal, the module's three "Debit Notes" list-filter domains, and regression tests for document-type classification | 16 | High |
+| Human review and product sign-off — accounting sign-off against the story, plus decisions on the "Debit Note" wording carried on a credit note, the two-line field label, and the sequence prefix now taken by non-invoice entries in sale and purchase journals | 6 | High |
+| Source-link visibility on purchase documents — move or duplicate "Original Invoice Debited" into a group visible for purchase move types and verify it renders on a bill, a credit note and the existing customer-side debit note | 4 | Medium |
+| CI gate wiring — assert the expected test names and post-test count so a zero-selection run cannot pass as green; give every job its own HTTP and gevent port; run the core accounting floor on a fresh database | 4 | Medium |
+| Coverage for the four pre-existing branch arcs in the two touched files — the three wizard precondition rejections and the copy-message fallback | 3 | Low |
+| Platform UX and accessibility triage — raise the keyboard and focus defect that lets a posted document be dirtied, and triage the remaining fifteen items into the platform backlog | 3 | Low |
+| **Total** | **58** | |
 
-## 2.3 Hours Summary
+## 2.3 Hours Reconciliation
 
-| Measure | Hours | Share |
-|---------|------:|------:|
-| Completed (Section 2.1) | 233 | 79.0% |
-| Remaining (Section 2.2) | 62 | 21.0% |
-| **Total Project Hours** | **295** | **100%** |
+| Check | Expected | Actual | Status |
+|---|---|---|---|
+| Section 2.1 completed rows sum | 167 | 167 | ✅ |
+| Section 2.2 remaining rows sum | 58 | 58 | ✅ |
+| 2.1 + 2.2 = Total Project Hours (§1.2) | 225 | 225 | ✅ |
+| Remaining hours identical in §1.2, §2.2 and §7 | 58 | 58 | ✅ |
+| Completion percentage `167 / 225` | 74.2% | 74.2% | ✅ |
 
-The 233 completed hours are entirely autonomous; no manual engineering hours were consumed. Of the 62 remaining hours, 23 are stakeholder decisions and sign-offs rather than authoring work, 28 are backlog intake and acceptance, and 11 are conformance and durability items.
+**Estimation confidence.** *High* for the delivered work — the scope was a fixed five-file surface with measured line counts, and every gate outcome was observed directly. *Medium* for deployment hardening, where the item list is exact but the effort depends on the target topology and reverse proxy. *Medium* for the cross-addon disambiguation, where the consumers are enumerated but each needs its own assessment.
 
 # 3. Test Results
 
-Every figure below was produced by executing the check and reading its output. The deliverable is a planning backlog, so its verification surface is the executable content gate — structure, referential integrity, criteria bounds, accounting determinism and rendered output — run over the 52 live files. The repository's Python suite is reported alongside it to show the baseline is undisturbed.
+The whole module suite was executed on a database built from scratch and reported **14 post-tests, 0 failed, 0 error(s) of 14 tests**. Every row below is part of that single run. The suite is tagged `post_install, -at_install` and runs on `AccountTestInvoicingCommon`.
+
+```bash
+./venv/bin/python odoo-bin --addons-path=addons,odoo/addons \
+  --db_host=127.0.0.1 --db_port=5432 --db_user=odoo --db_password=odoo \
+  -d odoo_test -i account_debit_note --test-enable \
+  --test-tags=/account_debit_note --stop-after-init --no-http \
+  --http-port=8069 --gevent-port=8072 --data-dir=.odoo/data --log-level=test
+```
 
 | Area / Category | Framework | Tests | Passed | Failed | Coverage | What This Proves |
-|---|---|---:|---:|---:|---|---|
-| Structure, naming and inventory | Python content validator | 55 | 55 | 0 | 55/55 files under `tickets/` | The mandated hierarchy exists exactly once: 1 Epic, 9 Features, 41 Stories in the 5-5-5-4-4-5-5-4-4 distribution, every path matching the zero-padded kebab-case convention with directory, filename and heading coordinates in agreement |
-| Referential integrity | Python link and anchor resolver (GitHub slug rules) | 4,139 | 4,139 | 0 | All 52 live files | A reader can reach every Feature from the Epic, every Story from its Feature, and every cross-reference and in-page anchor from anywhere in the tree without meeting a dead link |
-| Acceptance-criteria conformance | Python section parser | 41 | 41 | 0 | 303 scenarios | Every Story carries 4–8 contiguously numbered Given/When/Then criteria and 4–5 accounting edge cases, so no Story is unsized or unbounded |
-| Language and vocabulary discipline | Forbidden-qualifier lint (13 terms) | 41 | 41 | 0 | Every acceptance-criteria section | No criterion can be signed off on a vague word — an implementer has a measurable outcome in every scenario |
-| Accounting determinism | Monetary and journal-entry scanner | 3 | 3 | 0 | 667 balance assertions, 15,380 amounts | Every monetary outcome states its currency, amount and rounding rule, and every journal-entry criterion asserts debits equal credits |
-| Index and register contracts | Python set-equality checker | 11 | 11 | 0 | Epic + 9 Features + README | Declared child counts equal the files on disk in all eleven index positions, so the tree cannot silently gain or lose a ticket |
-| Diagram rendering | mermaid-cli 11.16.0 with headless Chrome | 42 | 42 | 0 | All live diagrams | Every Epic and Feature workflow diagram renders, so the visual hierarchy a reviewer relies on is not broken markup |
-| Repository Python suite (baseline check) | Odoo test runner on PostgreSQL 17 | 938 | 936 | 2 | Six Community accounting add-ons | The change set disturbs nothing executable — it contains no Python — and the two failures sit in `addons/account_payment_followup`, outside this project's change set, where `_cron_refresh_all` writes a negative `total_overdue` that a CHECK constraint rejects |
+|---|---|---|---|---|---|---|
+| Creation, direction and balance | Odoo / `AccountTestInvoicingCommon` | 1 | 1 | 0 | wizard 93% | One posted bill yields exactly one linked `in_refund` that debits Accounts Payable 2000 and credits Expense 6100 in balance, in the bill's journal and currency, leaving the bill's own lines untouched |
+| Positive-total rule | Odoo / `AccountTestInvoicingCommon` | 3 | 3 | 0 | models 88% | A zero or negative credit note cannot reach the ledger by any route — the Confirm button, a direct write of the posted state, or a write that also names a number — and is left draft, unnumbered and without posted lines |
+| Currency, rounding and refund numbering | Odoo / `AccountTestInvoicingCommon` | 2 | 2 | 0 | models 88% | Amounts post in the bill's currency at its own increment (10.025 becomes 10.05 at 0.05), and linked and unlinked vendor refunds in one journal and period take distinct names from one continuous pool |
+| Opt-in exposure and source-type resolution | Odoo / `AccountTestInvoicingCommon` | 1 | 1 | 0 | wizard 93% | The wizard decides what it offers from the documents actually selected, so the opt-in is never held out on a document it cannot act on nor withheld from a genuine vendor bill, whichever screen the clerk started from |
+| Source-link integrity and authorization ordering | Odoo / `AccountTestInvoicingCommon` | 2 | 2 | 0 | models 88% | A credit note's source can only ever be a vendor bill of its own company, and a refusal discloses nothing about the document it names; a user without the right to post is answered about that right, not handed a business message carrying a document and its total |
+| Wizard input handling and preconditions | Odoo / `AccountTestInvoicingCommon` | 2 | 2 | 0 | wizard 93% | Control and bidirectional characters never reach a document reference or a refusal message, and the wizard's stated preconditions bind a caller that never opens the form |
+| Backward compatibility of shipped paths | Odoo / `AccountTestInvoicingCommon` | 3 | 3 | 0 | wizard 93% | With the opt-in off a vendor bill still yields an `in_invoice` debit note, and the customer-invoice and credit-note-correction paths are unchanged — the two original module tests pass against a byte-identical file |
+| **Total** | | **14** | **14** | **0** | module 98% | |
 
-Build check: `compileall` over `odoo` and `addons` exits 0.
+Branch coverage of the two production files is 88% and 93%, and 98% across the module. **Every branch the feature introduced is exercised**; the uncovered arcs are all pre-existing code the change does not touch. That clears the 80% new-branch target by a wide margin. The suite's assertions were shown to be non-vacuous by mutation: removing a rule makes the tests that cover it fail.
 
 ### Not Covered
 
-- **The behaviour every acceptance criterion describes.** All 303 scenarios are specifications for Odoo work that does not exist yet; the test methods they name (for example `test_edge_case_date_based_range_spanning_leap_day_uses_calendar_day_counts`) are to be written during implementation. A human should treat each criterion as a test to build, not a test that passes.
-- **The accounting outcomes against a running instance.** Balances, report line values and journal legs are reconciled internally and checked against this repository's Odoo 19.0 source, but nothing was posted to a live ledger. Before release, seed the worked population from the Epic's appendices into a test database and confirm the Trial Balance, Balance Sheet and Profit & Loss figures the criteria assert.
-- **The four Enterprise-only capability areas.** Dynamic reports, fixed assets, budgeting and consolidation are specified against modules absent from this Community checkout, so no criterion in FEATURE-001-06 through FEATURE-001-09 could be executed even in principle until the capability source is chosen.
-- **The three reference templates.** They are excluded from every gate by design; their placeholder link targets and one placeholder diagram are unverified and should be refreshed or accepted deliberately.
-- **The two failing add-on tests.** They lie outside this project's scope and nothing here covers or corrects them; a human should decide whether the negative-balance constraint or the cron is the defect.
+These capabilities were delivered and verified, but no automated test exercises them. A human should confirm each before release:
 
-# 4. Runtime Validation and UI Verification
+- **The wizard checkbox's rendered visibility.** The tests read the form's arch and its modifiers, which proves the predicate resolves; they do not render it. Open the Debit Note wizard from a posted vendor bill (the opt-in should appear, unticked, directly below Copy Lines) and from a customer invoice, a vendor credit note and a customer credit note (it should be absent). Confirmed manually at desktop, tablet and mobile widths, but not pinned by a test.
+- **Field labels and help text.** No test in this repository asserts field help anywhere, and none should — the strings were verified by reading the metadata the client is served. A wording change would not fail the suite.
+- **Translation extraction.** The new refusal messages and field metadata are marked for translation but no test asserts they extract, because the catalogues are not hand-edited. Run the normal extraction pipeline before shipping a translated build.
+- **Mobile and accessibility behaviour.** Exercised manually only. There is no tour or browser test in the suite, so responsive layout and keyboard behaviour are unprotected against regression.
+- **Four pre-existing branch arcs** in the two touched files — the wizard's three precondition rejections and the copy-message fallback — remain uncovered, which is the whole reason whole-file coverage reads 88% and 93% rather than near 100%. Budgeted at 3h in Section 2.2.
+- **One default that cannot be observed.** The wizard also drops a seeded default for the source company's country code alongside the two it must drop. No action seeds that value and nothing in this form reads it, so no test can detect it; its two siblings are covered.
 
-The delivered artefact has one runtime a reader actually meets: the rendered backlog. It was served through a Markdown renderer using GitHub heading-id rules and driven in real headless Chrome, hop by hop. The Odoo application was also started to confirm the surrounding environment is intact.
+# 4. Runtime Validation & UI Verification
 
-- ✅ **Documentation tree served** — all 52 live documents return HTTP 200; an independent crawl from the index reached every one of them across 688 internal links.
-- ✅ **Index → Epic navigation** — clicked from `tickets/README.md`; the Epic loads with its full title and a Metadata block declaring Total Features 9, Total Stories 41.
-- ✅ **Epic → Feature → Story descent** — clicked through to `FEATURE-001-07` (33 tables, 5 Story links) and on to `STORY-001-07-05` (29 tables, 8 Scenario headings, an Edge Cases table of 5 rows).
-- ✅ **Upward navigation** — the Story's Parent Feature and Parent Epic links both return 200 with the expected headings, so the hierarchy is walkable in both directions.
-- ✅ **In-page anchors** — 232 of 232 fragment links resolved across the pages driven, including a clicked jump to the Epic's platform-decision subsection which scrolled to the heading and highlighted it.
-- ✅ **Table rendering** — 1,118+ rows audited across five documents with zero ragged rows; the dunning Story shows all 24 business rules contiguously numbered and the Epic shows a balanced worked total of `$6,609,450.00 Dr = $6,609,450.00 Cr`.
-- ✅ **Console and network health** — zero page-authored console messages (the documents ship no JavaScript) and no failed request other than the browser's own favicon probe.
-- ✅ **Odoo application start-up** — the server binds `127.0.0.1:8069`, loads the registry in 1.1s, serves the login page and the database selector, and reports `server_version 19.0`.
-- ⚠ **Wide-table presentation** — the widest register tables overflow a 1100px content column, producing a horizontal scrollbar on the index and Epic pages. No data is clipped or lost; a viewer with a wider column or a scrolling table wrapper shows them whole.
-- ❌ **Nothing else has a runtime.** The accounting behaviour these tickets describe was never exercised: no Odoo module was created, no journal entry was posted, no report was generated, and no external banking, currency-rate or e-invoicing endpoint was contacted. Runtime proof of those flows belongs to the implementation programme this backlog commissions.
+Beyond the automated suite, the feature was driven at runtime — in a real browser as an ordinary Invoicing-group clerk, and over the same JSON-RPC surface the web client uses — with every outcome read back from the database rather than inferred from a call's return value.
 
-# 5. Compliance and Quality Review
+- ✅ **Module lifecycle** — Operational. A from-scratch install into a new database (49 modules) and an `-u account_debit_note` upgrade both complete with zero ERROR, WARNING, CRITICAL or Traceback lines. The transient Boolean is the only column added.
+- ✅ **Application start-up and authentication** — Operational. The server comes up in a few seconds, `/web/login` returns HTTP 200, and an `admin` sign-in reaches the first authenticated screen with no console error.
+- ✅ **The clerk's primary journey** — Operational. From a posted bill: open Debit Note, tick Copy Lines and the opt-in, set 2025-03-20 and a reason naming `CN-2024-0117`, keep the 4,200.00 line, create, then Confirm. Result: `RBILL/2025/03/0001`, `in_refund`, 4,200.00, Accounts Payable 2000 debited and Expense 6100 credited, USD, Purchases journal, source link set, no reversal link, bill unchanged at 12,450.00.
+- ✅ **Opt-in exposure** — Operational. Present and unticked on a posted vendor bill from both the bill form and the Bills list; **absent from the DOM** — not merely hidden — on a customer invoice, a vendor credit note, a customer credit note and a mixed selection. Verified at 1440×900, 1024×768 and 390×844.
+- ✅ **Zero and negative refusal** — Operational. Confirm raises an "Invalid Operation" dialog carrying the module's message verbatim and quoting the actual total; the record stays Draft, unnumbered, with no posted lines and no sequence position consumed. The dialog exposes no file path, exception class or traceback.
+- ✅ **The rule as an invariant** — Operational. Writing the posted state directly over JSON-RPC, and writing it together with a document number, are both refused with the same message. Re-pointing the source link at a customer invoice, or at another company's document, is refused without disclosing anything about the document named — including for a row whose link was forced in past the ORM with raw SQL.
+- ✅ **Authorization boundaries** — Operational. A read-only user and a write-capable user without the posting group both receive the platform's own access refusal, with neither the document reference nor its total in the message. A plain internal user calling the Debit Note action directly is refused, where the button had previously been the only protection.
+- ✅ **Default-off compatibility** — Operational. Left unticked, the same wizard produces `DBILL/2025/03/0001` as a vendor bill debit note; a customer invoice yields `DINV/2025/00001`; and the `in_refund → in_invoice`, `out_refund → out_invoice` and same-type mappings are unchanged even with the opt-in forced on.
+- ✅ **Core's own Credit Note flow** — Operational. Odoo's separate reversal wizard is untouched, offers no checkbox, and its reversal creates, posts and auto-reconciles straight through the new posting rules — carrying the reversal link with no source link, so the two mechanisms stay distinct. The wider 962-test core accounting suite shows only failures that pre-date this work and reproduce with the module uninstalled.
+- ⚠ **Terminology and layout on the resulting document** — Partial. Everything functions, but the chatter message, the stat button and the wizard title still read "Debit Note" on a vendor credit note, the field label wraps onto two lines in the dialog's label column, and the source link does not render as a field on purchase-side documents. All three are recorded in Sections 5.2 and 6.
+
+**Never exercised at runtime.** Nothing was driven under concurrent multi-user load, against a non-English locale, or with an EDI or localisation module installed — so the document-type classification described in Section 5.2 is a measured behaviour of the exporter, not an observation from a live localised deployment. No performance or load profile was taken; the feature copies one document per request and was not expected to need one.
+
+# 5. Compliance & Quality Review
 
 ## 5.1 Compliance Matrix
 
-Each row states where the deliverable stands now, measured against the benchmark named.
+Each row is the verified state of a planned deliverable as it stands now.
 
-| # | Deliverable / Benchmark | Requirement | Status | Progress | Evidence |
+| # | Deliverable / Benchmark | Status | Progress | Evidence |
+|---|---|---|---|---|
+| 1 | One posted vendor bill → exactly one linked, posted `in_refund` | ✅ Pass | 100% | `wizard/account_debit_note.py:199` opt-in branch, `:215` source link; `test_vcn_001_01` counts every move before and after |
+| 2 | Accounts Payable 2000 debited, Expense 6100 credited, in balance | ✅ Pass | 100% | Core's direction sign for `in_refund`; `test_vcn_001_01` asserts both lines by account code, amount and equal totals |
+| 3 | Zero or negative total refused before posting | ✅ Pass | 100% | `models/account_move.py:78-112` rule, `:173-185` posting override, `:114-132` constraint; tests 02, 03, 08 |
+| 4 | Architecture — extend the existing wizard, no parallel model, no core edit | ✅ Pass | 100% | `_prepare_default_values` extended and `move.copy(default=...)` retained; zero diff in `addons/account` |
+| 5 | Source link preserved; reversal link never set | ✅ Pass | 100% | `models/account_move.py:43-46`; `reversed_entry_id` appears nowhere in production code and is asserted empty in the suite |
+| 6 | Bill currency kept, HALF-UP rounding at the currency's increment | ✅ Pass | 100% | `models/account_move.py:104` uses the currency's own comparison; `test_vcn_001_04` (0.05 increment, 10.025 → 10.05) |
+| 7 | No new UI surface — one native Boolean in the existing form | ✅ Pass | 100% | The entire view diff is one added `<field/>` line; no new record, action, menu, report, JavaScript or stylesheet |
+| 8 | Acceptance suite present; the two original tests untouched | ✅ Pass | 100% | 12 methods in `tests/test_vcn_001.py`; `tests/test_out_debit_note.py` byte-identical to upstream |
+| 9 | Refund numbering shares one pool without collision | ✅ Pass | 100% | `models/account_move.py:187-194` gates the split to invoice types; `test_vcn_001_05` |
+| 10 | Edit surface confined to five files in one module | ✅ Pass | 100% | `git diff` against the pre-feature base lists exactly those five paths — 4 modified, 1 added, 0 deleted, nothing outside the module |
+| 11 | Quality gates — clean upgrade, compile, no new lint finding, suite green | ✅ Pass | 100% | Upgrade and compile exit 0 with a clean log; lint reports 27 findings, all pre-existing, with the new test file contributing none; 14/14 tests pass |
+| 12 | Production readiness of the delivered code — no placeholder, stub or secret | ✅ Pass | 100% | No TODO, FIXME, `NotImplementedError` or bare `pass` anywhere in the module; no hardcoded credential; every method fully implemented |
+
+## 5.2 AAP & Rule Divergences and Gaps
+
+**User-specified rules: none.** No user-specified rules were provided for this project, and the plan itself records the same, so no rule governs any affected file and none could be diverged from. Everything below is a divergence from the plan.
+
+| # | What the AAP Required | What Was Delivered Instead | Why It Diverged | Impact | Remediation |
 |---|---|---|---|---|---|
-| 1 | Output location and naming | All files under `tickets/`; zero-padded kebab-case identifiers in the nested Epic → Feature → Story layout | ✅ Pass | 51/51 | Every path matches the mandated pattern; directory, filename, metadata and heading coordinates agree on all 41 Stories |
-| 2 | Decomposition bounds | Exactly one Epic, 3–9 Features, 2–5 Stories per Feature | ✅ Pass | 1 / 9 / 4–5 | Distribution 5-5-5-4-4-5-5-4-4 = 41 |
-| 3 | Language discipline | Zero forbidden qualifiers in acceptance criteria | ✅ Pass | 0 hits | All thirteen banned terms scanned over every criteria section |
-| 4 | Monetary precision | Currency, amount and rounding on every monetary assertion | ✅ Pass | 15,380 amounts | 742 explicit half-up statements and 1,434 rounding-increment statements |
-| 5 | Balanced entries | Debits equal credits on every journal-entry criterion | ✅ Pass | 667 assertions | 57 posting scenarios carry an explicit equality with a stated difference of zero |
-| 6 | INVEST and demo-ability | Every Story independent, valuable, estimable, sized and testable, with a demonstration path | ✅ Pass | 41/41 | INVEST section and Demonstration Path present in every Story; 278 Fibonacci points assigned |
-| 7 | Named finance personas | A specific finance role as the WHO, never a generic user | ✅ Pass | 41/41 | Twelve named roles across the backlog, one primary persona per Story |
-| 8 | Criteria coverage | 4–8 criteria per Story spanning valid input, invalid input, error handling and an accounting edge case | ✅ Pass | 303 scenarios | Every Story inside the band with contiguous numbering and 4–5 edge cases |
-| 9 | Referential integrity | Epic links every Feature, each Feature every Story, all relative links resolve | ✅ Pass | 4,139 / 0 broken | Index child counts set-equal to the files on disk in all eleven positions |
-| 10 | Accounting determinism | Deterministic account codes, journals, report names, named companies, tax triples and report line values | ✅ Pass | 31 codes governed | Canonical registers bind one concept per code and one legal identity per entity code; the worked population reconciles to the cent |
-| 11 | Scope containment | Planning tickets only; no Odoo module, dependency, build or CI change | ✅ Pass | 91/91 paths | Every changed path under `tickets/`; the three reference templates byte-identical to the base |
-| 12 | Programme readiness | Epic Definition of Done satisfied and the backlog accepted | ⚠ Partial | 9/10 items | Item 10 depends on the platform and capability-source decisions; all tickets remain `Draft` pending Finance sign-off |
+| 1 | §0.5.2: the positive-total rule applies to `move_type == 'in_refund'` **and** `debit_origin_id.move_type == 'in_invoice'` | `in_refund` plus a non-empty source link, with a separate constraint holding that link to a vendor bill of the same company | The prescribed predicate reads a field a client can write, so a document could take itself out of the rule's reach | None adverse; gate G5 now holds where the literal predicate failed it | None required |
+| 2 | §0.5.1: this file gains the import, the rule, the posting override and the sequence gate | Also two ORM constraints, two sanitising helpers and an access check on the module's action | As a step inside posting, the rule was skipped by every other road into the posted state | None adverse; no column, index or migration added | None required |
+| 3 | §0.5.2: an acceptance suite of six methods | Twelve methods; the six named ones keep their exact names and scenarios | Each addition pins behaviour that runtime verification proved reachable | Positive — more of the delivered behaviour is protected | Update any CI expectation that hard-codes a test count |
+| 4 | §0.5.2 / G5: a refused credit note "keeps `name == '/'`" | The refused draft is left unnumbered, with no name at all | Odoo 19 computes `name` with no default and treats "unset" and `/` identically; forcing `/` paints a literal slash where the platform paints "Draft" | None functional — every acceptance condition behind the wording holds | Optionally reword the gate as "unnumbered" |
+| 5 | §0.3.3: append the test registration as a second import line | The two statements plus a file-scoped lint directive | Import sorting merges same-source relative imports, so the two-line form reports a finding and collides with gate G9 | None; the file's finding set is a strict subset of its original | None required |
+| 6 | The wizard's `default_get` body was to stay unchanged | It now drops three seeded defaults for values derived from the selection | The mandated visibility expression is correct, but the value it read was seeded by the list the wizard was opened from | Positive — the opt-in now follows the selection on every entry route | None required |
+| 7 | §0.1.2: concise rationale beside exactly three new sites; no re-commenting | The three comments, plus docstrings on the new methods | Each new rule needed its accounting or security reason recorded where it is read | None; documentation only | None required |
+| 8 | Residual risks R-A, R-C and R-F were to be recorded, not repaired | All three stand, together with one measured consequence of the sequence gate | The plan directs each explicitly; two need work in other modules, one is forbidden to touch | Real, user-visible, and described below | 16h (§2.2) plus product decisions |
 
-## 5.2 AAP and Rule Divergences and Gaps
+**1 — The rule measures what this module makes, not what a document claims to be.** The plan's predicate asked the source link where it pointed before measuring a total. That link is read-only on the form but writable through the ORM, so re-pointing it at a customer invoice made the predicate false and a zero-total credit note posted with real ledger lines and a number. The delivered rule keys instead on a refund type plus any source link — this module's own creation signature — while a second constraint (`models/account_move.py:134-171`) holds that link to a vendor bill of the same company, read with framework rights so it cannot be sidestepped as an access error. `test_vcn_001_09` pins both halves.
 
-No user-specified rules were supplied for this project, so the governing constraints are the Agent Action Plan and the rules it derives (R-A to R-K). Eight divergences from that plan were established; each is explained below the table.
+**2 — The rule is a property of the document, not a step in one code path.** The plan placed the check inside the posting override, which is right for the Confirm button and silent for everything else: a plain write of the posted state reached the ledger untested. `models/account_move.py:114-132` restates the same rule as a constraint on state, total, type and source link, gated to records actually posted so a zero-value *draft* stays legal — the wizard makes one whenever Copy Lines is off. It delegates to the method the override calls, so refusals read identically wherever the attempt came from, and constraints fire on create too. Python-level validation only: no DDL, so the plan's one-transient-column statement still holds.
 
-| # | What the AAP/Rule Required | What Was Delivered Instead | Why It Diverged | Impact | Remediation |
-|---|---|---|---|---|---|
-| 1 | The Epic's content enumerated as title, summary, module scope, Features Index, dependencies and a ten-item Definition of Done | Those, plus four security and reliability subsections publishing constraints C-015 to C-029, an eleventh lock-date row, and Appendices C, D, E and F | Cross-cutting determinism and security requirements had no authority for fifty downstream files to cite, and the fix belonged at the root rather than in each consumer | Low. The Epic is longer and carries obligations the plan did not enumerate; every plan-fixed quantity is untouched | Confirm the constraint set belongs in the Epic rather than a separate governance document |
-| 2 | Prior-art disposition flagged as an ambiguity awaiting stakeholder confirmation | `DEC-003` recorded as **decided — Remove**, closed with owner, date and a link to the migration map | The 39 deletions were already executed, so leaving the register open would have contradicted the repository state | Medium. The register asserts a decision no artefact independently corroborates | Countersign at the next backlog review, or direct restoration of the 39 listed paths from version control |
-| 3 | Overloaded Stories split so each stays INVEST-sized | Stories narrowed in place; inherited obligations placed as named tests, edge cases or additional clauses inside existing criteria | The output set is frozen at 51 creates, 1 update and 39 deletes, so no forty-second Story could exist, and criteria are capped at eight | Low. Twenty-three of the forty-one Stories sit at the eight-criterion ceiling with no headroom for a new scenario | Split only at the documented seams, and only if the file budget is formally revised |
-| 4 | Every inherited requirement to have an owning Story in the fixed forty-one-Story set | The Aged Payables reporting workflow is owned by `STORY-001-02-04` (batch vendor payments) | The fixed set names a destination for receivables ageing and none for payables | Low. A reporting capability lives inside a payment-execution Story | Confirm the placement, or give payables ageing its own Story if the budget is revised |
-| 5 | One Epic-level legal-entity register with all files normalised to it | Four group entities in one register, plus a separate register of two foundation-fixture companies used only by the chart-of-accounts vertical | That vertical works a cut-over timeline ending 31 December 2025 while the transaction, tax and reporting Features work Q1 2025; one set of books cannot carry both | Low. No code or name is shared and no criterion claims the two sets are the same companies | Confirm the two-timeline convention, or commission a re-dating so one company set carries both |
-| 6 | Story titles and slugs fixed by the plan, and one canonical display label per report | Both kept: the canonical labels are `Aged Receivable` and `VAT/Tax Return`, while the Story titles and slugs keep the plan's plural and prose forms | Renaming a ticket changes an identity the plan fixes and breaks every inbound link | None functional. Both forms are published with their reasons in the report-label register | Nothing required; align titles only at a future renumbering |
-| 7 | `STORY-001-06-01` named and titled for a company hierarchy | The filename and title are unchanged; the body defines the group as a consolidation scope beside each company rather than a parent-child company tree | Odoo 19 refuses a `parent_id` write and forces a child company's currency to its root's on create as well as write, so the mechanism the title implies cannot be built | Low. A reader who stops at the title may expect company parenting; the first substantive section corrects it | Consider a title change at a future renumbering; not worth breaking inbound links now |
-| 8 | Criteria grounded in the repository artefacts they name | `STORY-001-04-01` states the delivered fixture identification and records the register-conforming amendment as prerequisite `FIX-001` | `test_data/**` sits outside the writable scope the plan grants and is excluded from it; the fixture is read-only evidence | Low. The criterion is truthful today; until the amendment lands the fixture exercises the IBAN branch of the parser | Execute `FIX-001` with the implementation work and restate the Given in register wording in the same change |
+**3 — Six scenarios, twelve tests.** The plan froze the suite at six methods, and all six exist with the names and scenarios it specifies. Six more were added, each pinning behaviour that runtime verification proved reachable rather than hypothetical: the source type being read off the selection rather than the originating list (`test_vcn_001_07`), the direct state write (`_08`), the re-pointed and cross-company source link (`_09`), control and bidirectional characters in a reference (`_10`), the wizard's preconditions on a caller that never opens the form (`_11`), and rights being answered before business rules (`_12`). The only consequence for a reader is arithmetic: this module's suite is 14 tests, not 8, so any pipeline asserting a hard-coded count needs updating.
 
-**1 — The Epic became the programme's contract register.** Fifty files needed one authority for account identity, entity identity, report labels, bank-identifier schemes, lock-date behaviour and the controls binding every untrusted-input surface. The plan's section list did not contemplate such registers, so the Epic runs to 2,025 lines with Appendices C through F and a constraint run of C-001 to C-029 (`tickets/EPIC-001-enterprise-accounting-odoo.md`). Nothing the plan fixed moved: nine Features, forty-one Stories, the 5-5-5-4-4-5-5-4-4 distribution and exactly ten Definition-of-Done items all hold. The decision a human owns is placement, not content — if the programme would rather govern constraints in a separate document, the four subsections move as a unit and the citing files keep their anchors.
+**4 — "Unnumbered" is spelled differently than the plan expected.** Gate G5 words the refusal outcome as the document keeping a literal `/` in its number. That describes an older Odoo. In 19, `account.move.name` is computed and stored with no default, and the platform treats "no name" and `/` as the same state — its uniqueness index, sequence lookup and date constraint all special-case `/`. Forcing the character in made this the only document the wizard produces that shows anything in its Number field, where the platform otherwise paints "Draft" or a greyed next number. It was removed. Everything the gate protects holds: draft state, no sequence position consumed, never posted, no ledger movement.
 
-**2 — A decision the plan wanted asked was recorded as answered.** The plan lists the disposition of the superseded flat backlog as a stakeholder question. The 39 files were already gone from the tree, so presenting the question as open would have made the Epic contradict its own repository. The register therefore reads *decided — Remove*, with the rejected option, the owner and a link to the 39-row migration map that authorises the removal. The consequence is worth a moment at the next review: if the Product Owner would have chosen an archive, that choice was foreclosed by the tree rather than by the document. Reversal is mechanical — the 39 paths are listed and restorable from version control.
+**5 — A lint directive resolves a genuine collision.** Section 0.3.3 asks for the new test module to be registered on its own line after the existing one; gate G9 forbids introducing any new lint finding. Both cannot hold: the repository's import sorting merges two relative imports of one source into a single statement, so the two-line form reports an unsorted-import finding — the same one reported for 212 other test packages here. The delivered file keeps both statements in the plan's order, with a file-scoped directive silencing exactly that rule (`tests/__init__.py:3`), leaving its finding set a strict subset of what it carried before. Either the directive or a merged statement must give.
 
-**3 — A frozen file budget shaped how obligations were carried.** The plan fixes the output at 51 creates, 1 update and 39 deletes, and caps criteria at eight per Story. Several Stories inherited more obligations than that leaves room for — batch payments, dunning, statement import and period close among them. Those obligations are therefore carried as named integration tests, as additional edge cases, or as clauses inside an existing criterion, each with the coverage class it discharges recorded. The result meets the letter of both rules, but twenty-three of the forty-one Stories now sit at the eight-criterion ceiling: the next requirement added to any of them forces either a split or a formal revision of the file budget.
+**6 — The form now asks the documents, not the list.** The visibility expression the plan mandates is delivered verbatim. The problem sat upstream of it: Odoo hands a context default to a computed field as readily as to a keyed one, and the Bills list action seeds its own document type, so the wizard's source type described the list rather than the selection. A clerk selecting a vendor credit note in the Bills list was offered an opt-in that could do nothing, while a genuine bill selected from the Refunds list had it withheld. `wizard/account_debit_note.py:65-66` drops the three seeded defaults for values derived from the selection. `test_vcn_001_07` covers a refund, a mixed selection and two controls.
 
-**4 — Payables ageing lives in a payment Story.** The retired backlog defined customer and vendor ageing together. The fixed forty-one-Story set names a destination for the receivables half and none for payables, while the Epic's success metrics and Definition of Done both require an Aged Payables report per entity and period. Leaving it unowned would have made the Epic demand a report no child Story delivers. It is therefore assigned to `STORY-001-02-04`, where vendor ageing is actually consumed — the payment run selects from it — with the whole contract stated as mandatory obligations: the report name, an as-of date, the named company, deterministic bucket boundaries measured from the due date, multi-currency presentation and a zero tie-out to Accounts Payable 2000.
+**7 — Docstrings on new methods.** The plan permits concise rationale comments at exactly three new sites and forbids re-commenting unrelated code. All three comments are present and unchanged in number, and no pre-existing comment was altered — the one pre-existing inline comment in the wizard is byte-identical, which is why two long-standing lint findings still attach to it. The new methods additionally carry docstrings, because a rule such as "do not read the type at the far end of a writable link" is unusable to a maintainer without the reason recorded beside it. Documentation only, with no behavioural effect.
 
-**5 — Two company sets, deliberately kept apart.** The transaction, tax, consolidation and reporting Features work a Q1 2025 quarter across four group entities. The chart-of-accounts vertical works a migration timeline — legacy close 31 December 2025, cut-over 1 January 2026 — because that is the only way to demonstrate an opening-balance import and a first fiscal year. One set of books cannot carry both dating conventions, so the two fixture companies are published as their own register with non-overlapping codes and an explicit rule that they are never treated as group entities. No criterion claims otherwise and no account code or legal name is shared. Re-dating one side is a substantial rewrite, so the convention is offered for confirmation.
-
-**6 — One report, two legitimate names.** The plan fixes the Story slug `report-aged-receivables` and the title `Generate VAT Return Report`; the report-label rule requires one canonical display label per report, which is the singular `Aged Receivable` and `VAT/Tax Return`. These are different artefacts: a ticket's identity and a report's display name. Renaming either Story would change an identity the plan fixes and break every inbound link and index entry targeting it. Both forms therefore coexist, with the retained variants recorded in the report-label register's compatibility note beside the Odoo menu label quoted verbatim in demonstration routes. Nothing is required of a human; aligning them later means moving heading, metadata row, index entry and dependency tables together.
-
-**7 — A title that outlived its mechanism.** `STORY-001-06-01` is named and titled for a company hierarchy, which implies Odoo's `parent_id` company tree. That tree cannot carry this group: Odoo 19 refuses a `parent_id` write outright, and its root-delegated-field constraint forces a child company's currency to its root's on create as well as on write, so EUR and SGD entities cannot sit under a USD parent by any route (`odoo/addons/base/models/res_company.py`). The Story therefore defines the group as a consolidation scope recorded beside each top-level company, and the parent Feature states that same contract throughout. The filename and title stayed because changing them breaks the plan's own file list and every inbound link.
-
-**8 — A fixture the plan put out of reach.** The bank-identifier register requires a United States account to be addressed by account number and ABA routing number under the `USABA` clearing-system code, never by IBAN. The delivered CAMT.053 fixture identifies its account by IBAN with a BIC — confirmed by parsing `test_data/bank_statements/sample.xml`, which holds one IBAN element, one BIC and none of the domestic-scheme elements. Editing it was not available: the plan confines writes to `tickets/**` and excludes test data, and the Epic records the fixture as read-only evidence. The criterion therefore describes the artefact as delivered, names the register's requirement beside it, and carries the amendment as prerequisite `FIX-001` with a named owner in eleven places.
+**8 — Three recorded residuals, and one consequence.** The plan requires the source link that makes a credit note navigable to its bill — yet roughly fifteen EDI and localisation modules read it alone as a debit-note signal, so a credit note exports as a UBL `<DebitNote>` (`account_edi_ubl_cii/models/account_edi_xml_ubl_20.py:160`) and the module's three "Debit Notes" filters return credit notes. That is **R-A**, deferred at 16h. **R-C**: the chatter message, stat button and wizard title still read "Debit Note", so each carries two document types. **R-F**, a membership test that can never be true (`wizard/account_debit_note.py:218`), stands unrepaired as directed. Finally, a non-invoice entry in a sale or purchase journal now takes the `D` prefix — presentational, but a decision is owed.
 
 # 6. Risk Assessment
 
-These are forward-looking exposures for the programme this backlog commissions.
+These are forward-looking: what could still go wrong once this code runs somewhere real.
 
 | Risk | Category | Severity | Probability | Mitigation | Status |
 |---|---|---|---|---|---|
-| Platform target unconfirmed — every version-dependent contract (web-service endpoint, lock-date semantics, module coordinates) is written against the Odoo 19.0 Community baseline and needs restating if 17.0 or 18.0 is chosen | Technical | High | Medium | The decision is registered with owners and gated before development starts; every version-dependent contract names its dependency, so the restatement is a bounded edit rather than a rewrite | Open — `DEC-001` |
-| Capability source unconfirmed — four in-scope capabilities are Enterprise features absent from this Community checkout, and the six existing Community add-ons cover them only partly | Operational | High | High | A per-module residual-gap table bounds what a bespoke build would have to cover, and the decision explicitly gates the four affected Features | Open — `DEC-002` |
-| The security and reliability contract set (untrusted-file handling, output encoding, origin controls, credential custody, append-only history, durable identity, resource ceilings) is unenforced until the modules exist | Security | High | Medium | Each control is stated with a named hostile-input acceptance test and a rejection-only contract that cannot be satisfied by coercing a value to a default | Open — enforced at implementation |
-| Acceptance criteria are specifications, not passing tests — 303 scenarios name test methods that do not exist and no figure has been posted to a live ledger | Technical | Medium | High | Each Story's reconciliation gate plus the Epic's worked population give the implementer an exact tie-out to build against, and the criteria state expected values rather than intentions | Open — by design |
-| The backlog exists only as Markdown — nothing is in a tracker, every ticket is `Draft`, so the 278 story points cannot be scheduled, assigned or burned down | Operational | Medium | High | Intake and sign-off are the two largest remaining items and the tree already carries priorities, points and dependency ordering ready to import | Open |
-| External integration surfaces are specified but unproven — banking statement feeds, currency-rate providers and tax-authority/PEPPOL transmission, with one fixture still on the wrong identifier scheme | Integration | Medium | Medium | Transmission and rate contracts fix timeouts, bounded retries, idempotency, freshness and manual fallbacks; the fixture item is owned by a named fix, `FIX-001` | Open |
-| No automated gate holds the tree's invariants — naming, link integrity, criteria bounds and register set-equality are currently held by review rather than by a build | Technical | Medium | Medium | The checks exist as executable validators and need only be wired into CI; the repository's lint configuration covers Python alone today | Open |
-| Eight further programme decisions remain open (epic numbering, follow-up validity dates, repeat reminders, drill-down window, scheduled issue, comparison period, metric cadence, write-off tolerance) — a Story reaching development with its decision unclosed would be built on an assumption | Operational | Medium | Medium | Every decision carries an owner, candidate options and the acceptance gate that consumes it, so none can be missed at Story acceptance | Open — `DEC-004`–`DEC-011` |
+| The application's database role holds superuser rights, and a command-execution primitive through it was demonstrated. Any code-execution foothold in any addon escalates to operating-system command execution | Security | **High** | Medium | Give the application a least-privilege role carrying only the privileges it needs, and keep database and extension creation to a separate administrative role | **Open** — environment, not code. Must be closed before exposure |
+| The deployment ships development defaults: RPC error envelopes carry tracebacks and absolute server paths; security headers, cookie `Secure`/`SameSite`, credential handling and file permissions are unset; the database manager, signup and database listing are reachable unauthenticated | Security | Medium | High if exposed as-is | A production log level, credentials in `odoo.conf`, a reverse proxy supplying headers and TLS, restrictive data-directory permissions, and the database manager closed | **Open** — 22h budgeted in §2.2 |
+| A vendor credit note leaves the system labelled as a debit note: EDI and localisation modules, and the module's own list filters, classify on the presence of the source link rather than the document type | Integration | Medium | High wherever a localisation is installed | Disambiguate by `move_type` across the exporter, the localisation consumers and the three filter domains | **Open by plan direction** — 16h budgeted, own ticket |
+| The ledger ACL is wider than the page that presents it, so a user who cannot see the Journal Items tab can still read a move's whole ledger over RPC | Security | Medium | Medium | Align the access rules with the view's group, or drop the misleading view group. Lives in core accounting, so it belongs upstream | **Open** — 4h within the hardening item |
+| The verification gate can report success having executed nothing: a mistyped tag, a renamed class or two runs contending for one port all yield exit 0 with zero tests, and the runner's own statistics line over-reports the count | Operational | Medium | Medium | Assert the expected test names, the post-test count and the absence of ERROR lines; give every job its own port; run the core floor on a fresh database so its pre-existing failures cannot mask new ones | **Mitigation specified**, not yet wired — 4h in §2.2 |
+| A non-invoice journal entry posted in a sale or purchase journal now takes the debit-note `D` prefix, because the numbering split is gated to invoice types exactly as specified | Technical | Low | Medium | Narrowing the gate by move type would restore the previous presentation; it needs a plan amendment. Names remain unique either way | **Accepted and measured** — presentational only |
+| The resulting document reads as a debit note in places: the chatter message, the stat button and the wizard title, and the source link does not render as a field on purchase documents | Integration | Low | High | Make the copy message and stat caption aware of the document type; move the link field into a purchase-visible group | **Accepted compromise** — 4h plus a product decision |
+| The posting rule keys on this module's own creation signature and mirrors core's posting group. A future module writing a source link onto a refund, or a rename of that group, would change what gets measured | Technical | Low | Low | The source-link constraint refuses a foreign link outright, and core's own refusal still stops an unauthorised post, so both failure modes fail safe | **Monitored** — no work required today |
 
 # 7. Visual Project Status
 
-### Project Hours
+### Overall Progress
+
+Completed = Dark Blue `#5B39F3`; Remaining = White `#FFFFFF`.
 
 ```mermaid
-pie showData title Project Hours — 295 Total
-    "Completed Work" : 233
-    "Remaining Work" : 62
+pie showData title Project Hours — 167 of 225 Complete (74.2%)
+    "Completed Work" : 167
+    "Remaining Work" : 58
 ```
 
-**Completed Work = Dark Blue `#5B39F3`** · **Remaining Work = White `#FFFFFF`**
+### Remaining Work by Category
+
+```mermaid
+pie showData title Remaining 58 Hours by Category
+    "Deployment & environment hardening" : 22
+    "Cross-addon document classification" : 16
+    "Human review & product sign-off" : 6
+    "Source-link visibility" : 4
+    "CI gate wiring" : 4
+    "Legacy branch-arc coverage" : 3
+    "Platform UX & accessibility triage" : 3
+```
 
 ### Remaining Work by Priority
 
 ```mermaid
-pie showData title Remaining 62 Hours by Priority
-    "High" : 42
-    "Medium" : 11
-    "Low" : 9
+pie showData title Remaining 58 Hours by Priority
+    "High" : 44
+    "Medium" : 8
+    "Low" : 6
 ```
 
-### Remaining Hours by Category
+### Delivered Scope at a Glance
 
 ```mermaid
----
-config:
-    xyChart:
-        width: 780
-        height: 380
----
-xychart-beta
-    title "Remaining Hours by Category"
-    x-axis ["Intake", "Sign-off", "DEC-002", "DEC-001", "DEC-004-011", "CI gate", "Editorial", "FIX-001", "DEC-003"]
-    y-axis "Hours" 0 --> 18
-    bar [16, 12, 8, 6, 8, 6, 3, 2, 1]
+flowchart LR
+    BILL["Posted vendor bill<br/>in_invoice"]
+    WIZ["Existing Debit Note wizard<br/>+ Create Vendor Credit Note"]
+    OPT{"Opt-in set and<br/>source is a vendor bill?"}
+    CREDIT["Result type in_refund<br/>source link preserved"]
+    DEBIT["Existing debit-note<br/>type mapping"]
+    DRAFT["One linked draft"]
+    RULES{"Total above zero?<br/>Source a vendor bill<br/>of this company?"}
+    REFUSE["Refused — stays draft,<br/>unnumbered, no ledger movement"]
+    POSTED["One posted credit note<br/>Dr AP 2000 / Cr Expense 6100"]
+
+    BILL --> WIZ --> OPT
+    OPT -->|yes| CREDIT --> DRAFT
+    OPT -->|"no, or another source"| DEBIT --> DRAFT
+    DRAFT --> RULES
+    RULES -->|no| REFUSE
+    RULES -->|yes| POSTED
 ```
 
-### Deliverable Composition
-
-```mermaid
-pie showData title Ticket Files Delivered — 51 Created
-    "User Stories" : 41
-    "Features" : 9
-    "Epic" : 1
-```
-
-| Dimension | Figure |
+| Indicator | Value |
 |---|---|
-| Completion | **79.0%** (233 of 295 hours) |
-| Ticket files created / updated / retired | 51 / 1 / 39 |
-| Live backlog files and lines | 52 files, 33,027 lines |
-| Acceptance criteria authored | 303 across 41 Stories |
-| Story points assigned | 278 (Fibonacci) |
-| Links and anchors resolving | 4,139 with 0 broken |
+| Planned requirements met | 8 of 8 |
+| Acceptance gates passed | 9 of 9 |
+| Automated tests passing | 14 of 14 |
+| Files changed / authorised | 5 of 5, none outside the module |
+| Lines added / removed | +2,770 / −11 |
+| Open items (none inside the delivered files) | 34 of 50 |
 
-# 8. Summary and Recommendations
+# 8. Summary & Recommendations
 
-**What was delivered.** The enterprise accounting programme now has a complete, implementation-ready backlog in the repository. `tickets/` holds one Epic, nine Features and forty-one User Stories — 52 live documents totalling 33,027 lines — plus the three reference templates left untouched as specified. The Epic carries the programme objective verbatim, a quantified value case (month-end close from ten business days to five per entity, statements in under five minutes against a two-to-four-hour manual baseline, a 50% reduction in post-close audit adjustments), the module scope in and out, five dependency groups, exactly ten Definition-of-Done items, and the canonical registers every child ticket cites. The forty-one Stories carry 303 Given/When/Then criteria written to named finance personas, with account codes, currencies, rounding rules and balanced journal entries stated explicitly, sized at 278 Fibonacci points. The superseded flat backlog of 39 files was retired and every retired artefact traced to its destination. The change set is 91 paths, all under `tickets/` — no addon, dependency manifest, build file or CI workflow was touched.
+**What was delivered.** An Accounts Payable clerk can now credit back a posted vendor bill without leaving the wizard they already use. Ticking one checkbox on a posted vendor bill produces exactly one linked vendor credit note, posted in the bill's own journal and currency, debiting Accounts Payable 2000 and crediting Expense 6100 in balance, with the bill left untouched. A credit note that carries nothing to give back cannot reach the ledger — not through the Confirm button, and not by writing the posted state directly. The change is 2,770 lines across five files in one module, and nothing outside that module was touched: core accounting, the manifest, the access rules and all fifty translation catalogues are byte-identical. Against the plan's scope this project is **74.2% complete** — 167 hours delivered of 225 — with the remaining 58 hours sitting almost entirely outside the feature's own code.
 
-**What was verified, and how.** Verification for a planning deliverable is content gating, and the gates were executed rather than assumed: the 55-file inventory and naming convention, 4,139 relative links and heading anchors resolving with zero broken targets in the live tree, all 41 Stories inside the 4–8 criteria band with 4–5 edge cases each, zero forbidden qualifiers across thirteen banned terms, 667 debits-equal-credits assertions and 15,380 currency-qualified amounts, index child counts set-equal to the files on disk in all eleven positions, and 42 of 42 workflow diagrams rendering. The tree was then rendered and walked in a browser: every hop from index to Epic to Feature to Story and back returned HTTP 200, 232 of 232 in-page anchors resolved, and 1,118-plus table rows audited clean. The repository's Python suite was run to confirm the baseline is undisturbed — 938 tests, 936 passing, with the two failures confined to an add-on outside this change set.
+**What was verified, and how far.** All eight requirements and all nine acceptance gates are met. Fourteen automated tests pass on a database built from scratch, the module installs and upgrades with a clean log, and static analysis reports exactly the findings it reported before the feature — the new 2,445-line test file contributes none. Every branch the feature introduced is exercised, and the assertions were shown to bite by mutation rather than assumed to. Beyond that, the clerk's journey was driven in a real browser as an ordinary Invoicing user, and the posting rule and source link were attacked over the same JSON-RPC surface the web client uses, with outcomes read back from the database. Core's own Credit Note reversal still creates, posts and auto-reconciles straight through the new rules, and the 962-test core accounting suite shows only failures that pre-date this work and reproduce with the module uninstalled.
 
-**What remains.** 62 hours, and most of it is decision-making rather than authoring. Two platform decisions dominate: the version and edition target, and the source of the four Enterprise-only capabilities that this Community checkout does not ship. Both are recorded with owners and options as the plan required, and both gate real work — the second alone blocks four of the nine Features and the Epic's tenth Definition-of-Done item. Beyond them sit backlog intake into a tracker, Finance sign-off of the forty-one Stories, eight smaller programme decisions, one bank-identifier fixture amendment, a short editorial tail and a CI gate to hold the tree's invariants. At 233 completed hours against 295 total, the project stands at **79.0% complete**.
+**Where the delivery departed from the plan.** Eight divergences are documented in Section 5.2, and two matter. The plan specified that the positive-total rule should decide whether to measure a document by reading the type at the far end of its source link — but that link is writable through the ORM, so a document could take itself out of the rule's reach, and a zero-total credit note posted with real ledger lines. The delivered rule keys instead on the signature this module's own creation gives, with a second constraint holding the link to a vendor bill of the same company. Relatedly, the rule is now a constraint on the document rather than a step inside the posting path, because every other road into the posted state had been skipping it. Both changes exist to satisfy the plan's own acceptance gate where its proposed means could not. The remaining six are smaller: a suite of twelve tests rather than six, a refused draft left unnumbered rather than carrying a literal slash, and matters of registration, defaults and documentation. There are no user-rule divergences, because this project defined no rules.
 
-**The critical path to production.** Confirm the platform target, then the capability source; those two unlock scheduling. Load the backlog into the tracker and take it through grooming and Finance sign-off so the tickets leave `Draft` and the points become assignable. Close the eight remaining decisions in the order the Stories consume them, so no Story enters development on an assumption. Then, before the first implementation Story is accepted, seed the Epic's worked population into a test database and confirm that the Trial Balance, Balance Sheet and Profit & Loss figures the criteria assert actually reproduce — that is the one verification this deliverable could not perform and the one that will most reduce risk later.
+**The critical path to production.** Nothing in the feature blocks release; the work that remains is around it. First, harden the deployment — the application's database role currently holds superuser rights with a demonstrated command-execution primitive, and the RPC layer, response headers, cookie flags, credential handling and file permissions are all at development defaults. That is 22 hours and it gates any exposure of this application. Second, open the cross-addon ticket the plan itself calls for: because a credit note necessarily carries the source link, EDI and localisation modules classify it as a debit note, and it currently exports as a UBL `<DebitNote>`. That is 16 hours and it is the one open item with a downstream, customer-visible consequence. Third, take six hours of accounting sign-off and settle three product decisions the plan deliberately left open — the "Debit Note" wording that a credit note still carries, the two-line field label, and the numbering prefix now taken by non-invoice entries in sale and purchase journals.
 
-**Production readiness.** The backlog itself is ready to be worked: internally consistent, deterministic, fully cross-referenced and traceable from the Epic's success metrics down to a named test per criterion. What it is not is executable — every criterion is a specification for Odoo work that does not exist yet, and the four Enterprise-dependent Features rest on a capability decision nobody has made. Judged as a planning artefact it is production-ready pending sign-off; judged as a route to running software it is the starting line, and the success metrics it publishes (SM-001 to SM-017) are the right instruments to hold the implementation programme to.
+**Production readiness.** The delivered code is production-ready as code: complete implementations throughout, no placeholder, stub or hardcoded credential anywhere in the module, comprehensive error handling with translated user-facing messages that disclose nothing about records the caller cannot read, and a rule that fails safe if core's assumptions ever shift. Its verification is unusually deep for a change of this size. The honest qualification is that readiness of the *code* is not readiness of the *deployment*: 34 of the 50 items surfaced during verification remain open, and while none of them lives in the five delivered files, thirteen concern how this application is run and sixteen are accessibility and usability debt inherited from the platform. Success after release should be measured on three things — that no vendor credit note ever posts at or below zero, that every credit note remains navigable to the bill it credits, and that no clerk is offered the opt-in on a document it cannot act on. All three are pinned by tests today.
 
 # 9. Development Guide
 
-Every command below was executed against this checkout and the outputs quoted are the ones observed. Run all of them from the repository root.
+Every command in this section was executed in this checkout, with the flags exactly as written, and the outputs quoted are the ones observed. Run all of them from the repository root.
 
-## 9.1 System Prerequisites
+**System prerequisites**
 
-| Component | Version verified | Notes |
-|---|---|---|
-| Python | 3.13.7 | System install; a project virtual environment lives at `./venv` |
-| PostgreSQL | 17.10 | Cluster `17/main` on `127.0.0.1:5432`; roles `odoo`/`odoo` and `root` |
-| Node.js / npm | 22.23.2 / 11.18.0 | Incidental — the repository ships no `package.json` |
-| wkhtmltopdf | 0.12.6.1 (with patched qt) | At `/usr/local/bin`; required for PDF report rendering |
-| git / git-lfs | 2.51.0 / 3.7.1 | LFS shims are installed as hooks |
-| ruff | 0.11.4 | Matches the version `ruff.toml` targets |
-| mermaid-cli (`mmdc`) | 11.16.0 | Optional — only needed to render the workflow diagrams |
+| Component | Version used | Requirement | Needed for |
+|---|---|---|---|
+| Python | 3.13.7 | 3.10 – 3.13 (`odoo/release.py`) | Everything. 3.13 is the highest supported interpreter |
+| PostgreSQL | 16.15 | 13 minimum | Module install, tests, runtime |
+| ruff | 0.11.4 | 0.11.4 or higher (`ruff.toml`) | The lint gate |
+| Git | 2.51 | 2.43+ | Repository tooling |
+| wkhtmltopdf | 0.12.6.1 (patched Qt) | 0.12.6 | PDF reports only — not exercised by this feature |
+| Node.js | 22.23 | 20 LTS or newer | Front-end asset rebuilds only. This repository ships no Node manifest and this feature adds no asset |
 
-Operating system: Linux (verified on Ubuntu 25.10). Roughly 4 GB of RAM and 3 GB of free disk are enough for the test database and the Odoo working set.
+Roughly 4 GB of RAM and 3 GB of free disk are enough for one instance with a test database. Linux or macOS; the commands below are POSIX shell.
 
-## 9.2 Environment Setup
+**Environment setup — build the virtual environment**
 
-The virtual environment and the two databases already exist in this checkout. Confirm them before doing anything else:
-
-```bash
-# Toolchain
-./venv/bin/python --version          # Python 3.13.7
-./venv/bin/pip check                 # No broken requirements found.
-./venv/bin/pip list --format=freeze | wc -l   # 70
-
-# Database cluster (there is no systemd in a container)
-pg_lsclusters                        # 17  main  5432  online
-pg_isready -h 127.0.0.1 -p 5432      # accepting connections
-PGPASSWORD=odoo psql -h 127.0.0.1 -U odoo -l | grep test_   # test_ce, test_core
-```
-
-If the cluster is down, start it and re-check:
+The interpreter must come from a virtual environment, never from system Python: on a modern Ubuntu the system interpreter is externally managed (PEP 668) and refuses installs without `--break-system-packages`.
 
 ```bash
-pg_ctlcluster 17 main start && pg_isready -h 127.0.0.1 -p 5432
-```
-
-To rebuild the environment from scratch:
-
-```bash
-python3 -m venv venv
-./venv/bin/pip install --upgrade pip setuptools wheel
+python3 -m venv --without-pip venv
+python3 -m pip --python ./venv/bin/python install --upgrade pip setuptools wheel
 ./venv/bin/pip install -r requirements.txt
+./venv/bin/pip install -e . --no-deps --config-settings editable_mode=compat
+./venv/bin/pip install ruff==0.11.4
 ```
 
-Configuration lives in `odoo.conf` at the repository root (gitignored). It sets `addons_path` to `<repo>/addons` and `<repo>/odoo/addons`, the database host, port, user and password, `db_replica_host`/`db_replica_port` pointing at the same single node, `http_port = 8069`, `gevent_port = 8072`, `admin_passwd = admin`, a `data_dir` filestore outside the working tree, and `workers = 0`. No environment variable or secret is needed to read, validate or render the backlog.
+Two details in the fourth line are load-bearing, not stylistic:
 
-## 9.3 Build and Test
+- `--no-deps` — `setup.py` carries an unpinned legacy `PyPDF2` in `install_requires`, while `requirements.txt` deliberately pins `pypdf==5.4.0`. Odoo's PDF layer probes the legacy backend first, so a plain `pip install -e .` silently switches the PDF backend off the pinned one.
+- `--config-settings editable_mode=compat` — the default PEP 660 finder injects a path hook into the package path and Odoo then logs `addons path is not a directory` on every single run.
+
+Verify both, plus the interpreter resolution:
 
 ```bash
-# Byte-compile the platform and all addons — expect exit 0 and no output
-LANG=C.UTF-8 ./venv/bin/python -m compileall -q -j 4 odoo addons; echo "exit=$?"
-
-# Run the accounting add-on test suites (about 9-10 minutes)
-./venv/bin/python odoo-bin -c odoo.conf -d test_ce \
-  -u account_financial_report_ce,account_bank_reconciliation_ce,account_asset_management,account_budget_management,account_deferred_revenue,account_payment_followup \
-  --test-enable --stop-after-init --no-http \
-  --test-tags='/account_financial_report_ce,/account_bank_reconciliation_ce,/account_asset_management,/account_budget_management,/account_deferred_revenue,/account_payment_followup,-/account_payment_followup:TestEmailGeneration.test_cron_manually_triggerable,-/account_payment_followup:TestAutomatedEmailGeneration.test_cron_manually_triggerable'
+./venv/bin/python -c "import odoo.tools.pdf as p; print(p.pypdf.__name__)"
+./venv/bin/python -c "import odoo; print(odoo.__path__[0])"
+./venv/bin/pip check
 ```
 
-Expected tail of the run:
+Expected: `odoo.tools.pdf._pypdf`, a path inside this checkout, and exactly one line from `pip check` — `odoo 19.0 requires pypdf2, which is not installed.` That last line is expected and harmless. Do **not** install PyPDF2, and do not edit `requirements.txt`, `setup.py` or `ruff.toml` (the last is generated and marked do-not-modify).
 
-```text
-938 post-tests in 557.83s, 375999 queries
-account_asset_management: 98 tests  ·  account_bank_reconciliation_ce: 211 tests
-account_budget_management: 171 tests ·  account_deferred_revenue: 37 tests
-account_financial_report_ce: 260 tests · account_payment_followup: 311 tests
-2 failed, 0 error(s) of 938 tests when loading database 'test_ce'
-```
+**Database**
 
-The two negative `--test-tags` entries are mandatory: those two cron tests do not terminate. The two reported failures are pre-existing in `addons/account_payment_followup` and unrelated to the backlog — `_cron_refresh_all` writes a negative `total_overdue` that the `account_followup_line_total_overdue_non_negative` CHECK constraint rejects.
-
-## 9.4 Running the Application
+PostgreSQL must be reachable with a role that can create databases. The commands below assume `127.0.0.1:5432` with role `odoo` / password `odoo`; substitute your own.
 
 ```bash
-# Start (backgrounded so the shell stays usable; log kept outside the working tree)
-nohup ./venv/bin/python odoo-bin -c odoo.conf -d test_ce --db-filter='^test_ce$' > "$HOME/odoo-server.log" 2>&1 &
-
-# Verify — the login page answers within a few seconds
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8069/web/login          # 200
-curl -s -X POST http://127.0.0.1:8069/web/webclient/version_info \
-  -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","method":"call","params":{}}'
-# {"result": {"server_version": "19.0", "server_serie": "19.0", ...}}
-
-# Stop it by the pid that owns the port
-kill "$(ss -tlnp | grep ':8069' | grep -oP 'pid=\K[0-9]+' | head -1)"
+PGPASSWORD=odoo psql -h 127.0.0.1 -U odoo -d postgres -tAc "select version()"
 ```
 
-Sign in at `http://127.0.0.1:8069/web/login` with **admin / admin**. Expect `HTTP service (werkzeug) running on localhost:8069` and `Registry loaded in ~1.1s` in the log.
-
-## 9.5 Working With the Backlog
-
-The backlog is plain Markdown — no build step, no runtime. Read it from the index at `tickets/README.md`, or navigate the hierarchy directly:
+Instance state — the filestore, sessions and the log — belongs in a directory you own, passed with `--data-dir`. Without it Odoo writes to a host-global default shared by every instance on the machine. `.odoo/` is already ignored by this repository's dotfile rule, so it is a safe choice:
 
 ```bash
-# Inventory: expect 55, then 1 / 9 / 41
-find tickets -name '*.md' | wc -l
-ls tickets/EPIC-001-*.md | wc -l
-ls tickets/EPIC-001/FEATURE-001-*.md | wc -l
-find tickets/EPIC-001 -mindepth 2 -name 'STORY-*.md' | wc -l
-
-# Stories per feature: expect 5 5 5 4 4 5 5 4 4
-for d in tickets/EPIC-001/FEATURE-001-0*/; do printf '%s %s\n' "$(basename "$d")" "$(ls "$d" | wc -l)"; done
+mkdir -p .odoo/data
 ```
 
-## 9.6 Validating the Backlog After an Edit
+**Install the module and run the test suite**
 
-These are the gates the tree is held to. Run them after any change under `tickets/`.
+One command creates the database, installs the module with its 48 dependencies, and runs this module's tests:
 
 ```bash
-# 1. Forbidden qualifiers inside acceptance criteria — expect 0
-for f in $(find tickets/EPIC-001 -mindepth 2 -name 'STORY-*.md'); do
-  awk '/^## Acceptance Criteria/{p=1;next} /^## /{p=0} p' "$f"
-done | grep -icE '\b(approximately|several|various|adequate|appropriate|properly|correctly|efficiently|quickly|easily|user-friendly|reasonable|sufficient)\b'
-
-# 2. Criteria band 4-8 per story, and the total — expect no output, then 303
-for f in $(find tickets/EPIC-001 -mindepth 2 -name 'STORY-*.md'); do
-  n=$(awk '/^## Acceptance Criteria/{p=1;next} /^## /{p=0} p' "$f" | grep -cE '^### Scenario [0-9]+')
-  { [ "$n" -lt 4 ] || [ "$n" -gt 8 ]; } && echo "OUT OF BAND: $f ($n)"
-done
-for f in $(find tickets/EPIC-001 -mindepth 2 -name 'STORY-*.md'); do
-  awk '/^## Acceptance Criteria/{p=1;next} /^## /{p=0} p' "$f" | grep -cE '^### Scenario [0-9]+'
-done | awk '{s+=$1} END {print "scenarios:",s}'
-
-# 3. Edge cases per story — expect "5 4" and "36 5", i.e. four or five everywhere
-for f in $(find tickets/EPIC-001 -mindepth 2 -name 'STORY-*.md'); do
-  awk '/^## Edge Cases/{p=1;next} /^## /{p=0} p' "$f" | grep -cE '^- \*\*|^\| *(\*\*|[0-9])'
-done | sort | uniq -c
-
-# 4. Balanced-entry assertions — expect 667
-grep -rnioE '(debits?[^.]{0,120}equal[^.]{0,120}credits?|credits?[^.]{0,120}equal[^.]{0,120}debits?)' \
-  tickets --include='*.md' | grep -v '/templates/' | wc -l
-
-# 5. Diagrams — expect every live diagram to render
-printf '%s\n' '{"args":["--no-sandbox","--disable-dev-shm-usage"]}' > "$HOME/puppeteer.json"
-mmdc -p "$HOME/puppeteer.json" -i diagram.mmd -o diagram.svg    # one block at a time
+./venv/bin/python odoo-bin --addons-path=addons,odoo/addons \
+  --db_host=127.0.0.1 --db_port=5432 --db_user=odoo --db_password=odoo \
+  -d odoo_test -i account_debit_note --test-enable --test-tags=/account_debit_note \
+  --stop-after-init --no-http --http-interface=127.0.0.1 \
+  --http-port=8069 --gevent-port=8072 \
+  --data-dir=.odoo/data --log-level=test
 ```
 
-Counting note for gate 3: Story files present edge cases either as a bold bullet list or as a table whose first cell is a bold label or a number, so the pattern above matches a data row in both forms while skipping every header and separator row.
+Expected, and observed: exit `0`, `14 post-tests in 10.24s, 11678 queries`, and `0 failed, 0 error(s) of 14 tests`. The fourteen are `test_00_debit_note_out_invoice`, `test_10_debit_note_in_refund` and `test_vcn_001_01` through `test_vcn_001_12`.
 
-Link and anchor resolution needs a slugger that matches the hosting provider: lowercase the heading, strip backticks, asterisks and tildes, drop remaining punctuation, keep underscores and hyphens, and map each space to its own hyphen without collapsing runs. Collapsing hyphen runs or stripping underscores produces dozens of phantom broken anchors. With those rules the tree measures 4,139 links and anchors with zero broken targets in the 52 live files; the 36 unresolved targets that remain are placeholders inside `tickets/templates/`, which are excluded from the gates by design.
+Two traps in reading that output:
 
-## 9.7 Troubleshooting
+- The line `odoo.tests.stats: account_debit_note: 18 tests` is **not** a test count — it includes class set-up and tear-down keys. It read 18 for the 14 tests that actually ran. Read `N post-tests` and `0 failed, 0 error(s) of N tests`.
+- A mistyped tag produces `0 post-tests` and still exits `0`. Assert the expected count, or the expected test names, before trusting a green run.
 
-| Symptom | Cause | Resolution |
+A single method, for a fast loop while changing one behaviour:
+
+```bash
+./venv/bin/python odoo-bin --addons-path=addons,odoo/addons \
+  --db_host=127.0.0.1 --db_port=5432 --db_user=odoo --db_password=odoo \
+  -d odoo_test -u account_debit_note --test-enable \
+  --test-tags=/account_debit_note:TestVendorCreditNote.test_vcn_001_01_vendor_credit_note_reverses_bill_line_balanced \
+  --stop-after-init --no-http --http-interface=127.0.0.1 \
+  --http-port=8069 --gevent-port=8072 --data-dir=.odoo/data --log-level=test
+```
+
+Observed: `1 post-tests in 2.11s`, `0 failed, 0 error(s) of 1 tests`.
+
+**Upgrade, compile and lint gates**
+
+Upgrade with no tests — this must be clean, not merely successful:
+
+```bash
+./venv/bin/python odoo-bin --addons-path=addons,odoo/addons \
+  --db_host=127.0.0.1 --db_port=5432 --db_user=odoo --db_password=odoo \
+  -d odoo_test -u account_debit_note --stop-after-init --no-http \
+  --http-interface=127.0.0.1 --data-dir=.odoo/data
+```
+
+Byte-compile, then lint (never pass `--fix`):
+
+```bash
+./venv/bin/python -m compileall -q -j 4 addons/account_debit_note
+./venv/bin/ruff check addons/account_debit_note --no-fix --output-format=concise
+```
+
+Observed: the upgrade exits `0` with `Module account_debit_note loaded in 0.33s, 244 queries`, `Modules loaded.` and **zero** ERROR, WARNING, CRITICAL or Traceback lines — Odoo's test runner fails a test on any logged ERROR, so a clean log is part of the gate, not cosmetic. `compileall` exits `0` silently. `ruff` reports `Found 27 errors` and exits `1`: all 27 are long-standing style findings in files this feature did not restructure, and `tests/test_vcn_001.py` contributes none. Treat 27 as the baseline and introduce no twenty-eighth.
+
+**Run the application**
+
+```bash
+nohup ./venv/bin/python odoo-bin --addons-path=addons,odoo/addons \
+  --db_host=127.0.0.1 --db_port=5432 --db_user=odoo --db_password=odoo \
+  -d odoo_test --http-interface=127.0.0.1 --http-port=8069 --gevent-port=8072 \
+  --db-filter='^odoo_test$' --data-dir=.odoo/data --logfile=.odoo/odoo.log &
+```
+
+Verify it, then stop it by the port's owner — never by process name:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8069/web/login
+grep -cE "ERROR|CRITICAL|Traceback" .odoo/odoo.log
+kill "$(lsof -ti :8069)"
+```
+
+Observed: `/web/login` answered `200` two seconds after launch, and the log carried zero matches. The first authenticated page compiles the asset bundles and can take 30–90 seconds; that is once per database, not once per login.
+
+**Example usage — the delivered feature end to end**
+
+1. Sign in as a user in the Invoicing group and open **Accounting → Vendors → Bills**.
+2. Open a **posted** vendor bill and press **Debit Note**.
+3. In the modal, tick **Create Vendor Credit Note** — it appears only for a vendor bill, and only after **Copy Lines**. Set the date and a reason; the reason becomes the new document's reference.
+4. Press **Create Debit Note**. You land on a draft with type *Vendor Credit Note*, the bill's journal and currency, and the bill reachable from the *Debit Notes* stat button.
+5. Edit the lines down to the amount being credited and press **Confirm**. The posted entry debits Accounts Payable 2000 and credits Expense 6100 for that amount, in balance, and the source bill is untouched.
+6. To see the guard, clear the amount and press **Confirm**: the post is refused, the document stays a draft, takes no number, and writes nothing to the ledger.
+
+Verify the same paths without a browser by running `test_vcn_001_01` (the posted entry, its direction and its links) and `test_vcn_001_02` (the refusal) with the single-method command above.
+
+**Troubleshooting**
+
+| Symptom | Cause | Fix |
 |---|---|---|
-| `error: externally-managed-environment` from `pip install` | The system Python carries a PEP 668 marker | Install into the project environment with `./venv/bin/pip install …`, or pass `--break-system-packages` deliberately |
-| Odoo exits with a database connection error | The PostgreSQL cluster is not running (no systemd in a container) | `pg_ctlcluster 17 main start`, then `pg_isready -h 127.0.0.1 -p 5432` |
-| Log repeats `Failed to open a readonly cursor, falling back to read-write cursor for 20min` | `db_replica_host`/`db_replica_port` unset, so the read-only DSN falls back to a peer-auth socket | Point both at the same host and port as the primary in `odoo.conf` (already set here) |
-| A test run never finishes | Two cron tests in `account_payment_followup` do not terminate | Keep the two negative `--test-tags` entries shown in §9.3 |
-| PDF report generation fails | Wrong wkhtmltopdf build | Use the patched-qt 0.12.6.1 binary at `/usr/local/bin`; the upstream `.deb` will not install on Ubuntu 25.10 |
-| `mmdc` exits non-zero in a container | Chrome sandbox unavailable | Pass a puppeteer config with `--no-sandbox --disable-dev-shm-usage` |
-| Dozens of "broken" anchors reported by a link checker | Slug algorithm mismatch | Preserve underscores and do not collapse hyphen runs (see §9.6) |
-| Untracked files appear after rendering or link-checking the backlog | Renderers and browser tooling write artefacts into the current directory by default | Direct output outside the working tree, then confirm `git status --porcelain --untracked-files=all` is empty |
-| Port 8069 already in use | A previous server is still running | `kill "$(ss -tlnp \| grep ':8069' \| grep -oP 'pid=\K[0-9]+' \| head -1)"` |
+| `python3 -m venv venv` fails with a missing `pip-*.whl` | The base image has no bundled pip wheel for `ensurepip` | Use `python3 -m venv --without-pip venv`, then `python3 -m pip --python ./venv/bin/python install --upgrade pip setuptools wheel`. The `--python` flag must precede the subcommand |
+| `error: externally-managed-environment` | System Python is PEP 668 managed | Install into the virtual environment, or pass `--break-system-packages` if a global install is genuinely wanted |
+| `WARNING addons path is not a directory` on every run | Editable install used the PEP 660 finder | Reinstall with `--config-settings editable_mode=compat` |
+| PDF output differs from expectations | The legacy PDF backend displaced the pinned one | Reinstall the editable package with `--no-deps` and re-check `p.pypdf.__name__` |
+| Test run reports `0 post-tests` and exits `0` | Tag typo, renamed test class, or the HTTP port was taken by another run | Correct the tag; give each run its own `--http-port`/`--gevent-port` pair. `--test-enable` binds a port even under `--no-http` |
+| Assets 500 after copying a database with `createdb -T` | The template copy clones the database but not the filestore | Build the database with `-i`, or copy the filestore alongside it |
+| Whole-`account` suite is red | That suite carries failures unrelated to this module, plus one that depends on database id ranges (a generated journal code overflows a 5-character field on 5-digit ids) | Gate CI on `--test-tags=/account_debit_note`; run the wider suite on a fresh database and treat its known failures as a baseline |
+| `pip check` complains about `pypdf2` | Expected — `setup.py` names it, `requirements.txt` pins `pypdf` instead | Ignore it; installing PyPDF2 breaks the pinned backend |
+| Several instances on one host interfere | Shared ports, data directory or database name | Give each its own database name, `--data-dir`, and a port pair offset by 10 (`8069`/`8072`, then `8079`/`8082`, …) |
 
 # 10. Appendices
 
-## A. Command Reference
+## 10.A Command Reference
+
+All commands run from the repository root, with the virtual environment interpreter. `DB` is the database name.
 
 | Purpose | Command |
 |---|---|
-| Byte-compile platform and addons | `LANG=C.UTF-8 ./venv/bin/python -m compileall -q -j 4 odoo addons` |
-| Run the accounting add-on tests | `./venv/bin/python odoo-bin -c odoo.conf -d test_ce -u <modules> --test-enable --test-tags=<tags> --stop-after-init --no-http` |
-| Start the server | `nohup ./venv/bin/python odoo-bin -c odoo.conf -d test_ce --db-filter='^test_ce$' > "$HOME/odoo-server.log" 2>&1 &` |
+| Build the environment | `python3 -m venv --without-pip venv && python3 -m pip --python ./venv/bin/python install --upgrade pip setuptools wheel && ./venv/bin/pip install -r requirements.txt && ./venv/bin/pip install -e . --no-deps --config-settings editable_mode=compat && ./venv/bin/pip install ruff==0.11.4` |
+| Confirm the PDF backend | `./venv/bin/python -c "import odoo.tools.pdf as p; print(p.pypdf.__name__)"` |
+| Byte-compile the module | `./venv/bin/python -m compileall -q -j 4 addons/account_debit_note` |
+| Lint the module | `./venv/bin/ruff check addons/account_debit_note --no-fix --output-format=concise` |
+| Install module + run its tests | `./venv/bin/python odoo-bin --addons-path=addons,odoo/addons --db_host=127.0.0.1 --db_port=5432 --db_user=odoo --db_password=odoo -d DB -i account_debit_note --test-enable --test-tags=/account_debit_note --stop-after-init --no-http --http-interface=127.0.0.1 --http-port=8069 --gevent-port=8072 --data-dir=.odoo/data --log-level=test` |
+| Upgrade gate, no tests | same command with `-u account_debit_note` and no `--test-*` flags |
+| One test method | append `:TestVendorCreditNote.<method>` to the test tag |
+| Start the server | `nohup ./venv/bin/python odoo-bin --addons-path=addons,odoo/addons --db_host=127.0.0.1 --db_port=5432 --db_user=odoo --db_password=odoo -d DB --http-interface=127.0.0.1 --http-port=8069 --gevent-port=8072 --db-filter='^DB$' --data-dir=.odoo/data --logfile=.odoo/odoo.log &` |
 | Health check | `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8069/web/login` |
-| Stop the server | `kill "$(ss -tlnp \| grep ':8069' \| grep -oP 'pid=\K[0-9]+' \| head -1)"` |
-| Start PostgreSQL | `pg_ctlcluster 17 main start` |
-| List databases | `PGPASSWORD=odoo psql -h 127.0.0.1 -U odoo -l` |
-| Backlog inventory | `find tickets -name '*.md' \| wc -l` |
-| Stories per feature | `for d in tickets/EPIC-001/FEATURE-001-0*/; do printf '%s %s\n' "$(basename "$d")" "$(ls "$d" \| wc -l)"; done` |
-| Python lint | `./venv/bin/ruff check .` |
-| Render one diagram | `mmdc -p "$HOME/puppeteer.json" -i diagram.mmd -o diagram.svg` |
-| Confirm containment of a change | `git diff --name-status <base>..HEAD -- . ':(exclude)tickets/**'` |
+| Stop the server | `kill "$(lsof -ti :8069)"` |
+| Module install state | `PGPASSWORD=odoo psql -h 127.0.0.1 -U odoo -d DB -tAc "select name,state,latest_version from ir_module_module where name='account_debit_note'"` |
+| Confirm the one added column | `PGPASSWORD=odoo psql -h 127.0.0.1 -U odoo -d DB -tAc "select column_name,data_type from information_schema.columns where table_name='account_debit_note' order by 1"` |
 
-## B. Port Reference
+## 10.B Port Reference
 
 | Port | Service | Notes |
 |---|---|---|
-| 8069 | Odoo HTTP | Web client and JSON web service; `http_interface = 127.0.0.1` |
-| 8072 | Odoo gevent / longpolling | Bus and live updates |
-| 5432 | PostgreSQL 17 | Cluster `17/main`, roles `odoo` and `root` |
+| 8069 | Odoo HTTP / JSON-RPC | Default. `--test-enable` binds it even under `--no-http`, so give every concurrent run its own port |
+| 8072 | Odoo gevent (longpolling / bus) | Default. Must be free whenever 8069 is used |
+| 5432 | PostgreSQL | Client connection for install, tests and runtime |
 
-## C. Key File Locations
+For additional instances on one host, offset both Odoo ports by 10 — `8079`/`8082`, `8089`/`8092` — and give each its own database and `--data-dir`.
 
-| Path | Contents |
+## 10.C Key File Locations
+
+The delivered change is five files, all under `addons/account_debit_note`.
+
+| Path | Role |
 |---|---|
-| `tickets/README.md` | Navigation index for the whole backlog: Epic, nine Features, forty-one Stories, metadata spine, priority census, review checklist |
-| `tickets/EPIC-001-enterprise-accounting-odoo.md` | Parent Epic — objective, value case, personas, success metrics, constraint register, lock-date contract, decisions register, Appendices A–F |
-| `tickets/EPIC-001/FEATURE-001-NN-*.md` | Nine Feature tickets, one per accounting sub-domain |
-| `tickets/EPIC-001/FEATURE-001-NN/STORY-001-NN-SS-*.md` | Forty-one Story tickets with their acceptance criteria |
-| `tickets/templates/{epic,feature,story}-template.md` | Section-ordering references, unmodified by design |
-| `odoo.conf` | Local runtime configuration (gitignored) |
-| `test_data/bank_statements/sample.{csv,ofx,qif,xml}` | Bank statement fixtures the reconciliation Stories cite |
-| `test_data/financial_reports/sample_journal_entries.csv` | Journal-entry fixture the reporting Stories cite |
-| `addons/account` | Odoo "Invoicing" 1.4 (LGPL-3) — the Community baseline the backlog builds on |
-| `addons/account_financial_report_ce`, `account_bank_reconciliation_ce`, `account_asset_management`, `account_budget_management`, `account_deferred_revenue`, `account_payment_followup` | Community accounting add-ons already in the repository, which the capability-source decision must be assessed against |
+| `addons/account_debit_note/wizard/account_debit_note.py` | The `create_vendor_credit_note` opt-in, the `in_invoice → in_refund` branch in `_prepare_default_values`, the source-move preconditions, and reference sanitising |
+| `addons/account_debit_note/models/account_move.py` | The positive-total rule, the posting override, the two ORM constraints, and the refund-numbering gate |
+| `addons/account_debit_note/wizard/account_debit_note_view.xml` | One added field on the existing wizard form — the entire view change |
+| `addons/account_debit_note/tests/test_vcn_001.py` | The acceptance and regression suite, 12 methods |
+| `addons/account_debit_note/tests/__init__.py` | Test-module registration |
+| `addons/account_debit_note/tests/test_out_debit_note.py` | The two pre-existing tests — byte-identical to upstream, the regression floor |
+| `addons/account_debit_note/__manifest__.py` | Unchanged; already declares its `account` dependency and loads the edited view |
+| `tickets/EPIC-001/FEATURE-001-02/STORY-001-02-05-manage-vendor-credit-notes.md` | The story this feature implements Scenario 1 of |
+| `requirements.txt`, `setup.py`, `ruff.toml` | Unchanged and not to be edited |
 
-## D. Technology Versions
+Reference-only, unchanged, but worth reading when tracing behaviour: `addons/account/models/account_move.py` (move types, direction sign, `_post`, refund sequences), `odoo/addons/base/models/res_currency.py` and `odoo/tools/float_utils.py` (HALF-UP comparison and rounding), `addons/account/tests/common.py` (the invoicing test fixtures this suite builds on).
 
-| Component | Version |
+## 10.D Technology Versions
+
+| Component | Version observed |
 |---|---|
-| Odoo | 19.0 Community (`version_info = (19, 0, 0, FINAL, 0, '')`) |
-| Python | 3.13.7 (venv, pip 25.3, 70 distributions) |
-| PostgreSQL | 17.10 |
-| Node.js / npm | 22.23.2 / 11.18.0 |
-| wkhtmltopdf | 0.12.6.1 (patched qt) |
+| Odoo | 19.0 |
+| Python | 3.13.7 |
+| PostgreSQL | 16.15 |
 | ruff | 0.11.4 |
-| mermaid-cli | 11.16.0 |
-| git / git-lfs | 2.51.0 / 3.7.1 |
+| psycopg2 | 2.9.10 |
+| lxml | 5.2.1 |
+| pypdf | 5.4.0 |
+| Werkzeug | 3.0.1 |
+| Babel | 2.17.0 |
+| cryptography | 42.0.8 |
+| python-ldap | 3.4.4 |
+| libsass | 0.22.0 |
+| reportlab | 4.1.0 |
+| passlib | 1.7.4 |
+| wkhtmltopdf | 0.12.6.1 (patched Qt) |
+| Node.js / npm | 22.23.2 / 11.18.0 (unused by this build) |
+| Git | 2.51.0 |
 
-## E. Environment Variable Reference
+The module reports `19.0.1.0` as its installed version and depends only on `account`.
 
-No environment variable or secret is required to read, validate or render the backlog, and none was supplied for this project. Runtime settings live in `odoo.conf`:
+## 10.E Environment Variable Reference
 
-| Setting | Value | Purpose |
+This feature introduces no environment variable, secret, or configuration key. Everything it needs comes from the module and the platform. What matters operationally is how connection details reach the server:
+
+| Name | Used by | Notes |
 |---|---|---|
-| `addons_path` | `<repo>/addons`, `<repo>/odoo/addons` | Module discovery |
-| `db_host` / `db_port` / `db_user` / `db_password` | `127.0.0.1` / `5432` / `odoo` / `odoo` | Primary database connection |
-| `db_replica_host` / `db_replica_port` | `127.0.0.1` / `5432` | Required on a single node, else Odoo falls back to a peer-auth socket |
-| `http_port` / `gevent_port` | `8069` / `8072` | Web and longpolling |
-| `admin_passwd` | `admin` | Database-management password |
-| `data_dir` | A filestore directory outside the working tree | Filestore and sessions |
-| `workers` | `0` | Threaded mode, suitable for development and tests |
+| `PGPASSWORD` | `psql`, `dropdb` | Convenience for direct database inspection only |
+| `--db_host` / `--db_port` / `--db_user` / `--db_password` | `odoo-bin` | Passed on the command line above for reproducibility. In any deployed instance move them into a configuration file with restrictive permissions — a command line is world-readable through the process table |
+| `--data-dir` | `odoo-bin` | Filestore, sessions and attachments. Always set it; the default is host-global |
+| `--db-filter` | `odoo-bin` | Restricts which databases the instance will serve — set it, together with disabling the database manager, before any exposure |
+| `--log-level` | `odoo-bin` | `test` for gate runs. A production level also suppresses the debug payload that error responses otherwise carry |
 
-Implementation of the backlog will introduce credentials that must live outside version control — banking feed access, currency-rate provider keys, and tax-authority or PEPPOL certificates. The Epic's credential-custody constraint already requires them to be held in system parameters, the certificate store or an external secret manager, scoped per company, with a named rotation owner.
+## 10.F Developer Tools Guide
 
-## F. Developer Tools Guide
+- **Selecting tests.** `--test-tags=/account_debit_note` runs this module's suite; append `:ClassName.method_name` for one method. Prefix a tag with `-` to exclude. The suite is tagged `post_install, -at_install`, so it runs after all modules load — an `at_install`-only run executes none of it.
+- **Reading a run.** Trust `N post-tests` and `0 failed, 0 error(s) of N tests`. Ignore the `odoo.tests.stats` figure, which counts set-up and tear-down keys as tests. Any logged ERROR or CRITICAL fails the run independently of assertions, so scan the log even on green.
+- **Iterating.** `-u account_debit_note` re-applies Python and XML changes to an existing database in well under a second; a full `-i` on a new database takes about a minute. Reserve fresh databases for verifying that install itself is clean.
+- **Inspecting state.** The `psql` one-liners in Appendix A confirm install state and the single added column. For document state, query `account_move` on `move_type`, `state`, `name`, `debit_origin_id` and `reversed_entry_id` — those five columns tell you everything this feature asserts.
+- **Lint discipline.** Always `--no-fix`. `ruff.toml` is generated and must not be edited. Compare against the 27-finding baseline rather than aiming for zero.
+- **Housekeeping.** Databases and data directories are cheap; drop the ones you create when you are done with them, and keep instance state under a `--data-dir` you own so nothing lands in the host-global default. Check `git status` before committing — an ignored `.odoo/` directory stays out of the way, but generated artifacts written elsewhere in the tree will not.
 
-| Tool | Use |
-|---|---|
-| `odoo-bin` | Start the server, update modules, run tests; always with `-c odoo.conf` |
-| `psql` | Inspect the `test_ce` and `test_core` databases directly |
-| `ruff` | Python linting, configured by `ruff.toml`; it does not cover Markdown |
-| `mmdc` | Render the Epic and Feature workflow diagrams to SVG or PNG |
-| `git diff --name-status <base>..HEAD` | Confirm a change stays inside `tickets/` |
-| A Markdown renderer with GitHub slug rules | Read the backlog as a reader receives it and check that every link and anchor resolves |
-
-The repository has no Markdown linter, pre-commit framework or CI workflow covering `tickets/`, which is why wiring the content gates into CI appears in the remaining work.
-
-## G. Glossary
+## 10.G Glossary
 
 | Term | Meaning |
 |---|---|
-| Epic / Feature / Story | The three backlog levels: one programme-level Epic, nine sub-domain Features, forty-one implementable Stories |
-| Given/When/Then | The BDD form every acceptance criterion is written in — one precondition, one trigger, one asserted outcome |
-| INVEST | Independent, Negotiable, Valuable, Estimable, Small, Testable — the sizing test each Story records against |
-| Fibonacci estimate | Story points drawn from 1, 2, 3, 5, 8, 13; the backlog totals 278 points |
-| Reconciliation gate | The Definition-of-Done item requiring debits to equal credits, tax amounts to agree, and report lines to tie to the sub-ledger |
-| Canonical register | An Epic appendix binding one meaning to an identifier — one concept per account code, one legal identity per entity code, one display label per report, one identifier scheme per bank-account jurisdiction |
-| Lock-date contract | The Epic's enumeration of how a posting behaves against each Odoo lock date, distinguishing platform re-dating from a programme-delivered pre-posting guard |
-| Worked population | The Epic's appendix of fixed balances, rates and analytic subsets that every report criterion ties out against |
-| Carry-forward register | The record assigning each requirement inherited from the retired backlog to a named destination Story as a mandatory obligation |
-| DEC-nnn | An entry in the Epic's decisions register: an open programme decision with options, an owner and the acceptance gate it blocks |
-| C-nnn | A programme constraint inherited by every Feature and Story, spanning accounting, security, resilience and resource limits |
-| SM-nnn | A quantified Epic success metric the implementation programme is measured on |
-| CE add-on | A Community-edition module delivered earlier in the programme, partially covering an Enterprise capability |
-| OCA | Odoo Community Association — the source of the community add-ons the capability-source decision weighs against an Enterprise subscription |
+| `account.move` | The single Odoo model behind every accounting document — invoices, bills, credit notes and plain journal entries alike |
+| `move_type` | The field that distinguishes them. `in_invoice` = vendor bill, `in_refund` = vendor credit note, `out_invoice` = customer invoice, `out_refund` = customer credit note, `entry` = plain journal entry |
+| Vendor credit note | A document that gives value back to you from a vendor: it debits Accounts Payable and credits the original expense, the mirror of the bill |
+| Debit note | The opposite document — an additional charge on the same vendor relationship, which this module already produced before this feature |
+| `debit_origin_id` | The link from a document created by this module back to the source it was created from, with `debit_note_ids` as its reverse. What makes a credit note navigable to its bill |
+| `reversed_entry_id` | Core's own reversal link, which triggers automatic allocation and tax reversal. Deliberately never set here, because allocation is out of scope |
+| Posting / `_post` | The transition from draft to posted: the point at which a document is validated, given its journal number, and becomes part of the ledger |
+| `@api.constrains` | A rule the ORM enforces on the record itself, whenever the named fields are written — so it holds on every path, not just the one the user interface takes |
+| HALF-UP rounding | Ties round away from zero, at the currency's own increment. With a 0.05 increment, 10.025 becomes 10.05 |
+| Journal | The book a document is posted into. Its sequence supplies document numbers; refunds draw from a separate pool from invoices |
+| Transient model | A wizard's backing model. Its rows are scratch data cleaned up automatically — which is why the opt-in adds a column to no business table |
+| `post_install` test | A test that runs only after every module has loaded, so it sees the fully assembled system rather than a partial one |
+| UBL | The XML invoice standard EDI modules export to, where a credit note and a debit note are different document elements |

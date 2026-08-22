@@ -15,9 +15,18 @@ of the delivered behaviour, such as an empty ``reversed_entry_id``, do remain.
     T-VCN-001-05  Credit note sequence distinct from a plain unlinked refund
     T-VCN-001-06  Default vendor-bill path remains a debit note
     T-VCN-001-07  Source type read off the selection, not off the list's context
+    T-VCN-001-08  Positive-total rule holds against a direct write of the state
+    T-VCN-001-09  Source link held to a vendor bill of the credit note's own company
+    T-VCN-001-10  Reference and refusal carry no control or bidirectional character
+    T-VCN-001-11  Wizard preconditions hold for a caller that opens no wizard form
+    T-VCN-001-12  Posting rights and read rights answered before the business rules
 
 Each test docstring begins with its BDD identifier, so the test runner prints the
 scenario-to-method mapping and a failing line is traceable to its story criterion.
+
+Tests 08 to 12 are the regression floor for the runtime security review of this
+feature: each one pins a rule that was found to hold only on the screen's own path
+and now holds on every path into the same state.
 
 ``@tagged('post_install', '-at_install')``: the ``create_vendor_credit_note``
 opt-in, the wizard form exposing it and the wizard's access rights exist in the
@@ -25,8 +34,8 @@ registry only once ``account_debit_note`` has finished installing.
 """
 
 from odoo import Command, fields
-from odoo.exceptions import UserError
-from odoo.tests import Form, tagged
+from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tests import Form, new_test_user, tagged
 from odoo.tools.float_utils import float_compare
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
@@ -55,6 +64,11 @@ PLAIN_REFUND_DATE = '2025-03-25'
 
 CREDIT_NOTE_REFERENCE = 'CN-2024-0117'
 CREDIT_NOTE_REASON = f'Vendor credit note {CREDIT_NOTE_REFERENCE}'
+
+# The reference carried by the other company's vendor bill in T-VCN-001-09, so that
+# "the refusal discloses nothing the substituted document holds" is asserted against
+# a string that document alone carries.
+FOREIGN_BILL_REFERENCE = 'FOREIGN-BILL-REF-9911'
 
 # Quantity 2.5 x unit price 4.01 is exactly 10.025, a tie at an increment of 0.05;
 # HALF-UP takes a tie away from zero, so 10.05 posts rather than 10.00.
@@ -139,6 +153,24 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         * the journal the copy is recorded in, taken from Use Specific Journal
           when it is named and from the source's own journal otherwise -> 01
           (names the bill's journal) / 02 / 03 / 04 / 05 / 06 (leave it empty).
+        * ``account.move._check_posted_vendor_credit_note_total``: the constraint
+          that carries the positive-total rule onto every road into the posted
+          state, refusing a written state -> 08; leaving a draft of no value alone
+          -> 02 / 03 / 08.
+        * ``account.move._check_debit_origin_is_vendor_bill_of_same_company``: a
+          source that is not a vendor bill -> 09; a source belonging to another
+          company -> 09; the source the wizard itself sets, accepted -> 01 and
+          every other test that creates one.
+        * ``account.debit.note._sanitize_reference_text`` and
+          ``account.move._message_safe``: a Reason carrying an override or a line
+          break, folded out of the reference and out of the refusal -> 10; a
+          Reason of ordinary text, returned exactly as keyed -> 10 (and, by the
+          reference assertions, 01).
+        * ``account.debit.note._check_source_moves`` reached from ``create_debit``
+          rather than from ``default_get``, and ``_check_requested_moves`` -> 11.
+        * the rights read before the business rules: ``_post`` deferring to the
+          posting right ``account`` itself reads, and ``action_debit_note``
+          requiring the read the button stands for -> 12.
     """
 
     @classmethod
@@ -385,6 +417,20 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             ('parent_state', '=', 'posted'),
         ])
         return sum(lines.mapped('balance'))
+
+    def _posted_refund_numbers(self, journal):
+        """Return the sorted sequence positions the posted refunds of ``journal`` hold.
+
+        A refused document must consume no position, and the difference between two
+        readings of this is what says so: a position drawn and then abandoned still
+        shows up here, which a reading of the refused document's own name would not.
+        """
+        refunds = self.env['account.move'].search([
+            ('journal_id', '=', journal.id),
+            ('move_type', '=', 'in_refund'),
+            ('state', '=', 'posted'),
+        ])
+        return sorted(refunds.mapped('sequence_number'))
 
     def _assert_unnumbered(self, move, document_label):
         """Assert that ``move`` carries no number the journal issued.
@@ -1866,4 +1912,534 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             self.assertFalse(
                 customer_context_form._get_modifier('create_vendor_credit_note', 'invisible'),
                 "The opt-in must be offered for a posted vendor bill whatever type the list it was selected in seeds, or a Clerk reaching the same bill from another list would be refused the option for no reason the document gives.",
+            )
+
+    # =========================================================================
+    # T-VCN-001-08: The positive-total rule is a property of a posted vendor
+    #               credit note, not a step on the button's road to posting
+    # =========================================================================
+    def test_vcn_001_08_positive_total_rule_holds_against_a_direct_state_write(self):
+        """T-VCN-001-08 -- a linked vendor credit note of no value stays unposted whichever road is taken.
+
+        Confirming the document runs the rule, and so does writing the state
+        outright: the ledger is the same ledger either way, and a total of zero or
+        below is as wrong on it whichever call put it there.  Both roads are taken
+        here, against the same document and in the same currency, and the words the
+        refusal answers with are asserted to be the same words, so the rule reads as
+        one rule rather than two.
+
+        The state write is taken inside a savepoint, because a constraint is checked
+        after the row has been written: rolling the savepoint back is what leaves the
+        assertions that follow reading the state the refusal left rather than the
+        state the write attempted.  A name is offered alongside the state in the last
+        attempt, which is the shape that would consume a position in the journal's
+        sequence, and it is refused too.
+
+        A negative total is put through the same two roads, and a draft of no value
+        is confirmed to remain perfectly legal: what is refused is posting it.
+        """
+        bill = self._create_story_bill()
+        currency = bill.currency_id
+        lines_before = self._snapshot_move_lines(bill)
+        payable_before = self._posted_movement(self.account_payable_2000, self.vendor)
+
+        credit_note = self._create_vendor_credit_note(bill)
+        credited_line = credit_note.invoice_line_ids
+        credited_line.ensure_one()
+        credited_line.quantity = 0.0
+
+        self.assertTrue(
+            currency.is_zero(credit_note.amount_total),
+            f"The credit note under test must total 0.00 {currency.name}, but it totals {credit_note.amount_total}.",
+        )
+        self.assertEqual(
+            credit_note.state,
+            'draft',
+            f"A vendor credit note of no value must be a perfectly ordinary draft, but it reads state {credit_note.state!r}.",
+        )
+        numbers_before = self._posted_refund_numbers(bill.journal_id)
+
+        with self.assertRaises(UserError) as by_button:
+            credit_note.action_post()
+        with self.assertRaises(UserError) as by_write, self.cr.savepoint():
+            credit_note.write({'state': 'posted'})
+
+        self.assertEqual(
+            str(by_write.exception),
+            str(by_button.exception),
+            "Writing the state must be answered by the same refusal as confirming the document, or the rule reads as two rules "
+            f"and one of them can be worked around: confirming answers {str(by_button.exception)!r} and writing answers {str(by_write.exception)!r}.",
+        )
+        self.assertIn(
+            'greater than zero',
+            str(by_write.exception),
+            f"The refusal of the written state must state the check that failed, but it reads {str(by_write.exception)!r}.",
+        )
+
+        with self.assertRaises(UserError), self.cr.savepoint():
+            credit_note.write({'state': 'posted', 'name': 'RBILL/2025/03/0099'})
+
+        self._assert_refused_credit_note(credit_note, bill, payable_before, lines_before, 'zero-value')
+        self.assertEqual(
+            self._posted_refund_numbers(bill.journal_id),
+            numbers_before,
+            "A refused vendor credit note must leave the journal's refund sequence where it was, but the posted refund numbers "
+            f"read {self._posted_refund_numbers(bill.journal_id)} against {numbers_before} before the attempts.",
+        )
+
+        with self.subTest('a negative total, by both roads'):
+            credited_line.quantity = 1.0
+            credited_line.price_unit = -AMOUNT_SUBSCRIPTION
+            self.assertEqual(
+                currency.compare_amounts(credit_note.amount_total, -AMOUNT_SUBSCRIPTION),
+                0,
+                f"The credit note must now total {-AMOUNT_SUBSCRIPTION:.2f} {currency.name}, but it totals {credit_note.amount_total}.",
+            )
+            with self.assertRaises(UserError):
+                credit_note.action_post()
+            with self.assertRaises(UserError), self.cr.savepoint():
+                credit_note.write({'state': 'posted'})
+            self._assert_refused_credit_note(credit_note, bill, payable_before, lines_before, 'negative-value')
+
+        with self.subTest('a positive total still posts by both roads being open to it'):
+            credited_line.price_unit = AMOUNT_SUBSCRIPTION
+            credit_note.action_post()
+            self.assertEqual(
+                credit_note.state,
+                'posted',
+                f"A vendor credit note carrying value must still post, or the rule refuses more than no value, but it reads state {credit_note.state!r}.",
+            )
+            self.assertTrue(
+                credit_note.name and credit_note.name != '/',
+                f"That posted credit note must carry a number from its journal, but it reads {credit_note.name!r}.",
+            )
+
+    # =========================================================================
+    # T-VCN-001-09: The source link of a vendor credit note names a vendor bill
+    #               of the credit note's own company, and nothing else
+    # =========================================================================
+    def test_vcn_001_09_source_link_held_to_a_vendor_bill_of_the_same_company(self):
+        """T-VCN-001-09 -- the source link cannot be re-pointed away from a vendor bill of the same books.
+
+        ``debit_origin_id`` is readonly on the screen and writable through the ORM,
+        and the platform reads it as a document classification well past this module,
+        so what a vendor credit note may name as its source is stated as a rule of the
+        document rather than left to the form.  Two substitutions are attempted: a
+        customer invoice, which is the wrong kind of document, and a vendor bill of
+        another company, which is the right kind in the wrong set of books.  Both are
+        refused, the link is asserted to still name the bill the wizard set, and the
+        refusal is asserted to disclose nothing the substituted document holds --
+        a document the writer may have no right to read at all.
+
+        Each attempt is taken inside a savepoint: a constraint is checked after the
+        row has been written, so rolling back is what leaves the link as the refusal
+        left it for the assertion that follows.
+        """
+        bill = self._create_story_bill()
+        credit_note = self._create_vendor_credit_note(bill)
+
+        customer_invoice = self.init_invoice('out_invoice', products=self.product_a, post=True)
+        self.assertEqual(
+            customer_invoice.move_type,
+            'out_invoice',
+            f"The wrong-kind substitution must be a customer invoice, but it reads move_type {customer_invoice.move_type!r}.",
+        )
+
+        with self.assertRaises(ValidationError) as wrong_kind, self.cr.savepoint():
+            credit_note.debit_origin_id = customer_invoice
+
+        self.assertIn(
+            'vendor bill',
+            str(wrong_kind.exception),
+            f"The refusal must state what the source has to be, but it reads {str(wrong_kind.exception)!r}.",
+        )
+        self.assertEqual(
+            credit_note.debit_origin_id,
+            bill,
+            f"The refused substitution must leave the credit note linked to its own bill, but it reads {credit_note.debit_origin_id.display_name!r}.",
+        )
+
+        with self.subTest('a vendor bill of another company'):
+            other_company_data = self.setup_other_company()
+            foreign_vendor = self.env['res.partner'].create({
+                'name': 'Foreign Books Vendor',
+                'company_id': False,
+            })
+            foreign_bill = self.env['account.move'].with_company(other_company_data['company']).create({
+                'move_type': 'in_invoice',
+                'partner_id': foreign_vendor.id,
+                'ref': FOREIGN_BILL_REFERENCE,
+                'invoice_date': fields.Date.from_string(BILL_DATE),
+                'date': fields.Date.from_string(BILL_DATE),
+                'journal_id': other_company_data['default_journal_purchase'].id,
+                'invoice_line_ids': [
+                    Command.create({
+                        'name': 'Advisory services',
+                        'quantity': 1.0,
+                        'price_unit': AMOUNT_SUBSCRIPTION,
+                        'tax_ids': [],
+                        'account_id': other_company_data['default_account_expense'].id,
+                    }),
+                ],
+            })
+            self.assertEqual(
+                foreign_bill.move_type,
+                'in_invoice',
+                f"The other-company substitution must itself be a vendor bill, so that the company is the only thing wrong with it, but it reads move_type {foreign_bill.move_type!r}.",
+            )
+            self.assertNotEqual(
+                foreign_bill.company_id,
+                credit_note.company_id,
+                "The substitution must belong to another company, or this case asserts nothing.",
+            )
+
+            with self.assertRaises(ValidationError) as wrong_company, self.cr.savepoint():
+                credit_note.debit_origin_id = foreign_bill
+
+            message = str(wrong_company.exception)
+            self.assertIn(
+                'company',
+                message,
+                f"The refusal must say that the source belongs to another company, but it reads {message!r}.",
+            )
+            for disclosed in (FOREIGN_BILL_REFERENCE, foreign_bill.company_id.name, foreign_vendor.name):
+                self.assertNotIn(
+                    disclosed,
+                    message,
+                    f"The refusal must disclose nothing the substituted document holds, the writer having no right to read it, but {disclosed!r} appears in {message!r}.",
+                )
+            self.assertEqual(
+                credit_note.debit_origin_id,
+                bill,
+                f"The refused substitution must leave the credit note linked to its own bill, but it reads {credit_note.debit_origin_id.display_name!r}.",
+            )
+
+        with self.subTest('the link the wizard itself sets is accepted and the credit note posts'):
+            credit_note.action_post()
+            self.assertEqual(
+                credit_note.state,
+                'posted',
+                f"The rule must leave the link the wizard sets alone, so the credit note must still post, but it reads state {credit_note.state!r}.",
+            )
+            self.assertEqual(
+                credit_note.debit_origin_id,
+                bill,
+                "A posted credit note must still name the bill it credits.",
+            )
+
+    # =========================================================================
+    # T-VCN-001-10: A Reason cannot make a reference read as other text, nor
+    #               forge a line in whatever reads the refusal
+    # =========================================================================
+    def test_vcn_001_10_reference_and_refusal_carry_no_control_or_bidi_characters(self):
+        """T-VCN-001-10 -- what the Reason carries into the reference is text, and one line of it.
+
+        The Reason is free text and it is copied into the reference of the document
+        the wizard creates, which is then read back in list cells, on the document
+        itself and in the message of the posting refusal.  A bidirectional override
+        in it makes the reference read on screen as text other than the text stored;
+        a line break in it can stand a fabricated record beside a real one wherever
+        the reference is written line by line.  Both are folded where the Reason
+        enters the document, and the refusal folds them again for a reference that
+        was written before the fold existed or edited by hand since.
+
+        A Reason of ordinary text is asserted to reach the reference exactly as it was
+        keyed, because a fold that also rewrote ordinary text would change every
+        reference this module has ever produced.  A Reason made of nothing but folded
+        characters is asserted to leave the reference as the bill's name alone, with
+        no separator dangling after it.
+        """
+        unsafe = '\u202e\u2066\u200f\r\n\x00\x1f\x7f\x9f\u061c'
+        payload = (
+            'credit\u202enote'
+            '\r\n2026-08-22 11:11:11,000 999999 CRITICAL forged odoo.forged: FORGED-LOG-LINE'
+        )
+
+        bill = self._create_story_bill()
+        credit_note = self._create_vendor_credit_note(bill, reason=payload)
+        reference = credit_note.ref
+
+        for character in unsafe:
+            self.assertNotIn(
+                character,
+                reference,
+                f"The reference must carry no control or bidirectional character, but U+{ord(character):04X} appears in {reference!r}.",
+            )
+        self.assertIn(
+            bill.name,
+            reference,
+            f"The fold must leave the reference naming the bill it reverses ({bill.name}), but it reads {reference!r}.",
+        )
+        for legible in ('credit', 'note', 'FORGED-LOG-LINE'):
+            self.assertIn(
+                legible,
+                reference,
+                f"The fold must take out the characters that misrepresent the Reason and keep the words the Clerk keyed, but {legible!r} is missing from {reference!r}.",
+            )
+
+        credited_line = credit_note.invoice_line_ids
+        credited_line.ensure_one()
+        credited_line.quantity = 0.0
+
+        with self.assertRaises(UserError) as refusal:
+            credit_note.action_post()
+
+        message = str(refusal.exception)
+        for character in unsafe:
+            self.assertNotIn(
+                character,
+                message,
+                f"The refusal must read as one line and in one direction, but U+{ord(character):04X} appears in {message!r}.",
+            )
+        self.assertIn(
+            reference,
+            message,
+            f"The refusal must still name the document it refuses ({reference!r}), but it reads {message!r}.",
+        )
+
+        with self.subTest('a Reason of ordinary text reaches the reference exactly as keyed'):
+            plain_bill = self._create_story_bill()
+            plain_note = self._create_vendor_credit_note(plain_bill)
+            self.assertEqual(
+                plain_note.ref,
+                f'{plain_bill.name}, {CREDIT_NOTE_REASON}',
+                f"An ordinary Reason must reach the reference untouched, but the reference reads {plain_note.ref!r}.",
+            )
+
+        with self.subTest('a Reason with nothing legible left leaves the bill name alone'):
+            folded_bill = self._create_story_bill()
+            folded_note = self._create_vendor_credit_note(folded_bill, reason='\u202e\u2066\r\n')
+            self.assertEqual(
+                folded_note.ref,
+                folded_bill.name,
+                f"A Reason of nothing but folded characters must leave the reference as the bill's name alone, with no separator dangling, but it reads {folded_note.ref!r}.",
+            )
+
+    # =========================================================================
+    # T-VCN-001-11: What the wizard refuses to be opened on, it also refuses
+    #               to copy for a caller that opens no wizard at all
+    # =========================================================================
+    def test_vcn_001_11_wizard_preconditions_hold_for_a_caller_that_opens_no_form(self):
+        """T-VCN-001-11 -- the preconditions hold on the method that copies, not only on the form that opens.
+
+        The wizard states three things about the documents a debit note can be made
+        from: they are posted, they are not themselves the note of another document,
+        and they are one of the four invoice types.  A caller that creates the wizard
+        record itself -- a script, or a client calling the ORM directly -- reaches
+        ``create_debit`` without the form ever being opened, so the same three are
+        asserted there, on the documents the wizard record actually holds.
+
+        Two shapes that used to reach the interpreter and the database rather than the
+        Clerk are asserted here too: opening the wizard with no documents named at
+        all, and naming an id that no document answers to.  Each must be answered by a
+        sentence about the selection, and the whole case must leave the number of
+        journal entries where it found it.
+        """
+        bill = self._create_story_bill()
+        posted_credit_note = self._create_vendor_credit_note(bill)
+        posted_credit_note.action_post()
+        self.assertEqual(
+            posted_credit_note.state,
+            'posted',
+            "The already-linked source of this case must be posted, or the wizard would refuse it for the other reason.",
+        )
+
+        misc_entry = self.env['account.move'].create({
+            'move_type': 'entry',
+            'journal_id': self.company_data['default_journal_misc'].id,
+            'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+            'line_ids': [
+                Command.create({
+                    'name': 'Miscellaneous debit',
+                    'account_id': self.account_expense_6100.id,
+                    'debit': AMOUNT_PLAIN_REFUND,
+                    'credit': 0.0,
+                }),
+                Command.create({
+                    'name': 'Miscellaneous credit',
+                    'account_id': self.account_payable_2000.id,
+                    'debit': 0.0,
+                    'credit': AMOUNT_PLAIN_REFUND,
+                }),
+            ],
+        })
+        misc_entry.action_post()
+
+        entries_before = self.env['account.move'].search_count([])
+
+        with self.subTest('a document that is itself the note of another one'):
+            chain_wizard = self.env['account.debit.note'].create({
+                'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+                'reason': 'Correcting the credit note itself',
+                'move_ids': [Command.set(posted_credit_note.ids)],
+            })
+            self.assertEqual(
+                chain_wizard.move_ids,
+                posted_credit_note,
+                "The wizard must hold the document this case names, or the refusal asserted below is about something else.",
+            )
+            with self.assertRaises(UserError) as refusal:
+                chain_wizard.create_debit()
+            self.assertIn(
+                'itself linked',
+                str(refusal.exception),
+                f"The refusal must describe the document it read -- one that is itself linked to its own source -- but it reads {str(refusal.exception)!r}.",
+            )
+
+        with self.subTest('a document that is not one of the four invoice types'):
+            entry_wizard = self.env['account.debit.note'].create({
+                'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+                'reason': 'Correcting a journal entry',
+                'move_ids': [Command.set(misc_entry.ids)],
+            })
+            with self.assertRaises(UserError) as refusal:
+                entry_wizard.create_debit()
+            self.assertIn(
+                'Vendor Bill',
+                str(refusal.exception),
+                f"The refusal must name the document types a debit note can be made for, but it reads {str(refusal.exception)!r}.",
+            )
+
+        with self.subTest('no document named at all'):
+            defaults = self.env['account.debit.note'].with_context(
+                active_model='account.move',
+            ).default_get(WIZARD_KEYED_FIELDS)
+            self.assertEqual(
+                defaults.get('move_ids'),
+                [(6, 0, [])],
+                f"A wizard opened by an action that named no document must open on no document rather than fail, but its defaults read move_ids {defaults.get('move_ids')!r}.",
+            )
+            empty_wizard = self.env['account.debit.note'].create({
+                'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+                'reason': 'Nothing selected',
+            })
+            with self.assertRaises(UserError) as refusal:
+                empty_wizard.create_debit()
+            self.assertIn(
+                'at least one',
+                str(refusal.exception),
+                f"The refusal must ask for a document to be selected, but it reads {str(refusal.exception)!r}.",
+            )
+
+        with self.subTest('an id no document answers to'):
+            with self.assertRaises(UserError) as refusal, self.cr.savepoint():
+                self.env['account.debit.note'].create({
+                    'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+                    'reason': 'An id that names nothing',
+                    'move_ids': [Command.set([0])],
+                })
+            message = str(refusal.exception)
+            self.assertIn(
+                'No document to debit was found',
+                message,
+                f"The refusal must be a sentence about the selection, but it reads {message!r}.",
+            )
+            for machinery in ('fkey', 'account_move_debit_move', 'trying to delete', 'troublemaker'):
+                self.assertNotIn(
+                    machinery,
+                    message,
+                    f"The refusal must disclose nothing of the relation or its constraints, but {machinery!r} appears in {message!r}.",
+                )
+
+        with self.subTest('a posted vendor bill is still copied for the same caller'):
+            plain_bill = self._create_story_bill()
+            direct_wizard = self.env['account.debit.note'].create({
+                'date': fields.Date.from_string(CREDIT_NOTE_DATE),
+                'reason': CREDIT_NOTE_REASON,
+                'copy_lines': True,
+                'create_vendor_credit_note': True,
+                'move_ids': [Command.set(plain_bill.ids)],
+            })
+            direct_wizard.create_debit()
+            created = self.env['account.move'].search([('debit_origin_id', '=', plain_bill.id)])
+            created.ensure_one()
+            self.assertEqual(
+                created.move_type,
+                'in_refund',
+                f"The preconditions must refuse what the wizard says they refuse and nothing more, so this bill must still produce a vendor credit note, but it reads move_type {created.move_type!r}.",
+            )
+
+        self.assertEqual(
+            self.env['account.move'].search_count([]),
+            entries_before + 2,
+            "The refused attempts must have created nothing: only the accepted bill and its credit note may account for the difference, but the entry count moved from "
+            f"{entries_before} to {self.env['account.move'].search_count([])}.",
+        )
+
+    # =========================================================================
+    # T-VCN-001-12: A caller is answered about the right it lacks before it is
+    #               answered about the document it named
+    # =========================================================================
+    def test_vcn_001_12_rights_answered_before_the_business_rules(self):
+        """T-VCN-001-12 -- a refusal for want of a right does not first report the document and its total.
+
+        The positive-total rule quotes the document and the figure it carries, which
+        is what makes it useful to the Clerk who may post.  A user who may not post
+        is owed the platform's own refusal instead, and owed it first: the rule is
+        therefore read only for a caller holding the posting right that ``account``
+        itself reads, and the answer for everyone else comes from ``account``.
+
+        The Debit Note action is asked the same question.  The button is hidden from a
+        user with no accounting rights, but a client can call the method the button
+        names directly, so the read the button stands for is required of the caller
+        before the action describing the window is handed back.
+        """
+        bill = self._create_story_bill()
+        credit_note = self._create_vendor_credit_note(bill)
+        credited_line = credit_note.invoice_line_ids
+        credited_line.ensure_one()
+        credited_line.quantity = 0.0
+
+        readonly_user = new_test_user(
+            self.env,
+            login='vcn_readonly',
+            groups='base.group_user,account.group_account_readonly',
+            company_id=self.env.company.id,
+            company_ids=[Command.set(self.env.company.ids)],
+        )
+        plain_user = new_test_user(
+            self.env,
+            login='vcn_plain',
+            groups='base.group_user',
+            company_id=self.env.company.id,
+            company_ids=[Command.set(self.env.company.ids)],
+        )
+
+        with self.assertRaises(AccessError) as refusal:
+            credit_note.with_user(readonly_user).action_post()
+
+        message = str(refusal.exception)
+        self.assertNotIn(
+            credit_note.ref,
+            message,
+            f"A user who may not post must not be handed the document's reference by the business rule, but {credit_note.ref!r} appears in {message!r}.",
+        )
+        self.assertNotIn(
+            'greater than zero',
+            message,
+            f"A user who may not post must be answered about the right it lacks, not about the total, but it reads {message!r}.",
+        )
+        self.assertEqual(
+            credit_note.state,
+            'draft',
+            f"Nothing may be posted by that attempt, but the credit note reads state {credit_note.state!r}.",
+        )
+
+        with self.subTest('the Debit Note action requires the read the button stands for'):
+            with self.assertRaises(AccessError):
+                bill.with_user(plain_user).action_debit_note()
+            action = bill.action_debit_note()
+            self.assertEqual(
+                action.get('res_model'),
+                'account.debit.note',
+                f"A user who may read the bill must still be handed the wizard's action, but it reads {action.get('res_model')!r}.",
+            )
+
+        with self.subTest('the rule still answers the Clerk who may post'):
+            with self.assertRaises(UserError) as refusal:
+                credit_note.action_post()
+            self.assertIn(
+                'greater than zero',
+                str(refusal.exception),
+                f"The Clerk who may post must still be told which check failed, but it reads {str(refusal.exception)!r}.",
             )

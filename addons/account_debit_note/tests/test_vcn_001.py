@@ -14,6 +14,7 @@ of the delivered behaviour, such as an empty ``reversed_entry_id``, do remain.
     T-VCN-001-04  Credit note posts in the bill currency with HALF-UP rounding
     T-VCN-001-05  Credit note sequence distinct from a plain unlinked refund
     T-VCN-001-06  Default vendor-bill path remains a debit note
+    T-VCN-001-07  Source type read off the selection, not off the list's context
 
 Each test docstring begins with its BDD identifier, so the test runner prints the
 scenario-to-method mapping and a failing line is traceable to its story criterion.
@@ -71,6 +72,19 @@ AMOUNT_PLAIN_REFUND = 1000.0
 # assertions read the arch the Clerk is served.
 WIZARD_FORM_VIEW = 'account_debit_note.view_account_debit_note'
 
+# The context the Bills list of `account` opens its contextual actions with, as
+# `account.action_move_in_invoice_type` declares it, and the one the Invoices list
+# opens them with: both name a document type of their own, which is not the type of
+# the documents selected in them.
+BILLS_LIST_CONTEXT = {'default_move_type': 'in_invoice', 'display_account_trust': True}
+INVOICES_LIST_CONTEXT = {'default_move_type': 'out_invoice'}
+
+# The names the Debit Note form asks `default_get` for, the three derived from the
+# selection last: the source type, the type of journal it belongs to and the country
+# of its company are computed from `move_ids` and are never keyed by the Clerk.
+WIZARD_KEYED_FIELDS = ['move_ids', 'date', 'reason', 'journal_id', 'copy_lines', 'create_vendor_credit_note']
+WIZARD_DERIVED_FIELDS = ['move_type', 'journal_type', 'country_code']
+
 
 @tagged('post_install', '-at_install')
 class TestVendorCreditNote(AccountTestInvoicingCommon):
@@ -117,6 +131,11 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         * the opt-in's own visibility on the wizard form, which the arch decides
           from the source type alone: offered for a posted vendor bill and served
           unticked -> 01; withheld for a source that is not a vendor bill -> 06.
+        * ``account.debit.note.default_get``: the source type, its journal type and
+          its country left to be computed from ``move_ids`` rather than answered
+          from a document type the list action seeded in the context -> 07, which
+          reads the opt-in's and Copy Lines' visibility for a refund source, for a
+          mixed selection and for a vendor bill under such a context.
         * the journal the copy is recorded in, taken from Use Specific Journal
           when it is named and from the source's own journal otherwise -> 01
           (names the bill's journal) / 02 / 03 / 04 / 05 / 06 (leave it empty).
@@ -331,7 +350,7 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             credit_note.invoice_line_ids.filtered(lambda line: line.name != keep_line).unlink()
         return credit_note
 
-    def _wizard_form(self, moves):
+    def _wizard_form(self, moves, **action_context):
         """Open the Debit Note wizard on ``moves`` as the form the Clerk is served.
 
         ``Form`` loads the wizard's own arch and applies its modifiers, so an
@@ -339,11 +358,16 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         to let a field be set to, rather than what the model underneath it accepts.
         The form is not saved: a request that is meant to be carried out is made
         through ``_create_vendor_credit_note`` instead.
+
+        ``action_context`` carries whatever else the action the Clerk used puts in
+        the context: a document-type list of ``account``, such as Bills, adds its
+        own ``default_move_type`` there, and the wizard is opened from such a list.
         """
         return Form(
             self.env['account.debit.note'].with_context(
                 active_model='account.move',
                 active_ids=moves.ids,
+                **action_context,
             ),
             view=WIZARD_FORM_VIEW,
         )
@@ -363,16 +387,18 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
         return sum(lines.mapped('balance'))
 
     def _assert_unnumbered(self, move, document_label):
-        """Assert that ``move`` carries no journal sequence number.
+        """Assert that ``move`` carries no number the journal issued.
 
-        ``/`` is the number a document reads until a journal numbers it at posting,
-        so a document that drew a number, one that consumed a sequence position and
-        one numbered then returned to draft each fail on their own assertion.
+        A document a journal has not numbered reads an unset name, or the ``/`` the
+        platform wrote for that same state before, so either is accepted here and a
+        number is not: a document that drew one, one that consumed a sequence
+        position and one numbered then returned to draft each fail on their own
+        assertion.
         """
-        self.assertEqual(
+        self.assertIn(
             move.name,
-            '/',
-            f"A refused vendor credit note must be left reading the '/' of a document the journal has not numbered, but the {document_label} reads {move.name!r}.",
+            (False, '/'),
+            f"A refused vendor credit note must be left unnumbered by its journal, but the {document_label} reads a number of {move.name!r}.",
         )
         self.assertFalse(
             move.sequence_number,
@@ -616,10 +642,10 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
             1,
             f"Only the returned line is credited, so the draft must carry one product line but carries {len(credit_note.invoice_line_ids)}.",
         )
-        self.assertEqual(
+        self.assertIn(
             credit_note.name,
-            '/',
-            f"The draft handed to the Clerk must be unnumbered, reading the '/' of a document no journal has numbered yet, but it reads {credit_note.name!r}.",
+            (False, '/'),
+            f"The draft handed to the Clerk must be unnumbered, no journal having numbered it yet, but it reads a number of {credit_note.name!r}.",
         )
         self.assertFalse(
             credit_note.sequence_number,
@@ -941,9 +967,9 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
                 'draft',
                 f"That refusal must leave the comparison document in state 'draft', but it reads {unlinked_no_line_refund.state!r}.",
             )
-            # The comparison document reads an unset name rather than the '/' the
-            # wizard hands a credit note it raises: both say the journal has not
-            # numbered the document, and only the wizard's copy is given the '/'.
+            # An unset name and a '/' both say the journal has not numbered the
+            # document, so either is accepted of the comparison document, exactly as
+            # of the credit note the wizard raises: the wizard forces neither.
             self.assertIn(
                 unlinked_no_line_refund.name,
                 (False, '/'),
@@ -1703,3 +1729,141 @@ class TestVendorCreditNote(AccountTestInvoicingCommon):
                     corrected_bill.journal_id,
                     f"The debit note of bill {corrected_bill.name} must sit in that bill's own journal, but it reads {corrected_bill.debit_note_ids.journal_id.display_name!r}.",
                 )
+
+    # =========================================================================
+    # T-VCN-001-07: The source type is read off the documents selected rather
+    #               than off the document type the list action seeds
+    # =========================================================================
+
+    def test_vcn_001_07_source_type_read_off_selection_not_list_context(self):
+        """T-VCN-001-07: the source type follows the selection, not the list's context.
+
+        Given a posted vendor bill and a posted vendor credit note in the Purchase
+        journal of the test company,
+        When the Debit Note wizard is opened as the contextual action of a
+        document-type list of ``account`` -- the Bills list, whose action seeds
+        ``default_move_type = 'in_invoice'`` in the context of everything it opens --
+        over the credit note alone, and over the bill and the credit note together,
+        Then the wizard reads the type of the documents selected rather than the type
+        the list seeded: the vendor-credit-note opt-in is withheld from the credit
+        note and from the mixed selection, Copy Lines is withheld from the credit note
+        as it is on every other route to a refund source, and that same list context
+        over a single posted vendor bill still offers the opt-in.
+
+        The seeded default reaches ``move_type`` because ``default_get`` hands a
+        context default to a computed field as readily as to a keyed one, and the web
+        client then takes any name that call returned for a value it need not compute,
+        so the compute never runs and the modifiers of the form are evaluated against
+        the list's own document type.  The reading is therefore made twice: on
+        ``default_get``, which must return none of the three values derived from the
+        selection, and through ``Form``, which is the arch and its modifiers applied
+        to what the client is served.  The Invoices list is read as well, because a
+        list seeding a type the selection does not carry hides the opt-in on a real
+        vendor bill just as readily as it offers it on a document that is not one.
+        """
+        bill = self._create_story_bill()
+        posted_refund = self._create_invoice(
+            move_type='in_refund',
+            invoice_date=fields.Date.from_string(PLAIN_REFUND_DATE),
+            date=fields.Date.from_string(PLAIN_REFUND_DATE),
+            post=True,
+            partner_id=self.vendor,
+            journal_id=self.purchase_journal,
+            currency_id=self.company_currency,
+            invoice_line_ids=[
+                self._prepare_invoice_line(
+                    name='Unlinked vendor credit note',
+                    price_unit=AMOUNT_PLAIN_REFUND,
+                    quantity=1.0,
+                    tax_ids=[],
+                    account_id=self.account_expense_6100,
+                ),
+            ],
+        )
+        self.assertEqual(
+            posted_refund.move_type,
+            'in_refund',
+            f"The document the Bills list is selected on must be a vendor credit note, which is a source the opt-in must never be offered for, but it reads move_type {posted_refund.move_type!r}.",
+        )
+        self.assertEqual(
+            posted_refund.state,
+            'posted',
+            f"That document must be posted for the wizard to accept it as a source at all, but it reads state {posted_refund.state!r}.",
+        )
+
+        defaults = self.env['account.debit.note'].with_context(
+            active_model='account.move',
+            active_ids=posted_refund.ids,
+            **BILLS_LIST_CONTEXT,
+        ).default_get(WIZARD_KEYED_FIELDS + WIZARD_DERIVED_FIELDS)
+        self.assertEqual(
+            defaults.get('move_ids'),
+            [(6, 0, posted_refund.ids)],
+            f"The wizard must still open on the documents the action selected, that being what the source type is then read off, but its defaults carry move_ids {defaults.get('move_ids')!r}.",
+        )
+        for derived_name in WIZARD_DERIVED_FIELDS:
+            self.assertNotIn(
+                derived_name,
+                defaults,
+                f"The default of {derived_name!r} must not be answered from the context: the Bills list seeds a document type of its own there, and a value returned for a computed field is a value the client will not compute, so the wizard would describe the list it was opened from rather than the document selected in it. The defaults read {defaults.get(derived_name)!r} for it.",
+            )
+
+        with self.subTest('a single posted vendor credit note selected in the Bills list'):
+            refund_form = self._wizard_form(posted_refund, **BILLS_LIST_CONTEXT)
+            self.assertEqual(
+                refund_form.move_type,
+                'in_refund',
+                f"The form must read the type of the selected vendor credit note, not the 'in_invoice' the Bills list seeds, but it reads {refund_form.move_type!r}.",
+            )
+            self.assertTrue(
+                refund_form._get_modifier('create_vendor_credit_note', 'invisible'),
+                "The opt-in must be withheld from a vendor credit note reached through the Bills list, that source being one the new branch never acts on.",
+            )
+            self.assertTrue(
+                refund_form._get_modifier('copy_lines', 'invisible'),
+                "Copy Lines must be withheld from a refund source reached through the Bills list, exactly as the module withholds it on every other route to such a source.",
+            )
+            self.assertEqual(
+                refund_form.journal_type,
+                'purchase',
+                f"The journal the form offers to override with must be read off the same source type, which is a purchase document here, but it reads {refund_form.journal_type!r}.",
+            )
+
+        with self.subTest('a bill and a credit note selected together in the Bills list'):
+            mixed_form = self._wizard_form(bill + posted_refund, **BILLS_LIST_CONTEXT)
+            self.assertFalse(
+                mixed_form.move_type,
+                f"A selection whose documents are not of one type has no source type, and the seeded 'in_invoice' must not stand in for one, but the form reads {mixed_form.move_type!r}.",
+            )
+            self.assertTrue(
+                mixed_form._get_modifier('create_vendor_credit_note', 'invisible'),
+                "The opt-in must be withheld from a mixed selection: it acts on a vendor bill and the selection is not one, so offering it would promise the Clerk something the wizard would not do for every document selected.",
+            )
+
+        with self.subTest('a single posted vendor bill selected in the Bills list'):
+            bill_form = self._wizard_form(bill, **BILLS_LIST_CONTEXT)
+            self.assertEqual(
+                bill_form.move_type,
+                'in_invoice',
+                f"The same list context over a single posted vendor bill must read that bill's own type, the seeded default and the selection agreeing here, but it reads {bill_form.move_type!r}.",
+            )
+            self.assertFalse(
+                bill_form._get_modifier('create_vendor_credit_note', 'invisible'),
+                "The opt-in must still be offered for a posted vendor bill selected in the Bills list: reading the type off the selection must withhold the option where it does not apply without withdrawing it where it does.",
+            )
+            self.assertFalse(
+                bill_form.create_vendor_credit_note,
+                "That opt-in must still be served unticked, the Clerk asking for a credit note rather than being handed one.",
+            )
+
+        with self.subTest('a posted vendor bill selected in the Invoices list'):
+            customer_context_form = self._wizard_form(bill, **INVOICES_LIST_CONTEXT)
+            self.assertEqual(
+                customer_context_form.move_type,
+                'in_invoice',
+                f"A list seeding 'out_invoice' must not make a vendor bill read as a customer invoice, but the form reads {customer_context_form.move_type!r}.",
+            )
+            self.assertFalse(
+                customer_context_form._get_modifier('create_vendor_credit_note', 'invisible'),
+                "The opt-in must be offered for a posted vendor bill whatever type the list it was selected in seeds, or a Clerk reaching the same bill from another list would be refused the option for no reason the document gives.",
+            )

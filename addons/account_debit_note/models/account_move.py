@@ -3,6 +3,7 @@
 
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from odoo.tools import formatLang
 
 
 class AccountMove(models.Model):
@@ -38,8 +39,11 @@ class AccountMove(models.Model):
     def _check_vendor_credit_note_positive_total(self):
         """Refuse a credit note linked to a vendor bill whose total is not above zero.
 
-        A credit note carrying no value has nothing to reverse, so it must not reach
-        the payable sub-ledger; every other document is left to the checks of account.
+        Only a positive total credits the bill back, so a total of zero and a total
+        below zero are both refused before reaching the payable sub-ledger; every
+        other document is left to the checks of account.  The refusal quotes the total
+        the document actually carries, in its own currency, so that it reads accurately
+        for either total and the Clerk can see the figure that was measured.
         """
         for move in self:
             if (
@@ -48,10 +52,11 @@ class AccountMove(models.Model):
                 and move.currency_id.compare_amounts(move.amount_total, 0.0) <= 0
             ):
                 raise UserError(_(
-                    "The vendor credit note %(document)s cannot be posted because its total must be greater than zero: "
-                    "a credit note carrying no value has nothing to reverse. "
+                    "The vendor credit note %(document)s carries a total of %(total)s and cannot be posted: "
+                    "that total must be greater than zero, because only a positive total credits the bill back. "
                     "State the credited quantity and the credited amount, then post it again.",
                     document=move.ref or move.display_name,
+                    total=formatLang(self.env, move.amount_total, currency_obj=move.currency_id),
                 ))
 
     def _post(self, soft=True):

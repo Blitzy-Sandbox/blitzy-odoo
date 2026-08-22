@@ -25,7 +25,7 @@ class AccountDebitNote(models.TransientModel):
                                      "We won't copy them for debit notes from credit notes. ")
     create_vendor_credit_note = fields.Boolean("Create Vendor Credit Note", default=False,
                                                help="For a posted vendor bill, create a vendor credit note giving the charge back, "
-                                                    "instead of a debit note.  Leave it off to keep creating debit notes. ")
+                                                    "instead of a debit note. Leave it off to keep creating debit notes.")
     # computed fields
     move_type = fields.Char(compute="_compute_from_moves")
     journal_type = fields.Char(compute="_compute_journal_type")
@@ -42,6 +42,15 @@ class AccountDebitNote(models.TransientModel):
         elif any(move.move_type not in ['out_invoice', 'in_invoice', 'out_refund', 'in_refund'] for move in move_ids):
             raise UserError(_("You can make a debit note only for a Customer Invoice, a Customer Credit Note, a Vendor Bill or a Vendor Credit Note."))
         res['move_ids'] = [(6, 0, move_ids.ids)]
+        # The document-type list actions of account seed their own type in the context
+        # (Bills sends default_move_type='in_invoice'), and default_get hands such a
+        # default to a computed field as readily as to a keyed one, so the fields below
+        # would describe the list the wizard was opened from instead of the documents
+        # selected in it. Dropping them leaves the source type, its journal type and
+        # its country to be computed from move_ids, which is what every consumer of
+        # them - the field modifiers of the form and the journal domain - must read.
+        for computed_name in ('move_type', 'journal_type', 'country_code'):
+            res.pop(computed_name, None)
         return res
 
     @api.depends('move_ids')
@@ -73,8 +82,6 @@ class AccountDebitNote(models.TransientModel):
                 'debit_origin_id': move.id,
                 'move_type': type,
             }
-        if vendor_credit_note:
-            default_values['name'] = '/'
         if not self.copy_lines or move.move_type in [('in_refund', 'out_refund')]:
             default_values['line_ids'] = [(5, 0, 0)]
         return default_values
